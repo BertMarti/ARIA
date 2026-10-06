@@ -9,12 +9,12 @@ error() { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 
 # --- 1. Docker ---
 if ! command -v docker >/dev/null 2>&1; then
-  aviso "Docker no esta instalado."
+  aviso "Docker no está instalado."
   read -r -p "Instalarlo con el script oficial (https://get.docker.com)? [s/N] " resp
   case "${resp:-N}" in
     s|S|si|SI) curl -fsSL https://get.docker.com | sh
                sudo usermod -aG docker "$USER" || true
-               aviso "Se ha anadido tu usuario al grupo docker: cierra sesion y vuelve a entrar, y relanza ./install.sh."
+               aviso "Se ha añadido tu usuario al grupo docker: cierra sesión y vuelve a entrar, y relanza ./install.sh."
                exit 0 ;;
     *) error "Docker es necesario. Instalalo y vuelve a ejecutar ./install.sh" ;;
   esac
@@ -53,14 +53,14 @@ mkdir -p data
 info "Construyendo y arrancando los contenedores"
 docker compose up -d --build
 
-info "Esperando a que los servicios esten sanos"
+info "Esperando a que los servicios estén sanos"
 for c in aria-ollama aria-app aria-caddy; do
   for i in $(seq 1 60); do
     estado="$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null || echo desconocido)"
     [ "$estado" = "healthy" ] && break
     sleep 3
   done
-  [ "$estado" = "healthy" ] || error "$c no esta sano (estado: $estado). Mira: docker compose logs $c"
+  [ "$estado" = "healthy" ] || error "$c no está sano (estado: $estado). Mira: docker compose logs $c"
   info "$c: sano"
 done
 
@@ -76,8 +76,8 @@ fi
 # --- 5. Resumen ---
 IP="$(get_var ARIA_LAN_IP)"
 echo
-info "ARIA esta lista"
-echo "  URL:        https://$IP   (tambien https://$(hostname).local)"
+info "ARIA está lista"
+echo "  URL:        https://$IP   (también https://$(hostname).local)"
 echo "  Usuario:    $(get_var ARIA_USER)"
-echo "  Contrasena: $(get_var ARIA_PASSWORD)   (guardada en $(pwd)/.env)"
-echo "  El navegador avisara del certificado autofirmado: es lo esperado (ver README)."
+echo "  Contraseña: $(get_var ARIA_PASSWORD)   (guardada en $(pwd)/.env)"
+echo "  El navegador avisará del certificado autofirmado: es lo esperado (ver README)."

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Desinstala ARIA: para y elimina los contenedores. Con --purge borra tambien datos y volumenes.
+# Desinstala ARIA: para y elimina los contenedores. Con --purge borra también datos y volúmenes.
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 
@@ -11,13 +11,13 @@ case "${1:-}" in
 esac
 
 if [ "$PURGE" = 1 ]; then
-  read -r -p "Se borraran los modelos descargados, los certificados y ./data (token de Spotify). Continuar? [s/N] " r
+  read -r -p "Se borrarán los modelos descargados, los certificados y ./data (token de Spotify). ¿Continuar? [s/N] " r
   case "${r:-N}" in s|S|si|SI) ;; *) echo "Cancelado."; exit 0 ;; esac
   docker compose down --volumes --remove-orphans
   rm -rf data
   echo "ARIA eliminada por completo (el archivo .env se conserva; borralo a mano si quieres)."
 else
   docker compose down --remove-orphans
-  echo "Contenedores eliminados. Se conservan los volumenes (modelos, certificados) y ./data."
+  echo "Contenedores eliminados. Se conservan los volúmenes (modelos, certificados) y ./data."
   echo "Usa ./uninstall.sh --purge para borrarlo todo."
 fi

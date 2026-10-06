@@ -49,6 +49,21 @@ else
 fi
 mkdir -p data
 
+# Integraciones con SHIELD-DNS y HEIMDALL: si faltan, se rellenan desde sus .env
+# (solo se lee con grep/cut; nunca se hace "source" de esos archivos).
+leer_ajeno() { [ -f "$1" ] && grep -E "^$2=" "$1" | tail -n1 | cut -d= -f2- || true; }
+rellenar() { # rellenar CLAVE VALOR: solo si la clave está vacía o no existe y hay valor
+  if [ -z "$(get_var "$1")" ] && [ -n "$2" ]; then set_var "$1" "$2"; info "$1 rellenado automáticamente"; fi
+}
+IP_LAN="$(get_var ARIA_LAN_IP)"; IP_LAN="${IP_LAN:-127.0.0.1}"
+rellenar SHIELD_URL "http://$IP_LAN:8080"
+rellenar SHIELD_PASSWORD "$(leer_ajeno ../SHIELD-DNS/.env PIHOLE_PASSWORD)"
+rellenar VPN_URL "https://$IP_LAN:51843"
+rellenar VPN_USER "$(leer_ajeno ../HEIMDALL/.env WG_ADMIN_USER)"
+rellenar VPN_PASSWORD "$(leer_ajeno ../HEIMDALL/.env WG_ADMIN_PASSWORD)"
+[ -n "$(get_var SHIELD_PASSWORD)" ] || aviso "SHIELD_PASSWORD vacío: el Centro de control mostrará SHIELD-DNS como «no conectado» (ver README)."
+[ -n "$(get_var VPN_PASSWORD)" ] || aviso "VPN_PASSWORD vacío: el Centro de control mostrará HEIMDALL como «no conectado» (ver README)."
+
 # --- 3. Arranque ---
 info "Construyendo y arrancando los contenedores"
 docker compose up -d --build

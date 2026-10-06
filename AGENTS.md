@@ -3,10 +3,10 @@
 Guía para cualquier agente de programación (convención agents.md).
 
 ## Proyecto
-ARIA: asistente local en Raspberry Pi (FastAPI + Ollama + Caddy, Docker Compose). Código en `app/aria/`, frontend sin build en `app/static/`, proxy en `caddy/Caddyfile`.
+ARIA 2.0: centro de control del laboratorio doméstico en Raspberry Pi (FastAPI + Ollama + Caddy, Docker Compose). Código en `app/aria/`, frontend sin build en `app/static/`, pruebas en `app/tests/`, proxy en `caddy/Caddyfile`. Scripts: `install.sh`, `update.sh`, `backup.sh`.
 
 ## Comandos
-- Validar: `docker compose config`
+- Validar: `docker compose config`; pruebas: ver README (sección Pruebas); `node --check app/static/*.js`
 - Levantar: `docker compose up -d --build` y `docker compose ps` (tres contenedores healthy)
 - Comprobar: `curl -k https://<IP>/health`
 - Logs: `docker compose logs -f app`
@@ -16,6 +16,8 @@ ARIA: asistente local en Raspberry Pi (FastAPI + Ollama + Caddy, Docker Compose)
 - Sin secretos en el repo (`.env`, `data/` ignorados).
 - Dependencias mínimas; sin build de frontend; salida del modelo solo como texto escapado.
 - Respetar los puertos de otros proyectos: ARIA 80/443; SHIELD-DNS 53, 8080, 8443; HEIMDALL 51820/udp, 51843.
+- Toda herramienta nueva necesita entrada en `_INTENCIONES` y pruebas; nunca exponer al modelo acciones destructivas.
+- Nunca enviar claves privadas ni texto de la API/modelo al navegador vía `innerHTML`.
 - Solo tocar contenedores `aria-*`. No hacer push sin revisión.
 - La documentación debe describir solo lo que existe.
 

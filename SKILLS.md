@@ -8,9 +8,13 @@
 | `spotify_play` / `spotify_pause` / `spotify_siguiente` / `spotify_anterior` | Control de reproducción (requiere Premium y dispositivo activo) |
 | `spotify_actual` | Canción en reproducción |
 | `spotify_buscar_y_reproducir` | Busca una canción y la reproduce |
+| `estado_bloqueador` / `pausar_bloqueador(minutos 1-120)` / `reanudar_bloqueador` | Pi-hole (SHIELD-DNS) |
+| `dispositivos_vpn` | Lista dispositivos VPN y cuáles están conectados |
+| `crear_dispositivo_vpn(nombre)` / `activar_dispositivo_vpn(nombre)` / `desactivar_dispositivo_vpn(nombre)` | Gestión de la VPN por nombre (borrar solo en la interfaz) |
+| `estado_sistema` | Temperatura, RAM, disco, carga y uptime de la Pi |
 | `buscar_en_netflix` | Devuelve un enlace de búsqueda. ARIA **no** puede controlar Netflix |
 
-Además: chat en streaming, gestión del modelo (descarga del modelo configurado) y panel de servicios. Las herramientas dependen de que el modelo admita tool calling; si no, ARIA responde sin ellas.
+Además: Inicio con lanzador de aplicaciones, chat con conversaciones guardadas, Centro de control (SHIELD-DNS, HEIMDALL, Sistema, Spotify) y Ajustes (modelos, voz, contraseña). Las herramientas dependen de que el modelo admita tool calling; si no, ARIA responde sin ellas.
 
 ## Playbook: añadir una herramienta
 1. En `app/aria/tools.py` añade:
@@ -24,19 +28,25 @@ Además: chat en streaming, gestión del modelo (descarga del modelo configurado
    relacionadas con lo que pregunta el usuario, porque un modelo de 3B las usa sin motivo si se le dan todas.
 3. Si necesita lógica externa, ponla en un módulo aparte (como `spotify.py`).
 4. Reconstruye: `docker compose up -d --build app`.
-5. Prueba con `POST /api/chat` y comprueba que aparece el evento `herramienta`.
-5. Documenta la herramienta en este archivo y en `README.md`.
+5. Añade pruebas en `app/tests/test_tools.py` (mensajes de charla no deben activarla) y ejecútalas.
+6. Prueba con `POST /api/chat` y comprueba que aparece el evento `herramienta`.
+7. Documenta la herramienta en este archivo y en `README.md`.
 
 ## Playbook: cambiar de modelo
-1. Edita `ARIA_MODEL` en `.env`.
-2. `docker compose exec ollama ollama pull <modelo>` (o botón del panel tras reiniciar).
-3. `docker compose up -d` para recrear `aria-app`.
+1. Ajustes → Modelos: «Descargar» y «Usar» (se guarda en `data/model.txt`).
+2. Alternativa: `ARIA_MODEL` en `.env` (el archivo de `data/` tiene prioridad).
 
 ## Playbook: configurar Spotify
 1. Crea una app en <https://developer.spotify.com/dashboard>.
 2. Añade la Redirect URI `https://<IP>/spotify/callback` (igual que `SPOTIFY_REDIRECT_URI`).
 3. Rellena `SPOTIFY_CLIENT_ID` y `SPOTIFY_CLIENT_SECRET` en `.env`; `docker compose up -d`.
-4. En el panel, pulsa "Conectar Spotify". El token queda en `data/spotify_token.json`.
+4. En Ajustes → Spotify, pulsa "Conectar Spotify". El token queda en `data/spotify_token.json`.
 
 ## Playbook: actualizar
-`git pull && ./install.sh`. Para imágenes base: `docker compose pull ollama caddy && docker compose up -d --build`.
+`./update.sh`.
+
+## Playbook: copia de seguridad
+`./backup.sh` (`.env` + `data/` en `backups/`, 7 copias). Restaurar: ver README.
+
+## Playbook: conectar SHIELD-DNS / HEIMDALL
+Rellena `SHIELD_PASSWORD`, `VPN_USER`, `VPN_PASSWORD` en `.env` (o deja que `install.sh` los tome de `../SHIELD-DNS/.env` y `../HEIMDALL/.env`) y `docker compose up -d`.

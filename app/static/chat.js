@@ -34,7 +34,15 @@ const Chat = (() => {
   function chip(nombre, args, texto) {
     const etiqueta = NOMBRES_HERRAMIENTA[nombre] || nombre;
     const c = el("div", { class: "chip", title: texto || "" }, el("span", { class: "chip-ico", "aria-hidden": "true" }, "⚙"), etiqueta);
+    botonQr(c, nombre, args, texto);
     return c;
+  }
+  // Si la herramienta creó un dispositivo VPN, se ofrece abrir su QR (nunca se muestran claves en el chat).
+  function botonQr(c, nombre, args, texto) {
+    const m = nombre === "crear_dispositivo_vpn" && /\(id (\d+)\)/.exec(texto || "");
+    if (!m || c.querySelector(".chip-qr")) return;
+    const nom = String((args && args.nombre) || "dispositivo").trim();
+    c.append(el("button", { type: "button", class: "chip-qr", onclick: () => Control.mostrarQr(m[1], nom) }, "Ver QR"));
   }
 
   function botonCopiar(obtener) {
@@ -78,7 +86,7 @@ const Chat = (() => {
     addMsg("user", texto); abajo();
     ponerEstado(true);
     abort = new AbortController();
-    let burbuja = null, acumulado = "", ultimoChip = null, todo = "";
+    let burbuja = null, acumulado = "", ultimoChip = null, ultimoArgs = {}, todo = "";
     try {
       const r = await fetch("/api/chat", {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: abort.signal,
@@ -94,9 +102,9 @@ const Chat = (() => {
           acumulado += ev.text; todo += ev.text; burbuja.actualizar(acumulado); abajo();
         } else if (ev.type === "herramienta") {
           burbuja = null; acumulado = ""; todo += "\n";
-          ultimoChip = chip(ev.name, ev.args); caja().append(ultimoChip); abajo();
+          ultimoArgs = ev.args; ultimoChip = chip(ev.name, ev.args); caja().append(ultimoChip); abajo();
         } else if (ev.type === "resultado") {
-          if (ultimoChip) { ultimoChip.title = ev.text; ultimoChip.classList.add("hecho"); }
+          if (ultimoChip) { ultimoChip.title = ev.text; ultimoChip.classList.add("hecho"); botonQr(ultimoChip, ev.name, ultimoArgs, ev.text); }
         } else if (ev.type === "aviso" || ev.type === "error") addAviso(ev.text);
       }
       hablar(todo);
@@ -133,7 +141,7 @@ const Chat = (() => {
     const titulo = el("button", { type: "button", class: "conv-titulo", title: c.titulo }, c.titulo);
     titulo.addEventListener("click", () => abrir(c.id));
     const ren = el("button", { type: "button", class: "icono-mini", title: "Renombrar", "aria-label": "Renombrar" }, "✎");
-    const del = el("button", { type: "button", class: "icono-mini", title: "Borrar", "aria-label": "Borrar conversación" }, "🗑");
+    const del = el("button", { type: "button", class: "icono-mini", title: "Borrar", "aria-label": "Borrar conversación" }, "✕");
     const li = el("li", { class: "conv" + (c.id === convId ? " activa" : "") }, titulo, ren, del);
     ren.addEventListener("click", () => {
       const inp = el("input", { class: "conv-edit", value: c.titulo, maxLength: 120, "aria-label": "Nuevo título" });
@@ -207,5 +215,6 @@ const Chat = (() => {
   }
   function autoajustar() { const t = $("texto"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; }
 
-  return { iniciar };
+  function preguntar(texto) { nueva(); enviar(texto); }
+  return { iniciar, preguntar };
 })();

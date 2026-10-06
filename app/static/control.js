@@ -130,8 +130,9 @@ const Control = (() => {
 
   // --- Sistema ---
   async function sistema() {
-    const c = cuerpoDe("card-sistema");
-    const { ok, data } = await api("/api/system");
+    return pintarSistema(cuerpoDe("card-sistema"), (await api("/api/system")));
+  }
+  function pintarSistema(c, { ok, data }) {
     if (!ok) { fallo(c, "No se pudo leer el estado."); return; }
     const filas = [];
     const fila = (t, valor, b) => el("div", { class: "metrica" }, el("div", { class: "metrica-cab" }, el("span", { class: "muted" }, t), el("strong", null, valor)), b);
@@ -183,5 +184,5 @@ const Control = (() => {
   document.addEventListener("visibilitychange", () => { if (!document.hidden && temporizador) actualizar(); });
 
   function iniciar() { iniciarVpn(); iniciarSpotify(); }
-  return { iniciar, activar };
+  return { iniciar, activar, anadir, mostrarQr, pintarSistema };
 })();

@@ -198,3 +198,27 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
   .toasts { left: 1rem; right: 1rem; bottom: 4.6rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+
+/* Inicio */
+.inicio-cab { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.4rem; }
+.inicio-cab h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); background: linear-gradient(90deg, var(--txt), var(--acento)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.inicio-cab p { margin: .2rem 0 0; text-transform: capitalize; }
+.preguntar { display: flex; gap: .5rem; flex: 1 1 320px; max-width: 560px; }
+.vista > h2 { margin-top: 1.2rem; }
+.lanzador { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 1rem; }
+.app-tile { position: relative; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); padding: 1rem; display: grid; gap: .6rem; box-shadow: var(--sombra); transition: border-color .15s, box-shadow .15s, transform .1s; }
+.app-tile:hover { border-color: var(--acento); box-shadow: 0 0 22px rgba(56, 214, 255, .15), var(--sombra); transform: translateY(-1px); }
+.tile-enlace { display: grid; gap: .25rem; text-decoration: none; color: var(--txt); }
+.tile-enlace:hover strong { color: var(--acento); }
+.tile-ico { font-size: 2rem; line-height: 1; }
+.tile-punto { position: absolute; top: .9rem; right: .9rem; }
+.tile-pass { justify-self: start; }
+.acciones { display: flex; flex-wrap: wrap; gap: .6rem; }
+.inicio-sistema { margin-top: 1.2rem; }
+.chip-qr { padding: .05rem .6rem; font-size: .75rem; border-radius: 99px; border-color: var(--acento); color: var(--acento); }
+@media (max-width: 760px) { .preguntar { max-width: none; } }
+
+.svg-ico { width: 1.45rem; height: 1.45rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tile-ico { color: var(--acento); }
+.tile-ico .svg-ico { width: 2rem; height: 2rem; }
+.inicio-cab p { text-transform: none; }

@@ -9,7 +9,7 @@ import httpx
 
 from . import config
 
-NOMBRE_RE = re.compile(r"^[A-Za-z0-9 ._-]{1,32}$")
+NOMBRE_RE = re.compile(r"^[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ ._-]{1,32}$")
 CONECTADO_SEG = 180  # handshake reciente = conectado
 
 

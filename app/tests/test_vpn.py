@@ -3,12 +3,12 @@ import pytest
 from aria import vpn
 
 
-@pytest.mark.parametrize("n", ["movil-ana", "Mi portatil", "a", "x.y_z-1", "a" * 32])
+@pytest.mark.parametrize("n", ["movil-ana", "Mi portatil", "a", "x.y_z-1", "a" * 32, "Móvil de Lucía", "ñandú", "Tele del salón"])
 def test_nombres_validos(n):
     assert vpn.nombre_valido(n)
 
 
-@pytest.mark.parametrize("n", ["", "   ", "a" * 33, "../etc", "a;b", "<script>", "ñandú", "a/b", "x\ny", None, 5])
+@pytest.mark.parametrize("n", ["", "   ", "a" * 33, "../etc", "a;b", "<script>", "a/b", "móvil😀", "x\ny", None, 5])
 def test_nombres_invalidos(n):
     assert not vpn.nombre_valido(n)
 

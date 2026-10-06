@@ -136,7 +136,21 @@ async def _json(request: Request) -> dict:
 
 @app.get("/api/info")
 async def api_info():
-    return {"version": config.VERSION, "modelo": config.modelo_activo()}
+    return {"version": config.VERSION, "modelo": config.modelo_activo(),
+            "puertos": {"shield_web": config.SHIELD_WEB_PORT, "vpn": config.HEIMDALL_PORT}}
+
+
+@app.post("/api/secret/{app_id}")
+async def api_secreto(app_id: str):
+    """Devuelve la contraseña de administración de un panel (solo a una sesión autenticada).
+    Nunca va embebida en el HTML; la respuesta no se cachea."""
+    if app_id == "shield" and config.SHIELD_PASSWORD:
+        datos = {"usuario": "", "password": config.SHIELD_PASSWORD}
+    elif app_id == "vpn" and config.VPN_PASSWORD:
+        datos = {"usuario": config.VPN_USER, "password": config.VPN_PASSWORD}
+    else:
+        return JSONResponse({"error": "No hay contraseña configurada para esa aplicación."}, status_code=404)
+    return JSONResponse(datos, headers={"Cache-Control": "no-store"})
 
 
 # --- Conversaciones ---

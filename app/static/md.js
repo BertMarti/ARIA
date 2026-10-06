@@ -3,7 +3,7 @@
 // Soporta: párrafos, **negrita**, *cursiva*, `código`, bloques ```, listas con
 // viñetas y numeradas, títulos (#) y enlaces http(s) (rel=noopener).
 
-const MD_INLINE = /(`[^`\n]+`|\*\*[^*\n]+?\*\*|\*[^*\s][^*\n]*?\*|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s<>)"']+)/g;
+const MD_INLINE_SRC = /(`[^`\n]+`|\*\*[^*\n]+?\*\*|\*[^*\s][^*\n]*?\*|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)|https?:\/\/[^\s<>)"']+)/;
 
 function mdUrlSegura(u) {
   try { return ["https:", "http:"].includes(new URL(u).protocol); } catch (_) { return false; }
@@ -14,8 +14,8 @@ function mdEnlace(url, texto) {
 
 function mdInline(txt, padre) {
   let ultimo = 0, m;
-  MD_INLINE.lastIndex = 0;
-  while ((m = MD_INLINE.exec(txt))) {
+  const re = new RegExp(MD_INLINE_SRC.source, "g"); // una instancia por llamada (mdInline es recursiva)
+  while ((m = re.exec(txt))) {
     if (m.index > ultimo) padre.append(txt.slice(ultimo, m.index));
     const t = m[0];
     if (t[0] === "`") padre.append(el("code", null, t.slice(1, -1)));

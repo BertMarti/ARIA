@@ -48,10 +48,6 @@ def test_toda_herramienta_tiene_intencion():
     assert set(tools._REGISTRO) <= ofrecidas
 
 
-def test_vpn_no_expone_alta_ni_baja():
-    assert not any("crear" in n or "eliminar" in n or "borrar" in n for n in tools._REGISTRO)
-
-
 def test_rescatar_llamada_json_en_texto():
     ll = tools.rescatar_llamada('{"name": "pausar_bloqueador", "parameters": {"minutos": 15}}', {"pausar_bloqueador"})
     assert ll == {"function": {"name": "pausar_bloqueador", "arguments": {"minutos": "15"}}}
@@ -78,3 +74,28 @@ def test_pausar_valida_rango():
     import asyncio
     assert "entre 1 y 120" in asyncio.run(tools.ejecutar("pausar_bloqueador", {"minutos": 500}))
     assert "entre 1 y 120" in asyncio.run(tools.ejecutar("pausar_bloqueador", {"minutos": 0}))
+
+
+@pytest.mark.parametrize("texto,esperadas", [
+    ("Añade un dispositivo a la VPN llamado movil-ana", {"crear_dispositivo_vpn"}),
+    ("Crea un móvil nuevo en la VPN", {"crear_dispositivo_vpn"}),
+    ("Desactiva el dispositivo tele en la VPN", {"activar_dispositivo_vpn", "desactivar_dispositivo_vpn"}),
+])
+def test_gestion_vpn(texto, esperadas):
+    assert esperadas <= tools.relevantes(texto)
+
+
+@pytest.mark.parametrize("texto", ["Hola, ¿qué tal?", "Cuéntame un chiste", "Explícame cómo funciona una VPN",
+                                   "¿Qué es WireGuard?", "Crea un poema", "Activa tu imaginación"])
+def test_gestion_vpn_no_se_activa_en_charla(texto):
+    r = tools.relevantes(texto)
+    assert not r & {"crear_dispositivo_vpn", "activar_dispositivo_vpn", "desactivar_dispositivo_vpn"}
+
+
+def test_borrar_vpn_sigue_sin_ser_herramienta():
+    assert not any("eliminar" in n or "borrar" in n for n in tools._REGISTRO)
+
+
+def test_nombre_invalido_en_crear():
+    import asyncio
+    assert "no válido" in asyncio.run(tools.ejecutar("crear_dispositivo_vpn", {"nombre": "../malo"}))

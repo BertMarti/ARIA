@@ -120,7 +120,7 @@ async def conversar(cid: str | None, texto: str) -> AsyncIterator[dict]:
     conv = db.obtener(cid)
     yield {"type": "conv", "id": cid, "titulo": conv["titulo"]}
     contexto = db.historial_modelo(cid, MAX_MENSAJES)
-    acumulado = ""
+    acumulado, pendiente = "", None
     try:
         async for ev in responder(contexto):
             if ev["type"] == "token":
@@ -129,7 +129,9 @@ async def conversar(cid: str | None, texto: str) -> AsyncIterator[dict]:
                 if acumulado.strip():
                     db.anadir(cid, "assistant", acumulado)
                 acumulado = ""
-                db.anadir(cid, "tool", db.herramienta_json(ev["name"], ev["args"]))
+                pendiente = (ev["name"], ev["args"])
+            elif ev["type"] == "resultado":
+                db.anadir(cid, "tool", db.herramienta_json(ev["name"], pendiente[1] if pendiente else {}, ev["text"]))
             yield ev
     finally:
         # También se ejecuta si el cliente aborta (botón Detener): se conserva lo generado.

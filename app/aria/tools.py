@@ -69,6 +69,11 @@ _INTENCIONES = [
     ((r"\b(vpn|wireguard|heimdall)\b",
       r"\b(dispositivos?|conectad\w+|clientes?|cu[aá]nt\w+|hay|lista\w*|m[oó]viles?|tel[eé]fonos?|qui[eé]n\w*)\b"),
      {"dispositivos_vpn"}),
+    ((r"\b(vpn|wireguard|heimdall)\b",
+      r"\b(a[ñn]ad\w*|cre[ao]\w*|nuev[oa]s?|agreg\w+|dar de alta|alta)\b", _EXPLICAR), {"crear_dispositivo_vpn"}),
+    ((r"\b(vpn|wireguard|heimdall)\b",
+      r"\b(activa|activar|act[ií]valo|desactiva|desactivar|desact[ií]valo|habilita|deshabilita|apaga|apagar|enciende|encender)\b",
+      _EXPLICAR), {"activar_dispositivo_vpn", "desactivar_dispositivo_vpn"}),
     ((r"\b(raspberry|rasp|uptime|procesador)\b", _EXPLICAR), {"estado_sistema"}),
     ((r"\b(temperatura|memoria|ram|cpu|disco|almacenamiento|espacio|sistema)\b",
       r"\b(libre|libres|queda\w*|usad\w+|ocupad\w+|tiene|estado|c[oó]mo|cu[aá]nt\w+|qu[eé])\b", _EXPLICAR),
@@ -208,7 +213,7 @@ async def reanudar_bloqueador() -> str:
 async def dispositivos_vpn() -> str:
     cl = await vpn.listar()
     if not cl:
-        return "No hay ningún dispositivo en la VPN."
+        return "La VPN está activa pero la lista de dispositivos está vacía: no hay ningún dispositivo registrado."
     partes = [f"{c['nombre']} ({'conectado' if c['conectado'] else 'desconectado'}"
               f"{'' if c['activo'] else ', desactivado'})" for c in cl]
     return f"{len(cl)} dispositivo(s): " + ", ".join(partes) + f". Conectados ahora: {sum(c['conectado'] for c in cl)}."
@@ -223,11 +228,46 @@ async def estado_sistema() -> str:
         out.append(f"Temperatura de la CPU: {e['temperatura']} °C")
     if e["memoria"]:
         m = e["memoria"]
-        out.append(f"RAM: {gb(m['usada'])} usados de {gb(m['total'])} ({m['porcentaje']} %)")
+        out.append(f"RAM: {gb(m['usada'])} usados de {gb(m['total'])} ({m['porcentaje']} % ocupada)")
     if e["disco"]:
         d = e["disco"]
-        out.append(f"Disco: {gb(d['usado'])} usados de {gb(d['total'])} ({d['porcentaje']} %), {gb(d['libre'])} libres")
+        out.append(f"Disco: {gb(d['usado'])} usados de {gb(d['total'])} ({d['porcentaje']} % ocupado), {gb(d['libre'])} libres")
     if e["carga"]:
         out.append("Carga media: " + " / ".join(f"{x:.2f}" for x in e["carga"]))
     out.append(f"Encendida desde hace {e['uptime_texto']}")
     return ". ".join(out) + "."
+
+
+@tool("crear_dispositivo_vpn",
+      "Crea un dispositivo nuevo (móvil, portátil...) en la VPN HEIMDALL. No devuelve claves: el usuario escanea el QR en la web.",
+      {"nombre": ("string", "Nombre del dispositivo (letras sin tilde, números, espacios y - _ .; máximo 32)")}, ("nombre",))
+async def crear_dispositivo_vpn(nombre: str) -> str:
+    nombre = str(nombre).strip()
+    if not vpn.nombre_valido(nombre):
+        return "Nombre no válido: usa letras sin tilde, números, espacios y - _ . (máximo 32 caracteres)."
+    if any(c["nombre"].lower() == nombre.lower() for c in await vpn.listar()):
+        return f"Ya existe un dispositivo llamado «{nombre}» en la VPN."
+    cid = await vpn.crear(nombre)
+    return (f"Dispositivo «{nombre}» creado (id {cid}). Para conectarlo, abre Centro de control → HEIMDALL "
+            "y pulsa «QR» en ese dispositivo para escanearlo con la app WireGuard.")
+
+
+async def _cambiar_dispositivo(nombre: str, activo: bool) -> str:
+    cl = await vpn.listar()
+    c = next((x for x in cl if x["nombre"].lower() == str(nombre).strip().lower()), None)
+    if not c:
+        return "No encuentro ese dispositivo. Dispositivos: " + (", ".join(x["nombre"] for x in cl) or "ninguno") + "."
+    await vpn.activar(c["id"], activo)
+    return f"Dispositivo «{c['nombre']}» {'activado' if activo else 'desactivado'}."
+
+
+@tool("activar_dispositivo_vpn", "Activa un dispositivo de la VPN HEIMDALL buscándolo por su nombre.",
+      {"nombre": ("string", "Nombre del dispositivo")}, ("nombre",))
+async def activar_dispositivo_vpn(nombre: str) -> str:
+    return await _cambiar_dispositivo(nombre, True)
+
+
+@tool("desactivar_dispositivo_vpn", "Desactiva un dispositivo de la VPN HEIMDALL buscándolo por su nombre (pierde el acceso hasta que se active).",
+      {"nombre": ("string", "Nombre del dispositivo")}, ("nombre",))
+async def desactivar_dispositivo_vpn(nombre: str) -> str:
+    return await _cambiar_dispositivo(nombre, False)

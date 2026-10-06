@@ -79,6 +79,14 @@ for c in aria-ollama aria-app aria-caddy; do
   info "$c: sano"
 done
 
+# Certificado raíz público de Caddy, para poder instalarlo en tus dispositivos (ARIA → Ajustes)
+if docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt ./data/aria-certificado.crt >/dev/null 2>&1; then
+  chmod 644 ./data/aria-certificado.crt
+  info "Certificado raíz disponible en ARIA → Ajustes → Certificado"
+else
+  aviso "No se pudo copiar el certificado raíz de Caddy (no es grave: solo seguirá saliendo el aviso del navegador)."
+fi
+
 # --- 4. Modelo ---
 MODEL="$(get_var ARIA_MODEL)"; MODEL="${MODEL:-llama3.2:3b}"
 if [ "${SKIP_MODEL:-0}" = "1" ]; then

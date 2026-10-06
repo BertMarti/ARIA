@@ -157,6 +157,19 @@
         <p class="muted">Se cerrarán las sesiones abiertas en otros dispositivos.</p>
       </article>
       <article class="tarjeta" id="ajustes-spotify"><h2>Spotify</h2><div class="cuerpo muted">Cargando…</div></article>
+      <article class="tarjeta" id="ajustes-certificado">
+        <h2>Certificado</h2>
+        <p class="muted">Instálalo una vez en cada dispositivo y el navegador dejará de avisar de que «la conexión no es privada» al entrar en ARIA.</p>
+        <div class="botones"><a class="boton primario" href="/api/certificado" download="ARIA-certificado.crt">Descargar certificado</a></div>
+        <ul class="muted">
+          <li><strong>Windows:</strong> doble clic → Instalar certificado → Equipo local → «Colocar todos los certificados en el siguiente almacén» → Entidades de certificación raíz de confianza.</li>
+          <li><strong>Android:</strong> Ajustes → Seguridad → Más ajustes → Cifrado y credenciales → Instalar un certificado → Certificado de CA.</li>
+          <li><strong>iPhone/iPad:</strong> abre el archivo → Ajustes → Perfil descargado → Instalar; después Ajustes → General → Información → Ajustes de confianza de certificados → actívalo.</li>
+          <li><strong>Mac:</strong> doble clic → Acceso a Llaveros → abre el certificado → Confiar → Confiar siempre.</li>
+          <li><strong>Firefox</strong> usa su propio almacén: Ajustes → Privacidad y seguridad → Ver certificados → Autoridades → Importar.</li>
+        </ul>
+        <p class="muted">Sirve solo para ARIA; los paneles de Pi-hole y de la VPN tienen su propio certificado.</p>
+      </article>
       <article class="tarjeta" id="ajustes-acerca">
         <h2>Acerca de</h2>
         <div id="acerca-cuerpo" class="muted">Cargando…</div>
@@ -171,7 +184,7 @@
   <h2 id="vpn-titulo">Añadir dispositivo</h2>
   <form id="form-vpn" class="formulario">
     <label>Nombre del dispositivo <input id="vpn-nombre" maxlength="32" placeholder="móvil-de-ana" pattern="[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ ._\-]{1,32}" required></label>
-    <p class="muted">Letras sin tilde, números, espacios y - _ . (máximo 32).</p>
+    <p class="muted">Letras (también con tilde y ñ), números, espacios y - _ . (máximo 32).</p>
     <div class="botones">
       <button type="button" class="fantasma" data-cerrar>Cancelar</button>
       <button type="submit" class="primario">Crear</button>

@@ -140,6 +140,15 @@ async def api_info():
             "puertos": {"shield_web": config.SHIELD_WEB_PORT, "vpn": config.HEIMDALL_PORT}}
 
 
+@app.get("/api/certificado")
+async def api_certificado():
+    """Certificado raíz PÚBLICO de la CA interna de Caddy (lo copia install.sh a data/)."""
+    ruta = config.DATA_DIR / "aria-certificado.crt"
+    if not ruta.is_file():
+        return JSONResponse({"error": "Certificado no disponible. Ejecuta ./install.sh de nuevo."}, status_code=404)
+    return FileResponse(ruta, media_type="application/x-x509-ca-cert", filename="ARIA-certificado.crt")
+
+
 @app.post("/api/secret/{app_id}")
 async def api_secreto(app_id: str):
     """Devuelve la contraseña de administración de un panel (solo a una sesión autenticada).

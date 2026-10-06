@@ -60,7 +60,7 @@ Abre `https://<IP-de-la-Pi>` (o `https://<nombre-de-la-Pi>.local`) e inicia sesi
 
 ### Aviso de certificado
 
-El navegador mostrará "la conexión no es privada". Es normal: ARIA usa la autoridad certificadora interna de Caddy, que tu navegador no conoce. El tráfico va cifrado igualmente. Acepta la excepción (Avanzado → Continuar). Si quieres evitar el aviso, importa el certificado raíz que Caddy genera en el volumen `caddy_data` (`/data/caddy/pki/authorities/local/root.crt` dentro de `aria-caddy`) en tus dispositivos:
+El navegador mostrará "la conexión no es privada". **La forma fácil de quitar el aviso:** ARIA → Ajustes → Certificado → «Descargar certificado» e instálalo en cada dispositivo (la tarjeta explica cómo en Windows, Android, iPhone, Mac y Firefox). Es normal: ARIA usa la autoridad certificadora interna de Caddy, que tu navegador no conoce. El tráfico va cifrado igualmente. Acepta la excepción (Avanzado → Continuar). Si quieres evitar el aviso, importa el certificado raíz que Caddy genera en el volumen `caddy_data` (`/data/caddy/pki/authorities/local/root.crt` dentro de `aria-caddy`) en tus dispositivos:
 
 ```bash
 docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt ./aria-root.crt

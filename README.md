@@ -1,57 +1,63 @@
-# 🤖 ARIA - AI Assistant for Your Home
+# 🤖 ARIA - Asistente IA para tu hogar
 
-**Status:** Pre-release (MVP Phase 1)
-**Version:** 0.1.0
+**Estado:** En desarrollo (esqueleto inicial)
+**Versión:** 0.1.0
+**Licencia:** MIT
 
-## What is ARIA?
+## ¿Qué es ARIA?
 
-ARIA is a **free, local-first AI assistant** that runs on your Raspberry Pi 5.
+ARIA es un asistente de IA **gratuito y local** que se ejecuta en una Raspberry Pi 5 (8 GB) y se usa desde el navegador de cualquier PC de tu red.
 
-### Features
-- 💬 Natural language chat (Ollama)
-- 🎬 Netflix search and control
-- 🎵 Spotify playback control
-- 🌐 Web UI
-- 🔐 Secure (all local)
+### Funcionalidades previstas
 
-## Quick Start
+- 💬 Chat en lenguaje natural con modelos locales vía **Ollama** (sin APIs de pago)
+- 🎵 Control de reproducción de Spotify
+- 🎬 Accesos rápidos a Netflix
+- 🌐 Interfaz web con usuario/contraseña y HTTPS
+- 🧩 Arquitectura de integraciones ampliable
+
+## Estado actual
+
+Por ahora el repositorio contiene un servidor FastAPI mínimo (`/health` y un `/api/chat` de prueba), el `Dockerfile` y el `docker-compose.yml`. La conexión real con Ollama, las integraciones y la interfaz web están pendientes.
+
+## Requisitos
+
+- Raspberry Pi 5 (8 GB de RAM) con Raspberry Pi OS de 64 bits, u otra distribución Linux
+- Docker y Docker Compose
+- ~8 GB libres en disco para los modelos
+
+## Instalación
 
 ```bash
-# Clone
 git clone https://github.com/BertMarti/ARIA.git
 cd ARIA
-
-# Setup
 cp .env.example .env
-docker-compose up -d
-
-# Access
-https://your-rp-ip:443
+docker compose up -d
 ```
 
-## Architecture
+Comprobar que funciona:
 
-```
-FastAPI (8001)
-├── Ollama Chat
-├── Netflix Integration
-├── Spotify Integration
-└── Auth/JWT
+```bash
+curl http://localhost:8001/health
 ```
 
-## Requirements
+## Estructura
 
-- Raspberry Pi 5 (8GB RAM)
-- Docker & Docker Compose
-- 8GB disk space
+```
+ARIA/
+├── docker/          # Dockerfile y dependencias
+├── src/main.py      # Servidor FastAPI
+├── .env.example     # Variables de entorno de ejemplo
+└── docker-compose.yml
+```
 
-## See Also
+## Documentación para agentes
 
-- [CLAUDE.md](CLAUDE.md) - Agent configuration
-- [AGENTS.md](AGENTS.md) - Autonomous workflows
-- [SKILLS.md](SKILLS.md) - Custom skills
-- [MEMORY.md](MEMORY.md) - Agent memory
+- [CLAUDE.md](CLAUDE.md) – instrucciones para Claude Code
+- [AGENTS.md](AGENTS.md) – reparto de tareas entre agentes
+- [SKILLS.md](SKILLS.md) – capacidades del asistente
+- [MEMORY.md](MEMORY.md) – memoria y decisiones del proyecto
 
-## License
+## Licencia
 
 MIT

@@ -2,26 +2,36 @@
 import asyncio
 import json
 import logging
+import mimetypes
+import re
 from urllib.parse import parse_qs, urlparse
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, chat, config, services, spotify
+from . import auth, chat, config, db, modelos, services, shield, sistema, spotify, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
 # Rutas accesibles sin sesion.
-PUBLICAS = {"/login", "/health", "/internal/tls-ask", "/static/style.css", "/static/login.js"}
+PUBLICAS = {"/login", "/health", "/internal/tls-ask", "/static/style.css", "/static/login.js",
+            "/static/manifest.webmanifest", "/static/icon.svg"}
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 
 @app.on_event("startup")
 async def _arranque():
     if not auth.habilitado():
         log.error("Faltan ARIA_USER / ARIA_PASSWORD o ARIA_SECRET (>=16 caracteres): login deshabilitado.")
+    db.iniciar()
+
+
+@app.on_event("shutdown")
+async def _parada():
+    await shield.cerrar()  # Pi-hole limita las sesiones de API: se libera la nuestra
 
 
 def _ip(request: Request) -> str:
@@ -102,74 +112,248 @@ async def index():
     return FileResponse(config.STATIC_DIR / "index.html")
 
 
-@app.get("/static/app.js")
-async def app_js():
-    return FileResponse(config.STATIC_DIR / "app.js", media_type="text/javascript")
-
-
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
 
 
 # --- API ---
 def _ndjson(gen):
     async def it():
-        async for ev in gen:
-            yield json.dumps(ev, ensure_ascii=False) + "\n"
+        try:
+            async for ev in gen:
+                yield json.dumps(ev, ensure_ascii=False) + "\n"
+        finally:
+            await gen.aclose()  # asegura que se guarda lo generado si el cliente aborta
     return StreamingResponse(it(), media_type="application/x-ndjson",
                              headers={"X-Accel-Buffering": "no"})
 
 
+async def _json(request: Request) -> dict:
+    try:
+        d = await request.json()
+    except ValueError:
+        return {}
+    return d if isinstance(d, dict) else {}
+
+
+@app.get("/api/info")
+async def api_info():
+    return {"version": config.VERSION, "modelo": config.modelo_activo()}
+
+
+# --- Conversaciones ---
 @app.post("/api/chat")
 async def api_chat(request: Request):
-    try:
-        datos = await request.json()
-    except ValueError:
-        return JSONResponse({"error": "JSON no válido"}, status_code=400)
-    mensajes = chat.limpiar(datos.get("messages") if isinstance(datos, dict) else None)
-    if not mensajes or mensajes[-1]["role"] != "user":
-        return JSONResponse({"error": "Falta el mensaje del usuario"}, status_code=400)
-    return _ndjson(chat.responder(mensajes))
+    d = await _json(request)
+    texto = d.get("message")
+    cid = d.get("conversation_id")
+    if not isinstance(texto, str) or not texto.strip():
+        return JSONResponse({"error": "Falta el mensaje"}, status_code=400)
+    if cid is not None and (not isinstance(cid, str) or not db.existe(cid)):
+        cid = None
+    return _ndjson(chat.conversar(cid, texto))
 
 
+@app.get("/api/conversations")
+async def api_conversaciones():
+    return {"conversaciones": await asyncio.to_thread(db.listar)}
+
+
+@app.get("/api/conversations/{cid}")
+async def api_conversacion(cid: str):
+    c = await asyncio.to_thread(db.obtener, cid)
+    if not c:
+        return JSONResponse({"error": "Conversación no encontrada"}, status_code=404)
+    return c
+
+
+@app.patch("/api/conversations/{cid}")
+async def api_renombrar(cid: str, request: Request):
+    d = await _json(request)
+    t = d.get("titulo")
+    if not isinstance(t, str) or not t.strip() or not await asyncio.to_thread(db.renombrar, cid, t):
+        return JSONResponse({"error": "No se pudo renombrar"}, status_code=400)
+    return {"ok": True}
+
+
+@app.delete("/api/conversations/{cid}")
+async def api_borrar_conversacion(cid: str):
+    if not await asyncio.to_thread(db.borrar, cid):
+        return JSONResponse({"error": "Conversación no encontrada"}, status_code=404)
+    return {"ok": True}
+
+
+# --- Modelos ---
 @app.get("/api/models")
 async def api_models():
-    try:
-        async with httpx.AsyncClient(timeout=10) as c:
-            r = await c.get(f"{config.OLLAMA_URL}/api/tags")
-        instalados = [m["name"] for m in r.json().get("models", [])]
-        ok = True
-    except (httpx.HTTPError, ValueError):
-        instalados, ok = [], False
-    activo = config.MODEL
-    presente = activo in instalados or (":" not in activo and f"{activo}:latest" in instalados)
-    return {"ollama": ok, "instalados": instalados, "activo": activo, "activo_instalado": presente}
+    lista = await modelos.instalados()
+    activo = config.modelo_activo()
+    return {"ollama": lista is not None, "instalados": lista or [], "activo": activo,
+            "activo_instalado": bool(lista) and modelos.esta_instalado(activo, lista),
+            "curados": modelos.CURADOS}
+
+
+@app.post("/api/models/activate")
+async def api_activar_modelo(request: Request):
+    nombre = (await _json(request)).get("model")
+    lista = await modelos.instalados()
+    if not isinstance(nombre, str) or lista is None or not modelos.esta_instalado(nombre, lista):
+        return JSONResponse({"error": "El modelo no está instalado."}, status_code=400)
+    config.guardar_modelo(nombre)
+    return {"activo": nombre}
 
 
 @app.post("/api/models/pull")
-async def api_pull():
-    """Descarga solo el modelo configurado (ARIA_MODEL), con progreso."""
-    async def gen():
-        try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(None, connect=10)) as c:
-                async with c.stream("POST", f"{config.OLLAMA_URL}/api/pull",
-                                    json={"model": config.MODEL, "stream": True}) as r:
-                    async for linea in r.aiter_lines():
-                        if linea.strip():
-                            j = json.loads(linea)
-                            if j.get("error"):
-                                yield {"type": "error", "text": "Error al descargar el modelo."}
-                                return
-                            yield {"type": "progreso", "estado": j.get("status", ""),
-                                   "total": j.get("total"), "completado": j.get("completed")}
-            yield {"type": "fin"}
-        except httpx.HTTPError:
-            yield {"type": "error", "text": "No se pudo contactar con Ollama."}
-    return _ndjson(gen())
+async def api_pull(request: Request):
+    """Descarga un modelo de la lista curada (o, sin cuerpo, el modelo activo)."""
+    nombre = (await _json(request)).get("model") or config.modelo_activo()
+    if nombre not in modelos.NOMBRES_CURADOS and nombre != config.modelo_activo():
+        return JSONResponse({"error": "Modelo no permitido."}, status_code=400)
+    return _ndjson(modelos.descargar(nombre))
 
 
+@app.delete("/api/models")
+async def api_borrar_modelo(request: Request):
+    nombre = (await _json(request)).get("model")
+    lista = await modelos.instalados()
+    if not isinstance(nombre, str) or lista is None or not modelos.esta_instalado(nombre, lista):
+        return JSONResponse({"error": "El modelo no está instalado."}, status_code=400)
+    if nombre == config.modelo_activo():
+        return JSONResponse({"error": "No se puede borrar el modelo activo."}, status_code=400)
+    if not await modelos.borrar(nombre):
+        return JSONResponse({"error": "Ollama no pudo borrar el modelo."}, status_code=502)
+    return {"ok": True}
+
+
+# --- Ajustes ---
+@app.post("/api/password")
+async def api_password(request: Request):
+    ip = _ip(request)
+    if (resto := auth.bloqueado(ip)):
+        return JSONResponse({"error": f"Demasiados intentos. Espera {resto} s."}, status_code=429)
+    d = await _json(request)
+    vals = [d.get(k) for k in ("actual", "nueva", "repetida")]
+    if not all(isinstance(v, str) for v in vals):
+        return JSONResponse({"error": "Faltan datos."}, status_code=400)
+    err = await asyncio.to_thread(auth.cambiar_password, *vals)
+    if err:
+        if err.startswith("La contraseña actual"):
+            auth.registrar_fallo(ip)
+        return JSONResponse({"error": err}, status_code=400)
+    auth.limpiar_fallos(ip)
+    # La versión de sesión cambió: las demás sesiones quedan invalidadas; esta se renueva.
+    resp = JSONResponse({"ok": True})
+    resp.set_cookie(auth.COOKIE, auth.crear_sesion(), max_age=auth.MAX_AGE,
+                    httponly=True, secure=True, samesite="lax", path="/")
+    return resp
+
+
+# --- Centro de control ---
 @app.get("/api/services")
 async def api_services():
     return await services.estado()
+
+
+def _no_conectado(msg: str) -> dict:
+    return {"conectado": False, "mensaje": msg}
+
+
+@app.get("/api/shield")
+async def api_shield():
+    if not shield.configurado():
+        return _no_conectado("SHIELD-DNS no está conectado. Añade SHIELD_URL y SHIELD_PASSWORD al archivo .env y ejecuta docker compose up -d.")
+    try:
+        return {"conectado": True, **await shield.resumen()}
+    except shield.ShieldError as e:
+        return {"conectado": False, "error": True, "mensaje": str(e)}
+
+
+@app.post("/api/shield/pause")
+async def api_shield_pausa(request: Request):
+    d = await _json(request)
+    m = d.get("minutos")
+    if not isinstance(m, int) or isinstance(m, bool):
+        return JSONResponse({"error": "Indica los minutos (1-120)."}, status_code=400)
+    try:
+        return await shield.pausar(m)
+    except shield.ShieldError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.post("/api/shield/resume")
+async def api_shield_reanudar():
+    try:
+        return await shield.reanudar()
+    except shield.ShieldError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.get("/api/system")
+async def api_system():
+    return await asyncio.to_thread(sistema.estado)
+
+
+@app.get("/api/vpn/clients")
+async def api_vpn_lista():
+    if not vpn.configurado():
+        return _no_conectado("HEIMDALL no está conectado. Añade VPN_USER y VPN_PASSWORD al archivo .env y ejecuta docker compose up -d.")
+    try:
+        return {"conectado": True, "clientes": await vpn.listar(), "panel": vpn.panel_url()}
+    except vpn.VpnError as e:
+        return {"conectado": False, "error": True, "mensaje": str(e)}
+
+
+def _vpn_error(e: Exception) -> JSONResponse:
+    return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.post("/api/vpn/clients")
+async def api_vpn_crear(request: Request):
+    nombre = (await _json(request)).get("nombre")
+    try:
+        return {"id": await vpn.crear(nombre if isinstance(nombre, str) else "")}
+    except vpn.VpnError as e:
+        return _vpn_error(e)
+
+
+@app.get("/api/vpn/clients/{cid}/qrcode.svg")
+async def api_vpn_qr(cid: int):
+    try:
+        svg = await vpn.qr(cid)
+    except vpn.VpnError as e:
+        return _vpn_error(e)
+    return Response(svg, media_type="image/svg+xml")
+
+
+@app.get("/api/vpn/clients/{cid}/config")
+async def api_vpn_conf(cid: int):
+    try:
+        datos = await vpn.configuracion(cid)
+        nombre = next((c["nombre"] for c in await vpn.listar() if c["id"] == cid), "")
+    except vpn.VpnError as e:
+        return _vpn_error(e)
+    seguro = re.sub(r"[^A-Za-z0-9._-]+", "_", nombre or f"cliente{cid}").strip("_") or f"cliente{cid}"
+    return Response(datos, media_type="application/octet-stream",
+                    headers={"Content-Disposition": f'attachment; filename="{seguro}.conf"'})
+
+
+@app.post("/api/vpn/clients/{cid}/{accion}")
+async def api_vpn_accion(cid: int, accion: str):
+    if accion not in ("enable", "disable"):
+        return JSONResponse({"error": "Acción desconocida"}, status_code=404)
+    try:
+        await vpn.activar(cid, accion == "enable")
+    except vpn.VpnError as e:
+        return _vpn_error(e)
+    return {"ok": True}
+
+
+@app.delete("/api/vpn/clients/{cid}")
+async def api_vpn_borrar(cid: int):
+    try:
+        await vpn.eliminar(cid)
+    except vpn.VpnError as e:
+        return _vpn_error(e)
+    return {"ok": True}
 
 
 @app.get("/api/spotify/status")

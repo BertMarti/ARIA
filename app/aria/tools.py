@@ -15,7 +15,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import config, services, spotify
+from . import config, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -48,13 +48,33 @@ def especificaciones(nombres=None) -> list:
 
 # Los modelos pequenos (3B) llaman herramientas sin motivo si se les ofrecen todas.
 # Solo se ofrecen las relacionadas con lo que pide el usuario (palabras clave).
+# Un patron que empieza por "!" debe NO aparecer en el mensaje.
+_BLOQUEADOR = r"\b(bloqueador|anuncios?|publicidad|pi-?hole|shield|adblock|ads)\b"
+_SISTEMA = (r"\b(raspberry|rasp|ram|cpu|uptime|procesador|servidor|temperatura|memoria|disco|"
+            r"almacenamiento|espacio|sistema)\b")
+_EXPLICAR = r"!\b(expl[ií]ca\w*|qu[eé] es|qu[eé] significa|para qu[eé] sirve)\b"  # preguntas conceptuales
 _INTENCIONES = [
     # (patrones que deben cumplirse TODOS, herramientas que se ofrecen)
-    ((r"\b(hora|horas|fecha|d[ií]a|hoy|ma[nñ]ana|semana|mes)\b",), {"fecha_hora"}),
+    ((r"\b(hora|horas|fecha|d[ií]a|hoy|ma[nñ]ana|semana|mes)\b",
+      r"!" + _BLOQUEADOR, r"!" + _SISTEMA, r"!\b(vpn|wireguard|heimdall)\b"), {"fecha_hora"}),
     ((r"\b(servicios?|vpn|heimdall|shield|dns|bloqueador|anuncios?|publicidad)\b",
       r"\b(funciona\w*|estado|activ[oa]s?|ca[ií]d[oa]s?|encendid[oa]s?|apagad[oa]s?|est[aá]n?|va|van)\b"),
      {"estado_servicios"}),
-    ((r"\b(spotify|m[uú]sica|canci[oó]n|canciones|pon|ponme|reproduce|pausa|para la|siguiente|anterior|suena|sonando|artista|disco|[aá]lbum)\b",),
+    ((_BLOQUEADOR,
+      r"\b(cu[aá]nt\w+|estad[ií]stic\w*|estado|funciona\w*|bloquead[oa]s?|resumen|porcentaje|consultas|n[uú]meros)\b"),
+     {"estado_bloqueador"}),
+    ((_BLOQUEADOR, r"\b(paus\w+|desactiv\w+|apag\w+|det[eé]n\w*|desconect\w+)\b"), {"pausar_bloqueador"}),
+    ((_BLOQUEADOR, r"\b(reanud\w+|activ[ae]\w*|reactiv\w+|enciend\w+|encend\w+|conect[ae]\w*|vuelve\w*|contin[uú]\w+)\b"),
+     {"reanudar_bloqueador"}),
+    ((r"\b(vpn|wireguard|heimdall)\b",
+      r"\b(dispositivos?|conectad\w+|clientes?|cu[aá]nt\w+|hay|lista\w*|m[oó]viles?|tel[eé]fonos?|qui[eé]n\w*)\b"),
+     {"dispositivos_vpn"}),
+    ((r"\b(raspberry|rasp|uptime|procesador)\b", _EXPLICAR), {"estado_sistema"}),
+    ((r"\b(temperatura|memoria|ram|cpu|disco|almacenamiento|espacio|sistema)\b",
+      r"\b(libre|libres|queda\w*|usad\w+|ocupad\w+|tiene|estado|c[oó]mo|cu[aá]nt\w+|qu[eé])\b", _EXPLICAR),
+     {"estado_sistema"}),
+    ((r"\b(spotify|m[uú]sica|canci[oó]n|canciones|pon|ponme|reproduce|pausa|para la|siguiente|anterior|suena|sonando|artista|disco|[aá]lbum)\b",
+      r"!" + _BLOQUEADOR, r"!\b(raspberry|ram|cpu|espacio|libre|temperatura)\b"),
      {"spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior", "spotify_actual",
       "spotify_buscar_y_reproducir"}),
     ((r"\b(netflix|serie|series|pel[ií]cula|pel[ií]culas|cap[ií]tulo)\b",), {"buscar_en_netflix"}),
@@ -65,7 +85,7 @@ def relevantes(texto: str) -> set:
     t = texto.lower()
     out = set()
     for patrones, nombres in _INTENCIONES:
-        if all(re.search(p, t) for p in patrones):
+        if all((not re.search(p[1:], t)) if p.startswith("!") else re.search(p, t) for p in patrones):
             out |= nombres
     return out
 
@@ -80,9 +100,12 @@ def rescatar_llamada(texto: str, permitidas: set) -> dict | None:
         params = _REGISTRO[nombre]["spec"]["function"]["parameters"]
         args = {}
         for p in params["properties"]:
-            m = re.search(r'"%s"\s*:\s*\\?"((?:\\u[0-9a-fA-F]{4}|[^"\\])+)' % re.escape(p), texto)
+            m = re.search(r'"%s"\s*:\s*(?:\\?"((?:\\u[0-9a-fA-F]{4}|[^"\\])+)|(-?\d+(?:\.\d+)?))' % re.escape(p), texto)
             if m:
-                args[p] = re.sub(r"\\u([0-9a-fA-F]{4})", lambda x: chr(int(x.group(1), 16)), m.group(1))
+                if m.group(1) is not None:
+                    args[p] = re.sub(r"\\u([0-9a-fA-F]{4})", lambda x: chr(int(x.group(1), 16)), m.group(1))
+                else:
+                    args[p] = m.group(2)
         if all(r in args for r in params["required"]):
             return {"function": {"name": nombre, "arguments": args}}
     return None
@@ -94,7 +117,7 @@ async def ejecutar(nombre: str, args: dict | None) -> str:
         return f"Herramienta desconocida: {nombre}"
     try:
         res = await t["fn"](**(args or {}))
-    except spotify.SpotifyError as e:
+    except (spotify.SpotifyError, shield.ShieldError, vpn.VpnError) as e:
         return str(e)
     except TypeError:
         return "Argumentos no válidos para la herramienta."
@@ -150,3 +173,61 @@ async def spotify_buscar_y_reproducir(consulta: str) -> str:
       {"titulo": ("string", "Título de la serie o película")}, ("titulo",))
 async def buscar_en_netflix(titulo: str) -> str:
     return f"https://www.netflix.com/search?q={quote(str(titulo))} (ARIA no puede controlar Netflix; abre el enlace para buscarlo)"
+
+
+@tool("estado_bloqueador",
+      "Estadísticas del bloqueador de anuncios SHIELD-DNS (Pi-hole): consultas DNS, bloqueadas y porcentaje en las últimas 24 horas.")
+async def estado_bloqueador() -> str:
+    r = await shield.resumen()
+    estado = "activo" if r["bloqueo_activo"] else "en pausa"
+    return (f"Bloqueador {estado}. Últimas 24 h: {r['consultas']} consultas, {r['bloqueadas']} bloqueadas "
+            f"({r['porcentaje']} %). Dominios en la lista de bloqueo: {r['lista_negra']}.")
+
+
+@tool("pausar_bloqueador", "Pausa temporalmente el bloqueador de anuncios (entre 1 y 120 minutos).",
+      {"minutos": ("integer", "Minutos de pausa, de 1 a 120")})
+async def pausar_bloqueador(minutos=5) -> str:
+    try:
+        n = int(float(minutos))
+    except (TypeError, ValueError):
+        return "Indica la duración de la pausa en minutos (entre 1 y 120)."
+    if not 1 <= n <= 120:
+        return "La pausa debe durar entre 1 y 120 minutos."
+    await shield.pausar(n)
+    return f"Bloqueador de anuncios en pausa durante {n} minutos."
+
+
+@tool("reanudar_bloqueador", "Reactiva el bloqueador de anuncios si estaba en pausa.")
+async def reanudar_bloqueador() -> str:
+    await shield.reanudar()
+    return "Bloqueador de anuncios reactivado."
+
+
+@tool("dispositivos_vpn",
+      "Lista los dispositivos de la VPN HEIMDALL y cuáles están conectados ahora (handshake de menos de 3 minutos).")
+async def dispositivos_vpn() -> str:
+    cl = await vpn.listar()
+    if not cl:
+        return "No hay ningún dispositivo en la VPN."
+    partes = [f"{c['nombre']} ({'conectado' if c['conectado'] else 'desconectado'}"
+              f"{'' if c['activo'] else ', desactivado'})" for c in cl]
+    return f"{len(cl)} dispositivo(s): " + ", ".join(partes) + f". Conectados ahora: {sum(c['conectado'] for c in cl)}."
+
+
+@tool("estado_sistema", "Estado de la Raspberry Pi: temperatura de la CPU, memoria RAM, disco, carga y tiempo encendida.")
+async def estado_sistema() -> str:
+    e = sistema.estado()
+    gb = lambda b: f"{b / 1024 ** 3:.1f} GB"  # noqa: E731
+    out = []
+    if e["temperatura"] is not None:
+        out.append(f"Temperatura de la CPU: {e['temperatura']} °C")
+    if e["memoria"]:
+        m = e["memoria"]
+        out.append(f"RAM: {gb(m['usada'])} usados de {gb(m['total'])} ({m['porcentaje']} %)")
+    if e["disco"]:
+        d = e["disco"]
+        out.append(f"Disco: {gb(d['usado'])} usados de {gb(d['total'])} ({d['porcentaje']} %), {gb(d['libre'])} libres")
+    if e["carga"]:
+        out.append("Carga media: " + " / ".join(f"{x:.2f}" for x in e["carga"]))
+    out.append(f"Encendida desde hace {e['uptime_texto']}")
+    return ". ".join(out) + "."

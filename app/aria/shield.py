@@ -1,0 +1,118 @@
+"""Cliente de la API de Pi-hole v6 (SHIELD-DNS).
+
+Pi-hole limita las sesiones de API simultáneas: se guarda UN solo sid en memoria,
+se reutiliza y solo se vuelve a autenticar ante un 401. Al apagar la app se cierra.
+"""
+import asyncio
+
+import httpx
+
+from . import config
+
+
+class ShieldError(Exception):
+    """Error legible (en español) para la interfaz o el modelo."""
+
+
+_sid: str | None = None
+_lock = asyncio.Lock()
+
+
+def configurado() -> bool:
+    return bool(config.SHIELD_URL and config.SHIELD_PASSWORD)
+
+
+def panel_url() -> str:
+    return config.SHIELD_URL.rstrip("/") + "/admin"
+
+
+async def _autenticar(c: httpx.AsyncClient) -> str:
+    global _sid
+    r = await c.post(f"{config.SHIELD_URL}/api/auth", json={"password": config.SHIELD_PASSWORD})
+    if r.status_code in (401, 403):
+        raise ShieldError("SHIELD-DNS rechazó la contraseña (revisa SHIELD_PASSWORD en .env).")
+    if r.status_code == 429:
+        raise ShieldError("SHIELD-DNS tiene demasiadas sesiones abiertas. Reintenta en un momento.")
+    if r.status_code != 200:
+        raise ShieldError(f"SHIELD-DNS devolvió un error ({r.status_code}).")
+    sid = (r.json().get("session") or {}).get("sid")
+    if not sid:
+        raise ShieldError("SHIELD-DNS no devolvió una sesión válida.")
+    _sid = sid
+    return sid
+
+
+async def _llamar(metodo: str, ruta: str, **kw) -> dict:
+    if not configurado():
+        raise ShieldError("SHIELD-DNS no está conectado.")
+    try:
+        async with httpx.AsyncClient(timeout=8) as c:
+            async with _lock:
+                sid = _sid or await _autenticar(c)
+            for intento in (0, 1):
+                r = await c.request(metodo, config.SHIELD_URL + ruta, headers={"X-FTL-SID": sid}, **kw)
+                if r.status_code == 401 and intento == 0:
+                    async with _lock:
+                        sid = await _autenticar(c)
+                    continue
+                break
+    except httpx.HTTPError:
+        raise ShieldError("No se pudo contactar con SHIELD-DNS.") from None
+    if r.status_code >= 400:
+        raise ShieldError(f"SHIELD-DNS devolvió un error ({r.status_code}).")
+    try:
+        return r.json() if r.content else {}
+    except ValueError:
+        return {}
+
+
+async def cerrar() -> None:
+    """Cierra la sesión (se llama al apagar la app)."""
+    global _sid
+    if not _sid:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=4) as c:
+            await c.delete(f"{config.SHIELD_URL}/api/auth", headers={"X-FTL-SID": _sid})
+    except httpx.HTTPError:
+        pass
+    _sid = None
+
+
+async def bloqueo() -> dict:
+    j = await _llamar("GET", "/api/dns/blocking")
+    return {"activo": j.get("blocking") == "enabled", "temporizador": j.get("timer")}
+
+
+async def resumen() -> dict:
+    s, b, top = await asyncio.gather(
+        _llamar("GET", "/api/stats/summary"),
+        bloqueo(),
+        _llamar("GET", "/api/stats/top_domains", params={"blocked": "true", "count": 5}),
+    )
+    q = s.get("queries") or {}
+    return {
+        "consultas": q.get("total", 0),
+        "bloqueadas": q.get("blocked", 0),
+        "porcentaje": round(float(q.get("percent_blocked") or 0), 1),
+        "dominios_unicos": q.get("unique_domains", 0),
+        "clientes": (s.get("clients") or {}).get("active", 0),
+        "lista_negra": (s.get("gravity") or {}).get("domains_being_blocked", 0),
+        "bloqueo_activo": b["activo"],
+        "temporizador": b["temporizador"],
+        "top_bloqueados": [{"dominio": d.get("domain", ""), "cuenta": d.get("count", 0)}
+                           for d in (top.get("domains") or [])][:5],
+        "panel": panel_url(),
+    }
+
+
+async def pausar(minutos: int) -> dict:
+    if not 1 <= minutos <= 120:
+        raise ShieldError("La pausa debe durar entre 1 y 120 minutos.")
+    await _llamar("POST", "/api/dns/blocking", json={"blocking": False, "timer": minutos * 60})
+    return await bloqueo()
+
+
+async def reanudar() -> dict:
+    await _llamar("POST", "/api/dns/blocking", json={"blocking": True})
+    return await bloqueo()

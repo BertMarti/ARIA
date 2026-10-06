@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  aria:
+    build: ./docker
+    ports:
+      - "8001:8000"
+    volumes:
+      - aria-data:/app/data
+    environment:
+      - OLLAMA_MODEL=mistral
+    networks:
+      - app-network
+
+volumes:
+  aria-data:
+
+networks:
+  app-network:
+    driver: bridge

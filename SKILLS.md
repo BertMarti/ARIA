@@ -19,9 +19,12 @@ Además: chat en streaming, gestión del modelo (descarga del modelo configurado
    async def mi_herramienta(param: str) -> str:
        return "resultado"
    ```
-2. Si necesita lógica externa, ponla en un módulo aparte (como `spotify.py`).
-3. Reconstruye: `docker compose up -d --build app`.
-4. Prueba con `POST /api/chat` y comprueba que aparece el evento `herramienta`.
+2. Añade una entrada en `_INTENCIONES` (mismo archivo) con las palabras clave que deben activarla.
+   **Sin este paso el modelo nunca la verá**: ARIA solo ofrece al modelo las herramientas
+   relacionadas con lo que pregunta el usuario, porque un modelo de 3B las usa sin motivo si se le dan todas.
+3. Si necesita lógica externa, ponla en un módulo aparte (como `spotify.py`).
+4. Reconstruye: `docker compose up -d --build app`.
+5. Prueba con `POST /api/chat` y comprueba que aparece el evento `herramienta`.
 5. Documenta la herramienta en este archivo y en `README.md`.
 
 ## Playbook: cambiar de modelo

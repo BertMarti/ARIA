@@ -1,4 +1,4 @@
-"""Comprobacion del estado de SHIELD-DNS y HEIMDALL."""
+"""Comprobación del estado de SHIELD-DNS y HEIMDALL."""
 import asyncio
 import os
 import socket

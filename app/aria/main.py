@@ -124,7 +124,7 @@ async def api_chat(request: Request):
     try:
         datos = await request.json()
     except ValueError:
-        return JSONResponse({"error": "JSON no valido"}, status_code=400)
+        return JSONResponse({"error": "JSON no válido"}, status_code=400)
     mensajes = chat.limpiar(datos.get("messages") if isinstance(datos, dict) else None)
     if not mensajes or mensajes[-1]["role"] != "user":
         return JSONResponse({"error": "Falta el mensaje del usuario"}, status_code=400)
@@ -189,7 +189,7 @@ async def api_spotify_action(accion: str):
     acciones = {"play": spotify.play, "pause": spotify.pause,
                 "next": spotify.next_track, "previous": spotify.previous_track}
     if accion not in acciones:
-        return JSONResponse({"error": "Accion desconocida"}, status_code=404)
+        return JSONResponse({"error": "Acción desconocida"}, status_code=404)
     try:
         return {"mensaje": await acciones[accion]()}
     except spotify.SpotifyError as e:

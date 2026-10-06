@@ -22,7 +22,7 @@ def limpiar(mensajes) -> list:
     return out
 
 
-async def _stream_ollama(cliente: httpx.AsyncClient, msgs: list, usar_tools: bool):
+async def _stream_ollama(cliente: httpx.AsyncClient, msgs: list, nombres_tools: set):
     cuerpo = {
         "model": config.MODEL,
         "messages": msgs,
@@ -30,8 +30,8 @@ async def _stream_ollama(cliente: httpx.AsyncClient, msgs: list, usar_tools: boo
         "keep_alive": config.KEEP_ALIVE,
         "options": {"num_ctx": config.NUM_CTX},
     }
-    if usar_tools:
-        cuerpo["tools"] = tools.especificaciones()
+    if nombres_tools:
+        cuerpo["tools"] = tools.especificaciones(nombres_tools)
     async with cliente.stream("POST", f"{config.OLLAMA_URL}/api/chat", json=cuerpo) as r:
         if r.status_code != 200:
             texto = (await r.aread()).decode("utf-8", "replace")
@@ -45,23 +45,36 @@ async def _stream_ollama(cliente: httpx.AsyncClient, msgs: list, usar_tools: boo
 async def responder(mensajes: list) -> AsyncIterator[dict]:
     """Genera eventos: token, herramienta, resultado, error, fin."""
     msgs = [{"role": "system", "content": config.SYSTEM_PROMPT}] + limpiar(mensajes)
+    pedidas = tools.relevantes(msgs[-1]["content"])
     timeout = httpx.Timeout(600, connect=10)
     async with httpx.AsyncClient(timeout=timeout) as cliente:
         try:
             for _ in range(MAX_RONDAS):
-                usar_tools = config.MODEL not in _sin_tools
+                usar_tools = config.MODEL not in _sin_tools and bool(pedidas)
                 texto, llamadas, fallo = "", [], None
                 for intento in (0, 1):
                     texto, llamadas, fallo = "", [], None
-                    async for ch in _stream_ollama(cliente, msgs, usar_tools):
+                    modo = None  # "texto" se emite en directo; "json" se retiene por si es una llamada
+                    async for ch in _stream_ollama(cliente, msgs, pedidas if usar_tools else set()):
                         if "_http" in ch:
                             fallo = ch
                             break
                         m = ch.get("message") or {}
                         if m.get("content"):
                             texto += m["content"]
-                            yield {"type": "token", "text": m["content"]}
+                            if modo is None and texto.strip():
+                                modo = "json" if usar_tools and texto.lstrip()[0] == "{" else "texto"
+                                if modo == "texto":
+                                    yield {"type": "token", "text": texto}
+                            elif modo == "texto":
+                                yield {"type": "token", "text": m["content"]}
                         llamadas += m.get("tool_calls") or []
+                    if not fallo and not llamadas and modo == "json":
+                        rescatada = tools.rescatar_llamada(texto, pedidas)
+                        if rescatada:
+                            llamadas, texto = [rescatada], ""
+                        else:
+                            yield {"type": "token", "text": texto}
                     if fallo and fallo["_http"] == 400 and "tools" in fallo["_texto"] and usar_tools:
                         _sin_tools.add(config.MODEL)
                         usar_tools = False
@@ -70,9 +83,9 @@ async def responder(mensajes: list) -> AsyncIterator[dict]:
                     break
                 if fallo:
                     if fallo["_http"] == 404:
-                        yield {"type": "error", "text": f"El modelo '{config.MODEL}' no esta instalado. Descargalo desde el panel de modelos."}
+                        yield {"type": "error", "text": f"El modelo '{config.MODEL}' no está instalado. Descárgalo desde el panel de modelos."}
                     else:
-                        yield {"type": "error", "text": f"Ollama devolvio un error ({fallo['_http']})."}
+                        yield {"type": "error", "text": f"Ollama devolvió un error ({fallo['_http']})."}
                     return
                 if not llamadas:
                     yield {"type": "fin"}

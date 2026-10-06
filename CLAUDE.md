@@ -32,7 +32,7 @@ Prueba real: login con `ARIA_USER`/`ARIA_PASSWORD` de `.env` (cookie con `curl -
 - Commits terminan con la línea `Co-Authored-By: ...` que indique el entorno.
 
 ## Añadir una herramienta
-Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`; no hay que tocar nada más.
+Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py` y se añaden sus palabras clave a `_INTENCIONES` en el mismo archivo (si no, el modelo no la recibe).
 
 ## No hacer
 - No publicar puertos de `ollama` ni `app` en el host.

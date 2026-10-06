@@ -1,4 +1,4 @@
-"""Cliente minimo de la Web API de Spotify (flujo Authorization Code)."""
+"""Cliente mínimo de la Web API de Spotify (flujo Authorization Code)."""
 import json
 import os
 import secrets
@@ -63,7 +63,7 @@ async def _token_request(data: dict) -> dict:
     async with httpx.AsyncClient(timeout=15) as c:
         r = await c.post(TOKEN_URL, data=data, auth=(config.SPOTIFY_CLIENT_ID, config.SPOTIFY_CLIENT_SECRET))
     if r.status_code != 200:
-        raise SpotifyError("Spotify rechazo la autorizacion. Vuelve a conectar la cuenta.")
+        raise SpotifyError("Spotify rechazó la autorización. Vuelve a conectar la cuenta.")
     return r.json()
 
 
@@ -80,10 +80,10 @@ async def exchange_code(code: str) -> None:
 
 async def _access_token() -> str:
     if not configured():
-        raise SpotifyError("Spotify no esta configurado (faltan SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET en .env).")
+        raise SpotifyError("Spotify no está configurado. El administrador debe añadir SPOTIFY_CLIENT_ID y SPOTIFY_CLIENT_SECRET al archivo .env de la Raspberry Pi (ver README). Nunca compartas esas claves en el chat.")
     tok = _load()
     if not tok:
-        raise SpotifyError("Spotify no esta conectado. Pulsa 'Conectar Spotify' en el panel.")
+        raise SpotifyError("Spotify no está conectado. Pulsa 'Conectar Spotify' en el panel.")
     if time.time() >= tok["expires_at"]:
         j = await _token_request({"grant_type": "refresh_token", "refresh_token": tok["refresh_token"]})
         tok["access_token"] = j["access_token"]
@@ -98,36 +98,36 @@ async def _call(method: str, path: str, **kw) -> httpx.Response:
     async with httpx.AsyncClient(timeout=15) as c:
         r = await c.request(method, API + path, headers={"Authorization": f"Bearer {token}"}, **kw)
     if r.status_code == 404 and "NO_ACTIVE_DEVICE" in r.text:
-        raise SpotifyError("No hay ningun dispositivo de Spotify activo. Abre Spotify en un movil u ordenador y reintenta.")
+        raise SpotifyError("No hay ningún dispositivo de Spotify activo. Abre Spotify en un móvil u ordenador y reintenta.")
     if r.status_code == 403:
-        raise SpotifyError("Spotify denego la accion (el control de reproduccion requiere cuenta Premium).")
+        raise SpotifyError("Spotify denegó la acción (el control de reproducción requiere cuenta Premium).")
     if r.status_code == 401:
-        raise SpotifyError("La sesion de Spotify ha caducado. Vuelve a conectar la cuenta.")
+        raise SpotifyError("La sesión de Spotify ha caducado. Vuelve a conectar la cuenta.")
     if r.status_code == 429:
         raise SpotifyError("Spotify limito las peticiones. Espera unos segundos.")
     if r.status_code >= 400:
-        raise SpotifyError(f"Spotify devolvio un error ({r.status_code}).")
+        raise SpotifyError(f"Spotify devolvió un error ({r.status_code}).")
     return r
 
 
 async def play() -> str:
     await _call("PUT", "/me/player/play")
-    return "Reproduccion reanudada."
+    return "Reproducción reanudada."
 
 
 async def pause() -> str:
     await _call("PUT", "/me/player/pause")
-    return "Reproduccion en pausa."
+    return "Reproducción en pausa."
 
 
 async def next_track() -> str:
     await _call("POST", "/me/player/next")
-    return "Pasando a la siguiente cancion."
+    return "Pasando a la siguiente canción."
 
 
 async def previous_track() -> str:
     await _call("POST", "/me/player/previous")
-    return "Volviendo a la cancion anterior."
+    return "Volviendo a la canción anterior."
 
 
 async def current() -> dict:

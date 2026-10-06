@@ -80,13 +80,16 @@ def test_pausar_valida_rango():
     ("Añade un dispositivo a la VPN llamado movil-ana", {"crear_dispositivo_vpn"}),
     ("Crea un móvil nuevo en la VPN", {"crear_dispositivo_vpn"}),
     ("Desactiva el dispositivo tele en la VPN", {"activar_dispositivo_vpn", "desactivar_dispositivo_vpn"}),
+    ("Desactiva el dispositivo Tele del salón", {"desactivar_dispositivo_vpn"}),
+    ("Activa otra vez el dispositivo Móvil de Ana", {"activar_dispositivo_vpn"}),
 ])
 def test_gestion_vpn(texto, esperadas):
     assert esperadas <= tools.relevantes(texto)
 
 
 @pytest.mark.parametrize("texto", ["Hola, ¿qué tal?", "Cuéntame un chiste", "Explícame cómo funciona una VPN",
-                                   "¿Qué es WireGuard?", "Crea un poema", "Activa tu imaginación"])
+                                   "¿Qué es WireGuard?", "Crea un poema", "Activa tu imaginación",
+                                   "¿Qué dispositivos son compatibles con Netflix?"])
 def test_gestion_vpn_no_se_activa_en_charla(texto):
     r = tools.relevantes(texto)
     assert not r & {"crear_dispositivo_vpn", "activar_dispositivo_vpn", "desactivar_dispositivo_vpn"}

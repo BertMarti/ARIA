@@ -35,6 +35,18 @@ Incluye:
 git clone https://github.com/BertMarti/ARIA.git && cd ARIA && ./install.sh
 ```
 
+### Instalar todo el homelab de una vez (ARIA + SHIELD-DNS + HEIMDALL)
+
+En una Raspberry recién instalada (o para actualizar las tres apps):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/BertMarti/ARIA/main/instalar-todo.sh | bash
+```
+
+Clona los tres repositorios en `~/homelab` y los instala en el orden correcto (SHIELD-DNS, HEIMDALL y ARIA, que detecta a los otros dos y se conecta a ellos). Con `COPIAS_AUTOMATICAS=1` delante programa además una copia de seguridad diaria de las tres apps a las 04:30. La guía completa de las tres apps está en [docs/GUIA.md](docs/GUIA.md).
+
+### Qué hace `install.sh`
+
 El script es idempotente: puedes relanzarlo sin problema. Hace lo siguiente:
 
 1. Crea `.env` (si no existe) con una contraseña y un secreto aleatorios y detecta la IP de la LAN.

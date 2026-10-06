@@ -1,0 +1,14 @@
+{
+  "name": "ARIA",
+  "short_name": "ARIA",
+  "description": "Centro de control del laboratorio doméstico",
+  "lang": "es-ES",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#070b12",
+  "theme_color": "#070b12",
+  "icons": [
+    { "src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

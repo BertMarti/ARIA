@@ -3,17 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#070b12">
 <title>ARIA - Acceso</title>
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="login">
 <main class="login-box">
+  <img class="login-logo" src="/static/icon.svg" alt="" width="72" height="72">
   <h1>ARIA</h1>
-  <p class="sub">Asistente local</p>
+  <p class="sub">Centro de control del laboratorio</p>
   <form method="post" action="/login" autocomplete="on">
     <label>Usuario <input name="usuario" autocomplete="username" required autofocus></label>
     <label>Contraseña <input name="password" type="password" autocomplete="current-password" required></label>
-    <button type="submit">Entrar</button>
+    <button type="submit" class="primario">Entrar</button>
     <p id="error" class="error" hidden></p>
   </form>
 </main>

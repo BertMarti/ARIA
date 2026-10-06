@@ -1,0 +1,211 @@
+"use strict";
+// Chat: conversaciones persistentes en el servidor, streaming, detener, copiar, voz.
+const Chat = (() => {
+  const caja = () => $("mensajes");
+  let convId = null;
+  let abort = null;          // AbortController del envío en curso
+  let enCurso = false;
+
+  const NOMBRES_HERRAMIENTA = {
+    fecha_hora: "Consultando la hora", estado_servicios: "Comprobando servicios",
+    estado_bloqueador: "Consultando el bloqueador", pausar_bloqueador: "Pausando el bloqueador",
+    reanudar_bloqueador: "Reanudando el bloqueador", dispositivos_vpn: "Consultando la VPN",
+    estado_sistema: "Consultando la Raspberry", spotify_play: "Spotify: reproducir", spotify_pause: "Spotify: pausa",
+    spotify_siguiente: "Spotify: siguiente", spotify_anterior: "Spotify: anterior", spotify_actual: "Spotify: ahora suena",
+    spotify_buscar_y_reproducir: "Buscando en Spotify", buscar_en_netflix: "Buscando en Netflix",
+  };
+  const SUGERENCIAS = [
+    "¿Cuántos anuncios has bloqueado hoy?", "¿Qué temperatura tiene la Raspberry?",
+    "¿Qué dispositivos hay en la VPN?", "Explícame qué es un DNS",
+  ];
+
+  function abajo() { const c = caja(); c.scrollTop = c.scrollHeight; }
+
+  function vacio() {
+    const c = caja();
+    c.replaceChildren(el("div", { class: "bienvenida" },
+      el("img", { src: "/static/icon.svg", alt: "", width: 64, height: 64 }),
+      el("h2", null, "¿En qué puedo ayudarte?"),
+      el("p", { class: "muted" }, "Pregúntame por el bloqueador, la VPN, la Raspberry o la música."),
+      el("div", { class: "sugerencias" }, ...SUGERENCIAS.map((s) =>
+        el("button", { type: "button", class: "fantasma", onclick: () => enviar(s) }, s)))));
+  }
+
+  function chip(nombre, args, texto) {
+    const etiqueta = NOMBRES_HERRAMIENTA[nombre] || nombre;
+    const c = el("div", { class: "chip", title: texto || "" }, el("span", { class: "chip-ico", "aria-hidden": "true" }, "⚙"), etiqueta);
+    return c;
+  }
+
+  function botonCopiar(obtener) {
+    const b = el("button", { type: "button", class: "copiar", title: "Copiar", "aria-label": "Copiar mensaje" }, "Copiar");
+    b.addEventListener("click", async () => {
+      const t = obtener();
+      try { await navigator.clipboard.writeText(t); }
+      catch (_) {
+        const ta = el("textarea", { value: t }); document.body.append(ta); ta.select();
+        try { document.execCommand("copy"); } catch (_e) { /* sin portapapeles */ }
+        ta.remove();
+      }
+      b.textContent = "Copiado"; setTimeout(() => { b.textContent = "Copiar"; }, 1500);
+    });
+    return b;
+  }
+
+  // Mensaje de usuario o de ARIA. Devuelve { nodo, actualizar(texto) }.
+  function addMsg(rol, texto) {
+    const cont = el("div", { class: "md" });
+    const nodo = el("div", { class: "msg " + rol }, cont);
+    let actual = texto || "";
+    if (actual) renderMd(actual, cont);
+    if (rol === "bot") nodo.append(el("div", { class: "msg-pie" }, botonCopiar(() => actual)));
+    caja().append(nodo);
+    return { nodo, actualizar(t) { actual = t; renderMd(t, cont); } };
+  }
+  function addAviso(texto) { caja().append(el("div", { class: "msg aviso" }, texto)); abajo(); }
+
+  function ponerEstado(en) {
+    enCurso = en;
+    $("enviar").hidden = en; $("detener").hidden = !en;
+    $("texto").disabled = false;
+  }
+
+  async function enviar(texto) {
+    texto = (texto || "").trim();
+    if (!texto || enCurso) return;
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    if (!caja().querySelector(".msg")) caja().replaceChildren();
+    addMsg("user", texto); abajo();
+    ponerEstado(true);
+    abort = new AbortController();
+    let burbuja = null, acumulado = "", ultimoChip = null, todo = "";
+    try {
+      const r = await fetch("/api/chat", {
+        method: "POST", headers: { "Content-Type": "application/json" }, signal: abort.signal,
+        body: JSON.stringify({ conversation_id: convId, message: texto }),
+      });
+      if (r.status === 401) { location.href = "/login"; return; }
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      for await (const ev of lineasNdjson(r)) {
+        if (ev.type === "conv") {
+          convId = ev.id; $("chat-titulo").textContent = ev.titulo; cargarLista();
+        } else if (ev.type === "token") {
+          if (!burbuja) burbuja = addMsg("bot", "");
+          acumulado += ev.text; todo += ev.text; burbuja.actualizar(acumulado); abajo();
+        } else if (ev.type === "herramienta") {
+          burbuja = null; acumulado = ""; todo += "\n";
+          ultimoChip = chip(ev.name, ev.args); caja().append(ultimoChip); abajo();
+        } else if (ev.type === "resultado") {
+          if (ultimoChip) { ultimoChip.title = ev.text; ultimoChip.classList.add("hecho"); }
+        } else if (ev.type === "aviso" || ev.type === "error") addAviso(ev.text);
+      }
+      hablar(todo);
+    } catch (e) {
+      if (e.name === "AbortError") addAviso("Respuesta detenida.");
+      else addAviso("Error de conexión con ARIA.");
+    } finally {
+      abort = null; ponerEstado(false); cargarLista(); $("texto").focus();
+    }
+  }
+
+  function detener() { if (abort) abort.abort(); }
+
+  function hablar(texto) {
+    if (Prefs.get("tts", "0") !== "1" || !window.speechSynthesis || !texto.trim()) return;
+    const u = new SpeechSynthesisUtterance(mdATexto(texto).slice(0, 1500));
+    const voces = speechSynthesis.getVoices();
+    const voz = voces.find((v) => /^es[-_]ES/i.test(v.lang)) || voces.find((v) => /^es/i.test(v.lang));
+    if (voz) { u.voice = voz; u.lang = voz.lang; } else u.lang = "es-ES";
+    speechSynthesis.speak(u);
+  }
+
+  // --- Conversaciones ---
+  async function cargarLista() {
+    const { ok, data } = await api("/api/conversations");
+    if (!ok) return;
+    const ul = $("lista-convs");
+    ul.replaceChildren();
+    if (!data.conversaciones.length) ul.append(el("li", { class: "muted vacio" }, "Aún no hay conversaciones."));
+    for (const c of data.conversaciones) ul.append(itemConv(c));
+  }
+
+  function itemConv(c) {
+    const titulo = el("button", { type: "button", class: "conv-titulo", title: c.titulo }, c.titulo);
+    titulo.addEventListener("click", () => abrir(c.id));
+    const ren = el("button", { type: "button", class: "icono-mini", title: "Renombrar", "aria-label": "Renombrar" }, "✎");
+    const del = el("button", { type: "button", class: "icono-mini", title: "Borrar", "aria-label": "Borrar conversación" }, "🗑");
+    const li = el("li", { class: "conv" + (c.id === convId ? " activa" : "") }, titulo, ren, del);
+    ren.addEventListener("click", () => {
+      const inp = el("input", { class: "conv-edit", value: c.titulo, maxLength: 120, "aria-label": "Nuevo título" });
+      li.replaceChildren(inp); inp.focus(); inp.select();
+      let hecho = false;
+      const fin = async (guardar) => {
+        if (hecho) return; hecho = true;
+        const t = inp.value.trim();
+        if (guardar && t && t !== c.titulo) {
+          const r = await api("/api/conversations/" + encodeURIComponent(c.id), { method: "PATCH", json: { titulo: t } });
+          if (r.ok && c.id === convId) $("chat-titulo").textContent = t;
+        }
+        cargarLista();
+      };
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") fin(true); else if (e.key === "Escape") fin(false); });
+      inp.addEventListener("blur", () => fin(true));
+    });
+    del.addEventListener("click", async () => {
+      if (!(await confirmar("Borrar conversación", "«" + c.titulo + "» se eliminará para siempre.", "Borrar"))) return;
+      const r = await api("/api/conversations/" + encodeURIComponent(c.id), { method: "DELETE" });
+      if (!r.ok) { toast("No se pudo borrar.", "mal"); return; }
+      if (c.id === convId) nueva();
+      cargarLista();
+    });
+    return li;
+  }
+
+  async function abrir(id, silencioso) {
+    if (enCurso) detener();
+    const { ok, data } = await api("/api/conversations/" + encodeURIComponent(id));
+    if (!ok) {
+      if (silencioso) { nueva(); } else toast("No se pudo abrir la conversación.", "mal");
+      return;
+    }
+    convId = data.id; $("chat-titulo").textContent = data.titulo;
+    caja().replaceChildren();
+    for (const m of data.mensajes) {
+      if (m.role === "tool") {
+        let j = {}; try { j = JSON.parse(m.content); } catch (_) { /* ignorar */ }
+        caja().append(chip(j.name || "herramienta", j.args || {}, j.text));
+        caja().lastChild.classList.add("hecho");
+      } else addMsg(m.role === "user" ? "user" : "bot", m.content);
+    }
+    if (!data.mensajes.length) vacio();
+    abajo(); cerrarLista(); cargarLista();
+    localStorageConv(id);
+  }
+
+  function nueva() {
+    if (enCurso) detener();
+    convId = null; $("chat-titulo").textContent = "Conversación nueva";
+    vacio(); cerrarLista(); localStorageConv(null);
+    $("texto").focus(); cargarLista();
+  }
+  function localStorageConv(id) { Prefs.set("conv", id || ""); }
+
+  function abrirLista() { $("convs").classList.add("abierto"); $("convs-fondo").hidden = false; }
+  function cerrarLista() { $("convs").classList.remove("abierto"); $("convs-fondo").hidden = true; }
+
+  function iniciar() {
+    $("form").addEventListener("submit", (e) => { e.preventDefault(); const t = $("texto").value; if (t.trim() && !enCurso) { $("texto").value = ""; autoajustar(); enviar(t); } });
+    $("texto").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("form").requestSubmit(); } });
+    $("texto").addEventListener("input", autoajustar);
+    $("detener").addEventListener("click", detener);
+    $("nuevo").addEventListener("click", nueva);
+    $("btn-convs").addEventListener("click", abrirLista);
+    $("convs-fondo").addEventListener("click", cerrarLista);
+    const ultima = Prefs.get("conv", "");
+    if (ultima) abrir(ultima, true); else vacio();
+    cargarLista();
+  }
+  function autoajustar() { const t = $("texto"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; }
+
+  return { iniciar };
+})();

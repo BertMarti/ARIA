@@ -11,6 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from .origen import origen_permitido
 from . import auth, chat, config, db, modelos, services, shield, sistema, spotify, vpn
 
 log = logging.getLogger("aria")
@@ -43,10 +44,8 @@ async def seguridad(request: Request, call_next):
     path = request.url.path
     # CSRF: en peticiones que modifican estado, el Origin (si existe) debe coincidir con el Host.
     if request.method not in ("GET", "HEAD", "OPTIONS") and path != "/internal/tls-ask":
-        origen = request.headers.get("origin")
-        if origen and urlparse(origen).netloc != request.headers.get("host"):
-            return JSONResponse({"error": "Origen no permitido"}, status_code=403)
-        if request.headers.get("sec-fetch-site") == "cross-site":
+        if not origen_permitido(request.headers.get("origin"), request.headers.get("host"),
+                                request.headers.get("sec-fetch-site"), request.headers.get("referer")):
             return JSONResponse({"error": "Origen no permitido"}, status_code=403)
     if path not in PUBLICAS and not auth.sesion_valida(request.cookies.get(auth.COOKIE)):
         if path.startswith("/api/"):

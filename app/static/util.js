@@ -1,0 +1,95 @@
+"use strict";
+// Utilidades compartidas. Regla de oro: el texto del modelo o de las APIs
+// nunca se inserta con innerHTML; siempre nodos del DOM / textContent.
+const $ = (id) => document.getElementById(id);
+
+function el(tag, props, ...hijos) {
+  const e = document.createElement(tag);
+  if (props) {
+    for (const [k, v] of Object.entries(props)) {
+      if (k === "class") e.className = v;
+      else if (k === "dataset") Object.assign(e.dataset, v);
+      else e[k] = v;
+    }
+  }
+  for (const h of hijos) if (h !== null && h !== undefined && h !== false) e.append(h);
+  return e;
+}
+
+function fmtBytes(n) {
+  n = Number(n) || 0;
+  const u = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return (i === 0 ? n : n.toFixed(n >= 100 ? 0 : 1)).toString().replace(".", ",") + " " + u[i];
+}
+function fmtNum(n) { return (Number(n) || 0).toLocaleString("es-ES"); }
+
+// Llamada a la API con JSON. Devuelve { ok, status, data }. 401 -> pantalla de acceso.
+async function api(ruta, opciones = {}) {
+  const o = { method: "GET", ...opciones };
+  if (o.json !== undefined) {
+    o.headers = { "Content-Type": "application/json", ...(o.headers || {}) };
+    o.body = JSON.stringify(o.json);
+    delete o.json;
+  }
+  let r;
+  try { r = await fetch(ruta, o); } catch (e) { if (e.name === "AbortError") throw e; return { ok: false, status: 0, data: { error: "Sin conexión con ARIA." } }; }
+  if (r.status === 401) { location.href = "/login"; return { ok: false, status: 401, data: {} }; }
+  let data = {};
+  try { data = await r.json(); } catch (_) { /* sin cuerpo JSON */ }
+  return { ok: r.ok, status: r.status, data };
+}
+
+async function* lineasNdjson(resp) {
+  const lector = resp.body.getReader(), dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await lector.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf("\n")) >= 0) {
+      const l = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+      if (l) { try { yield JSON.parse(l); } catch (_) { /* línea incompleta */ } }
+    }
+  }
+}
+
+function toast(texto, tipo) {
+  const t = el("div", { class: "toast " + (tipo || "") }, texto);
+  $("toasts").append(t);
+  setTimeout(() => t.remove(), 4500);
+}
+
+// Diálogo de confirmación propio (devuelve una promesa con true/false).
+function confirmar(titulo, texto, etiqueta) {
+  const d = $("dlg-confirmar");
+  $("confirmar-titulo").textContent = titulo;
+  $("confirmar-texto").textContent = texto || "";
+  $("confirmar-si").textContent = etiqueta || "Confirmar";
+  return new Promise((resolver) => {
+    const fin = (v) => { d.close(); $("confirmar-si").onclick = $("confirmar-no").onclick = d.onclose = null; resolver(v); };
+    $("confirmar-si").onclick = () => fin(true);
+    $("confirmar-no").onclick = () => fin(false);
+    d.onclose = () => resolver(false);
+    d.showModal();
+  });
+}
+
+function barra(valor, aviso, malo) {
+  const v = Math.max(0, Math.min(100, Number(valor) || 0));
+  const valorEl = el("div", { class: "barra-valor" + (v >= malo ? " mal" : v >= aviso ? " aviso" : "") });
+  valorEl.style.width = v + "%"; // CSSOM: permitido por la CSP (no es un atributo style)
+  return el("div", { class: "barra", role: "progressbar", ariaValueNow: String(Math.round(v)) }, valorEl);
+}
+
+function enlaceExterno(url, texto) {
+  return el("a", { href: url, target: "_blank", rel: "noopener noreferrer", class: "enlace-panel" }, texto);
+}
+
+// Ajuste por dispositivo (localStorage puede no estar disponible).
+const Prefs = {
+  get(k, def) { try { const v = localStorage.getItem("aria_" + k); return v === null ? def : v; } catch (_) { return def; } },
+  set(k, v) { try { localStorage.setItem("aria_" + k, v); } catch (_) { /* ignorar */ } },
+};

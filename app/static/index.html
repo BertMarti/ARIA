@@ -2,48 +2,154 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070b12">
+<meta name="mobile-web-app-capable" content="yes">
 <title>ARIA</title>
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-<header class="top">
-  <strong>ARIA</strong>
-  <span id="modelo-activo" class="pill"></span>
-  <form method="post" action="/logout"><button class="ghost" type="submit">Salir</button></form>
-</header>
-<div class="layout">
-  <section class="chat" aria-label="Chat">
-    <div id="mensajes" class="mensajes" aria-live="polite"></div>
-    <form id="form" class="entrada">
-      <textarea id="texto" rows="1" placeholder="Escribe un mensaje…" required></textarea>
-      <button id="enviar" type="submit">Enviar</button>
-    </form>
-    <button id="nuevo" class="ghost small" type="button">Nueva conversación</button>
-  </section>
-  <aside class="panel" aria-label="Panel">
-    <div class="card" id="card-modelo">
-      <h2>Modelo</h2>
-      <div id="modelo-info">Cargando…</div>
-      <button id="btn-pull" type="button" hidden>Descargar modelo</button>
-      <progress id="pull-bar" max="100" value="0" hidden></progress>
-      <div id="pull-estado" class="muted"></div>
-    </div>
-    <div class="card" id="card-shield"><h2>SHIELD-DNS</h2><div class="cuerpo">Comprobando…</div></div>
-    <div class="card" id="card-heimdall"><h2>HEIMDALL</h2><div class="cuerpo">Comprobando…</div></div>
-    <div class="card" id="card-spotify">
-      <h2>Spotify</h2>
-      <div id="spotify-cuerpo">Cargando…</div>
-      <div id="spotify-ctrl" class="ctrl" hidden>
-        <button data-sp="previous" type="button" aria-label="Anterior">⏮</button>
-        <button data-sp="play" type="button" aria-label="Reproducir">▶</button>
-        <button data-sp="pause" type="button" aria-label="Pausa">⏸</button>
-        <button data-sp="next" type="button" aria-label="Siguiente">⏭</button>
+<body class="app">
+<nav class="nav" aria-label="Navegación principal">
+  <div class="marca"><img src="/static/icon.svg" alt="" width="28" height="28"><strong>ARIA</strong></div>
+  <button type="button" class="nav-btn" data-vista="chat"><span class="ico" aria-hidden="true">💬</span><span>Chat</span></button>
+  <button type="button" class="nav-btn" data-vista="control"><span class="ico" aria-hidden="true">🛰</span><span>Control</span></button>
+  <button type="button" class="nav-btn" data-vista="ajustes"><span class="ico" aria-hidden="true">⚙</span><span>Ajustes</span></button>
+  <form method="post" action="/logout" class="nav-salir">
+    <button type="submit" class="nav-btn"><span class="ico" aria-hidden="true">⏻</span><span>Salir</span></button>
+  </form>
+</nav>
+
+<main class="contenido">
+  <!-- CHAT -->
+  <section id="v-chat" class="vista" hidden>
+    <aside id="convs" class="convs" aria-label="Conversaciones">
+      <div class="convs-cab">
+        <h2>Conversaciones</h2>
+        <button id="nuevo" type="button" class="primario pequeno">+ Nueva</button>
       </div>
+      <ul id="lista-convs" class="lista-convs"></ul>
+    </aside>
+    <div id="convs-fondo" class="convs-fondo" hidden></div>
+    <div class="chat">
+      <header class="chat-cab">
+        <button id="btn-convs" type="button" class="fantasma icono" aria-label="Conversaciones">☰</button>
+        <h1 id="chat-titulo">Conversación nueva</h1>
+        <span id="modelo-activo" class="pildora"></span>
+      </header>
+      <div id="mensajes" class="mensajes" aria-live="polite"></div>
+      <form id="form" class="entrada">
+        <textarea id="texto" rows="1" placeholder="Escribe un mensaje…" aria-label="Mensaje" required></textarea>
+        <button id="enviar" type="submit" class="primario">Enviar</button>
+        <button id="detener" type="button" class="peligro" hidden>Detener</button>
+      </form>
     </div>
-    <p class="muted nota">Netflix no tiene API pública: ARIA solo puede abrir búsquedas, no controlar la reproducción.</p>
-  </aside>
-</div>
+  </section>
+
+  <!-- CENTRO DE CONTROL -->
+  <section id="v-control" class="vista" hidden>
+    <header class="vista-cab">
+      <h1>Centro de control</h1>
+      <span id="control-hora" class="muted"></span>
+    </header>
+    <div class="rejilla">
+      <article class="tarjeta" id="card-shield"><h2>SHIELD-DNS</h2><div class="cuerpo muted">Cargando…</div></article>
+      <article class="tarjeta" id="card-heimdall"><h2>HEIMDALL</h2><div class="cuerpo muted">Cargando…</div></article>
+      <article class="tarjeta" id="card-sistema"><h2>Sistema</h2><div class="cuerpo muted">Cargando…</div></article>
+      <article class="tarjeta" id="card-spotify">
+        <h2>Spotify</h2>
+        <div id="spotify-cuerpo" class="cuerpo muted">Cargando…</div>
+        <div id="spotify-ctrl" class="ctrl" hidden>
+          <button data-sp="previous" type="button" class="fantasma" aria-label="Anterior">⏮</button>
+          <button data-sp="play" type="button" class="fantasma" aria-label="Reproducir">▶</button>
+          <button data-sp="pause" type="button" class="fantasma" aria-label="Pausa">⏸</button>
+          <button data-sp="next" type="button" class="fantasma" aria-label="Siguiente">⏭</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- AJUSTES -->
+  <section id="v-ajustes" class="vista" hidden>
+    <header class="vista-cab"><h1>Ajustes</h1></header>
+    <div class="rejilla ajustes">
+      <article class="tarjeta ancha" id="ajustes-modelos">
+        <h2>Modelos</h2>
+        <p class="muted">Modelo que usa ARIA para responder. Solo hay uno cargado en memoria a la vez.</p>
+        <h3>Instalados</h3>
+        <ul id="modelos-instalados" class="filas"></ul>
+        <h3>Descargar</h3>
+        <ul id="modelos-curados" class="filas"></ul>
+        <div id="pull-zona" hidden>
+          <div class="barra"><div id="pull-bar" class="barra-valor"></div></div>
+          <div id="pull-estado" class="muted"></div>
+        </div>
+      </article>
+      <article class="tarjeta" id="ajustes-voz">
+        <h2>Voz</h2>
+        <label class="interruptor">
+          <input type="checkbox" id="tts-activar">
+          <span>Leer las respuestas en voz alta</span>
+        </label>
+        <p class="muted" id="tts-nota">Usa la voz en español de tu navegador. Se queda en este dispositivo.</p>
+      </article>
+      <article class="tarjeta" id="ajustes-pass">
+        <h2>Contraseña</h2>
+        <form id="form-pass" class="formulario" autocomplete="off">
+          <label>Contraseña actual <input id="pass-actual" type="password" autocomplete="current-password" required></label>
+          <label>Contraseña nueva (mínimo 10 caracteres) <input id="pass-nueva" type="password" autocomplete="new-password" minlength="10" required></label>
+          <label>Repite la contraseña nueva <input id="pass-repetida" type="password" autocomplete="new-password" minlength="10" required></label>
+          <button type="submit" class="primario">Cambiar contraseña</button>
+          <p id="pass-msg" class="muted" role="status"></p>
+        </form>
+        <p class="muted">Se cerrarán las sesiones abiertas en otros dispositivos.</p>
+      </article>
+      <article class="tarjeta" id="ajustes-spotify"><h2>Spotify</h2><div class="cuerpo muted">Cargando…</div></article>
+      <article class="tarjeta" id="ajustes-acerca">
+        <h2>Acerca de</h2>
+        <div id="acerca-cuerpo" class="muted">Cargando…</div>
+      </article>
+    </div>
+  </section>
+</main>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<dialog id="dlg-vpn" class="modal">
+  <h2 id="vpn-titulo">Añadir dispositivo</h2>
+  <form id="form-vpn" class="formulario">
+    <label>Nombre del dispositivo <input id="vpn-nombre" maxlength="32" placeholder="móvil-de-ana" pattern="[A-Za-z0-9 ._\-]{1,32}" required></label>
+    <p class="muted">Letras sin tilde, números, espacios y - _ . (máximo 32).</p>
+    <div class="botones">
+      <button type="button" class="fantasma" data-cerrar>Cancelar</button>
+      <button type="submit" class="primario">Crear</button>
+    </div>
+  </form>
+  <div id="vpn-resultado" class="vpn-resultado" hidden>
+    <p class="muted">En el móvil abre la app WireGuard, pulsa «+» y escanea este código (o importa el archivo .conf).</p>
+    <img id="vpn-qr" class="qr" alt="Código QR de la configuración WireGuard" width="260" height="260">
+    <div class="botones">
+      <a id="vpn-conf" class="boton primario" download>Descargar .conf</a>
+      <button type="button" class="fantasma" data-cerrar>Cerrar</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlg-confirmar" class="modal">
+  <h2 id="confirmar-titulo">¿Seguro?</h2>
+  <p id="confirmar-texto" class="muted"></p>
+  <div class="botones">
+    <button type="button" class="fantasma" id="confirmar-no">Cancelar</button>
+    <button type="button" class="peligro" id="confirmar-si">Confirmar</button>
+  </div>
+</dialog>
+
+<script src="/static/util.js"></script>
+<script src="/static/md.js"></script>
+<script src="/static/chat.js"></script>
+<script src="/static/control.js"></script>
+<script src="/static/ajustes.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

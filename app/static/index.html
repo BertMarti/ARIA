@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARIA</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <strong>ARIA</strong>
+  <span id="modelo-activo" class="pill"></span>
+  <form method="post" action="/logout"><button class="ghost" type="submit">Salir</button></form>
+</header>
+<div class="layout">
+  <section class="chat" aria-label="Chat">
+    <div id="mensajes" class="mensajes" aria-live="polite"></div>
+    <form id="form" class="entrada">
+      <textarea id="texto" rows="1" placeholder="Escribe un mensaje…" required></textarea>
+      <button id="enviar" type="submit">Enviar</button>
+    </form>
+    <button id="nuevo" class="ghost small" type="button">Nueva conversación</button>
+  </section>
+  <aside class="panel" aria-label="Panel">
+    <div class="card" id="card-modelo">
+      <h2>Modelo</h2>
+      <div id="modelo-info">Cargando…</div>
+      <button id="btn-pull" type="button" hidden>Descargar modelo</button>
+      <progress id="pull-bar" max="100" value="0" hidden></progress>
+      <div id="pull-estado" class="muted"></div>
+    </div>
+    <div class="card" id="card-shield"><h2>SHIELD-DNS</h2><div class="cuerpo">Comprobando…</div></div>
+    <div class="card" id="card-heimdall"><h2>HEIMDALL</h2><div class="cuerpo">Comprobando…</div></div>
+    <div class="card" id="card-spotify">
+      <h2>Spotify</h2>
+      <div id="spotify-cuerpo">Cargando…</div>
+      <div id="spotify-ctrl" class="ctrl" hidden>
+        <button data-sp="previous" type="button" aria-label="Anterior">⏮</button>
+        <button data-sp="play" type="button" aria-label="Reproducir">▶</button>
+        <button data-sp="pause" type="button" aria-label="Pausa">⏸</button>
+        <button data-sp="next" type="button" aria-label="Siguiente">⏭</button>
+      </div>
+    </div>
+    <p class="muted nota">Netflix no tiene API pública: ARIA solo puede abrir búsquedas, no controlar la reproducción.</p>
+  </aside>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,97 +1,42 @@
-# 🤖 CLAUDE.md - ARIA - Configuración de Agentes
+# CLAUDE.md
 
-## Resumen
+Instrucciones para Claude Code en este repositorio (ARIA).
 
-ARIA es un asistente IA autónomo que funciona completamente en tu Raspberry Pi 5. Este documento describe cómo los agentes Claude deben configurar y mantener ARIA.
+## Qué es
+Asistente local estilo "Jarvis" para Raspberry Pi: FastAPI + Ollama + Caddy en Docker Compose. Sin APIs de pago.
 
-## Agentes Autónomos Integrados
+## Estructura
+- `docker-compose.yml`: servicios `ollama`, `app`, `caddy` (proyecto `aria`, contenedores `aria-*`).
+- `caddy/Caddyfile`: HTTPS con CA interna, certificados bajo demanda autorizados por `/internal/tls-ask`.
+- `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `auth.py`, `chat.py` (bucle de herramientas), `tools.py` (herramientas), `services.py` (SHIELD-DNS/HEIMDALL), `spotify.py`, `config.py`.
+- `app/static/`: HTML/CSS/JS sin paso de build.
+- `install.sh` / `uninstall.sh`, `.env.example`, `data/` (ignorado por git).
 
-### Agent 1: Setup Agent (Opus 5.5)
-**Responsabilidad:** Configuración inicial del sistema
-
-**Tareas:**
-1. Instalar Ollama en la Raspberry Pi
-2. Descargar modelo Mistral 7B o Llama 2
-3. Configurar FastAPI y FastUI
-4. Inicializar base de datos SQLite
-5. Generar JWT secret automáticamente
-6. Crear usuario admin por defecto
-
-**Ejecución:** Una vez al inicio, luego bajo demanda
-
----
-
-### Agent 2: Integration Agent (Sonnet 5.5)
-**Responsabilidad:** Integrar APIs externas
-
-**Tareas:**
-1. Conectar con Netflix API
-2. Conectar con Spotify API
-3. Configurar credenciales de forma segura
-4. Probar conexiones y reportar estado
-5. Actualizar integraciones automáticamente
-
-**Ejecución:** Bajo demanda, con triggers automáticos
-
----
-
-### Agent 3: Monitor Agent (Haiku 4.5)
-**Responsabilidad:** Monitoreo continuo y mantenimiento
-
-**Tareas:**
-1. Health checks cada 5 minutos
-2. Monitoreo de logs en tiempo real
-3. Auto-restart si algún servicio falla
-4. Reportar estado del sistema
-5. Alertas de problemas
-
-**Ejecución:** Continuo (24/7)
-
----
-
-## Instrucciones para Agentes
-
-### Setup Inicial
+## Ejecutar y probar
 ```bash
-# Los agentes automáticamente ejecutarán:
-pip install -r docker/requirements.txt
-python src/main.py
-
-# Ollama se instalará automáticamente
-ollama pull mistral
+docker compose config
+docker compose up -d --build
+docker compose ps                      # los tres deben estar healthy
+curl -k https://<IP>/health            # -> ok
+docker compose logs -f app
 ```
+Prueba real: login con `ARIA_USER`/`ARIA_PASSWORD` de `.env` (cookie con `curl -c`), luego `POST /api/chat` con `{"messages":[{"role":"user","content":"..."}]}` (respuesta NDJSON).
 
-### Testing
-```bash
-curl http://localhost:8001/health
-curl http://localhost:8001/api/chat -d '{"message":"Hola"}'
-```
+## Convenciones
+- Toda la interfaz, documentación, comentarios y mensajes de commit en español (España).
+- Nunca subir secretos: `.env` y `data/` están en `.gitignore`. Nada de credenciales en ejemplos.
+- Dependencias mínimas (`app/requirements.txt`); no añadir frameworks de frontend ni paso de build.
+- Recursos de la Pi: 8 GB de RAM compartidos con otros servicios; un solo modelo cargado (`OLLAMA_MAX_LOADED_MODELS=1`).
+- Salida del modelo siempre como texto en el DOM (nunca `innerHTML` con contenido del modelo).
+- Toda ruta requiere sesión salvo `/login`, `/health`, `/internal/tls-ask` y CSS/JS de login (lista `PUBLICAS` en `main.py`).
+- Commits terminan con la línea `Co-Authored-By: ...` que indique el entorno.
 
-### Logs y Debugging
-```bash
-docker-compose logs -f aria
-docker-compose logs aria --tail 100
-```
+## Añadir una herramienta
+Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`; no hay que tocar nada más.
 
----
-
-## Variables de Entorno (Auto-generadas)
-
-Los agentes generarán automáticamente:
-- `JWT_SECRET` - Seguridad de tokens
-- `ADMIN_PASSWORD` - Contraseña inicial admin
-- `OLLAMA_MODEL` - Modelo IA a usar
-
----
-
-## Próximos Pasos para Agentes
-
-1. ✅ **Setup Agent** - Instala todo (automático)
-2. ✅ **Integration Agent** - Conecta APIs (automático)
-3. ✅ **Monitor Agent** - Monitorea 24/7 (automático)
-
----
-
-**Documento en español** 🇪🇸  
-Última actualización: 2026-10-06  
-🤖 Construido con Claude AI
+## No hacer
+- No publicar puertos de `ollama` ni `app` en el host.
+- No tocar contenedores que no empiecen por `aria-` ni los repos HEIMDALL / SHIELD-DNS.
+- Puertos 53, 8080, 8443, 51820/udp y 51843 pertenecen a otros proyectos.
+- No hacer `git push` sin revisión.
+- No afirmar que ARIA controla Netflix: solo genera enlaces de búsqueda.

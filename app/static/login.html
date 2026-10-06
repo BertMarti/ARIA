@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARIA - Acceso</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login">
+<main class="login-box">
+  <h1>ARIA</h1>
+  <p class="sub">Asistente local</p>
+  <form method="post" action="/login" autocomplete="on">
+    <label>Usuario <input name="usuario" autocomplete="username" required autofocus></label>
+    <label>Contraseña <input name="password" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Entrar</button>
+    <p id="error" class="error" hidden></p>
+  </form>
+</main>
+<script src="/static/login.js"></script>
+</body>
+</html>

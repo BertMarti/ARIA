@@ -1,0 +1,95 @@
+"""Bucle de chat con Ollama: modelo -> llamadas a herramientas -> resultados -> modelo."""
+import json
+from typing import AsyncIterator
+
+import httpx
+
+from . import config, tools
+
+MAX_RONDAS = 5
+MAX_MENSAJES = 40
+MAX_CHARS = 8000
+
+# Modelos que han rechazado tools (se recuerda para no reintentar).
+_sin_tools: set = set()
+
+
+def limpiar(mensajes) -> list:
+    out = []
+    for m in (mensajes or [])[-MAX_MENSAJES:]:
+        if isinstance(m, dict) and m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str):
+            out.append({"role": m["role"], "content": m["content"][:MAX_CHARS]})
+    return out
+
+
+async def _stream_ollama(cliente: httpx.AsyncClient, msgs: list, usar_tools: bool):
+    cuerpo = {
+        "model": config.MODEL,
+        "messages": msgs,
+        "stream": True,
+        "keep_alive": config.KEEP_ALIVE,
+        "options": {"num_ctx": config.NUM_CTX},
+    }
+    if usar_tools:
+        cuerpo["tools"] = tools.especificaciones()
+    async with cliente.stream("POST", f"{config.OLLAMA_URL}/api/chat", json=cuerpo) as r:
+        if r.status_code != 200:
+            texto = (await r.aread()).decode("utf-8", "replace")
+            yield {"_http": r.status_code, "_texto": texto}
+            return
+        async for linea in r.aiter_lines():
+            if linea.strip():
+                yield json.loads(linea)
+
+
+async def responder(mensajes: list) -> AsyncIterator[dict]:
+    """Genera eventos: token, herramienta, resultado, error, fin."""
+    msgs = [{"role": "system", "content": config.SYSTEM_PROMPT}] + limpiar(mensajes)
+    timeout = httpx.Timeout(600, connect=10)
+    async with httpx.AsyncClient(timeout=timeout) as cliente:
+        try:
+            for _ in range(MAX_RONDAS):
+                usar_tools = config.MODEL not in _sin_tools
+                texto, llamadas, fallo = "", [], None
+                for intento in (0, 1):
+                    texto, llamadas, fallo = "", [], None
+                    async for ch in _stream_ollama(cliente, msgs, usar_tools):
+                        if "_http" in ch:
+                            fallo = ch
+                            break
+                        m = ch.get("message") or {}
+                        if m.get("content"):
+                            texto += m["content"]
+                            yield {"type": "token", "text": m["content"]}
+                        llamadas += m.get("tool_calls") or []
+                    if fallo and fallo["_http"] == 400 and "tools" in fallo["_texto"] and usar_tools:
+                        _sin_tools.add(config.MODEL)
+                        usar_tools = False
+                        yield {"type": "aviso", "text": "Este modelo no admite herramientas; respondo sin ellas."}
+                        continue
+                    break
+                if fallo:
+                    if fallo["_http"] == 404:
+                        yield {"type": "error", "text": f"El modelo '{config.MODEL}' no esta instalado. Descargalo desde el panel de modelos."}
+                    else:
+                        yield {"type": "error", "text": f"Ollama devolvio un error ({fallo['_http']})."}
+                    return
+                if not llamadas:
+                    yield {"type": "fin"}
+                    return
+                msgs.append({"role": "assistant", "content": texto, "tool_calls": llamadas})
+                for ll in llamadas:
+                    f = ll.get("function", {})
+                    nombre, args = f.get("name", ""), f.get("arguments") or {}
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except ValueError:
+                            args = {}
+                    yield {"type": "herramienta", "name": nombre, "args": args}
+                    res = await tools.ejecutar(nombre, args)
+                    yield {"type": "resultado", "name": nombre, "text": res[:2000]}
+                    msgs.append({"role": "tool", "tool_name": nombre, "content": res})
+            yield {"type": "error", "text": "Demasiadas llamadas a herramientas seguidas."}
+        except httpx.HTTPError:
+            yield {"type": "error", "text": "No se pudo contactar con Ollama."}

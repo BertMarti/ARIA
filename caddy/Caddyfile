@@ -1,0 +1,34 @@
+# HTTPS con la CA interna de Caddy (certificado autofirmado, es lo esperado).
+# El certificado se emite "bajo demanda" para cualquier nombre/IP con el que
+# accedas, pero solo si la app lo autoriza (ARIA_HOSTS en .env) mediante el
+# endpoint /internal/tls-ask.
+{
+	# Los navegadores no envian SNI cuando se accede por IP: se usa la IP LAN.
+	default_sni {$ARIA_LAN_IP}
+	skip_install_trust
+	on_demand_tls {
+		ask http://app:8000/internal/tls-ask
+	}
+}
+
+http:// {
+	redir https://{host}{uri} permanent
+}
+
+https:// {
+	tls internal {
+		on_demand
+	}
+	# El endpoint de autorizacion solo es para Caddy, no para el exterior.
+	respond /internal/* 404
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+	}
+	reverse_proxy app:8000 {
+		flush_interval -1
+	}
+}

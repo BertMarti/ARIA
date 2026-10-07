@@ -19,6 +19,10 @@ _USUARIO = [
     ("GET", r"/api/conversations/[^/]+"),
     ("PATCH", r"/api/conversations/[^/]+"),
     ("DELETE", r"/api/conversations/[^/]+"),
+    ("GET", r"/api/voz/estado"),
+    ("POST", r"/api/voz/transcribir"),
+    ("POST", r"/api/voz/hablar"),
+    ("GET", r"/api/voz/despertar"),  # WebSocket (se comprueba en el propio endpoint)
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 

@@ -75,6 +75,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("GET", "/api/spotify/status"), ("GET", "/api/certificado"), ("POST", "/api/password"),
                     ("POST", "/api/chat"), ("GET", "/api/conversations"), ("GET", "/api/conversations/{cid}"),
                     ("PATCH", "/api/conversations/{cid}"), ("DELETE", "/api/conversations/{cid}"),
+                    ("GET", "/api/voz/estado"), ("POST", "/api/voz/transcribir"), ("POST", "/api/voz/hablar"),
                 }, (m, r.path)
     assert not permisos.permitido("desconocido", "GET", "/")
 

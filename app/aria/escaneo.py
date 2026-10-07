@@ -66,6 +66,10 @@ def solicitar(perfil: str = "rapido", objetivos=None, origen: str = "manual") ->
     pid = time.strftime("%Y%m%d-%H%M%S") + "-" + secrets.token_hex(3)
     datos = {"id": pid, "perfil": perfil, "objetivos": objs, "origen": origen, "solicitado": time.time()}
     _dir("peticiones").mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(_dir("peticiones"), 0o2770)  # el escáner (mismo grupo) debe poder borrarlas
+    except PermissionError:
+        pass
     tmp = _dir("peticiones") / f".{pid}.tmp"
     tmp.write_text(json.dumps(datos))
     os.chmod(tmp, 0o660)

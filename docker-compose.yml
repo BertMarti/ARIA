@@ -34,6 +34,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/data
+      - escaner:/escaner   # peticiones/resultados del escáner (sin red ni socket entre ambos)
     depends_on:
       ollama:
         condition: service_healthy
@@ -44,6 +45,30 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # Escáner de seguridad (agente Seguridad). Solo escanea ARIA_RED_PERMITIDA (192.168.0.0/24).
+  # Es el ÚNICO contenedor con network_mode: host (nmap necesita ver la LAN y las MAC por ARP).
+  escaner:
+    build:
+      context: ./app
+      dockerfile: escaner/Dockerfile
+    image: aria-escaner:local
+    container_name: aria-escaner
+    restart: unless-stopped
+    network_mode: host
+    user: "0:${ARIA_GID:-1000}"      # uid 0 sin capacidades salvo NET_RAW; grupo de la app para el volumen
+    cap_drop: [ALL]
+    cap_add: [NET_RAW]
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    environment:
+      ARIA_RED_PERMITIDA: ${ARIA_RED_PERMITIDA:-192.168.0.0/24}
+      ARIA_ROUTER_IP: ${ARIA_ROUTER_IP:-192.168.0.1}
+      TZ: ${ARIA_TZ:-Europe/Madrid}
+    volumes:
+      - escaner:/escaner
+    mem_limit: 256m
 
   caddy:
     image: caddy:2-alpine
@@ -70,6 +95,7 @@ services:
       start_period: 5s
 
 volumes:
+  escaner:
   ollama_data:
   caddy_data:
   caddy_config:

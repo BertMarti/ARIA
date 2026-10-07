@@ -236,3 +236,67 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 .msg.pensando { animation: pulso 1.4s ease-in-out infinite; }
 @keyframes pulso { 50% { opacity: .4; } }
 .fila .estado { margin: 0; font-weight: 400; font-size: .9rem; }
+
+/* Agentes */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.agente-sel select { width: auto; padding: .3rem .6rem; font-size: .85rem; border-radius: 99px; }
+.agente-badge { font-size: .72rem; font-weight: 600; border-radius: 99px; padding: 0 .55rem; margin-right: .4rem; border: 1px solid var(--borde-fuerte); color: var(--acento); }
+.agente-badge[hidden] { display: none; }
+.agente-badge.ag-finanzas { color: var(--ok); border-color: rgba(52, 211, 153, .5); }
+.agente-badge.ag-redes { color: var(--acento-2); border-color: rgba(124, 140, 255, .5); }
+.agente-badge.ag-seguridad { color: var(--warn); border-color: rgba(245, 184, 75, .5); }
+.agente-badge + .cerebro-badge { margin-left: 0; }
+.msg-pie .agente-badge { margin-right: .4rem; }
+.msg-pie .agente-badge:not([hidden]) ~ .cerebro-badge { margin-right: auto; }
+
+/* Tablas y formularios en fila */
+.tabla-cont { overflow-x: auto; margin-top: .6rem; }
+.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.tabla th { text-align: left; color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; padding: .4rem .5rem; border-bottom: 1px solid var(--borde); }
+.tabla td { padding: .4rem .5rem; border-bottom: 1px solid rgba(30, 45, 68, .6); vertical-align: middle; }
+.tabla .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tabla .concepto { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabla tr.nuevo td { background: rgba(245, 184, 75, .07); }
+.tabla .alias { padding: .25rem .45rem; min-width: 9rem; }
+.mono { font-family: var(--mono); font-size: .82rem; }
+.pequeno-txt { font-size: .75rem; }
+.acciones-fila { white-space: nowrap; text-align: right; }
+.icono-mini.visible { opacity: 1; }
+.fila-form { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .6rem; }
+.fila-form > input, .fila-form > select { flex: 1 1 160px; width: auto; }
+.mes-sel { display: flex; align-items: center; gap: .5rem; }
+.mes-sel input { width: auto; margin: 0; }
+.mapeo { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .5rem; margin: .5rem 0; }
+.mapeo select { margin-top: .2rem; }
+#fin-sugerencias { margin-top: .6rem; }
+
+/* Gráficas SVG */
+.g-fig { margin: 0 0 .8rem; }
+.grafica { width: 100%; height: auto; display: block; }
+.g-rejilla { stroke: var(--borde); stroke-width: 1; }
+.g-eje { fill: var(--muted); font-size: 9px; }
+.g-linea { fill: none; stroke-width: 2; }
+.g-linea.s1, .g-punto.s1 { stroke: var(--acento); fill: none; }
+.g-linea.s2, .g-punto.s2 { stroke: var(--acento-2); }
+.g-linea.s3, .g-punto.s3 { stroke: var(--warn); }
+.g-punto { fill: var(--bg); stroke-width: 1.5; }
+.g-leyenda { display: flex; gap: .8rem; font-size: .78rem; color: var(--muted); }
+.g-ley::before { content: ""; display: inline-block; width: .7rem; height: .2rem; margin-right: .3rem; vertical-align: middle; background: var(--acento); }
+.g-ley.s2::before { background: var(--acento-2); }
+.g-ley.s3::before { background: var(--warn); }
+
+/* Seguridad */
+.gravedad { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; margin-right: .2rem; }
+.gravedad.g-alta { color: var(--mal); border-color: rgba(251, 93, 106, .55); background: rgba(251, 93, 106, .1); }
+.gravedad.g-media { color: var(--warn); border-color: rgba(245, 184, 75, .55); background: rgba(245, 184, 75, .1); }
+.gravedad.g-baja { color: var(--acento); }
+.gravedad.g-info { color: var(--muted); border-color: var(--borde); background: transparent; }
+.hallazgo.g-alta { border-left: 3px solid var(--mal); }
+.hallazgo.g-media { border-left: 3px solid var(--warn); }
+.hallazgo .fila-info { gap: .2rem; }
+.recomendacion { font-size: .85rem; }
+@media (max-width: 760px) {
+  .nav-btn span:not(.ico) { font-size: .62rem; }
+  .agente-sel select { max-width: 8.5rem; }
+  .chat-cab #modelo-activo { display: none; }
+}

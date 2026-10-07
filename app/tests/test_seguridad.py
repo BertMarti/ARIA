@@ -118,7 +118,8 @@ def test_hallazgos(monkeypatch):
     assert [x["titulo"] for x in vpn] == ["Peer de WireGuard activo y nunca usado: viejo"]
     inv = seguridad.hallazgos_de_inventario([{"ip": "192.168.0.77", "conocido": False, "primera_vez": time.time()},
                                              {"ip": "192.168.0.5", "conocido": True}])
-    assert len(inv) == 1 and inv[0]["gravedad"] == "media"
+    assert len(inv) == 1 and inv[0]["gravedad"] == "media" and "1 dispositivo" in inv[0]["titulo"]
+    assert seguridad.hallazgos_de_inventario([{"ip": "192.168.0.5", "conocido": True}]) == []
 
 
 def test_inventario_combina_pihole_y_escaneo():

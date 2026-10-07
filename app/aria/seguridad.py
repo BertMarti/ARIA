@@ -91,15 +91,17 @@ def hallazgos_de_escaneo(res: dict, anterior: dict | None, inventario: dict) -> 
 
 
 def hallazgos_de_inventario(dispositivos: list) -> list:
-    out = []
-    for d in dispositivos:
-        if not d.get("conocido"):
-            quien = d.get("alias") or d.get("nombre") or d.get("fabricante") or "sin nombre"
-            out.append(_h("media" if time.time() - (d.get("primera_vez") or 0) < 7 * 86400 else "baja",
-                          "dispositivo_desconocido", f"Dispositivo no reconocido: {quien} ({d['ip']})",
-                          "Está en la red y no se ha marcado como conocido.",
-                          "Si es tuyo, márcalo como conocido en Red; si no, cambia la contraseña del WiFi.", d["ip"]))
-    return out
+    """Un hallazgo agrupado con los dispositivos sin reconocer (media si alguno apareció en la última semana)."""
+    nuevos = [d for d in dispositivos if not d.get("conocido")]
+    if not nuevos:
+        return []
+    reciente = any(time.time() - (d.get("primera_vez") or 0) < 7 * 86400 for d in nuevos)
+    lista = ", ".join(f"{d.get('alias') or d.get('nombre') or d.get('fabricante') or 'sin nombre'} ({d['ip']})"
+                      for d in nuevos[:15]) + ("…" if len(nuevos) > 15 else "")
+    return [_h("media" if reciente else "baja", "dispositivo_desconocido",
+               f"{len(nuevos)} dispositivo(s) sin reconocer en la red", lista,
+               "Revísalos en Red y marca como conocidos los tuyos; si hay alguno que no identificas, cambia la "
+               "contraseña del WiFi y desactiva WPS.", None)]
 
 
 def hallazgos_de_vpn(clientes: list) -> list:
@@ -110,12 +112,14 @@ def hallazgos_de_vpn(clientes: list) -> list:
 
 
 async def hallazgos_de_cves(res: dict, inventario: dict, max_nuevas: int = 8) -> list:
-    out, nuevas = [], 0
+    """Un hallazgo por equipo y producto/versión (aunque escuche en varios puertos)."""
+    out, nuevas, vistos = [], 0, set()
     for h in res.get("hosts") or []:
         for p in h.get("puertos") or []:
             q = cve.consulta_para(p)
-            if not q:
+            if not q or (h["ip"], q["clave"]) in vistos:
                 continue
+            vistos.add((h["ip"], q["clave"]))
             r = await cve.buscar(p, permitir_red=nuevas < max_nuevas)
             if r and not r.get("cache"):
                 nuevas += 1
@@ -125,10 +129,13 @@ async def hallazgos_de_cves(res: dict, inventario: dict, max_nuevas: int = 8) ->
             peor = min(vs, key=lambda v: ORDEN[v["gravedad"]])
             ids = ", ".join(v["id"] for v in vs[:5])
             desc = " ".join(x for x in (p.get("producto"), p.get("version")) if x)
+            puertos = sorted({x["puerto"] for x in h["puertos"] if cve.consulta_para(x) and cve.consulta_para(x)["clave"] == q["clave"]})
+            aviso = ("Coincidencia por número de versión en NVD: puede afectar a otras partes del producto y no al "
+                     "servicio expuesto. " if r["fuente"] == "nvd" else "")
             out.append(_h(peor["gravedad"], "cve", f"{desc} con vulnerabilidades conocidas en {_nombre(h['ip'], inventario)}",
-                          f"{len(vs)} aviso(s) en {r['fuente'].upper()} para el puerto {p['puerto']}: {ids}"
+                          f"{len(vs)} aviso(s) en {r['fuente'].upper()} (puertos {', '.join(map(str, puertos))}): {ids}"
                           f"{'…' if len(vs) > 5 else ''}.",
-                          "Actualiza el firmware o el paquete. Los avisos de Debian sin puntuación suelen estar "
+                          aviso + "Actualiza el firmware o el paquete. Los avisos de Debian sin puntuación suelen estar "
                           "mitigados o ser menores; revisa los de gravedad alta.", h["ip"]))
     return out
 

@@ -15,6 +15,9 @@
   <div class="marca"><img src="/static/icon.svg" alt="" width="28" height="28"><strong>ARIA</strong></div>
   <button type="button" class="nav-btn" data-vista="inicio"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z"/></svg></span><span>Inicio</span></button>
   <button type="button" class="nav-btn" data-vista="chat"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span><span>Chat</span></button>
+  <button type="button" class="nav-btn" data-vista="finanzas"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M3 7h18v12H3z"/><path d="M3 11h18"/><path d="M7 15h4"/></svg></span><span>Finanzas</span></button>
+  <button type="button" class="nav-btn solo-admin" data-vista="red"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v5M12 12 6.5 17.5M12 12l5.5 5.5"/></svg></span><span>Red</span></button>
+  <button type="button" class="nav-btn solo-admin" data-vista="seguridad"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span>Seguridad</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="control"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span>Control</span></button>
   <button type="button" class="nav-btn" data-vista="ajustes"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></span><span>Ajustes</span></button>
   <form method="post" action="/logout" class="nav-salir">
@@ -86,6 +89,10 @@
       <header class="chat-cab">
         <button id="btn-convs" type="button" class="fantasma icono" aria-label="Conversaciones">☰</button>
         <h1 id="chat-titulo">Conversación nueva</h1>
+        <label class="agente-sel" title="Agente de esta conversación (también puedes escribir @finanzas, @redes o @seguridad)">
+          <span class="sr">Agente</span>
+          <select id="agente-sel" aria-label="Agente"></select>
+        </label>
         <span id="modelo-activo" class="pildora"></span>
       </header>
       <div id="mensajes" class="mensajes" aria-live="polite"></div>
@@ -94,6 +101,100 @@
         <button id="enviar" type="submit" class="primario">Enviar</button>
         <button id="detener" type="button" class="peligro" hidden>Detener</button>
       </form>
+    </div>
+  </section>
+
+  <!-- FINANZAS -->
+  <section id="v-finanzas" class="vista" hidden>
+    <header class="vista-cab">
+      <h1>Finanzas</h1>
+      <label class="mes-sel">Mes <input id="fin-mes" type="month" aria-label="Mes"></label>
+    </header>
+    <div class="rejilla">
+      <article class="tarjeta" id="fin-resumen"><h2>Resumen del mes</h2><div class="cuerpo muted">Cargando…</div></article>
+      <article class="tarjeta" id="fin-categorias"><h2>Gastos por categoría</h2><div class="cuerpo muted">Cargando…</div></article>
+      <article class="tarjeta" id="fin-presupuestos">
+        <h2>Presupuestos mensuales</h2>
+        <div class="cuerpo muted">Cargando…</div>
+        <form id="form-presupuesto" class="formulario fila-form">
+          <select id="pres-cat" aria-label="Categoría"></select>
+          <input id="pres-importe" inputmode="decimal" placeholder="€ al mes (0 = quitar)" aria-label="Importe mensual" required>
+          <button type="submit" class="primario pequeno">Guardar</button>
+        </form>
+      </article>
+      <article class="tarjeta" id="fin-nuevo">
+        <h2>Apuntar movimiento</h2>
+        <form id="form-mov" class="formulario">
+          <label>Fecha <input id="mov-fecha" type="date" required></label>
+          <label>Concepto <input id="mov-concepto" maxlength="200" placeholder="Mercadona" required></label>
+          <label>Importe (negativo = gasto) <input id="mov-importe" inputmode="decimal" placeholder="-25,40" required></label>
+          <label>Categoría <select id="mov-cat"><option value="">Automática</option></select></label>
+          <button type="submit" class="primario">Apuntar</button>
+        </form>
+      </article>
+      <article class="tarjeta ancha" id="fin-movimientos">
+        <h2>Movimientos</h2>
+        <div class="fila-form">
+          <input id="fin-buscar" type="search" placeholder="Buscar en el concepto…" aria-label="Buscar">
+          <select id="fin-filtro-cat" aria-label="Filtrar por categoría"><option value="">Todas las categorías</option><option value="__sin__">Sin categoría</option></select>
+          <button type="button" class="fantasma pequeno" id="fin-sugerir" title="Envía SOLO los conceptos sin categoría al primer cerebro en la nube">Sugerir categorías (nube)</button>
+        </div>
+        <div id="fin-sugerencias" hidden></div>
+        <div class="tabla-cont"><table class="tabla" id="fin-tabla"><thead><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th class="num">Importe</th><th></th></tr></thead><tbody></tbody></table></div>
+      </article>
+      <article class="tarjeta ancha" id="fin-importar">
+        <h2>Importar extracto CSV</h2>
+        <p class="muted">Descarga el extracto de tu banco en CSV (o Excel guardado como CSV) y súbelo aquí. Se admiten «;», «,» o tabuladores, coma decimal, fechas dd/mm/aaaa y columnas «Importe» o Debe/Haber. Los movimientos repetidos (misma fecha, importe y concepto) no se duplican. El archivo no sale de la Raspberry.</p>
+        <div class="fila-form">
+          <input id="csv-archivo" type="file" accept=".csv,.txt,text/csv" aria-label="Archivo CSV">
+          <input id="csv-cuenta" maxlength="60" placeholder="Cuenta (opcional, p. ej. BBVA)" aria-label="Cuenta">
+        </div>
+        <div id="csv-previa" hidden>
+          <p id="csv-info" class="muted"></p>
+          <div id="csv-mapeo" class="mapeo"></div>
+          <div class="tabla-cont"><table class="tabla" id="csv-muestra"><thead><tr><th>Fecha</th><th>Concepto</th><th class="num">Importe</th></tr></thead><tbody></tbody></table></div>
+          <div class="botones"><button type="button" class="primario" id="csv-importar">Importar</button><button type="button" class="fantasma" id="csv-cancelar">Cancelar</button></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- RED -->
+  <section id="v-red" class="vista solo-admin" hidden>
+    <header class="vista-cab"><h1>Red</h1><span class="muted" id="red-hora"></span></header>
+    <div class="rejilla">
+      <article class="tarjeta" id="red-salud">
+        <h2>Salud</h2><div class="cuerpo muted">Cargando…</div>
+        <div class="botones">
+          <button type="button" class="fantasma pequeno" id="red-latencia">Medir latencia</button>
+          <button type="button" class="fantasma pequeno" id="red-velocidad" title="Descarga ~15 MB y sube ~5 MB a Cloudflare; uno cada 10 minutos">Test de velocidad</button>
+        </div>
+      </article>
+      <article class="tarjeta" id="red-historial"><h2>Historial (7 días)</h2><div class="cuerpo muted">Cargando…</div></article>
+      <article class="tarjeta ancha" id="red-dispositivos">
+        <h2>Dispositivos de la LAN</h2>
+        <p class="muted" id="red-nota"></p>
+        <div class="botones"><button type="button" class="fantasma pequeno" id="red-conocer-todos">Marcar todos como conocidos</button></div>
+        <div class="tabla-cont"><table class="tabla" id="red-tabla"><thead><tr><th>Nombre</th><th>IP</th><th>Fabricante</th><th>MAC</th><th>Visto</th><th>Puertos</th><th></th></tr></thead><tbody></tbody></table></div>
+      </article>
+    </div>
+  </section>
+
+  <!-- SEGURIDAD -->
+  <section id="v-seguridad" class="vista solo-admin" hidden>
+    <header class="vista-cab"><h1>Seguridad</h1><span class="muted" id="seg-red"></span></header>
+    <div class="rejilla">
+      <article class="tarjeta" id="seg-escaner">
+        <h2>Escáner</h2><div class="cuerpo muted">Cargando…</div>
+        <div class="botones">
+          <button type="button" class="primario pequeno" id="seg-escanear">Escanear ahora (100 puertos)</button>
+          <button type="button" class="fantasma pequeno" id="seg-escanear-completo">Escaneo completo (1000 puertos)</button>
+        </div>
+        <p class="muted">Solo descubrimiento de equipos, puertos y versiones en tu red (nunca ataques ni pruebas de contraseñas). Uno cada 10 minutos, más uno automático cada domingo a las 04:00.</p>
+      </article>
+      <article class="tarjeta" id="seg-resumen"><h2>Resumen</h2><div class="cuerpo muted">Cargando…</div></article>
+      <article class="tarjeta ancha" id="seg-hallazgos"><h2>Hallazgos</h2><div class="cuerpo muted">Cargando…</div></article>
+      <article class="tarjeta ancha" id="seg-bloqueos"><h2>Lo más bloqueado por dispositivo (Pi-hole, 24 h)</h2><div class="cuerpo muted">Cargando…</div></article>
     </div>
   </section>
 
@@ -232,6 +333,21 @@
   </form>
 </dialog>
 
+<dialog id="dlg-mov" class="modal">
+  <h2>Editar movimiento</h2>
+  <form id="form-editar-mov" class="formulario">
+    <label>Fecha <input id="ed-fecha" type="date" required></label>
+    <label>Concepto <input id="ed-concepto" maxlength="200" required></label>
+    <label>Importe <input id="ed-importe" inputmode="decimal" required></label>
+    <label>Categoría <select id="ed-cat"><option value="">Sin categoría</option></select></label>
+    <label class="interruptor"><input type="checkbox" id="ed-similares"> <span>Aplicar la categoría a movimientos parecidos (crea una regla)</span></label>
+    <div class="botones">
+      <button type="button" class="fantasma" data-cerrar>Cancelar</button>
+      <button type="submit" class="primario">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="dlg-confirmar" class="modal">
   <h2 id="confirmar-titulo">¿Seguro?</h2>
   <p id="confirmar-texto" class="muted"></p>
@@ -247,6 +363,9 @@
 <script src="/static/control.js"></script>
 <script src="/static/inicio.js"></script>
 <script src="/static/ajustes.js"></script>
+<script src="/static/finanzas.js"></script>
+<script src="/static/red.js"></script>
+<script src="/static/seguridad.js"></script>
 <script src="/static/usuarios.js"></script>
 <script src="/static/app.js"></script>
 </body>

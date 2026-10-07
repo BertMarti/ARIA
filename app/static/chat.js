@@ -13,7 +13,16 @@ const Chat = (() => {
     estado_sistema: "Consultando la Raspberry", spotify_play: "Spotify: reproducir", spotify_pause: "Spotify: pausa",
     spotify_siguiente: "Spotify: siguiente", spotify_anterior: "Spotify: anterior", spotify_actual: "Spotify: ahora suena",
     spotify_buscar_y_reproducir: "Buscando en Spotify", buscar_en_netflix: "Buscando en Netflix",
+    registrar_movimiento: "Apuntando movimiento", resumen_mes: "Resumen del mes", gastos_por_categoria: "Gastos por categoría",
+    comparar_meses: "Comparando meses", presupuesto: "Fijando presupuesto", estado_presupuestos: "Revisando presupuestos",
+    buscar_movimientos: "Buscando movimientos", estado_red: "Salud de la red", dispositivos_red: "Dispositivos de la red",
+    dispositivos_nuevos: "Dispositivos nuevos", marcar_dispositivo_conocido: "Marcando dispositivo",
+    medir_latencia: "Midiendo latencia", test_velocidad: "Test de velocidad", informe_seguridad: "Informe de seguridad",
+    escanear_red: "Pidiendo escaneo", estado_escaneo: "Estado del escáner", bloqueos_por_cliente: "Bloqueos por dispositivo",
   };
+  let agentes = {};             // id -> {nombre, icono, descripcion}
+  let agentePendiente = "aria"; // agente elegido antes de crear la conversación
+  let agenteVista = "aria";     // el que muestra el selector
   const SUGERENCIAS = [
     "¿Cuántos anuncios has bloqueado hoy?", "¿Qué temperatura tiene la Raspberry?",
     "¿Qué dispositivos hay en la VPN?", "Explícame qué es un DNS",
@@ -61,17 +70,44 @@ const Chat = (() => {
   }
 
   // Mensaje de usuario o de ARIA. Devuelve { nodo, actualizar(texto) }.
-  function addMsg(rol, texto, cerebro) {
+  function addMsg(rol, texto, cerebro, agente) {
     const cont = el("div", { class: "md" });
     const nodo = el("div", { class: "msg " + rol }, cont);
     let actual = texto || "";
     if (actual) renderMd(actual, cont);
     const badge = el("span", { class: "cerebro-badge", title: "Cerebro que respondió" });
+    const agBadge = el("span", { class: "agente-badge", title: "Agente que respondió" });
     const ponerBadge = (t) => { badge.textContent = t || ""; badge.hidden = !t; };
-    ponerBadge(cerebro);
-    if (rol === "bot") nodo.append(el("div", { class: "msg-pie" }, badge, botonCopiar(() => actual)));
+    const ponerAgente = (id) => {
+      const a = agentes[id] || (id ? { nombre: id } : null);
+      agBadge.textContent = a ? a.nombre : ""; agBadge.hidden = !a;
+      agBadge.className = "agente-badge ag-" + (id || "aria");
+    };
+    ponerBadge(cerebro); ponerAgente(agente);
+    if (rol === "bot") nodo.append(el("div", { class: "msg-pie" }, agBadge, badge, botonCopiar(() => actual)));
     caja().append(nodo);
-    return { nodo, ponerBadge, actualizar(t) { actual = t; renderMd(t, cont); } };
+    return { nodo, ponerBadge, ponerAgente, actualizar(t) { actual = t; renderMd(t, cont); } };
+  }
+  // --- Selector de agente ---
+  async function cargarAgentes() {
+    const { ok, data } = await api("/api/agentes");
+    if (!ok) return;
+    agentes = {};
+    const sel = $("agente-sel");
+    sel.replaceChildren();
+    for (const a of data.agentes) {
+      agentes[a.id] = a;
+      sel.append(el("option", { value: a.id, title: a.descripcion }, a.id === "aria" ? "ARIA (automático)" : a.nombre));
+    }
+    ponerSelector(agenteVista);
+  }
+  function ponerSelector(id) { agenteVista = id || "aria"; $("agente-sel").value = agentes[agenteVista] ? agenteVista : "aria"; }
+  async function cambiarAgente() {
+    const id = $("agente-sel").value;
+    if (!convId) { agentePendiente = id; return; }
+    const r = await api("/api/conversations/" + encodeURIComponent(convId), { method: "PATCH", json: { agente: id } });
+    if (!r.ok) toast(r.data.error || "No se pudo cambiar de agente.", "mal");
+    else toast("Esta conversación usará " + (agentes[id] ? agentes[id].nombre : id) + ".");
   }
   // Cerebro que está en cabeza de la cadena (cabecera del chat).
   async function refrescarCerebro() {
@@ -99,17 +135,20 @@ const Chat = (() => {
     addMsg("user", texto); abajo();
     ponerEstado(true);
     abort = new AbortController();
-    let burbuja = null, acumulado = "", ultimoChip = null, ultimoArgs = {}, todo = "", etiqueta = "";
+    let burbuja = null, acumulado = "", ultimoChip = null, ultimoArgs = {}, todo = "", etiqueta = "", agente = "";
     try {
       const r = await fetch("/api/chat", {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: abort.signal,
-        body: JSON.stringify({ conversation_id: convId, message: texto }),
+        body: JSON.stringify(convId ? { conversation_id: convId, message: texto }
+          : { conversation_id: null, message: texto, agente: agentePendiente }),
       });
       if (r.status === 401) { location.href = "/login"; return; }
       if (!r.ok) throw new Error("HTTP " + r.status);
       for await (const ev of lineasNdjson(r)) {
         if (ev.type === "conv") {
           convId = ev.id; $("chat-titulo").textContent = ev.titulo; cargarLista();
+        } else if (ev.type === "agente") {
+          agente = ev.id; if (burbuja) burbuja.ponerAgente(agente);
         } else if (ev.type === "cerebro") {
           etiqueta = ev.etiqueta; if (burbuja) burbuja.ponerBadge(etiqueta);
         } else if (ev.type === "pensando") {
@@ -118,7 +157,7 @@ const Chat = (() => {
           pensando(false); acumulado = ""; if (burbuja) { burbuja.nodo.remove(); burbuja = null; }
         } else if (ev.type === "token") {
           pensando(false);
-          if (!burbuja) { burbuja = addMsg("bot", ""); burbuja.ponerBadge(etiqueta); }
+          if (!burbuja) { burbuja = addMsg("bot", "", etiqueta, agente); }
           acumulado += ev.text; todo += ev.text; burbuja.actualizar(acumulado); abajo();
         } else if (ev.type === "herramienta") {
           pensando(false); burbuja = null; acumulado = ""; todo += "\n";
@@ -203,8 +242,9 @@ const Chat = (() => {
         let j = {}; try { j = JSON.parse(m.content); } catch (_) { /* ignorar */ }
         caja().append(chip(j.name || "herramienta", j.args || {}, j.text));
         caja().lastChild.classList.add("hecho");
-      } else addMsg(m.role === "user" ? "user" : "bot", m.content, m.cerebro);
+      } else addMsg(m.role === "user" ? "user" : "bot", m.content, m.cerebro, m.role === "user" ? null : m.agente);
     }
+    ponerSelector(data.agente);
     if (!data.mensajes.length) vacio();
     abajo(); cerrarLista(); cargarLista();
     localStorageConv(id);
@@ -213,6 +253,7 @@ const Chat = (() => {
   function nueva() {
     if (enCurso) detener();
     convId = null; $("chat-titulo").textContent = "Conversación nueva";
+    agentePendiente = "aria"; ponerSelector("aria");
     vacio(); cerrarLista(); localStorageConv(null);
     $("texto").focus(); cargarLista();
   }
@@ -227,6 +268,8 @@ const Chat = (() => {
     $("texto").addEventListener("input", autoajustar);
     $("detener").addEventListener("click", detener);
     $("nuevo").addEventListener("click", nueva);
+    $("agente-sel").addEventListener("change", cambiarAgente);
+    cargarAgentes();
     $("btn-convs").addEventListener("click", abrirLista);
     $("convs-fondo").addEventListener("click", cerrarLista);
     const ultima = Prefs.get("conv", "");
@@ -235,6 +278,6 @@ const Chat = (() => {
   }
   function autoajustar() { const t = $("texto"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; }
 
-  function preguntar(texto) { nueva(); enviar(texto); }
+  function preguntar(texto, agente) { nueva(); if (agente) { agentePendiente = agente; ponerSelector(agente); } enviar(texto); }
   return { iniciar, preguntar, refrescarCerebro };
 })();

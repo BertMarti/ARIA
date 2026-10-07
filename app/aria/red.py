@@ -25,6 +25,7 @@ from . import config, db, escaneo, services, shield, vpn
 
 DESTINOS = (("router", None), ("Cloudflare", "1.1.1.1"), ("Google", "8.8.8.8"))
 BYTES_BAJADA = 15 * 1024 * 1024
+TROZO_BAJADA = 5 * 1024 * 1024   # speed.cloudflare.com responde 403 a peticiones de más de ~10 MB
 BYTES_SUBIDA = 5 * 1024 * 1024
 INTERVALO_VELOCIDAD_S = 10 * 60
 _lock_velocidad = asyncio.Lock()
@@ -247,11 +248,12 @@ async def velocidad() -> dict:
                     await c.get(f"{base}/__down", params={"bytes": 0})
                     lat.append((time.perf_counter() - t0) * 1000)
                 t0, recibidos = time.perf_counter(), 0
-                async with c.stream("GET", f"{base}/__down", params={"bytes": BYTES_BAJADA}) as r:
-                    if r.status_code != 200:
-                        raise RedError(f"El servidor de pruebas devolvió {r.status_code}.")
-                    async for trozo in r.aiter_bytes():
-                        recibidos += len(trozo)
+                for _ in range(BYTES_BAJADA // TROZO_BAJADA):
+                    async with c.stream("GET", f"{base}/__down", params={"bytes": TROZO_BAJADA}) as r:
+                        if r.status_code != 200:
+                            raise RedError(f"El servidor de pruebas devolvió {r.status_code}.")
+                        async for trozo in r.aiter_bytes():
+                            recibidos += len(trozo)
                 t_baja = time.perf_counter() - t0
                 datos = b"0" * BYTES_SUBIDA
                 t0 = time.perf_counter()

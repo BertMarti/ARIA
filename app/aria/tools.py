@@ -338,6 +338,9 @@ def _lista_cats(cats: list, n: int = 8) -> str:
        "categoria": ("string", "Categoría (opcional; se adivina si falta)"),
        "cuenta": ("string", "Cuenta o tarjeta (opcional)")}, ("concepto", "importe"), usa_uid=True, especialista=True)
 async def registrar_movimiento(uid, concepto, importe, fecha=None, categoria=None, cuenta=None) -> str:
+    # Desde el chat no se crean categorías nuevas: si no existe, se categoriza automáticamente.
+    if categoria and str(categoria).strip().lower() not in {c.lower() for c in finanzas.categorias(uid)}:
+        categoria = None
     m = finanzas.registrar(uid, fecha, concepto, importe, categoria, cuenta)
     return (f"Apuntado: {m['concepto']} {finanzas.euros(m['importe'])} el {m['fecha']}"
             f" (categoría: {m['categoria'] or 'sin categoría'}).")

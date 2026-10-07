@@ -9,13 +9,15 @@ Para anadir una herramienta nueva basta con decorar una funcion con @tool:
 Debe devolver un str o algo serializable a JSON. Los errores se capturan en
 ejecutar() y se devuelven al modelo como texto.
 """
+import asyncio
 import json
 import re
+import time
 from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import config, services, shield, sistema, spotify, vpn
+from . import config, escaneo, finanzas, red, seguridad, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -24,11 +26,16 @@ MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto
          "septiembre", "octubre", "noviembre", "diciembre"]
 
 
-def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: tuple = ()):
+def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: tuple = (), usa_uid: bool = False,
+         especialista: bool = False):
+    """`usa_uid=True`: la función recibe `uid` (el usuario del chat), nunca desde los argumentos del modelo.
+    `especialista=True`: solo la ofrecen los agentes que la incluyen (no ARIA general)."""
     def deco(fn):
         props = {k: {"type": t, "description": d} for k, (t, d) in (params or {}).items()}
         _REGISTRO[nombre] = {
             "fn": fn,
+            "uid": usa_uid,
+            "especialista": especialista,
             "spec": {
                 "type": "function",
                 "function": {
@@ -47,9 +54,23 @@ SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador",
                           "estado_sistema", "buscar_en_netflix"})
 
 
+# Además, el rol `usuario` puede usar sus finanzas (solo sus datos) y la salud de la red (solo lectura).
+DE_USUARIO = frozenset({"registrar_movimiento", "resumen_mes", "gastos_por_categoria", "comparar_meses",
+                        "presupuesto", "estado_presupuestos", "buscar_movimientos", "estado_red"})
+
+
 def permitidas(rol: str) -> set:
     """Nombres de herramientas que ese rol puede ver y ejecutar."""
-    return set(_REGISTRO) if rol == "admin" else set(SOLO_LECTURA) & set(_REGISTRO)
+    if rol == "admin":
+        return set(_REGISTRO)
+    if rol == "usuario":
+        return set(SOLO_LECTURA | DE_USUARIO) & set(_REGISTRO)
+    return set()
+
+
+def generales() -> set:
+    """Herramientas de ARIA general (las de los especialistas no se ofrecen sin su agente)."""
+    return {n for n, t in _REGISTRO.items() if not t["especialista"]}
 
 
 def especificaciones(nombres=None) -> list:
@@ -126,15 +147,32 @@ def rescatar_llamada(texto: str, permitidas: set) -> dict | None:
     return None
 
 
-async def ejecutar(nombre: str, args: dict | None, rol: str = "admin") -> str:
+_ERRORES_LEGIBLES = (spotify.SpotifyError, shield.ShieldError, vpn.VpnError, finanzas.FinanzasError,
+                     red.RedError, escaneo.EscaneoError)
+
+
+def registrar_errores(*clases) -> None:
+    """Otros módulos añaden sus excepciones «legibles» (mensaje en español para el modelo)."""
+    global _ERRORES_LEGIBLES
+    _ERRORES_LEGIBLES = tuple(dict.fromkeys(_ERRORES_LEGIBLES + clases))
+
+
+async def ejecutar(nombre: str, args: dict | None, rol: str = "admin", uid: int | None = None,
+                   solo: set | None = None) -> str:
+    """Ejecuta una herramienta comprobando el rol y, si se da `solo`, las del agente activo."""
     t = _REGISTRO.get(nombre)
     if not t:
         return f"Herramienta desconocida: {nombre}"
-    if nombre not in permitidas(rol):
+    if nombre not in permitidas(rol) or (solo is not None and nombre not in solo):
         return "No tienes permiso para esa acción: pídesela al administrador."
+    args = {k: v for k, v in (args or {}).items() if k != "uid"} if isinstance(args, dict) else {}
+    if t["uid"]:
+        if uid is None:
+            return "No sé qué usuario eres; vuelve a entrar en ARIA."
+        args["uid"] = uid
     try:
-        res = await t["fn"](**(args or {}))
-    except (spotify.SpotifyError, shield.ShieldError, vpn.VpnError) as e:
+        res = await t["fn"](**args)
+    except _ERRORES_LEGIBLES as e:
         return str(e)
     except TypeError:
         return "Argumentos no válidos para la herramienta."
@@ -283,3 +321,221 @@ async def activar_dispositivo_vpn(nombre: str) -> str:
       {"nombre": ("string", "Nombre del dispositivo")}, ("nombre",))
 async def desactivar_dispositivo_vpn(nombre: str) -> str:
     return await _cambiar_dispositivo(nombre, False)
+
+
+# --- Finanzas (datos del usuario que chatea) ---------------------------------------------------------
+_MES = ("string", "Mes en formato AAAA-MM (vacío = el mes actual)")
+
+
+def _lista_cats(cats: list, n: int = 8) -> str:
+    return ", ".join(f"{c['categoria']} {finanzas.euros(c['total'])}" for c in cats[:n]) or "sin gastos"
+
+
+@tool("registrar_movimiento", "Apunta un gasto (importe negativo) o un ingreso (positivo) en las finanzas del usuario.",
+      {"concepto": ("string", "Concepto, p. ej. 'Mercadona'"),
+       "importe": ("number", "Importe en euros: negativo si es gasto, positivo si es ingreso"),
+       "fecha": ("string", "Fecha dd/mm/aaaa o aaaa-mm-dd (vacío = hoy)"),
+       "categoria": ("string", "Categoría (opcional; se adivina si falta)"),
+       "cuenta": ("string", "Cuenta o tarjeta (opcional)")}, ("concepto", "importe"), usa_uid=True, especialista=True)
+async def registrar_movimiento(uid, concepto, importe, fecha=None, categoria=None, cuenta=None) -> str:
+    m = finanzas.registrar(uid, fecha, concepto, importe, categoria, cuenta)
+    return (f"Apuntado: {m['concepto']} {finanzas.euros(m['importe'])} el {m['fecha']}"
+            f" (categoría: {m['categoria'] or 'sin categoría'}).")
+
+
+@tool("resumen_mes", "Resumen de las finanzas de un mes: ingresos, gastos, balance y gastos por categoría.",
+      {"mes": _MES}, usa_uid=True, especialista=True)
+async def resumen_mes(uid, mes=None) -> str:
+    r = finanzas.resumen_mes(uid, mes)
+    if not r["movimientos"]:
+        return f"No hay movimientos en {r['mes']}."
+    return (f"{r['mes']}: ingresos {finanzas.euros(r['ingresos'])}, gastos {finanzas.euros(r['gastos'])}, "
+            f"balance {finanzas.euros(r['balance'])} ({r['movimientos']} movimientos). "
+            f"Gastos por categoría: {_lista_cats(r['categorias'])}.")
+
+
+@tool("gastos_por_categoria", "Gastos de un mes agrupados por categoría, de mayor a menor.", {"mes": _MES}, usa_uid=True, especialista=True)
+async def gastos_por_categoria(uid, mes=None) -> str:
+    m = finanzas.mes_valido(mes)
+    return f"Gastos de {m} por categoría: {_lista_cats(finanzas.gastos_por_categoria(uid, m), 20)}."
+
+
+@tool("comparar_meses", "Compara ingresos, gastos y categorías de dos meses.",
+      {"mes_a": ("string", "Primer mes AAAA-MM"), "mes_b": ("string", "Segundo mes AAAA-MM")},
+      ("mes_a", "mes_b"), usa_uid=True, especialista=True)
+async def comparar_meses(uid, mes_a, mes_b) -> str:
+    c = finanzas.comparar_meses(uid, mes_a, mes_b)
+    a, b = c["a"], c["b"]
+    dif = ", ".join(f"{x['categoria']} {'+' if x['diferencia'] >= 0 else ''}{finanzas.euros(x['diferencia'])}"
+                    for x in c["categorias"][:6] if x["diferencia"])
+    return (f"{a['mes']}: gastos {finanzas.euros(a['gastos'])}, ingresos {finanzas.euros(a['ingresos'])}. "
+            f"{b['mes']}: gastos {finanzas.euros(b['gastos'])}, ingresos {finanzas.euros(b['ingresos'])}. "
+            f"Diferencia de gasto ({b['mes']} - {a['mes']}): {finanzas.euros(b['gastos'] - a['gastos'])}. "
+            f"Cambios por categoría: {dif or 'ninguno'}.")
+
+
+@tool("presupuesto", "Fija (o quita con 0) el presupuesto mensual de una categoría.",
+      {"categoria": ("string", "Categoría"), "importe": ("number", "Euros al mes (0 = quitar)")},
+      ("categoria", "importe"), usa_uid=True, especialista=True)
+async def presupuesto(uid, categoria, importe) -> str:
+    p = finanzas.fijar_presupuesto(uid, categoria, importe)
+    if not p["importe"]:
+        return f"Presupuesto de {p['categoria']} eliminado."
+    return f"Presupuesto mensual de {p['categoria']}: {finanzas.euros(p['importe'])}."
+
+
+@tool("estado_presupuestos", "Cuánto se lleva gastado de cada presupuesto en un mes.", {"mes": _MES}, usa_uid=True, especialista=True)
+async def estado_presupuestos(uid, mes=None) -> str:
+    m = finanzas.mes_valido(mes)
+    e = finanzas.estado_presupuestos(uid, m)
+    if not e:
+        return "No hay presupuestos definidos."
+    return f"Presupuestos de {m}: " + "; ".join(
+        f"{x['categoria']}: {finanzas.euros(x['gastado'])} de {finanzas.euros(x['presupuesto'])} ({x['porcentaje']} %"
+        f"{', SUPERADO' if x['superado'] else ''})" for x in e) + "."
+
+
+@tool("buscar_movimientos", "Busca movimientos por texto del concepto, mes o categoría.",
+      {"texto": ("string", "Texto a buscar en el concepto"), "mes": _MES, "categoria": ("string", "Categoría")},
+      usa_uid=True, especialista=True)
+async def buscar_movimientos(uid, texto=None, mes=None, categoria=None) -> str:
+    r = finanzas.listar(uid, mes or None, categoria or None, texto or None, limite=15)
+    if not r:
+        return "No he encontrado movimientos."
+    total = sum(m["importe"] for m in r)
+    return f"{len(r)} movimiento(s) (suma {finanzas.euros(total)}): " + "; ".join(
+        f"{m['fecha']} {m['concepto']} {finanzas.euros(m['importe'])}" for m in r) + "."
+
+
+
+# --- Redes ---------------------------------------------------------------------------------------------
+def _lat_texto(lat: dict) -> str:
+    return "; ".join(f"{d['nombre']} {d['media_ms']} ms" + (f" ({d['perdida']} % perdidos)" if d["perdida"] else "")
+                     if d["media_ms"] is not None else f"{d['nombre']} sin respuesta" for d in lat["destinos"])
+
+
+@tool("estado_red", "Salud de la red: latencia al router y a Internet, DNS (SHIELD), VPN y último test de velocidad.",
+      especialista=True)
+async def estado_red() -> str:
+    s = await red.salud()
+    v = s["velocidad"]
+    vel = (f"Último test de velocidad: {v['bajada_mbps']} Mbps de bajada y {v['subida_mbps']} de subida "
+           f"({time.strftime('%d/%m %H:%M', time.localtime(v['ts']))})." if v else "No hay ningún test de velocidad aún.")
+    vpn_t = (f"VPN: {s['vpn']}, {s['vpn_clientes']['conectados']} de {s['vpn_clientes']['dispositivos']} dispositivos conectados."
+             if s["vpn_clientes"] else f"VPN: {s['vpn']}.")
+    return f"Latencia: {_lat_texto(s['latencia'])}. DNS: {s['dns']}. {vpn_t} {vel}"
+
+
+@tool("dispositivos_red", "Lista los dispositivos de la red de casa (nombre, IP, fabricante, si es conocido).",
+      especialista=True)
+async def dispositivos_red() -> str:
+    ds = await red.dispositivos()
+    if not ds:
+        return "No he encontrado dispositivos (¿está conectado SHIELD-DNS o hay algún escaneo?)."
+    partes = [f"{d.get('alias') or d.get('nombre') or d.get('fabricante') or 'sin nombre'} {d['ip']}"
+              f"{'' if d['conocido'] else ' (NO reconocido)'}" for d in ds[:60]]
+    return f"{len(ds)} dispositivo(s): " + "; ".join(partes) + "."
+
+
+@tool("dispositivos_nuevos", "Dispositivos de la red que aún no se han marcado como conocidos.", especialista=True)
+async def dispositivos_nuevos() -> str:
+    ds = [d for d in await red.dispositivos() if not d["conocido"]]
+    if not ds:
+        return "No hay dispositivos sin reconocer."
+    return f"{len(ds)} sin reconocer: " + "; ".join(
+        f"{d.get('nombre') or d.get('fabricante') or 'sin nombre'} {d['ip']} (visto por primera vez "
+        f"{time.strftime('%d/%m %H:%M', time.localtime(d['primera_vez']))})" for d in ds[:40]) + "."
+
+
+@tool("marcar_dispositivo_conocido", "Marca un dispositivo de la red como conocido (por su IP o nombre) y opcionalmente le pone un alias.",
+      {"dispositivo": ("string", "IP o nombre del dispositivo"), "alias": ("string", "Nombre para recordarlo (opcional)")},
+      ("dispositivo",), especialista=True)
+async def marcar_dispositivo_conocido(dispositivo, alias=None) -> str:
+    await red.dispositivos()
+    clave = await asyncio.to_thread(red.buscar_clave, dispositivo)
+    if not clave:
+        return "No encuentro ese dispositivo en el inventario."
+    await asyncio.to_thread(red.marcar_conocido, clave, True, alias)
+    return f"Dispositivo {dispositivo} marcado como conocido" + (f" con el alias «{alias}»." if alias else ".")
+
+
+@tool("medir_latencia", "Mide ahora la latencia (ping) al router, a 1.1.1.1 y a 8.8.8.8.", especialista=True)
+async def medir_latencia() -> str:
+    return "Latencia media: " + _lat_texto(await red.latencia()) + "."
+
+
+@tool("test_velocidad", "Hace un test de velocidad de Internet (unos 20 MB; como mucho uno cada 10 minutos).",
+      especialista=True)
+async def test_velocidad() -> str:
+    v = await red.velocidad()
+    return (f"Velocidad: {v['bajada_mbps']} Mbps de bajada, {v['subida_mbps']} Mbps de subida, latencia "
+            f"{v['latencia_ms']} ms (servidor de Cloudflare).")
+
+
+# --- Seguridad (solo admin) -------------------------------------------------------------------------
+@tool("informe_seguridad", "Informe de seguridad defensivo de la red de casa: hallazgos por gravedad y qué hacer.",
+      especialista=True)
+async def informe_seguridad() -> str:
+    return seguridad.texto_informe(await seguridad.informe())
+
+
+@tool("escanear_red", "Pide un escaneo de puertos (nmap) de la red de casa 192.168.0.0/24. Como mucho uno cada 10 minutos.",
+      {"perfil": ("string", "'rapido' (100 puertos, por defecto) o 'completo' (1000 puertos)")}, especialista=True)
+async def escanear_red(perfil="rapido") -> str:
+    perfil = "completo" if str(perfil or "").lower().startswith("compl") else "rapido"
+    pid = await asyncio.to_thread(escaneo.solicitar, perfil, None, "chat")
+    return (f"Escaneo {perfil} solicitado (id {pid}). Tarda unos minutos; luego pide el informe de seguridad.")
+
+
+@tool("estado_escaneo", "Estado del escáner: si hay un escaneo en curso y cuándo fue el último.", especialista=True)
+async def estado_escaneo() -> str:
+    e = await asyncio.to_thread(escaneo.estado)
+    if not e["disponible"]:
+        return "El escáner aria-escaner no está instalado."
+    u = e["ultimo"]
+    ult = (f"Último: {u['perfil']} ({u['origen']}) el {time.strftime('%d/%m %H:%M', time.localtime(u['fin'] or 0))}, "
+           f"{u['hosts']} equipos." if u else "Aún no hay escaneos.")
+    return (f"Escáner {'activo' if e['escaner_vivo'] else 'sin señal'}; "
+            f"{'escaneo en curso' if e['en_curso'] else 'sin escaneos en curso'}; pendientes: {e['pendientes']}. {ult}")
+
+
+@tool("bloqueos_por_cliente", "Dominios más bloqueados por Pi-hole para cada dispositivo (rastreadores, publicidad, posibles malware).",
+      especialista=True)
+async def bloqueos_por_cliente() -> str:
+    b = await seguridad.bloqueos_por_cliente()
+    if not b:
+        return "No hay datos de bloqueos por dispositivo."
+    return " | ".join(f"{c['cliente']}: {c['bloqueadas']} bloqueadas; " + ", ".join(
+        f"{d['dominio']} ({d['veces']}, {d['tipo']})" for d in c["dominios"]) for c in b)
+
+# Palabras clave para el cerebro local (los de la nube reciben todas las del agente).
+_INTENCIONES += [
+    ((r"\b(gast\w*|pagu[eé]|pagado|compr[eé])\b", r"\b(apunta|anota|registra|a[ñn]ade|he gastado|pagu[eé])\b"),
+     {"registrar_movimiento"}),
+    ((r"\b(ingres\w*|cobr\w*|n[oó]mina)\b", r"\b(apunta|anota|registra|a[ñn]ade)\b"), {"registrar_movimiento"}),
+    ((r"\b(gast\w*|ingres\w*|balance|finanzas|ahorr\w*|dinero)\b", r"\b(mes|resumen|cu[aá]nt\w*|total|este)\b"),
+     {"resumen_mes", "gastos_por_categoria"}),
+    ((r"\b(categor[ií]as?|en qu[eé])\b", r"\b(gast\w*|dinero)\b"), {"gastos_por_categoria"}),
+    ((r"\b(compar\w*|diferencia|frente a|respecto)\b", r"\b(mes|meses|gast\w*|enero|febrero|marzo|abril|mayo|junio|"
+      r"julio|agosto|septiembre|octubre|noviembre|diciembre)\b"), {"comparar_meses"}),
+    ((r"\bpresupuest\w*\b", r"\b(pon|fija|establece|cambia|quita|define|de)\b", r"!\b(c[oó]mo voy|estado|llevo)\b"),
+     {"presupuesto"}),
+    ((r"\bpresupuest\w*\b", r"\b(c[oó]mo|estado|llevo|queda|superad\w*|voy)\b"), {"estado_presupuestos"}),
+    ((r"\b(busca\w*|movimientos?|cargos?|recibos?)\b", r"\b(gast\w*|pag\w*|movimientos?|cargos?|recibos?|compr\w*)\b"),
+     {"buscar_movimientos"}),
+]
+
+_INTENCIONES += [
+    ((r"\b(red|lan|wifi|wi-fi|internet|conexi[oó]n)\b", r"\b(estado|c[oó]mo|va|funciona\w*|salud|lent\w*)\b"), {"estado_red"}),
+    ((r"\b(dispositivos?|equipos?|aparatos?)\b", r"\b(red|lan|wifi|casa|conectad\w+)\b", r"!\b(vpn|wireguard|heimdall)\b",
+      r"!\b(nuevos?|desconocid\w+|conocid\w+)\b"), {"dispositivos_red"}),
+    ((r"\b(nuevos?|desconocid\w+|sin reconocer|intrus\w*)\b", r"\b(dispositivos?|equipos?|red)\b"), {"dispositivos_nuevos"}),
+    ((r"\b(marca\w*|reconoce\w*)\b", r"\bconocid\w*\b"), {"marcar_dispositivo_conocido"}),
+    ((r"\b(latencia|ping)\b",), {"medir_latencia"}),
+    ((r"\b(velocidad|speed ?test|mbps|test de velocidad)\b",), {"test_velocidad"}),
+    ((r"\b(seguridad|vulnerab\w*|riesgos?|hallazgos?|informe)\b", r"!\b(escanea|escaneo nuevo|lanza)\b"), {"informe_seguridad"}),
+    ((r"\b(escanea\w*|escaneo|nmap|puertos?)\b", r"\b(lanza|haz|hazme|escanea\w*|nuevo|ahora|empieza)\b"), {"escanear_red"}),
+    ((r"\b(escaneo|esc[aá]ner)\b", r"\b(estado|c[oó]mo va|termin\w*|en curso|[uú]ltimo)\b"), {"estado_escaneo"}),
+    ((r"\b(bloquead\w*|bloqueos?|rastreadores?|trackers?|malware)\b", r"\b(dispositivos?|clientes?|cada|qui[eé]n|por)\b"),
+     {"bloqueos_por_cliente"}),
+]

@@ -58,6 +58,17 @@ def test_sin_sesion_no_hay_acceso(metodo, ruta, cuerpo):
     assert c.request(metodo, ruta, json=cuerpo).status_code in (401, 303)
 
 
+# Rutas nuevas de los agentes que un `usuario` puede usar (finanzas propias, salud de la red, lista de agentes).
+RUTAS_USUARIO_AGENTES = {
+    ("GET", "/api/agentes"), ("GET", "/api/red/salud"),
+    ("GET", "/api/finanzas/resumen"), ("GET", "/api/finanzas/movimientos"), ("GET", "/api/finanzas/reglas"),
+    ("POST", "/api/finanzas/movimientos"), ("POST", "/api/finanzas/presupuestos"), ("POST", "/api/finanzas/reglas"),
+    ("POST", "/api/finanzas/importar"), ("POST", "/api/finanzas/importar/previa"), ("POST", "/api/finanzas/sugerir"),
+    ("PATCH", "/api/finanzas/movimientos/{mid}"), ("DELETE", "/api/finanzas/movimientos/{mid}"),
+    ("DELETE", "/api/finanzas/reglas/{rid}"),
+}
+
+
 def test_toda_ruta_registrada_esta_cubierta():
     """Si alguien añade un endpoint, debe salir en la lista blanca de `usuario` o devolverle 403."""
     from fastapi.routing import APIRoute
@@ -66,7 +77,7 @@ def test_toda_ruta_registrada_esta_cubierta():
         if not isinstance(r, APIRoute):
             continue
         ruta = r.path.replace("{cid}", "abc").replace("{uid}", "1").replace("{app_id}", "x") \
-                     .replace("{accion}", "x")
+                     .replace("{accion}", "x").replace("{mid}", "1").replace("{rid}", "1")
         for m in r.methods - {"HEAD", "OPTIONS"}:
             if permisos.permitido("usuario", m, ruta):
                 assert (m, r.path) in {
@@ -75,7 +86,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("GET", "/api/spotify/status"), ("GET", "/api/certificado"), ("POST", "/api/password"),
                     ("POST", "/api/chat"), ("GET", "/api/conversations"), ("GET", "/api/conversations/{cid}"),
                     ("PATCH", "/api/conversations/{cid}"), ("DELETE", "/api/conversations/{cid}"),
-                }, (m, r.path)
+                } | RUTAS_USUARIO_AGENTES, (m, r.path)
     assert not permisos.permitido("desconocido", "GET", "/")
 
 
@@ -121,7 +132,7 @@ def test_idor_conversaciones(admin, ana):
 def test_chat_con_id_ajeno_crea_una_conversacion_nueva(admin, ana, monkeypatch):
     cid = db.crear(admin["id"], "ajena")
 
-    async def responder(msgs, rol="admin", quien=None):
+    async def responder(msgs, rol="admin", quien=None, **_):
         yield {"type": "token", "text": "hola"}
         yield {"type": "fin"}
     monkeypatch.setattr(chat, "responder", responder)
@@ -168,7 +179,8 @@ LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_
 
 
 def test_herramientas_de_solo_lectura():
-    assert tools.permitidas("usuario") == LECTURA
+    assert tools.permitidas("usuario") == LECTURA | tools.DE_USUARIO
+    assert tools.permitidas("usuario") & tools.generales() == LECTURA
     assert tools.permitidas("admin") == set(tools._REGISTRO) > LECTURA
 
 

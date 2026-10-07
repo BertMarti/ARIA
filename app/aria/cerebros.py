@@ -185,8 +185,12 @@ class Proveedor:
         return f"{self.nombre} · {m[:-6] if m.endswith('-cloud') else m}"
 
     async def ronda(self, msgs: list, con_tools: bool = True, rol: str = "admin",
-                    nombre: str | None = None) -> AsyncIterator[dict]:
-        """Eventos: {"type": "token"|"pensando"|"llamadas"|"aviso", ...}. Lanza ProveedorError."""
+                    nombre: str | None = None, herramientas: set | None = None,
+                    sistema: str | None = None) -> AsyncIterator[dict]:
+        """Eventos: {"type": "token"|"pensando"|"llamadas"|"aviso", ...}. Lanza ProveedorError.
+
+        `herramientas`: nombres ofrecidos (ya filtrados por rol y agente); None = todas las del rol.
+        `sistema`: prompt del sistema del agente; None = el de ARIA general."""
         raise NotImplementedError
         yield  # pragma: no cover
 
@@ -218,13 +222,14 @@ class OllamaNativo(Proveedor):
                     except ValueError:
                         continue
 
-    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None):
+    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None, herramientas=None, sistema=None):
         modelo = self.modelo()
-        base = [{"role": "system", "content": config.system_prompt(self.nube, nombre, rol == "admin")}] + msgs
+        base = [{"role": "system", "content": sistema or config.system_prompt(self.nube, nombre, rol == "admin")}] + msgs
+        ofrecibles = (tools.generales() if herramientas is None else set(herramientas)) & tools.permitidas(rol)
         if self.nube:
-            pedidas = tools.permitidas(rol) if con_tools else set()
+            pedidas = ofrecibles if con_tools else set()
         else:  # local: solo las herramientas cuyas palabras clave aparecen en el mensaje
-            pedidas = tools.relevantes(_ultimo_usuario(msgs)) & tools.permitidas(rol) if con_tools else set()
+            pedidas = tools.relevantes(_ultimo_usuario(msgs)) & ofrecibles if con_tools else set()
         usar_tools = modelo not in _sin_tools and bool(pedidas)
         timeout = (httpx.Timeout(PRIMER_TOKEN_NUBE_S, connect=CONEXION_S) if self.nube
                    else httpx.Timeout(600, connect=10))
@@ -289,14 +294,16 @@ class OpenAICompatible(Proveedor):
         self.id, self.nombre, self.url = id, nombre, url
         self.var_clave, self.var_modelo, self.modelo_defecto, self.ayuda = var_clave, var_modelo, modelo_defecto, ayuda
 
-    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None):
+    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None, herramientas=None, sistema=None):
         clave = os.environ.get(self.var_clave, "").strip()
         if not clave:
             raise ProveedorError("clave", "falta la clave")
+        sistema = sistema or config.system_prompt(True, nombre, rol == "admin")
         cuerpo = {"model": self.modelo(), "stream": True,
-                  "messages": [{"role": "system", "content": config.system_prompt(True, nombre, rol == "admin")}] + a_openai(msgs)}
-        if con_tools:
-            cuerpo["tools"] = herramientas_openai(tools.especificaciones(tools.permitidas(rol)))
+                  "messages": [{"role": "system", "content": sistema}] + a_openai(msgs)}
+        ofrecibles = (tools.generales() if herramientas is None else set(herramientas)) & tools.permitidas(rol)
+        if con_tools and ofrecibles:
+            cuerpo["tools"] = herramientas_openai(tools.especificaciones(ofrecibles))
         acum = AcumuladorLlamadas()
         texto = ""
         timeout = httpx.Timeout(PRIMER_TOKEN_NUBE_S, connect=CONEXION_S)
@@ -419,6 +426,13 @@ def cadena() -> list:
     antes = sum(1 for i in orden[:pos] if PROVEEDORES[i] in out)
     out.insert(antes, PROVEEDORES["local"])
     return out
+
+
+def con_preferido(lista: list, preferido: str | None) -> list:
+    """Adelanta el cerebro preferido de un agente si está disponible en la cadena."""
+    if not preferido:
+        return list(lista)
+    return sorted(lista, key=lambda p: 0 if p.id == preferido else 1)
 
 
 def estado() -> list:

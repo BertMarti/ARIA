@@ -19,6 +19,16 @@ _USUARIO = [
     ("GET", r"/api/conversations/[^/]+"),
     ("PATCH", r"/api/conversations/[^/]+"),
     ("DELETE", r"/api/conversations/[^/]+"),
+    # Agentes: la lista ya viene filtrada por rol; el chat rechaza @seguridad a un usuario.
+    ("GET", r"/api/agentes"),
+    # Finanzas: cada usuario solo sus datos (las funciones filtran por user_id de la sesión).
+    ("GET", r"/api/finanzas/(resumen|movimientos|reglas)"),
+    ("POST", r"/api/finanzas/(movimientos|presupuestos|reglas|importar|importar/previa|sugerir)"),
+    ("PATCH", r"/api/finanzas/movimientos/\d+"),
+    ("DELETE", r"/api/finanzas/(movimientos|reglas)/\d+"),
+    # Red: solo la salud (latencia ya medida, DNS, VPN y la última velocidad). Dispositivos, mediciones
+    # nuevas y todo Seguridad son solo de admin.
+    ("GET", r"/api/red/salud"),
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 

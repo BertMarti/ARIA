@@ -59,6 +59,11 @@ def iniciar() -> None:
         # Migración: cada conversación pertenece a un usuario (las antiguas se asignan al admin en usuarios.iniciar).
         if "user_id" not in {r["name"] for r in con.execute("PRAGMA table_info(conversaciones)")}:
             con.execute("ALTER TABLE conversaciones ADD COLUMN user_id INTEGER")
+        # Migración: agente de la conversación (selector) y agente que respondió cada mensaje.
+        if "agente" not in {r["name"] for r in con.execute("PRAGMA table_info(conversaciones)")}:
+            con.execute("ALTER TABLE conversaciones ADD COLUMN agente TEXT")
+        if "agente" not in {r["name"] for r in con.execute("PRAGMA table_info(mensajes)")}:
+            con.execute("ALTER TABLE mensajes ADD COLUMN agente TEXT")
         con.execute("CREATE INDEX IF NOT EXISTS idx_conv_user ON conversaciones(user_id, actualizada DESC)")
 
 
@@ -91,12 +96,17 @@ def listar(uid: int) -> list:
 
 def obtener(cid: str, uid: int) -> dict | None:
     with closing(_con()) as con:
-        c = con.execute("SELECT id, titulo FROM conversaciones WHERE id=? AND user_id=?", (cid, uid)).fetchone()
+        c = con.execute("SELECT id, titulo, agente FROM conversaciones WHERE id=? AND user_id=?", (cid, uid)).fetchone()
         if not c:
             return None
-        msgs = [{"role": r["rol"], "content": r["contenido"], "cerebro": r["cerebro"]} for r in con.execute(
-            "SELECT rol, contenido, cerebro FROM mensajes WHERE conv_id=? ORDER BY id", (cid,))]
-    return {"id": c["id"], "titulo": c["titulo"], "mensajes": msgs}
+        msgs = [{"role": r["rol"], "content": r["contenido"], "cerebro": r["cerebro"], "agente": r["agente"]}
+                for r in con.execute("SELECT rol, contenido, cerebro, agente FROM mensajes WHERE conv_id=? ORDER BY id", (cid,))]
+    return {"id": c["id"], "titulo": c["titulo"], "agente": c["agente"] or "aria", "mensajes": msgs}
+
+
+def fijar_agente(cid: str, uid: int, agente: str) -> bool:
+    with closing(_con()) as con, con:
+        return con.execute("UPDATE conversaciones SET agente=? WHERE id=? AND user_id=?", (agente, cid, uid)).rowcount > 0
 
 
 def renombrar(cid: str, uid: int, titulo: str) -> bool:
@@ -118,12 +128,12 @@ def borrar_de_usuario(uid: int) -> int:
         return con.execute("DELETE FROM conversaciones WHERE user_id=?", (uid,)).rowcount
 
 
-def anadir(cid: str, rol: str, contenido: str, cerebro: str | None = None) -> None:
+def anadir(cid: str, rol: str, contenido: str, cerebro: str | None = None, agente: str | None = None) -> None:
     """rol: user | assistant | tool (el contenido de 'tool' es JSON {name,args,text})."""
     ahora = time.time()
     with closing(_con()) as con, con:
-        con.execute("INSERT INTO mensajes (conv_id, rol, contenido, ts, cerebro) VALUES (?,?,?,?,?)",
-                    (cid, rol, contenido, ahora, cerebro))
+        con.execute("INSERT INTO mensajes (conv_id, rol, contenido, ts, cerebro, agente) VALUES (?,?,?,?,?,?)",
+                    (cid, rol, contenido, ahora, cerebro, agente))
         con.execute("UPDATE conversaciones SET actualizada=? WHERE id=?", (ahora, cid))
 
 

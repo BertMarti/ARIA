@@ -225,7 +225,7 @@ def test_local_filtra_herramientas_y_la_nube_las_recibe_todas(monkeypatch):
     correr(cerebros.PROVEEDORES["ollama_cloud"].ronda(msg))
     local, nube = capt.cuerpos
     assert [t["function"]["name"] for t in local["tools"]] == ["estado_sistema"]
-    assert {t["function"]["name"] for t in nube["tools"]} == set(tools._REGISTRO)
+    assert {t["function"]["name"] for t in nube["tools"]} == tools.generales()  # ARIA general; los especialistas van por agente
     assert "options" in local and "options" not in nube
     assert nube["model"].endswith("-cloud")
     # y en una charla el local no recibe ninguna herramienta

@@ -56,6 +56,13 @@ Además: Inicio con lanzador de aplicaciones, chat con conversaciones guardadas,
 4. Para quitarle el acceso: «Desactivar» (cierra sus sesiones al instante) o «Eliminar» (borra también sus conversaciones) y retira su email de la política de Access.
 Los emails de `ARIA_ADMIN_EMAILS` en `.env` son siempre administradores y no se pueden eliminar.
 
+## Playbook: ver y borrar lo que ARIA recuerda
+- **Tú mismo**: Ajustes → Memoria. Lista de recuerdos (editar/borrar), añadir uno, diario de 14 días (borrar por día), interruptor «Aprender automáticamente» y «Borrar toda mi memoria».
+- **Por chat**: «recuerda que…», «olvida que…» (herramientas `recordar` / `olvidar`).
+- **Por API** (sesión iniciada): `GET /api/memoria`, `DELETE /api/memoria/{id}`, `DELETE /api/memoria` (todo), `DELETE /api/diario/AAAA-MM-DD`, `POST /api/memoria/ajustes {"aprender": false}`.
+- **Administrador**: `POST /api/diario/generar` (cuerpo opcional `{"fecha":"AAAA-MM-DD","todos":true}`) lanza el diario a mano. Tablas en `data/aria.db`: `recuerdos`, `diario`, `memoria_ajustes`, `resumen_dia`; copia previa a la memoria en `data/aria.db.bak-memoria`.
+- Para que ARIA deje de enviar tu memoria a la nube, borra tus recuerdos y desactiva el aprendizaje.
+
 ## Playbook: actualizar
 `./update.sh`.
 

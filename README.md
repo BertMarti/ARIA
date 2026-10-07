@@ -139,6 +139,23 @@ Se configuran en `.env` (todas opcionales; si faltan, la tarjeta aparece como «
 
 Seguridad: las claves privadas de WireGuard nunca llegan al navegador salvo el `.conf` que tú descargas expresamente. **Aviso:** los botones «Copiar contraseña» de Inicio entregan la contraseña de Pi-hole y de wg-easy a cualquier persona que haya iniciado sesión en ARIA (solo mediante una petición autenticada y sin caché; no van en el HTML). Protege bien la contraseña de ARIA.
 
+## Memoria
+
+ARIA recuerda cosas tuyas entre días y las usa para darte contexto.
+
+- **Recuerdos** (máx. 300 caracteres, 200 por persona). Dile «recuerda que mi equipo es el Betis» (u «olvida que…»), o añádelos en **Ajustes → Memoria**, donde también puedes verlos, editarlos y borrarlos. Cada persona ve solo los suyos.
+- **Aprendizaje automático** (activado por defecto; interruptor en Ajustes → Memoria): tras cada mensaje, en segundo plano y solo con un cerebro de la nube (nunca el local), ARIA extrae como mucho 3 datos personales duraderos. No guarda contraseñas, claves, tokens, tarjetas ni documentos de identidad. Con el tope de 200 se descartan primero los automáticos menos usados. Con el interruptor apagado no aprende nada ni escribe el diario.
+- **Diario**: cada madrugada (03:30, `ARIA_TZ`) un cerebro de la nube resume en 3–5 viñetas lo que hiciste ese día (sin nube: títulos de las conversaciones). Al arrancar recupera los días perdidos (hasta 14). Ajustes → Memoria muestra los últimos 14 días y deja borrar cada uno.
+- **Privacidad**: la memoria se envía a los cerebros en la nube (Ollama Cloud, Groq, Gemini) junto con tus preguntas (hasta ~1 200 caracteres de recuerdos y ~900 del diario). El cerebro local recibe como máximo ~300 caracteres y nada del diario. «Borrar toda mi memoria» elimina recuerdos y diario.
+
+## Resumen de buenos días
+
+- En **Inicio**, la tarjeta «Tu resumen de hoy» (se puede cerrar por hoy o actualizar) reúne: saludo y fecha, el resumen de ayer, anuncios bloqueados ayer (Pi-hole), dispositivos VPN y cuáles se conectaron en 24 h, temperatura/RAM/disco de la Pi, la última copia fuera de la Pi y 1–2 recuerdos que pueden venir al caso. Los datos de VPN y copias solo los ve el administrador.
+- En el **chat**, el primer «hola» / «buenos días» de cada día se responde con una versión hablada del resumen.
+- `GET /api/briefing` (caché por usuario y día; `?refrescar=1` lo regenera).
+- La copia fuera de la Pi se lee con `git log` del repositorio `ARIA_COPIAS_REPO` (por defecto `/home/usuario/homelab/.copias-repo`) solo si está montado en el contenedor; si no, pone «no disponible».
+- **Tiempo (opcional)**: rellena `ARIA_CIUDAD` (p. ej. `"Ronda, Málaga"`; con «, Provincia» elige el resultado de España de esa provincia) y se usa Open-Meteo (gratis, sin clave) para temperatura actual, máxima/mínima y probabilidad de lluvia. `ARIA_LAT` y `ARIA_LON` fijan las coordenadas y evitan geocodificar; si no, se geocodifica una vez y se guarda en `data/ciudad.json`. Vacío por defecto = sin tiempo.
+
 ## Acceso desde cualquier lugar (dominio propio + Cloudflare)
 
 Con un dominio en Cloudflare, ARIA, Pi-hole y el panel de la VPN quedan en `https://aria.TUDOMINIO`, `https://shield.TUDOMINIO` y `https://heimdall.TUDOMINIO`, con certificado válido, **sin abrir puertos** y protegidos por **Cloudflare Access**: primero un código que llega a tu email y luego la contraseña de cada app. La sesión de Access dura 30 días por dispositivo.

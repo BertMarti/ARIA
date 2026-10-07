@@ -38,6 +38,13 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 - No editar con `sed -i` archivos montados individualmente en contenedores (cambia el inodo).
 - Commits terminan con la línea `Co-Authored-By: ...` que indique el entorno.
 
+## Memoria y resumen de buenos días
+- `memoria.py` (recuerdos, diario, ajustes, contexto del prompt; TODO se filtra por `user_id`), `aprender.py` (extracción en segundo plano, solo nube), `diario.py` (resumen diario + planificador 03:30 + recuperación), `briefing.py` (resumen de hoy, caché en `resumen_dia`, versión hablada), `tiempo.py` (fechas locales, límites de día con DST).
+- La identidad de las herramientas de memoria sale de `memoria.uid_actual` (la fija `chat.conversar`), nunca de los argumentos del modelo. `recordar`/`olvidar` las tiene todo rol.
+- Presupuesto del prompt: nube ≤ ~1 200 (recuerdos) + ~900 (diario); local ≤ 300 y sin diario. No ampliarlo sin medir (el local lee ~11 tokens/s).
+- Nunca guardar secretos (`memoria.parece_secreto`). Los datos solo de admin del resumen (`vpn`, `copia`) se quitan en el servidor (`briefing.para_rol`).
+- Las tablas están en `db.iniciar`; haz copia de `data/aria.db` antes de cambiar el esquema.
+
 ## Añadir una herramienta
 Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`, se añaden sus palabras clave a `_INTENCIONES` (si no, el modelo no la recibe) y una prueba en `app/tests/test_tools.py`. Las herramientas destructivas (borrar) no se exponen al modelo.
 

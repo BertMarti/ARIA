@@ -38,6 +38,17 @@
 - **Bug corregido**: el renderizador de Markdown usaba una regex global compartida en una función recursiva (bucle infinito con negrita). Ahora una instancia por llamada y prueba `md.test.js`.
 - Herramientas nuevas: `_INTENCIONES` con exclusiones («!patrón») para que «pausa el bloqueador» no ofrezca Spotify y las preguntas conceptuales («explícame qué es la RAM») no activen `estado_sistema`.
 
+## Decisiones de memoria y resumen de buenos días (2026-10-07)
+- Memoria por usuario en `data/aria.db` (`recuerdos`, `diario`, `memoria_ajustes`, `resumen_dia`; FK con `ON DELETE CASCADE` a `usuarios`). Copia previa: `data/aria.db.bak-memoria`.
+- Extracción automática solo con cerebros de la nube, tras el turno y en una tarea de fondo con semáforo (nunca el local: compite con el chat y es lento). Sin nube = no se aprende. Se salta si el turno usó `recordar`/`olvidar` (si no, «olvida X» se volvería a aprender) y con mensajes < 20 caracteres.
+- Filtro de secretos por expresiones regulares (palabras clave, tarjetas, DNI/NIE, IBAN, prefijos de tokens, cadenas largas) además de la instrucción al modelo; también aplica a `recordar` y a lo editado a mano. Falsos positivos aceptados (p. ej. «clave»).
+- Tope de 200: se descartan primero los automáticos menos usados y más antiguos; los del usuario nunca se borran solos. Un recuerdo editado pasa a «usuario».
+- Presupuesto de prompt: nube ~1 200 + ~900 (3 días); local ≤ 300 (5 recuerdos, sin diario). Se marca `usado` al inyectar.
+- Diario: planificador asyncio en la app (03:30 `ARIA_TZ`, recuperación de 14 días al arrancar, sin contenedor nuevo). Los límites del día usan calendario local (DST: 23/25 h). Quien apaga «Aprender automáticamente» tampoco tiene diario (decisión mía: resumir conversaciones también es aprender de ellas).
+- Resumen de buenos días: caché por usuario y día; el «hola» del primer día se responde sin llamar a ningún cerebro (plantilla), así que es instantáneo. Datos solo de admin (VPN, copias) se quitan en servidor. La copia fuera de la Pi no está montada en `aria-app`, así que sale «no disponible» (no se monta nada nuevo). Anuncios de ayer vía `/api/stats/database/summary` de Pi-hole (si no hay datos, últimas 24 h).
+- Tiempo: Open-Meteo, `ARIA_CIUDAD="Ronda, Málaga"` con `ARIA_LAT`/`ARIA_LON` fijos (sin geocodificar).
+- **Privacidad**: los recuerdos y el diario viajan a Ollama Cloud/Groq/Gemini con cada pregunta (Google puede usarlos en el plan gratuito). El local recibe ≤ 300 caracteres. Borrado total desde Ajustes → Memoria.
+
 ## Mapa de puertos
 | Proyecto | Puertos |
 |---|---|
@@ -68,3 +79,4 @@
 - **2026-10-07**: cloudflare-ddns mantiene vpn.tu-dominio.com → IP pública (sin proxy); HEIMDALL usa ese host. Router: reserva 192.168.1.50, DNS de la casa = Pi, UDP 51820 → Pi.
 - **2026-10-07**: plan B ante caídas: DNS secundario AdGuard en el router, autoheal (systemd timer) y watchdog; alerta de Cloudflare por email. Probado: autoheal reinicia un contenedor unhealthy. Descartado: fallback de upstream en Pi-hole con strict-order (se queda esperando a Unbound; la reserva del router ya cubre el caso).
 - **2026-10-07**: los emails de ARIA_ADMIN_EMAILS son la misma persona (usuarios.canonico); al arrancar se fusionan duplicados (conversaciones al principal). Copia previa en data/aria.db.bak-fusion.
+- **2026-10-07 · memoria y resumen de buenos días**: recuerdos por usuario (`recordar`/`olvidar`, aprendizaje automático en segundo plano), diario nocturno, contexto en el prompt, tarjeta «Tu resumen de hoy», `GET /api/briefing`, `POST /api/diario/generar` (admin) y Ajustes → Memoria. 310 pruebas. Verificado en real: «Recuerda que mi equipo es el Betis» + conversación nueva «¿Cuál es mi equipo?» → «Tu equipo es el Betis»; resumen con cifras reales de Pi-hole/VPN/Pi; diario generado por Ollama Cloud; datos de prueba borrados.

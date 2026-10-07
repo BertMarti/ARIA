@@ -19,6 +19,15 @@ _USUARIO = [
     ("GET", r"/api/conversations/[^/]+"),
     ("PATCH", r"/api/conversations/[^/]+"),
     ("DELETE", r"/api/conversations/[^/]+"),
+    # Memoria y resumen de buenos días: cada usuario solo ve y cambia lo suyo (se filtra por sesión).
+    ("GET", r"/api/memoria"),
+    ("POST", r"/api/memoria"),
+    ("POST", r"/api/memoria/ajustes"),
+    ("PATCH", r"/api/memoria/\d+"),
+    ("DELETE", r"/api/memoria/\d+"),
+    ("DELETE", r"/api/memoria"),
+    ("DELETE", r"/api/diario/\d{4}-\d{2}-\d{2}"),
+    ("GET", r"/api/briefing"),
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 

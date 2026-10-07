@@ -52,6 +52,25 @@ def iniciar() -> None:
                 rol TEXT NOT NULL, contenido TEXT NOT NULL, ts REAL NOT NULL);
             CREATE INDEX IF NOT EXISTS idx_mensajes_conv ON mensajes(conv_id, id);
             CREATE INDEX IF NOT EXISTS idx_conv_act ON conversaciones(actualizada DESC);
+            -- Memoria a largo plazo (por usuario): datos recordados, diario y resumen de cada día.
+            CREATE TABLE IF NOT EXISTS recuerdos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                texto TEXT NOT NULL CHECK (length(texto) <= 300),
+                origen TEXT NOT NULL CHECK (origen IN ('usuario','auto')),
+                creado REAL NOT NULL, usado REAL);
+            CREATE INDEX IF NOT EXISTS idx_recuerdos_user ON recuerdos(user_id, creado DESC);
+            CREATE TABLE IF NOT EXISTS diario (
+                user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                fecha TEXT NOT NULL, resumen TEXT NOT NULL CHECK (length(resumen) <= 600),
+                creado REAL NOT NULL, PRIMARY KEY (user_id, fecha));
+            CREATE TABLE IF NOT EXISTS memoria_ajustes (
+                user_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+                aprender INTEGER NOT NULL DEFAULT 1);
+            CREATE TABLE IF NOT EXISTS resumen_dia (
+                user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                fecha TEXT NOT NULL, datos TEXT NOT NULL, saludado INTEGER NOT NULL DEFAULT 0,
+                creado REAL NOT NULL, PRIMARY KEY (user_id, fecha));
         """)
         # Migración: etiqueta del cerebro que respondió (p. ej. "Ollama Cloud · gpt-oss:120b").
         if "cerebro" not in {r["name"] for r in con.execute("PRAGMA table_info(mensajes)")}:

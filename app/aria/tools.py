@@ -15,7 +15,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import config, services, shield, sistema, spotify, vpn
+from . import config, memoria, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -45,11 +45,13 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 # Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
 SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn",
                           "estado_sistema", "buscar_en_netflix"})
+# Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
+MEMORIA = frozenset({"recordar", "olvidar"})
 
 
 def permitidas(rol: str) -> set:
     """Nombres de herramientas que ese rol puede ver y ejecutar."""
-    return set(_REGISTRO) if rol == "admin" else set(SOLO_LECTURA) & set(_REGISTRO)
+    return set(_REGISTRO) if rol == "admin" else (set(SOLO_LECTURA) | set(MEMORIA)) & set(_REGISTRO)
 
 
 def especificaciones(nombres=None) -> list:
@@ -93,6 +95,9 @@ _INTENCIONES = [
      {"spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior", "spotify_actual",
       "spotify_buscar_y_reproducir"}),
     ((r"\b(netflix|serie|series|pel[ií]cula|pel[ií]culas|cap[ií]tulo)\b",), {"buscar_en_netflix"}),
+    # Memoria personal: «recuerda que…», «apunta que…» / «olvida que…», «no recuerdes…»
+    ((r"\b(recuerda|recu[eé]rdame|acu[eé]rdate|ac[eé]rdate|apunta|anota|memoriza|ten en cuenta)\b",), {"recordar"}),
+    ((r"\b(olvida\w*|no recuerdes|deja de recordar|borra\w* (de )?(tu )?memoria)\b",), {"olvidar"}),
 ]
 
 
@@ -127,6 +132,7 @@ def rescatar_llamada(texto: str, permitidas: set) -> dict | None:
 
 
 async def ejecutar(nombre: str, args: dict | None, rol: str = "admin") -> str:
+    """Ejecuta una herramienta. Las de memoria usan el usuario fijado en `memoria.uid_actual` por el chat."""
     t = _REGISTRO.get(nombre)
     if not t:
         return f"Herramienta desconocida: {nombre}"
@@ -283,3 +289,39 @@ async def activar_dispositivo_vpn(nombre: str) -> str:
       {"nombre": ("string", "Nombre del dispositivo")}, ("nombre",))
 async def desactivar_dispositivo_vpn(nombre: str) -> str:
     return await _cambiar_dispositivo(nombre, False)
+
+
+@tool("recordar",
+      "Guarda un dato personal del usuario (algo suyo, de su casa o de sus preferencias) para recordarlo en "
+      "futuras conversaciones. Úsala cuando diga «recuerda que…», «apunta que…» o similar.",
+      {"dato": ("string", "Lo que hay que recordar, en una frase corta (máximo 300 caracteres)")}, ("dato",))
+async def recordar(dato: str) -> str:
+    uid = memoria.uid_actual.get()
+    if uid is None:
+        return "No sé quién eres, no puedo guardar recuerdos ahora."
+    try:
+        rec, nuevo = memoria.anadir(uid, str(dato), "usuario")
+    except memoria.MemoriaError as e:
+        return str(e)
+    if not nuevo:
+        return f"Ya lo tenía anotado: «{rec['texto']}»."
+    return f"Anotado: «{rec['texto']}». Puedes verlo o borrarlo en Ajustes → Memoria."
+
+
+@tool("olvidar",
+      "Borra un recuerdo del usuario. Admite el número del recuerdo o unas palabras de lo que debe olvidar. "
+      "Úsala cuando diga «olvida que…» o «no recuerdes…».",
+      {"dato_o_id": ("string", "Número del recuerdo o texto (aunque sea parcial) de lo que hay que olvidar")}, ("dato_o_id",))
+async def olvidar(dato_o_id: str) -> str:
+    uid = memoria.uid_actual.get()
+    if uid is None:
+        return "No sé quién eres, no puedo borrar recuerdos ahora."
+    q = str(dato_o_id)
+    hallados = memoria.buscar(uid, q)
+    if not hallados:
+        return "No tengo ningún recuerdo que encaje con eso."
+    if len(hallados) > 1 and not q.strip().lstrip("#").isdigit():
+        lista = "; ".join(f"{h['id']}: {h['texto']}" for h in hallados[:5])
+        return f"Encajan varios recuerdos ({lista}). Dime cuál olvidar (su número)."
+    memoria.borrar(uid, hallados[0]["id"])
+    return f"Olvidado: «{hallados[0]['texto']}»."

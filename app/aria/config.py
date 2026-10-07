@@ -69,6 +69,20 @@ def guardar_modelo(nombre: str) -> None:
     MODEL_FILE.write_text(nombre.strip() + "\n")
 
 
+# Resumen de buenos días: ciudad para el tiempo (Open-Meteo, sin clave). Vacío = sin tiempo.
+CIUDAD = os.environ.get("ARIA_CIUDAD", "").strip()[:80]
+# Opcional: coordenadas fijas (evitan geocodificar). Ambas deben estar rellenas.
+def _float(name: str):
+    try:
+        return float(os.environ.get(name, "").replace(",", "."))
+    except ValueError:
+        return None
+
+
+LAT, LON = _float("ARIA_LAT"), _float("ARIA_LON")
+# Repositorio de copias fuera de la Pi (solo se lee si está montado en el contenedor).
+COPIAS_REPO = os.environ.get("ARIA_COPIAS_REPO", "/home/usuario/homelab/.copias-repo")
+
 NOMBRE_USUARIO = os.environ.get("ARIA_NOMBRE_USUARIO", "").strip()[:40]
 
 _PROMPT_BASE = (
@@ -95,7 +109,7 @@ _PROMPT_LECTURA = (
 )
 
 
-def system_prompt(nube: bool = False, nombre: str | None = None, admin: bool = True) -> str:
+def system_prompt(nube: bool = False, nombre: str | None = None, admin: bool = True, extra: str = "") -> str:
     """Prompt del sistema. Los cerebros en la nube reciben todas las herramientas y una línea extra.
 
     `nombre` es el nombre del usuario que chatea (None = el global ARIA_NOMBRE_USUARIO)."""
@@ -105,7 +119,10 @@ def system_prompt(nube: bool = False, nombre: str | None = None, admin: bool = T
         p += f" El usuario se llama {nombre}; trátale por su nombre cuando sea natural."
     if nube:
         p += (" Tienes herramientas a tu disposición, pero úsalas solo cuando hagan falta de verdad "
-              "para responder; si la pregunta no necesita datos en vivo, contesta directamente.")
+              "para responder; si la pregunta no necesita datos en vivo, contesta directamente. "
+              "Si el usuario te pide que recuerdes u olvides algo suyo, usa las herramientas recordar y olvidar.")
+    if extra:
+        p += "\n\n" + extra
     return p
 
 

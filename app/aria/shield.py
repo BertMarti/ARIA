@@ -116,3 +116,13 @@ async def pausar(minutos: int) -> dict:
 async def reanudar() -> dict:
     await _llamar("POST", "/api/dns/blocking", json={"blocking": True})
     return await bloqueo()
+
+
+async def resumen_dia(desde: float, hasta: float) -> dict | None:
+    """Consultas y bloqueos de un intervalo (base de datos de Pi-hole). None si no hay datos de ese día."""
+    j = await _llamar("GET", "/api/stats/database/summary", params={"from": int(desde), "until": int(hasta)})
+    total = int(j.get("sum_queries") or 0)
+    if total <= 0:
+        return None
+    bloqueadas = int(j.get("sum_blocked") or 0)
+    return {"consultas": total, "bloqueadas": bloqueadas, "porcentaje": round(bloqueadas * 100 / total, 1)}

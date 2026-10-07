@@ -185,7 +185,7 @@ class Proveedor:
         return f"{self.nombre} · {m[:-6] if m.endswith('-cloud') else m}"
 
     async def ronda(self, msgs: list, con_tools: bool = True, rol: str = "admin",
-                    nombre: str | None = None) -> AsyncIterator[dict]:
+                    nombre: str | None = None, extra: str = "") -> AsyncIterator[dict]:
         """Eventos: {"type": "token"|"pensando"|"llamadas"|"aviso", ...}. Lanza ProveedorError."""
         raise NotImplementedError
         yield  # pragma: no cover
@@ -218,9 +218,9 @@ class OllamaNativo(Proveedor):
                     except ValueError:
                         continue
 
-    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None):
+    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None, extra=""):
         modelo = self.modelo()
-        base = [{"role": "system", "content": config.system_prompt(self.nube, nombre, rol == "admin")}] + msgs
+        base = [{"role": "system", "content": config.system_prompt(self.nube, nombre, rol == "admin", extra)}] + msgs
         if self.nube:
             pedidas = tools.permitidas(rol) if con_tools else set()
         else:  # local: solo las herramientas cuyas palabras clave aparecen en el mensaje
@@ -289,12 +289,12 @@ class OpenAICompatible(Proveedor):
         self.id, self.nombre, self.url = id, nombre, url
         self.var_clave, self.var_modelo, self.modelo_defecto, self.ayuda = var_clave, var_modelo, modelo_defecto, ayuda
 
-    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None):
+    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None, extra=""):
         clave = os.environ.get(self.var_clave, "").strip()
         if not clave:
             raise ProveedorError("clave", "falta la clave")
         cuerpo = {"model": self.modelo(), "stream": True,
-                  "messages": [{"role": "system", "content": config.system_prompt(True, nombre, rol == "admin")}] + a_openai(msgs)}
+                  "messages": [{"role": "system", "content": config.system_prompt(True, nombre, rol == "admin", extra)}] + a_openai(msgs)}
         if con_tools:
             cuerpo["tools"] = herramientas_openai(tools.especificaciones(tools.permitidas(rol)))
         acum = AcumuladorLlamadas()
@@ -466,3 +466,37 @@ async def probar(pid: str) -> dict:
     total = time.perf_counter() - t0
     return {"ok": True, "ms": int(total * 1000), "primer_token_ms": int((ttft or total) * 1000),
             "texto": texto.strip()[:80]}
+
+
+async def completar_nube(prompt: str, max_s: float = 60) -> tuple[str, str] | None:
+    """Una respuesta corta (sin herramientas) del primer cerebro EN LA NUBE disponible. Nunca usa el local.
+
+    Devuelve (texto, etiqueta del cerebro) o None si no hay ninguno disponible o todos fallan.
+    Sirve para tareas en segundo plano (extraer recuerdos, resumir el día)."""
+    import asyncio
+
+    async def una(prov) -> str:
+        texto = ""
+        async for ev in prov.ronda([{"role": "user", "content": prompt}], con_tools=False):
+            if ev["type"] == "token":
+                texto += ev["text"]
+        return texto
+
+    for prov in cadena():
+        if not prov.nube:
+            continue
+        try:
+            texto = await asyncio.wait_for(una(prov), max_s)
+        except ProveedorError as e:
+            registrar_fallo(prov.id, e)
+            continue
+        except asyncio.TimeoutError:
+            registrar_fallo(prov.id, ProveedorError("timeout"))
+            continue
+        if texto.strip():
+            return texto, prov.etiqueta()
+    return None
+
+
+def hay_nube() -> bool:
+    return any(p.nube for p in cadena())

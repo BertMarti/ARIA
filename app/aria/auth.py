@@ -44,7 +44,15 @@ def verificar_hash(password: str, almacenado: str) -> bool:
     return hmac.compare_digest(h, esp_b)
 
 
-def _leer() -> dict:
+def igual(a: str, b: str) -> bool:
+    return hmac.compare_digest(a.encode(), b.encode())
+
+
+HASH_FALSO = hashear("aria-hash-falso")  # para gastar el mismo tiempo cuando el usuario no existe
+
+
+def leer_legado() -> dict:
+    """data/auth.json del admin único anterior (solo se lee al migrar a la tabla de usuarios)."""
     try:
         d = json.loads(AUTH_FILE.read_text())
         return d if isinstance(d, dict) else {}
@@ -52,66 +60,35 @@ def _leer() -> dict:
         return {}
 
 
-def _guardar(d: dict) -> None:
-    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = AUTH_FILE.with_suffix(".tmp")
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f:
-        json.dump(d, f)
-    os.replace(tmp, AUTH_FILE)
-
-
-def version_sesion() -> int:
-    v = _leer().get("version", 1)
-    return v if isinstance(v, int) else 1
-
-
-def cambiar_password(actual: str, nueva: str, repetida: str) -> str | None:
-    """Devuelve un mensaje de error (en español) o None si se cambió."""
-    if not password_ok(actual):
-        return "La contraseña actual no es correcta."
-    if nueva != repetida:
-        return "Las contraseñas nuevas no coinciden."
-    if len(nueva) < MIN_PASSWORD:
-        return f"La contraseña nueva debe tener al menos {MIN_PASSWORD} caracteres."
-    if nueva == actual:
-        return "La contraseña nueva debe ser distinta de la actual."
-    _guardar({"hash": hashear(nueva), "version": version_sesion() + 1})
-    return None
-
-
-def password_ok(password: str) -> bool:
-    """El hash de data/ tiene prioridad sobre ARIA_PASSWORD."""
-    almacenado = _leer().get("hash")
-    if almacenado:
-        return verificar_hash(password, almacenado)
-    return hmac.compare_digest(password.encode(), config.PASSWORD.encode())
-
-
 def habilitado() -> bool:
-    return bool(config.USER and (config.PASSWORD or _leer().get("hash")) and len(config.SECRET) >= 16)
+    return len(config.SECRET) >= 16
 
 
-def credenciales_ok(user: str, password: str) -> bool:
-    u = hmac.compare_digest(user.encode(), config.USER.encode())
-    p = password_ok(password)
-    return habilitado() and u and p
+def crear_sesion(usuario: dict) -> str:
+    """Cookie firmada con el id del usuario y su versión de sesión (cambia al cambiar la contraseña o desactivarlo)."""
+    return _ser.dumps({"u": usuario["id"], "v": usuario["version"]})
 
 
-def crear_sesion() -> str:
-    return _ser.dumps({"u": config.USER, "v": version_sesion()})
-
-
-def sesion_valida(token: str | None) -> bool:
+def sesion_usuario(token: str | None) -> dict | None:
+    """Usuario activo al que pertenece la cookie, o None."""
     if not token or not habilitado():
-        return False
+        return None
     try:
         datos = _ser.loads(token, max_age=MAX_AGE)
     except BadSignature:
-        return False
-    if datos.get("v", 1) != version_sesion():
-        return False
-    return hmac.compare_digest(str(datos.get("u", "")).encode(), config.USER.encode())
+        return None
+    if not isinstance(datos, dict):
+        return None
+    from . import usuarios  # import tardío: usuarios depende de este módulo
+    uid = datos.get("u")
+    if isinstance(uid, str) and config.USER and uid == config.USER:
+        # Cookie de antes de la migración: era la del admin único.
+        u = usuarios.por_identificador(config.USER)
+    else:
+        u = usuarios.por_id(uid)
+    if not u or not u["activo"] or datos.get("v", 1) != u["version"]:
+        return None
+    return u
 
 
 def bloqueado(ip: str) -> int:

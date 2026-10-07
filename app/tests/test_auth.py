@@ -1,16 +1,10 @@
 import pytest
 
-from aria import auth, config
+from aria import auth, usuarios
 
 
-@pytest.fixture(autouse=True)
-def entorno(tmp_path, monkeypatch):
-    monkeypatch.setattr(auth, "AUTH_FILE", tmp_path / "auth.json")
-    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
-    monkeypatch.setattr(config, "USER", "admin")
-    monkeypatch.setattr(config, "PASSWORD", "contraseña-del-env")
-    monkeypatch.setattr(config, "SECRET", "x" * 40)
-    monkeypatch.setattr(auth, "_ser", auth.URLSafeTimedSerializer("x" * 40, salt="aria-session"))
+def _admin():
+    return usuarios.por_identificador("admin")
 
 
 def test_hash_verifica_y_rechaza():
@@ -26,16 +20,29 @@ def test_sal_distinta_cada_vez():
 
 
 def test_env_por_defecto():
-    assert auth.credenciales_ok("admin", "contraseña-del-env")
-    assert not auth.credenciales_ok("admin", "mal")
-    assert not auth.credenciales_ok("otro", "contraseña-del-env")
+    assert usuarios.autenticar("admin", "contraseña-del-env")
+    assert usuarios.autenticar("ADMIN", "contraseña-del-env")
+    assert not usuarios.autenticar("admin", "mal")
+    assert not usuarios.autenticar("otro", "contraseña-del-env")
+
+
+def test_login_por_email_o_usuario():
+    usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
+    assert usuarios.autenticar("ana@example.com", "clave-larga-ana")["nombre"] == "Ana"
+    assert usuarios.autenticar("ANA@example.com", "clave-larga-ana")
+    assert not usuarios.autenticar("ana@example.com", "otra-clave-larga")
+
+
+def test_sin_password_no_entra_por_la_lan():
+    usuarios.crear("sso@example.com", "Solo SSO", "usuario")
+    assert not usuarios.autenticar("sso@example.com", "")
+    assert not usuarios.autenticar("sso@example.com", "contraseña-del-env")
 
 
 def test_cambio_de_password_y_prioridad():
-    assert auth.cambiar_password("contraseña-del-env", "nueva-clave-123", "nueva-clave-123") is None
-    assert auth.credenciales_ok("admin", "nueva-clave-123")
-    assert not auth.credenciales_ok("admin", "contraseña-del-env")  # el hash manda sobre el .env
-    assert oct(auth.AUTH_FILE.stat().st_mode & 0o777) == "0o600"
+    assert usuarios.cambiar_password(_admin()["id"], "contraseña-del-env", "nueva-clave-123", "nueva-clave-123") is None
+    assert usuarios.autenticar("admin", "nueva-clave-123")
+    assert not usuarios.autenticar("admin", "contraseña-del-env")  # el hash manda sobre el .env
 
 
 @pytest.mark.parametrize("actual,nueva,rep", [
@@ -45,13 +52,35 @@ def test_cambio_de_password_y_prioridad():
     ("contraseña-del-env", "contraseña-del-env", "contraseña-del-env"),
 ])
 def test_cambio_rechazado(actual, nueva, rep):
-    assert auth.cambiar_password(actual, nueva, rep)
-    assert not auth.AUTH_FILE.exists()
+    assert usuarios.cambiar_password(_admin()["id"], actual, nueva, rep)
+    assert usuarios.autenticar("admin", "contraseña-del-env")
 
 
 def test_cambio_invalida_otras_sesiones():
-    t = auth.crear_sesion()
-    assert auth.sesion_valida(t)
-    auth.cambiar_password("contraseña-del-env", "nueva-clave-123", "nueva-clave-123")
-    assert not auth.sesion_valida(t)
-    assert auth.sesion_valida(auth.crear_sesion())
+    t = auth.crear_sesion(_admin())
+    assert auth.sesion_usuario(t)
+    usuarios.cambiar_password(_admin()["id"], "contraseña-del-env", "nueva-clave-123", "nueva-clave-123")
+    assert not auth.sesion_usuario(t)
+    assert auth.sesion_usuario(auth.crear_sesion(_admin()))
+
+
+def test_desactivar_mata_la_sesion():
+    u = usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
+    t = auth.crear_sesion(u)
+    assert auth.sesion_usuario(t)["id"] == u["id"]
+    usuarios.actualizar(u["id"], activo=False)
+    assert auth.sesion_usuario(t) is None
+    usuarios.actualizar(u["id"], activo=True)
+    assert auth.sesion_usuario(t) is None  # reactivar tampoco resucita la sesión antigua
+
+
+def test_cookie_antigua_del_admin_unico_sigue_valiendo():
+    t = auth._ser.dumps({"u": "admin", "v": 1})
+    assert auth.sesion_usuario(t)["usuario"] == "admin"
+    usuarios.cambiar_password(_admin()["id"], "contraseña-del-env", "nueva-clave-123", "nueva-clave-123")
+    assert auth.sesion_usuario(t) is None
+
+
+def test_cookie_manipulada():
+    assert auth.sesion_usuario("basura") is None and auth.sesion_usuario(None) is None
+    assert auth.sesion_usuario(auth._ser.dumps({"u": 9999, "v": 1})) is None

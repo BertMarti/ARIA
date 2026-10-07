@@ -130,7 +130,7 @@ class Falso(cerebros.Proveedor):
     def modelo(self):
         return "m"
 
-    async def ronda(self, msgs, con_tools=True):
+    async def ronda(self, msgs, con_tools=True, **_):
         self.llamado += 1
         for i, ev in enumerate(self.eventos):
             if self.error and i == self.tras:
@@ -174,7 +174,7 @@ def test_llamada_a_herramienta_y_segunda_ronda(monkeypatch):
     vistos = []
 
     class P(Falso):
-        async def ronda(self, msgs, con_tools=True):
+        async def ronda(self, msgs, con_tools=True, **_):
             vistos.append(list(msgs))
             if len(vistos) == 1:
                 yield {"type": "llamadas", "texto": "", "llamadas": [llamada]}

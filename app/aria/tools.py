@@ -42,6 +42,16 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
     return deco
 
 
+# Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
+SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn",
+                          "estado_sistema", "buscar_en_netflix"})
+
+
+def permitidas(rol: str) -> set:
+    """Nombres de herramientas que ese rol puede ver y ejecutar."""
+    return set(_REGISTRO) if rol == "admin" else set(SOLO_LECTURA) & set(_REGISTRO)
+
+
 def especificaciones(nombres=None) -> list:
     return [t["spec"] for n, t in _REGISTRO.items() if nombres is None or n in nombres]
 
@@ -116,10 +126,12 @@ def rescatar_llamada(texto: str, permitidas: set) -> dict | None:
     return None
 
 
-async def ejecutar(nombre: str, args: dict | None) -> str:
+async def ejecutar(nombre: str, args: dict | None, rol: str = "admin") -> str:
     t = _REGISTRO.get(nombre)
     if not t:
         return f"Herramienta desconocida: {nombre}"
+    if nombre not in permitidas(rol):
+        return "No tienes permiso para esa acción: pídesela al administrador."
     try:
         res = await t["fn"](**(args or {}))
     except (spotify.SpotifyError, shield.ShieldError, vpn.VpnError) as e:

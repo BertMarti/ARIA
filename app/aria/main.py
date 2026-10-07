@@ -1,5 +1,6 @@
 """ARIA: aplicacion FastAPI (login, chat con Ollama, panel de servicios, Spotify)."""
 import asyncio
+import html
 import json
 import logging
 import mimetypes
@@ -8,18 +9,20 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import auth, cerebros, chat, config, db, modelos, services, shield, sistema, spotify, vpn
+from . import auth, cerebros, chat, config, db, modelos, permisos, services, shield, sistema, spotify, sso, usuarios, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
 # Rutas accesibles sin sesion.
-PUBLICAS = {"/login", "/health", "/internal/tls-ask", "/static/style.css", "/static/login.js",
-            "/static/manifest.webmanifest", "/static/icon.svg"}
+LIBRES = {"/health", "/internal/tls-ask", "/static/style.css", "/static/login.js",
+          "/static/manifest.webmanifest", "/static/icon.svg"}
+PUBLICAS = LIBRES | {"/login"}
+CSP = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'"
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 
@@ -28,6 +31,7 @@ async def _arranque():
     if not auth.habilitado():
         log.error("Faltan ARIA_USER / ARIA_PASSWORD o ARIA_SECRET (>=16 caracteres): login deshabilitado.")
     db.iniciar()
+    usuarios.iniciar()
 
 
 @app.on_event("shutdown")
@@ -39,6 +43,45 @@ def _ip(request: Request) -> str:
     return request.client.host if request.client else "?"
 
 
+def _host(request: Request) -> str:
+    return (request.headers.get("host") or "").rsplit(":", 1)[0].lower().strip("[]")
+
+
+def _es_publico(request: Request) -> bool:
+    """¿Se entra por el dominio público (túnel de Cloudflare) y no por la LAN?"""
+    h = _host(request)
+    return bool(h) and h not in config.HOSTS and not h.endswith((".local", ".lan", ".localhost")) and h != "localhost"
+
+
+def _cookie(resp, usuario: dict):
+    resp.set_cookie(auth.COOKIE, auth.crear_sesion(usuario), max_age=auth.MAX_AGE,
+                    httponly=True, secure=True, samesite="lax", path="/")
+    return resp
+
+
+def _pagina(titulo: str, cuerpo: str, estado: int = 200, refresco: int = 0) -> HTMLResponse:
+    meta = f'<meta http-equiv="refresh" content="{refresco}">' if refresco else ""
+    doc = (f'<!doctype html><html lang="es"><head><meta charset="utf-8">'
+           f'<meta name="viewport" content="width=device-width, initial-scale=1">{meta}'
+           f'<title>ARIA - {html.escape(titulo)}</title><link rel="icon" href="/static/icon.svg" type="image/svg+xml">'
+           f'<link rel="stylesheet" href="/static/style.css"></head><body class="login"><main class="login-box">'
+           f'<img class="login-logo" src="/static/icon.svg" alt="" width="72" height="72"><h1>ARIA</h1>{cuerpo}'
+           f'</main></body></html>')
+    return HTMLResponse(doc, status_code=estado, headers={"Cache-Control": "no-store", "Content-Security-Policy": CSP,
+                                                          **({"Retry-After": str(refresco)} if refresco else {})})
+
+
+def _sin_acceso(email: str) -> HTMLResponse:
+    # El email viene de un JWT verificado, pero se escapa igualmente.
+    return _pagina("Sin acceso", f'<p class="error">Tu cuenta ({html.escape(email)}) no tiene acceso a ARIA. '
+                   f'Pide al administrador que te invite.</p>'
+                   f'<p class="sub"><a href="{html.escape(sso.url_salida())}">Salir de Cloudflare</a></p>', 403)
+
+
+def _entrando() -> HTMLResponse:
+    return _pagina("Entrando", '<p class="sub">Entrando con tu cuenta de Cloudflare…</p>', 503, refresco=3)
+
+
 @app.middleware("http")
 async def seguridad(request: Request, call_next):
     path = request.url.path
@@ -47,16 +90,44 @@ async def seguridad(request: Request, call_next):
         if not origen_permitido(request.headers.get("origin"), request.headers.get("host"),
                                 request.headers.get("sec-fetch-site"), request.headers.get("referer")):
             return JSONResponse({"error": "Origen no permitido"}, status_code=403)
-    if path not in PUBLICAS and not auth.sesion_valida(request.cookies.get(auth.COOKIE)):
-        if path.startswith("/api/"):
-            return JSONResponse({"error": "No autenticado"}, status_code=401)
-        return RedirectResponse("/login", status_code=303)
+    es_api = path.startswith("/api/")
+    nueva = None          # usuario para el que hay que emitir cookie de sesión
+    pendiente = False     # SSO: Cloudflare no respondió, hay que reintentar
+    usuario = None
+    if path not in LIBRES:
+        usuario = auth.sesion_usuario(request.cookies.get(auth.COOKIE))
+        token = request.headers.get(sso.CABECERA)
+        if token and sso.habilitado():
+            estado, email = await sso.identificar(token)
+            if estado == sso.OK and (usuario is None or usuario["email"] != email):
+                u = await asyncio.to_thread(usuarios.por_sso, email)
+                if u is None or not u["activo"]:
+                    if es_api:
+                        return JSONResponse({"error": "Tu cuenta no tiene acceso a ARIA."}, status_code=403)
+                    return _sin_acceso(email)
+                usuario, nueva = u, u
+                await asyncio.to_thread(usuarios.tocar_acceso, u["id"])
+            elif estado == sso.TRANSITORIO and usuario is None:
+                pendiente = True
+        request.state.usuario = usuario
+        if path == "/login" and request.method == "GET" and (usuario or pendiente):
+            if pendiente:
+                return _entrando()
+            return _cookie(RedirectResponse("/", status_code=303), nueva) if nueva else RedirectResponse("/", status_code=303)
+        if path != "/login":
+            if usuario is None:
+                if pendiente and not es_api:
+                    return _entrando()
+                if es_api:
+                    return JSONResponse({"error": "No autenticado"}, status_code=401)
+                return RedirectResponse("/login", status_code=303)
+            if not permisos.permitido(usuario["rol"], request.method, path):
+                return JSONResponse({"error": "No tienes permiso para esto."}, status_code=403)
     resp = await call_next(request)
+    if nueva:
+        _cookie(resp, nueva)
     resp.headers.setdefault("Cache-Control", "no-store")
-    resp.headers.setdefault(
-        "Content-Security-Policy",
-        "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'",
-    )
+    resp.headers.setdefault("Content-Security-Policy", CSP)
     return resp
 
 
@@ -85,22 +156,23 @@ async def login(request: Request):
     if (resto := auth.bloqueado(ip)):
         return RedirectResponse(f"/login?e=bloqueado&s={resto}", status_code=303)
     cuerpo = parse_qs((await request.body())[:4096].decode("utf-8", "replace"))
-    user = cuerpo.get("usuario", [""])[0]
+    ident = cuerpo.get("usuario", [""])[0]
     pwd = cuerpo.get("password", [""])[0]
-    if not auth.credenciales_ok(user, pwd):
+    u = await asyncio.to_thread(usuarios.autenticar, ident, pwd) if auth.habilitado() else None
+    if not u:
         auth.registrar_fallo(ip)
         await asyncio.sleep(1)
         return RedirectResponse("/login?e=1", status_code=303)
     auth.limpiar_fallos(ip)
-    resp = RedirectResponse("/", status_code=303)
-    resp.set_cookie(auth.COOKIE, auth.crear_sesion(), max_age=auth.MAX_AGE,
-                    httponly=True, secure=True, samesite="lax", path="/")
-    return resp
+    await asyncio.to_thread(usuarios.tocar_acceso, u["id"])
+    return _cookie(RedirectResponse("/", status_code=303), u)
 
 
 @app.post("/logout")
-async def logout():
-    resp = RedirectResponse("/login", status_code=303)
+async def logout(request: Request):
+    # Por el dominio público hay que cerrar también la sesión de Cloudflare Access.
+    destino = sso.url_salida() if sso.habilitado() and _es_publico(request) else "/login"
+    resp = RedirectResponse(destino, status_code=303)
     resp.delete_cookie(auth.COOKIE, path="/")
     return resp
 
@@ -135,9 +207,11 @@ async def _json(request: Request) -> dict:
 
 
 @app.get("/api/info")
-async def api_info():
+async def api_info(request: Request):
+    u = request.state.usuario
     primero = cerebros.cadena()[0]
-    return {"version": config.VERSION, "modelo": config.modelo_activo(), "usuario": config.NOMBRE_USUARIO,
+    return {"version": config.VERSION, "modelo": config.modelo_activo(), "usuario": u["nombre"],
+            "email": u["email"], "rol": u["rol"], "tiene_password": u["tiene_password"],
             "cerebro": {"id": primero.id, "etiqueta": primero.etiqueta()},
             "puertos": {"shield_web": config.SHIELD_WEB_PORT, "vpn": config.HEIMDALL_PORT}}
 
@@ -167,24 +241,25 @@ async def api_secreto(app_id: str):
 # --- Conversaciones ---
 @app.post("/api/chat")
 async def api_chat(request: Request):
+    u = request.state.usuario
     d = await _json(request)
     texto = d.get("message")
     cid = d.get("conversation_id")
     if not isinstance(texto, str) or not texto.strip():
         return JSONResponse({"error": "Falta el mensaje"}, status_code=400)
-    if cid is not None and (not isinstance(cid, str) or not db.existe(cid)):
+    if cid is not None and (not isinstance(cid, str) or not db.existe(cid, u["id"])):
         cid = None
-    return _ndjson(chat.conversar(cid, texto))
+    return _ndjson(chat.conversar(u, cid, texto))
 
 
 @app.get("/api/conversations")
-async def api_conversaciones():
-    return {"conversaciones": await asyncio.to_thread(db.listar)}
+async def api_conversaciones(request: Request):
+    return {"conversaciones": await asyncio.to_thread(db.listar, request.state.usuario["id"])}
 
 
 @app.get("/api/conversations/{cid}")
-async def api_conversacion(cid: str):
-    c = await asyncio.to_thread(db.obtener, cid)
+async def api_conversacion(cid: str, request: Request):
+    c = await asyncio.to_thread(db.obtener, cid, request.state.usuario["id"])
     if not c:
         return JSONResponse({"error": "Conversación no encontrada"}, status_code=404)
     return c
@@ -194,14 +269,14 @@ async def api_conversacion(cid: str):
 async def api_renombrar(cid: str, request: Request):
     d = await _json(request)
     t = d.get("titulo")
-    if not isinstance(t, str) or not t.strip() or not await asyncio.to_thread(db.renombrar, cid, t):
+    if not isinstance(t, str) or not t.strip() or not await asyncio.to_thread(db.renombrar, cid, request.state.usuario["id"], t):
         return JSONResponse({"error": "No se pudo renombrar"}, status_code=400)
     return {"ok": True}
 
 
 @app.delete("/api/conversations/{cid}")
-async def api_borrar_conversacion(cid: str):
-    if not await asyncio.to_thread(db.borrar, cid):
+async def api_borrar_conversacion(cid: str, request: Request):
+    if not await asyncio.to_thread(db.borrar, cid, request.state.usuario["id"]):
         return JSONResponse({"error": "Conversación no encontrada"}, status_code=404)
     return {"ok": True}
 
@@ -281,21 +356,75 @@ async def api_password(request: Request):
     ip = _ip(request)
     if (resto := auth.bloqueado(ip)):
         return JSONResponse({"error": f"Demasiados intentos. Espera {resto} s."}, status_code=429)
+    u = request.state.usuario
     d = await _json(request)
     vals = [d.get(k) for k in ("actual", "nueva", "repetida")]
     if not all(isinstance(v, str) for v in vals):
         return JSONResponse({"error": "Faltan datos."}, status_code=400)
-    err = await asyncio.to_thread(auth.cambiar_password, *vals)
+    err = await asyncio.to_thread(usuarios.cambiar_password, u["id"], *vals)
     if err:
         if err.startswith("La contraseña actual"):
             auth.registrar_fallo(ip)
         return JSONResponse({"error": err}, status_code=400)
     auth.limpiar_fallos(ip)
     # La versión de sesión cambió: las demás sesiones quedan invalidadas; esta se renueva.
-    resp = JSONResponse({"ok": True})
-    resp.set_cookie(auth.COOKIE, auth.crear_sesion(), max_age=auth.MAX_AGE,
-                    httponly=True, secure=True, samesite="lax", path="/")
-    return resp
+    return _cookie(JSONResponse({"ok": True}), await asyncio.to_thread(usuarios.por_id, u["id"]))
+
+
+# --- Usuarios (solo admin; lo impone permisos.py) ---
+def _err_usuario(e: Exception) -> JSONResponse:
+    return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.get("/api/users")
+async def api_usuarios():
+    return {"usuarios": await asyncio.to_thread(usuarios.listar)}
+
+
+@app.post("/api/users")
+async def api_usuarios_crear(request: Request):
+    d = await _json(request)
+    try:
+        u = await asyncio.to_thread(usuarios.crear, d.get("email"), d.get("nombre"), d.get("rol", "usuario"),
+                                    d.get("password") or None)
+    except usuarios.UsuarioError as e:
+        return _err_usuario(e)
+    return {"usuario": u}
+
+
+@app.patch("/api/users/{uid}")
+async def api_usuarios_cambiar(uid: int, request: Request):
+    d = await _json(request)
+    activo = d.get("activo")
+    if activo is not None and not isinstance(activo, bool):
+        return JSONResponse({"error": "Valor de «activo» no válido."}, status_code=400)
+    try:
+        u = await asyncio.to_thread(usuarios.actualizar, uid, d.get("rol"), activo, d.get("nombre"))
+    except usuarios.UsuarioError as e:
+        return _err_usuario(e)
+    return {"usuario": u}
+
+
+@app.post("/api/users/{uid}/password")
+async def api_usuarios_password(uid: int, request: Request):
+    d = await _json(request)
+    try:
+        if d.get("quitar") is True:
+            await asyncio.to_thread(usuarios.quitar_password, uid)
+        else:
+            await asyncio.to_thread(usuarios.fijar_password, uid, d.get("password"))
+    except usuarios.UsuarioError as e:
+        return _err_usuario(e)
+    return {"ok": True}
+
+
+@app.delete("/api/users/{uid}")
+async def api_usuarios_borrar(uid: int):
+    try:
+        await asyncio.to_thread(usuarios.borrar, uid)
+    except usuarios.UsuarioError as e:
+        return _err_usuario(e)
+    return {"ok": True}
 
 
 # --- Centro de control ---
@@ -344,11 +473,14 @@ async def api_system():
 
 
 @app.get("/api/vpn/clients")
-async def api_vpn_lista():
+async def api_vpn_lista(request: Request):
     if not vpn.configurado():
         return _no_conectado("HEIMDALL no está conectado. Añade VPN_USER y VPN_PASSWORD al archivo .env y ejecuta docker compose up -d.")
     try:
-        return {"conectado": True, "clientes": await vpn.listar(), "panel": vpn.panel_url()}
+        clientes = await vpn.listar()
+        if request.state.usuario["rol"] != "admin":  # los usuarios solo ven el estado, sin IP ni tráfico
+            clientes = [{k: c[k] for k in ("id", "nombre", "activo", "conectado")} for c in clientes]
+        return {"conectado": True, "clientes": clientes, "panel": vpn.panel_url()}
     except vpn.VpnError as e:
         return {"conectado": False, "error": True, "mensaje": str(e)}
 

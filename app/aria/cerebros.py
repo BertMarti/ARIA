@@ -184,7 +184,8 @@ class Proveedor:
         m = self.modelo()
         return f"{self.nombre} · {m[:-6] if m.endswith('-cloud') else m}"
 
-    async def ronda(self, msgs: list, con_tools: bool = True) -> AsyncIterator[dict]:
+    async def ronda(self, msgs: list, con_tools: bool = True, rol: str = "admin",
+                    nombre: str | None = None) -> AsyncIterator[dict]:
         """Eventos: {"type": "token"|"pensando"|"llamadas"|"aviso", ...}. Lanza ProveedorError."""
         raise NotImplementedError
         yield  # pragma: no cover
@@ -217,13 +218,13 @@ class OllamaNativo(Proveedor):
                     except ValueError:
                         continue
 
-    async def ronda(self, msgs, con_tools=True):
+    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None):
         modelo = self.modelo()
-        base = [{"role": "system", "content": config.system_prompt(self.nube)}] + msgs
+        base = [{"role": "system", "content": config.system_prompt(self.nube, nombre, rol == "admin")}] + msgs
         if self.nube:
-            pedidas = set(tools._REGISTRO) if con_tools else set()
+            pedidas = tools.permitidas(rol) if con_tools else set()
         else:  # local: solo las herramientas cuyas palabras clave aparecen en el mensaje
-            pedidas = tools.relevantes(_ultimo_usuario(msgs)) if con_tools else set()
+            pedidas = tools.relevantes(_ultimo_usuario(msgs)) & tools.permitidas(rol) if con_tools else set()
         usar_tools = modelo not in _sin_tools and bool(pedidas)
         timeout = (httpx.Timeout(PRIMER_TOKEN_NUBE_S, connect=CONEXION_S) if self.nube
                    else httpx.Timeout(600, connect=10))
@@ -288,14 +289,14 @@ class OpenAICompatible(Proveedor):
         self.id, self.nombre, self.url = id, nombre, url
         self.var_clave, self.var_modelo, self.modelo_defecto, self.ayuda = var_clave, var_modelo, modelo_defecto, ayuda
 
-    async def ronda(self, msgs, con_tools=True):
+    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None):
         clave = os.environ.get(self.var_clave, "").strip()
         if not clave:
             raise ProveedorError("clave", "falta la clave")
         cuerpo = {"model": self.modelo(), "stream": True,
-                  "messages": [{"role": "system", "content": config.system_prompt(True)}] + a_openai(msgs)}
+                  "messages": [{"role": "system", "content": config.system_prompt(True, nombre, rol == "admin")}] + a_openai(msgs)}
         if con_tools:
-            cuerpo["tools"] = herramientas_openai(tools.especificaciones())
+            cuerpo["tools"] = herramientas_openai(tools.especificaciones(tools.permitidas(rol)))
         acum = AcumuladorLlamadas()
         texto = ""
         timeout = httpx.Timeout(PRIMER_TOKEN_NUBE_S, connect=CONEXION_S)

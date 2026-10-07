@@ -23,7 +23,23 @@ def _con() -> sqlite3.Connection:
     return con
 
 
+def _respaldar_antes_de_usuarios() -> None:
+    """Copia de seguridad (data/aria.db.bak-sso) antes de la migración a varios usuarios."""
+    ruta = _ruta()
+    destino = ruta.with_name(ruta.name + ".bak-sso")
+    if not ruta.exists() or destino.exists():
+        return
+    with closing(sqlite3.connect(ruta, timeout=10)) as origen:
+        tablas = {r[0] for r in origen.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if "conversaciones" not in tablas or "user_id" in {r[1] for r in origen.execute("PRAGMA table_info(conversaciones)")}:
+            return
+        with closing(sqlite3.connect(destino)) as dest:
+            origen.backup(dest)
+    destino.chmod(0o600)
+
+
 def iniciar() -> None:
+    _respaldar_antes_de_usuarios()
     with closing(_con()) as con, con:
         con.execute("PRAGMA journal_mode = WAL")
         con.executescript("""
@@ -40,6 +56,10 @@ def iniciar() -> None:
         # Migración: etiqueta del cerebro que respondió (p. ej. "Ollama Cloud · gpt-oss:120b").
         if "cerebro" not in {r["name"] for r in con.execute("PRAGMA table_info(mensajes)")}:
             con.execute("ALTER TABLE mensajes ADD COLUMN cerebro TEXT")
+        # Migración: cada conversación pertenece a un usuario (las antiguas se asignan al admin en usuarios.iniciar).
+        if "user_id" not in {r["name"] for r in con.execute("PRAGMA table_info(conversaciones)")}:
+            con.execute("ALTER TABLE conversaciones ADD COLUMN user_id INTEGER")
+        con.execute("CREATE INDEX IF NOT EXISTS idx_conv_user ON conversaciones(user_id, actualizada DESC)")
 
 
 def titulo_desde(texto: str) -> str:
@@ -49,27 +69,29 @@ def titulo_desde(texto: str) -> str:
     return t[:MAX_TITULO].rsplit(" ", 1)[0].rstrip(",.;:") + "…"
 
 
-def crear(titulo: str = "Conversación nueva") -> str:
+def crear(uid: int, titulo: str = "Conversación nueva") -> str:
     cid, ahora = secrets.token_urlsafe(9), time.time()
     with closing(_con()) as con, con:
-        con.execute("INSERT INTO conversaciones VALUES (?,?,?,?)", (cid, titulo[:120], ahora, ahora))
+        con.execute("INSERT INTO conversaciones (id, titulo, creada, actualizada, user_id) VALUES (?,?,?,?,?)",
+                    (cid, titulo[:120], ahora, ahora, uid))
     return cid
 
 
-def existe(cid: str) -> bool:
+def existe(cid: str, uid: int) -> bool:
     with closing(_con()) as con:
-        return con.execute("SELECT 1 FROM conversaciones WHERE id=?", (cid,)).fetchone() is not None
+        return con.execute("SELECT 1 FROM conversaciones WHERE id=? AND user_id=?", (cid, uid)).fetchone() is not None
 
 
-def listar() -> list:
+def listar(uid: int) -> list:
     with closing(_con()) as con:
         return [dict(r) for r in con.execute(
-            "SELECT id, titulo, actualizada FROM conversaciones ORDER BY actualizada DESC LIMIT 200")]
+            "SELECT id, titulo, actualizada FROM conversaciones WHERE user_id=? "
+            "ORDER BY actualizada DESC LIMIT 200", (uid,))]
 
 
-def obtener(cid: str) -> dict | None:
+def obtener(cid: str, uid: int) -> dict | None:
     with closing(_con()) as con:
-        c = con.execute("SELECT id, titulo FROM conversaciones WHERE id=?", (cid,)).fetchone()
+        c = con.execute("SELECT id, titulo FROM conversaciones WHERE id=? AND user_id=?", (cid, uid)).fetchone()
         if not c:
             return None
         msgs = [{"role": r["rol"], "content": r["contenido"], "cerebro": r["cerebro"]} for r in con.execute(
@@ -77,17 +99,23 @@ def obtener(cid: str) -> dict | None:
     return {"id": c["id"], "titulo": c["titulo"], "mensajes": msgs}
 
 
-def renombrar(cid: str, titulo: str) -> bool:
+def renombrar(cid: str, uid: int, titulo: str) -> bool:
     titulo = re.sub(r"\s+", " ", titulo).strip()[:120]
     if not titulo:
         return False
     with closing(_con()) as con, con:
-        return con.execute("UPDATE conversaciones SET titulo=? WHERE id=?", (titulo, cid)).rowcount > 0
+        return con.execute("UPDATE conversaciones SET titulo=? WHERE id=? AND user_id=?", (titulo, cid, uid)).rowcount > 0
 
 
-def borrar(cid: str) -> bool:
+def borrar(cid: str, uid: int) -> bool:
     with closing(_con()) as con, con:
-        return con.execute("DELETE FROM conversaciones WHERE id=?", (cid,)).rowcount > 0
+        return con.execute("DELETE FROM conversaciones WHERE id=? AND user_id=?", (cid, uid)).rowcount > 0
+
+
+def borrar_de_usuario(uid: int) -> int:
+    """Borra todas las conversaciones de un usuario (al eliminarlo)."""
+    with closing(_con()) as con, con:
+        return con.execute("DELETE FROM conversaciones WHERE user_id=?", (uid,)).rowcount
 
 
 def anadir(cid: str, rol: str, contenido: str, cerebro: str | None = None) -> None:

@@ -16,7 +16,7 @@ def limpiar(mensajes) -> list:
     return out
 
 
-async def responder(mensajes: list) -> AsyncIterator[dict]:
+async def responder(mensajes: list, rol: str = "admin", quien: str | None = None) -> AsyncIterator[dict]:
     """Genera eventos: cerebro, pensando, token, herramienta, resultado, aviso, reinicio, error, fin.
 
     En cada ronda se prueba la cadena de cerebros en orden; si uno falla se pasa al siguiente.
@@ -28,7 +28,7 @@ async def responder(mensajes: list) -> AsyncIterator[dict]:
         for prov in cerebros.cadena():
             enviados, anunciado = False, False
             try:
-                async for ev in prov.ronda(msgs):
+                async for ev in prov.ronda(msgs, rol=rol, nombre=quien):
                     if ev["type"] in ("token", "pensando", "llamadas") and not anunciado:
                         anunciado = True
                         yield {"type": "cerebro", "id": prov.id, "nombre": prov.nombre,
@@ -65,26 +65,29 @@ async def responder(mensajes: list) -> AsyncIterator[dict]:
                 except ValueError:
                     args = {}
             yield {"type": "herramienta", "name": nombre, "args": args}
-            res = await tools.ejecutar(nombre, args)
+            res = await tools.ejecutar(nombre, args, rol)
             yield {"type": "resultado", "name": nombre, "text": res[:2000]}
             msgs.append({"role": "tool", "tool_name": nombre, "content": res})
     yield {"type": "error", "text": "Demasiadas llamadas a herramientas seguidas."}
 
 
-async def conversar(cid: str | None, texto: str) -> AsyncIterator[dict]:
-    """Guarda el mensaje, responde en streaming y persiste la respuesta (aunque se aborte)."""
+async def conversar(usuario: dict, cid: str | None, texto: str) -> AsyncIterator[dict]:
+    """Guarda el mensaje, responde en streaming y persiste la respuesta (aunque se aborte).
+
+    La conversación debe ser del usuario; si no lo es (o no existe) se crea una nueva."""
     texto = texto.strip()[:MAX_CHARS]
-    if not cid or not db.existe(cid):
-        cid = db.crear()
+    uid = usuario["id"]
+    if not cid or not db.existe(cid, uid):
+        cid = db.crear(uid)
     if db.es_primer_mensaje(cid):
-        db.renombrar(cid, db.titulo_desde(texto))
+        db.renombrar(cid, uid, db.titulo_desde(texto))
     db.anadir(cid, "user", texto)
-    conv = db.obtener(cid)
+    conv = db.obtener(cid, uid)
     yield {"type": "conv", "id": cid, "titulo": conv["titulo"]}
     contexto = db.historial_modelo(cid, MAX_MENSAJES)
     acumulado, pendiente, cerebro = "", None, None
     try:
-        async for ev in responder(contexto):
+        async for ev in responder(contexto, usuario["rol"], usuario["nombre"]):
             if ev["type"] == "cerebro":
                 cerebro = ev["etiqueta"]
             elif ev["type"] == "token":

@@ -75,7 +75,7 @@ ARIA no depende de un solo modelo: tiene una **cadena de cerebros gratuitos** qu
 | # | Cerebro | Modelo por defecto | Clave | Coste |
 |---|---------|--------------------|-------|-------|
 | 1 | **Ollama Cloud** (a través del Ollama local) | `gpt-oss:120b-cloud` | tu cuenta de Ollama: `docker exec -it aria-ollama ollama signin` | 0 € (plan gratuito con límites) |
-| 2 | **Groq** | `llama-3.3-70b-versatile` | `GROQ_API_KEY` en `.env` (console.groq.com/keys) | 0 € |
+| 2 | **Groq** | `openai/gpt-oss-120b` | `GROQ_API_KEY` en `.env` (console.groq.com/keys) | 0 € |
 | 3 | **Google Gemini** | `gemini-3.1-flash-lite` | `GEMINI_API_KEY` en `.env` (aistudio.google.com/apikey) | 0 € |
 | 4 | **Local** | el de Ajustes → Modelos (`llama3.2:3b`) | ninguna | 0 €, funciona sin internet |
 

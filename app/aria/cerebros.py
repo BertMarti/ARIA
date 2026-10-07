@@ -335,7 +335,7 @@ PROVEEDORES = {p.id: p for p in (
     OllamaNativo("ollama_cloud", "Ollama Cloud", True, "ARIA_MODELO_OLLAMA_CLOUD", "gpt-oss:120b-cloud",
                  "Usa tu cuenta de Ollama: docker exec -it aria-ollama ollama signin"),
     OpenAICompatible("groq", "Groq", "https://api.groq.com/openai/v1/chat/completions",
-                     "GROQ_API_KEY", "ARIA_MODELO_GROQ", "llama-3.3-70b-versatile"),
+                     "GROQ_API_KEY", "ARIA_MODELO_GROQ", "openai/gpt-oss-120b"),
     OpenAICompatible("gemini", "Google Gemini",
                      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
                      "GEMINI_API_KEY", "ARIA_MODELO_GEMINI", "gemini-3.1-flash-lite"),

@@ -21,6 +21,31 @@ services:
       retries: 5
       start_period: 20s
 
+  # Metabuscador interno para la búsqueda en internet de ARIA. Sin puertos publicados:
+  # solo la app lo alcanza (http://searxng:8080) por la red de Compose.
+  searxng:
+    image: searxng/searxng:latest
+    container_name: aria-searxng
+    restart: unless-stopped
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-}
+      SEARXNG_BASE_URL: http://searxng:8080/
+      GRANIAN_WORKERS: "1"
+      GRANIAN_BLOCKING_THREADS: "2"
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${SEARXNG_MEM_LIMIT:-384m}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   app:
     build: ./app
     image: aria-app:local

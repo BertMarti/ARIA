@@ -3,12 +3,12 @@
 Instrucciones para Claude Code en este repositorio (ARIA).
 
 ## Qué es
-ARIA, asistente doméstico local para Raspberry Pi: FastAPI + Ollama + Caddy en Docker Compose. Sin APIs de pago.
+Asistente doméstico local para Raspberry Pi: FastAPI + Ollama + Caddy en Docker Compose. Sin APIs de pago.
 
 ## Estructura
-- `docker-compose.yml`: servicios `ollama`, `app`, `voz`, `caddy` (proyecto `aria`, contenedores `aria-*`). `voz` solo está en la red interna `voz` (sin Internet ni puertos).
+- `docker-compose.yml`: servicios `ollama`, `searxng`, `app`, `voz`, `caddy` (proyecto `aria`, contenedores `aria-*`). `voz` solo está en la red interna `voz` (sin Internet ni puertos).
 - `caddy/Caddyfile`: HTTPS con CA interna, certificados bajo demanda autorizados por `/internal/tls-ask`.
-- `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `origen.py` (regla CSRF Origin/Sec-Fetch-Site/Referer), `auth.py` (cookie firmada con id de usuario + versión, scrypt, limitador), `usuarios.py` (tabla `usuarios`, roles, migración del admin único), `permisos.py` (lista blanca del rol `usuario`; denegar por defecto), `sso.py` (verificación del JWT de Cloudflare Access con PyJWT), `cerebros.py` (cadena de proveedores: Ollama nativo local/nube + OpenAI-compatible Groq/Gemini, esperas por cuota, `data/cerebros.json`), `chat.py` (bucle de herramientas + relevo entre cerebros + persistencia), `db.py` (SQLite `data/aria.db`), `tools.py` (herramientas + `_INTENCIONES`), `shield.py` (Pi-hole v6, sid único en caché), `vpn.py` (wg-easy v15, lista blanca de campos), `sistema.py` (/proc y /sys), `voz.py` (validación de audio, Groq Whisper → aria-voz, limitador por usuario, limpieza de texto para TTS, puente WebSocket), `modelos.py` (Ollama), `services.py`, `spotify.py`, `config.py`.
+- `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `origen.py` (regla CSRF Origin/Sec-Fetch-Site/Referer), `auth.py` (cookie firmada con id de usuario + versión, scrypt, limitador), `usuarios.py` (tabla `usuarios`, roles, migración del admin único), `permisos.py` (lista blanca del rol `usuario`; denegar por defecto), `sso.py` (verificación del JWT de Cloudflare Access con PyJWT), `cerebros.py` (cadena de proveedores: Ollama nativo local/nube + OpenAI-compatible Groq/Gemini, esperas por cuota, `data/cerebros.json`), `chat.py` (bucle de herramientas + relevo entre cerebros + persistencia), `db.py` (SQLite `data/aria.db`), `busqueda.py` (cliente de SearXNG: caché 10 min, dedupe por dominio, texto ≤1500), `tools.py` (herramientas + `_INTENCIONES`), `shield.py` (Pi-hole v6, sid único en caché), `vpn.py` (wg-easy v15, lista blanca de campos), `sistema.py` (/proc y /sys), `voz.py` (validación de audio, Groq Whisper → aria-voz, limitador por usuario, limpieza de texto para TTS, puente WebSocket), `modelos.py` (Ollama), `services.py`, `spotify.py`, `config.py`.
 - `voz/`: contenedor `aria-voz` (`servidor.py`: faster-whisper base int8, Piper `es_ES-sharvard-medium`, Vosk `vosk-model-small-es` con gramática cerrada para «Aria»; modelos descargados en la imagen por `descargar.py`).
 - `app/static/`: HTML/CSS/JS sin build (`util.js`, `md.js`, `voz.js` (micrófono, TTS, manos libres), `pcm-worklet.js` (AudioWorklet a PCM 16 kHz), `chat.js`, `control.js`, `inicio.js`, `ajustes.js`, `usuarios.js`, `app.js`), `manifest.webmanifest`, `icon.svg`.
 - `app/tests/`: pytest (`python -m pytest`) y `md.test.js` (node).
@@ -47,8 +47,18 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 - CSP: el audio se reproduce con WebAudio (`decodeAudioData`), así que no hace falta `media-src blob:`; el WebSocket va a `'self'`.
 - `faster-whisper` 1.2.1 no funciona con PyAV 19 (`metadata_errors`): `av<19`. `libvosk.so` necesita `libatomic1`.
 
+## Memoria y resumen de buenos días
+- `memoria.py` (recuerdos, diario, ajustes, contexto del prompt; TODO se filtra por `user_id`), `aprender.py` (extracción en segundo plano, solo nube), `diario.py` (resumen diario + planificador 03:30 + recuperación), `briefing.py` (resumen de hoy, caché en `resumen_dia`, versión hablada), `tiempo.py` (fechas locales, límites de día con DST).
+- La identidad de las herramientas de memoria sale de `memoria.uid_actual` (la fija `chat.conversar`), nunca de los argumentos del modelo. `recordar`/`olvidar` las tiene todo rol.
+- Presupuesto del prompt: nube ≤ ~1 200 (recuerdos) + ~900 (diario); local ≤ 300 y sin diario. No ampliarlo sin medir (el local lee ~11 tokens/s).
+- Nunca guardar secretos (`memoria.parece_secreto`). Los datos solo de admin del resumen (`vpn`, `copia`) se quitan en el servidor (`briefing.para_rol`).
+- Las tablas están en `db.iniciar`; haz copia de `data/aria.db` antes de cambiar el esquema.
+
 ## Añadir una herramienta
 Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`, se añaden sus palabras clave a `_INTENCIONES` (si no, el modelo no la recibe) y una prueba en `app/tests/test_tools.py`. Las herramientas destructivas (borrar) no se exponen al modelo.
+
+## Búsqueda en internet
+`aria-searxng` (config en `searxng/settings.yml`, sin puertos publicados, `SEARXNG_SECRET` en `.env`). Herramientas `buscar_en_internet` y `noticias` (en `SOLO_LECTURA`, así que también para `usuario`). Los resultados al modelo van en ≤1500 caracteres con cada URL en su línea; el chat las convierte en enlaces con el DOM (nunca `innerHTML`). Pruebas con SearXNG falso en `app/tests/test_busqueda.py`. Si añades palabras clave de búsqueda, comprueba que la charla normal («hola», «explícame qué es un DNS») no activa nada.
 
 ## Cerebros
 - `chat.responder` recorre `cerebros.cadena()` en cada ronda; un `ProveedorError` salta al siguiente (aviso + evento `reinicio` si ya había tokens). Los mensajes internos están en formato Ollama; `a_openai()` los convierte y `AcumuladorLlamadas` junta los fragmentos de `tool_calls`.

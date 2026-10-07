@@ -239,7 +239,7 @@ const ManosLibres = (() => {
     try {
       stream = await Voz.abrirMic();
       ctxMic = new AudioContext();
-      await ctxMic.audioWorklet.addModule("/static/pcm-worklet.js");
+      await ctxMic.audioWorklet.addModule((document.querySelector('meta[name="aria-worklet"]') || {}).content || "/static/pcm-worklet.js");
       const src = ctxMic.createMediaStreamSource(stream);
       const nodo = new AudioWorkletNode(ctxMic, "pcm16k");
       const mudo = ctxMic.createGain(); mudo.gain.value = 0;

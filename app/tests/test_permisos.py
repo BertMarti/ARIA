@@ -66,7 +66,7 @@ def test_toda_ruta_registrada_esta_cubierta():
         if not isinstance(r, APIRoute):
             continue
         ruta = r.path.replace("{cid}", "abc").replace("{uid}", "1").replace("{app_id}", "x") \
-                     .replace("{accion}", "x")
+                     .replace("{accion}", "x").replace("{rid}", "1").replace("{fecha}", "2026-10-06")
         for m in r.methods - {"HEAD", "OPTIONS"}:
             if permisos.permitido("usuario", m, ruta):
                 assert (m, r.path) in {
@@ -76,6 +76,9 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("POST", "/api/chat"), ("GET", "/api/conversations"), ("GET", "/api/conversations/{cid}"),
                     ("PATCH", "/api/conversations/{cid}"), ("DELETE", "/api/conversations/{cid}"),
                     ("GET", "/api/voz/estado"), ("POST", "/api/voz/transcribir"), ("POST", "/api/voz/hablar"),
+                    ("GET", "/api/memoria"), ("POST", "/api/memoria"), ("POST", "/api/memoria/ajustes"),
+                    ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
+                    ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),
                 }, (m, r.path)
     assert not permisos.permitido("desconocido", "GET", "/")
 
@@ -165,7 +168,9 @@ def test_migracion_conserva_el_hash_y_la_version(tmp_path, monkeypatch):
 
 
 # --- Herramientas del chat ---
-LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "estado_sistema", "buscar_en_netflix"}
+LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "estado_sistema", "buscar_en_netflix",
+           "buscar_en_internet", "noticias", "tiempo",
+           "recordar", "olvidar"}  # las de memoria las tiene todo rol, sobre sus propios datos
 
 
 def test_herramientas_de_solo_lectura():

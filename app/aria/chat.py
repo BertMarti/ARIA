@@ -1,8 +1,12 @@
 """Bucle de chat: cerebro -> llamadas a herramientas -> resultados -> cerebro."""
+import asyncio
 import json
+import logging
 from typing import AsyncIterator
 
-from . import cerebros, db, tools
+from . import aprender, briefing, cerebros, db, memoria, tools
+
+log = logging.getLogger("aria.chat")
 
 MAX_RONDAS = 5
 MAX_MENSAJES = 40
@@ -23,12 +27,28 @@ async def responder(mensajes: list, rol: str = "admin", quien: str | None = None
     """
     msgs = limpiar(mensajes)
     ultimo_error = None
-    for _ in range(MAX_RONDAS):
+    uid, ctx = memoria.uid_actual.get(), {}
+
+    def memoria_para(prov) -> dict:
+        """Recuerdos del usuario para el prompt (nube: ~1 200 + ~900 caracteres; local: ≤ 300). Nunca rompe el chat."""
+        if uid is None:
+            return {}
+        if prov.nube not in ctx:
+            try:
+                ultimo = next((m["content"] for m in reversed(msgs) if m["role"] == "user"), "")
+                ctx[prov.nube] = memoria.contexto(uid, quien or "", ultimo, bool(prov.nube))
+            except Exception:  # noqa: BLE001
+                log.exception("No se pudo preparar la memoria")
+                ctx[prov.nube] = ""
+        return {"extra": ctx[prov.nube]} if ctx[prov.nube] else {}
+
+    for n_ronda in range(MAX_RONDAS):
+        ultima = n_ronda == MAX_RONDAS - 1  # la última ronda va sin herramientas: obliga a responder
         llamadas, texto, hecha = [], "", False
         for prov in cerebros.cadena():
             enviados, anunciado = False, False
             try:
-                async for ev in prov.ronda(msgs, rol=rol, nombre=quien):
+                async for ev in prov.ronda(msgs, con_tools=not ultima, rol=rol, nombre=quien, **memoria_para(prov)):
                     if ev["type"] in ("token", "pensando", "llamadas") and not anunciado:
                         anunciado = True
                         yield {"type": "cerebro", "id": prov.id, "nombre": prov.nombre,
@@ -84,8 +104,24 @@ async def conversar(usuario: dict, cid: str | None, texto: str) -> AsyncIterator
     db.anadir(cid, "user", texto)
     conv = db.obtener(cid, uid)
     yield {"type": "conv", "id": cid, "titulo": conv["titulo"]}
+    memoria.uid_actual.set(uid)  # las herramientas de memoria y el contexto actúan sobre este usuario
+    # Primer «hola» del día: en lugar de una respuesta normal, el resumen de buenos días (versión hablada).
+    if briefing.es_saludo(texto) and not await asyncio.to_thread(briefing.saludado_hoy, uid):
+        try:
+            hablado = briefing.texto_hablado(await briefing.obtener(usuario))
+        except Exception:  # noqa: BLE001 - si falla, se responde como siempre
+            log.exception("No se pudo preparar el resumen de buenos días")
+            hablado = None
+        if hablado:
+            etiqueta = "Resumen de buenos días"
+            db.anadir(cid, "assistant", hablado, etiqueta)
+            await asyncio.to_thread(briefing.marcar_saludado, uid)
+            yield {"type": "cerebro", "id": "briefing", "nombre": "ARIA", "modelo": "resumen", "etiqueta": etiqueta}
+            yield {"type": "token", "text": hablado}
+            yield {"type": "fin"}
+            return
     contexto = db.historial_modelo(cid, MAX_MENSAJES)
-    acumulado, pendiente, cerebro = "", None, None
+    acumulado, pendiente, cerebro, toco_memoria = "", None, None, False
     try:
         async for ev in responder(contexto, usuario["rol"], usuario["nombre"]):
             if ev["type"] == "cerebro":
@@ -99,6 +135,7 @@ async def conversar(usuario: dict, cid: str | None, texto: str) -> AsyncIterator
                     db.anadir(cid, "assistant", acumulado, cerebro)
                 acumulado = ""
                 pendiente = (ev["name"], ev["args"])
+                toco_memoria = toco_memoria or ev["name"] in tools.MEMORIA
             elif ev["type"] == "resultado":
                 db.anadir(cid, "tool", db.herramienta_json(ev["name"], pendiente[1] if pendiente else {}, ev["text"]))
             yield ev
@@ -106,3 +143,10 @@ async def conversar(usuario: dict, cid: str | None, texto: str) -> AsyncIterator
         # También se ejecuta si el cliente aborta (botón Detener): se conserva lo generado.
         if acumulado.strip():
             db.anadir(cid, "assistant", acumulado, cerebro)
+        # Aprendizaje automático: en segundo plano y solo con cerebros de la nube. No se aprende de peticiones
+        # de recordar/olvidar (ya las atiende la herramienta; «olvida X» no debe volver a aprenderse).
+        if not toco_memoria and not (tools.relevantes(texto) & tools.MEMORIA):
+            try:
+                aprender.programar(uid, usuario["nombre"], texto)
+            except Exception:  # noqa: BLE001
+                log.exception("No se pudo programar el aprendizaje")

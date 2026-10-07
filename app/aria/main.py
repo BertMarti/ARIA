@@ -1,11 +1,13 @@
 """ARIA: aplicacion FastAPI (login, chat con Ollama, panel de servicios, Spotify)."""
 import asyncio
+import hashlib
 import html
 import json
 import logging
 import mimetypes
 import os
 import re
+from datetime import date
 from urllib.parse import parse_qs, urlparse
 
 import httpx
@@ -14,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import auth, cerebros, chat, config, db, modelos, permisos, services, shield, sistema, spotify, sso, usuarios, voz, vpn
+from . import auth, briefing, cerebros, chat, config, db, diario, memoria, modelos, permisos, services, shield, sistema, spotify, sso, tiempo, usuarios, voz, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -29,16 +31,42 @@ PERMISOS_NAVEGADOR = "microphone=(self), camera=(), geolocation=()"
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 
+
+# --- Páginas HTML con versión en los recursos (el navegador nunca usa CSS/JS de una versión anterior) ---
+def _version_estaticos() -> str:
+    h = hashlib.sha1()
+    for f in sorted(config.STATIC_DIR.rglob("*")):
+        if f.is_file():
+            h.update(f.name.encode()); h.update(f.read_bytes())
+    return h.hexdigest()[:10]
+
+
+_VERSION_ESTATICOS = _version_estaticos()
+_PAGINAS: dict = {}
+
+
+def _html_versionado(nombre: str) -> HTMLResponse:
+    if nombre not in _PAGINAS:
+        contenido = (config.STATIC_DIR / nombre).read_text(encoding="utf-8")
+        _PAGINAS[nombre] = re.sub(r'(/static/[\w.-]+\.(?:css|js|svg|webmanifest))"',
+                                  lambda m: f'{m.group(1)}?v={_VERSION_ESTATICOS}"', contenido)
+    return HTMLResponse(_PAGINAS[nombre], headers={"Cache-Control": "no-store"})
+
 @app.on_event("startup")
 async def _arranque():
     if not auth.habilitado():
         log.error("Faltan ARIA_USER / ARIA_PASSWORD o ARIA_SECRET (>=16 caracteres): login deshabilitado.")
     db.iniciar()
     usuarios.iniciar()
+    # Diario: planificador interno (03:30 locales + recuperación de días perdidos). Sin contenedor nuevo.
+    app.state.diario = asyncio.create_task(diario.bucle())
 
 
 @app.on_event("shutdown")
 async def _parada():
+    tarea = getattr(app.state, "diario", None)
+    if tarea:
+        tarea.cancel()
     await shield.cerrar()  # Pi-hole limita las sesiones de API: se libera la nuestra
 
 
@@ -152,7 +180,7 @@ async def tls_ask(domain: str = ""):
 # --- Login ---
 @app.get("/login")
 async def login_page():
-    return FileResponse(config.STATIC_DIR / "login.html")
+    return _html_versionado("login.html")
 
 
 @app.post("/login")
@@ -185,7 +213,7 @@ async def logout(request: Request):
 # --- Paginas ---
 @app.get("/")
 async def index():
-    return FileResponse(config.STATIC_DIR / "index.html")
+    return _html_versionado("index.html")
 
 
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
@@ -355,6 +383,99 @@ async def ws_despertar(ws: WebSocket):
         voz._escuchas[u["id"]] -= 1
         if not voz._escuchas[u["id"]]:
             voz._escuchas.pop(u["id"], None)
+
+
+# --- Memoria (cada usuario, solo la suya; la identidad sale de la sesión, nunca de la petición) ---
+FECHA_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _memoria_json(uid: int) -> dict:
+    return {"recuerdos": memoria.listar(uid), "aprender": memoria.aprende(uid), "max": memoria.MAX_RECUERDOS,
+            "max_texto": memoria.MAX_TEXTO, "diario": memoria.ultimos_dias(uid, 14)}
+
+
+@app.get("/api/memoria")
+async def api_memoria(request: Request):
+    return await asyncio.to_thread(_memoria_json, request.state.usuario["id"])
+
+
+@app.post("/api/memoria")
+async def api_memoria_anadir(request: Request):
+    d = await _json(request)
+    if not isinstance(d.get("texto"), str):
+        return JSONResponse({"error": "Escribe qué quieres que recuerde."}, status_code=400)
+    try:
+        rec, nuevo = await asyncio.to_thread(memoria.anadir, request.state.usuario["id"], d["texto"], "usuario")
+    except memoria.MemoriaError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    return {"recuerdo": rec, "creado": nuevo}
+
+
+@app.post("/api/memoria/ajustes")
+async def api_memoria_ajustes(request: Request):
+    v = (await _json(request)).get("aprender")
+    if not isinstance(v, bool):
+        return JSONResponse({"error": "Valor no válido."}, status_code=400)
+    await asyncio.to_thread(memoria.fijar_aprender, request.state.usuario["id"], v)
+    return {"aprender": v}
+
+
+@app.patch("/api/memoria/{rid}")
+async def api_memoria_editar(rid: int, request: Request):
+    d = await _json(request)
+    if not isinstance(d.get("texto"), str):
+        return JSONResponse({"error": "Escribe el texto del recuerdo."}, status_code=400)
+    try:
+        return {"recuerdo": await asyncio.to_thread(memoria.editar, request.state.usuario["id"], rid, d["texto"])}
+    except memoria.MemoriaError as e:
+        return JSONResponse({"error": str(e)}, status_code=404 if "no encontrado" in str(e) else 400)
+
+
+@app.delete("/api/memoria/{rid}")
+async def api_memoria_borrar(rid: int, request: Request):
+    if not await asyncio.to_thread(memoria.borrar, request.state.usuario["id"], rid):
+        return JSONResponse({"error": "Recuerdo no encontrado."}, status_code=404)
+    return {"ok": True}
+
+
+@app.delete("/api/memoria")
+async def api_memoria_borrar_todo(request: Request):
+    """«Borrar toda mi memoria»: recuerdos, diario y resumen de hoy del usuario que llama."""
+    return {"ok": True, "borrados": await asyncio.to_thread(memoria.borrar_todo, request.state.usuario["id"])}
+
+
+@app.delete("/api/diario/{fecha}")
+async def api_diario_borrar(fecha: str, request: Request):
+    if not FECHA_RE.fullmatch(fecha) or not await asyncio.to_thread(memoria.borrar_dia, request.state.usuario["id"], fecha):
+        return JSONResponse({"error": "No hay resumen de ese día."}, status_code=404)
+    return {"ok": True}
+
+
+@app.post("/api/diario/generar")
+async def api_diario_generar(request: Request):
+    """Solo administrador (lo impone permisos.py): lanza el trabajo del diario a mano.
+    Cuerpo opcional: {"fecha": "AAAA-MM-DD" (por defecto hoy), "todos": true (por defecto solo el que llama)}."""
+    d = await _json(request)
+    try:
+        dia = date.fromisoformat(d["fecha"]) if d.get("fecha") else tiempo.hoy()
+    except (ValueError, TypeError):
+        return JSONResponse({"error": "Fecha no válida (AAAA-MM-DD)."}, status_code=400)
+    u = request.state.usuario
+    if d.get("todos") is True:
+        ids = await asyncio.to_thread(diario.usuarios_con_mensajes, dia)
+        nombres = await asyncio.to_thread(diario._usuarios)
+        objetivos = [(i, nombres[i]) for i in ids if i in nombres]
+    else:
+        objetivos = [(u["id"], u["nombre"])]
+    res = {str(i): await diario.generar(i, n, dia, forzar=True) for i, n in objetivos}
+    return {"fecha": dia.isoformat(), "resultados": res}
+
+
+@app.get("/api/briefing")
+async def api_briefing(request: Request, refrescar: int = 0):
+    """Resumen de buenos días del usuario (caché del día; ?refrescar=1 lo regenera). El rol `usuario` no recibe
+    datos de administrador (VPN, copias)."""
+    return await briefing.obtener(request.state.usuario, refrescar=bool(refrescar))
 
 
 # --- Modelos ---

@@ -38,6 +38,14 @@
 - Con la nube, los mensajes salen de casa (Google puede usarlos para mejorar productos en el plan gratuito); el local sigue siendo 100 % privado.
 - Latencias reales (LAN, 2026-10-07, primer token / total): «Hola» Ollama Cloud 0,5/0,6 s, Gemini 1,0/1,1 s, local 0,8-1,2/4,5-5,3 s; «temperatura de la Raspberry» (con herramienta) Ollama Cloud 0,8/0,9 s, Gemini 3,3/3,4 s, local 20/28-32 s; «anuncios bloqueados» Ollama Cloud 1,1/1,3 s, Gemini 2,3/2,3 s, local 15-26/34-48 s. «Probar»: Ollama Cloud 0,5 s, Gemini 1,0 s, local 2 s (modelo caliente).
 
+## Decisiones de búsqueda en internet (2026-10-07)
+- SearXNG propio (`aria-searxng`, imagen oficial arm64) en lugar de una API de pago: sin claves, sin puertos publicados, JSON activado y limitador desactivado (solo interno). `SEARXNG_SECRET` en `.env`.
+- Motores: DuckDuckGo y Bing responden desde esta red; Brave y Google devuelven «too many requests»/«access denied» y quedan como respaldo (SearXNG los suspende solos). Bing y Google vienen desactivados por defecto y se activan en `settings.yml`.
+- Herramientas de solo lectura para ambos roles. El modelo local las recibe por palabras clave; las nubes siempre, con el prompt pidiendo citar «Fuentes:» y con la fecha actual (si no, buscaban «2024»).
+- Se descartan resultados en escrituras no latinas (salían titulares en chino) salvo que la consulta las use.
+- RAM medida: SearXNG ~145 MB RSS (worker ~106 MB), límite 384 MB. El cgroup de memoria no está activo en esta Pi, así que `docker stats` marca 0.
+- Privacidad: las consultas y el texto de los resultados llegan al cerebro en la nube que responda.
+
 ## Decisiones de usuarios y SSO (2026-10-07)
 - SSO por JWT verificado de Cloudflare Access (PyJWT[crypto], JWKS en caché 1 h, refresco en `kid` desconocido con espera de 30 s). Nunca se usa la cabecera de email. Cloudflare caído = fallo transitorio («Entrando…»); sin JWT en el dominio público = formulario de respaldo.
 - Usuarios en la tabla `usuarios` de `data/aria.db`; sesión = id + versión por usuario (cambiar contraseña, desactivar o reactivar la invalida). Las cookies del admin único anterior siguen valiendo hasta que cambie su contraseña.
@@ -57,6 +65,17 @@
 - **Contraseñas de paneles**: `POST /api/secret/{shield|vpn}` las entrega a sesiones autenticadas (botón «Copiar contraseña»); documentado en el README.
 - **Bug corregido**: el renderizador de Markdown usaba una regex global compartida en una función recursiva (bucle infinito con negrita). Ahora una instancia por llamada y prueba `md.test.js`.
 - Herramientas nuevas: `_INTENCIONES` con exclusiones («!patrón») para que «pausa el bloqueador» no ofrezca Spotify y las preguntas conceptuales («explícame qué es la RAM») no activen `estado_sistema`.
+
+## Decisiones de memoria y resumen de buenos días (2026-10-07)
+- Memoria por usuario en `data/aria.db` (`recuerdos`, `diario`, `memoria_ajustes`, `resumen_dia`; FK con `ON DELETE CASCADE` a `usuarios`). Copia previa: `data/aria.db.bak-memoria`.
+- Extracción automática solo con cerebros de la nube, tras el turno y en una tarea de fondo con semáforo (nunca el local: compite con el chat y es lento). Sin nube = no se aprende. Se salta si el turno usó `recordar`/`olvidar` (si no, «olvida X» se volvería a aprender) y con mensajes < 20 caracteres.
+- Filtro de secretos por expresiones regulares (palabras clave, tarjetas, DNI/NIE, IBAN, prefijos de tokens, cadenas largas) además de la instrucción al modelo; también aplica a `recordar` y a lo editado a mano. Falsos positivos aceptados (p. ej. «clave»).
+- Tope de 200: se descartan primero los automáticos menos usados y más antiguos; los del usuario nunca se borran solos. Un recuerdo editado pasa a «usuario».
+- Presupuesto de prompt: nube ~1 200 + ~900 (3 días); local ≤ 300 (5 recuerdos, sin diario). Se marca `usado` al inyectar.
+- Diario: planificador asyncio en la app (03:30 `ARIA_TZ`, recuperación de 14 días al arrancar, sin contenedor nuevo). Los límites del día usan calendario local (DST: 23/25 h). Quien apaga «Aprender automáticamente» tampoco tiene diario (decisión mía: resumir conversaciones también es aprender de ellas).
+- Resumen de buenos días: caché por usuario y día; el «hola» del primer día se responde sin llamar a ningún cerebro (plantilla), así que es instantáneo. Datos solo de admin (VPN, copias) se quitan en servidor. La copia fuera de la Pi no está montada en `aria-app`, así que sale «no disponible» (no se monta nada nuevo). Anuncios de ayer vía `/api/stats/database/summary` de Pi-hole (si no hay datos, últimas 24 h).
+- Tiempo: Open-Meteo, `ARIA_CIUDAD="Ronda, Málaga"` con `ARIA_LAT`/`ARIA_LON` fijos (sin geocodificar).
+- **Privacidad**: los recuerdos y el diario viajan a Ollama Cloud/Groq/Gemini con cada pregunta (Google puede usarlos en el plan gratuito). El local recibe ≤ 300 caracteres. Borrado total desde Ajustes → Memoria.
 
 ## Mapa de puertos
 | Proyecto | Puertos |
@@ -79,6 +98,8 @@
 
 ## Registro de cambios
 - **2026-10-07 · voz**: micrófono (pulsar para hablar) en el chat y en Inicio, transcripción Groq Whisper con relevo a Whisper local, voz natural con Piper («Leer» y lectura automática, con la del navegador de respaldo), modo «manos libres» con la palabra «Aria» (Vosk) por WebSocket, Ajustes → Voz, contenedor `aria-voz` aislado y `Permissions-Policy`. Pruebas `test_voz.py`. Se quitaron las referencias a otros asistentes: en la interfaz y la documentación el asistente es siempre ARIA.
+
+- **2026-10-07 · búsqueda en internet**: servicio `aria-searxng`, `busqueda.py`, herramientas `buscar_en_internet` y `noticias`, chip «Buscando en internet…» con enlaces a las fuentes, `SEARXNG_SECRET` en install/update. Verificado con consultas reales (Ronda Jaén, noticias Raspberry Pi, precio luz hoy España) y con un cerebro en la nube que llama a la herramienta y cita fuentes.
 - **2026-10-07 · usuarios y SSO**: inicio de sesión único con Cloudflare Access, varios usuarios con roles admin/usuario aplicados en el servidor, conversaciones por usuario, Ajustes → Usuarios y herramientas de solo lectura para usuarios. Copia previa en `data/aria.db.bak-sso`. Verificado: login LAN de admin y de un usuario de prueba (403 en endpoints de admin, sin ver conversaciones ajenas; usuario y conversaciones de prueba borrados), la URL pública sigue devolviendo el 302 de Access y una petición interna con email falsificado y sin JWT no inicia sesión.
 - **2026-10-07 · v2.0.0**: ARIA pasa a ser el centro de control del laboratorio: Inicio con lanzador, Centro de control (SHIELD-DNS, HEIMDALL, Sistema, Spotify), nuevas herramientas (bloqueador, VPN, sistema, gestión de dispositivos), conversaciones persistentes, selector de modelos, voz opcional, cambio de contraseña, manifest/icono, `update.sh` y `backup.sh`, pruebas pytest y corrección CSRF con `Origin: null`. RAM observada con la v2 en marcha (Pi de 8 GB, modelo descargado de memoria): ~2,9 GiB usados y ~5,0 GiB disponibles; `aria-app` ~41 MiB de RSS.
 - **2026-10-06**: selección de herramientas por intención, rescate de llamadas en JSON, textos con tildes, mensaje de Spotify que no pide claves por el chat.
@@ -90,3 +111,5 @@
 - **2026-10-07**: cloudflare-ddns mantiene vpn.tu-dominio.com → IP pública (sin proxy); HEIMDALL usa ese host. Router: reserva 192.168.1.50, DNS de la casa = Pi, UDP 51820 → Pi.
 - **2026-10-07**: plan B ante caídas: DNS secundario AdGuard en el router, autoheal (systemd timer) y watchdog; alerta de Cloudflare por email. Probado: autoheal reinicia un contenedor unhealthy. Descartado: fallback de upstream en Pi-hole con strict-order (se queda esperando a Unbound; la reserva del router ya cubre el caso).
 - **2026-10-07**: los emails de ARIA_ADMIN_EMAILS son la misma persona (usuarios.canonico); al arrancar se fusionan duplicados (conversaciones al principal). Copia previa en data/aria.db.bak-fusion.
+- **2026-10-07 · memoria y resumen de buenos días**: recuerdos por usuario (`recordar`/`olvidar`, aprendizaje automático en segundo plano), diario nocturno, contexto en el prompt, tarjeta «Tu resumen de hoy», `GET /api/briefing`, `POST /api/diario/generar` (admin) y Ajustes → Memoria. 310 pruebas. Verificado en real: «Recuerda que mi equipo es el Betis» + conversación nueva «¿Cuál es mi equipo?» → «Tu equipo es el Betis»; resumen con cifras reales de Pi-hole/VPN/Pi; diario generado por Ollama Cloud; datos de prueba borrados.
+- **2026-10-07**: búsqueda en internet integrada (SearXNG, fusión de feat/busqueda). Herramienta `tiempo` (Open-Meteo, 7 días etiquetados HOY/MAÑANA/FIN DE SEMANA); el prompt incluye el día de la semana y las fechas del fin de semana (gpt-oss calculaba mal el fin de semana). La última ronda del bucle de herramientas va sin herramientas para forzar una respuesta.

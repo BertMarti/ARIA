@@ -14,7 +14,15 @@ docker compose version >/dev/null 2>&1 || error "Falta Docker Compose v2."
 info "Descargando los últimos cambios (git pull --ff-only)"
 git pull --ff-only || error "No se pudo avanzar en fast-forward. Revisa los cambios locales con 'git status'."
 
-info "Actualizando las imágenes base (ollama, caddy)"
+# Instalaciones anteriores a la búsqueda en internet: genera la clave interna de SearXNG si falta.
+if ! grep -qE '^SEARXNG_SECRET=.+' .env; then
+  command -v openssl >/dev/null 2>&1 || error "Falta openssl (sudo apt install openssl)."
+  sed -i '/^SEARXNG_SECRET=/d' .env
+  printf 'SEARXNG_SECRET=%s\n' "$(openssl rand -hex 32)" >> .env
+  info "SEARXNG_SECRET generado"
+fi
+
+info "Actualizando las imágenes base (ollama, searxng, caddy)"
 docker compose pull
 
 info "Reconstruyendo y reiniciando los contenedores"
@@ -24,7 +32,7 @@ info "Limpiando imágenes sin usar"
 docker image prune -f >/dev/null
 
 info "Esperando a que los servicios estén sanos"
-for c in aria-ollama aria-app aria-voz aria-caddy; do
+for c in aria-ollama aria-searxng aria-app aria-voz aria-caddy; do
   estado=desconocido
   for _ in $(seq 1 60); do
     estado="$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null || echo desconocido)"

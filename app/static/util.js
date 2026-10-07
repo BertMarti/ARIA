@@ -33,6 +33,26 @@ function enlacePanel(tipo, urlLocal) {
   }
   return urlLocal;
 }
+// Texto que no cabe: se recorta con «…» y, al pasar el ratón (o enfocar), se desliza de derecha a izquierda.
+function marquesina(contenedor, texto) {
+  const s = el("span", { class: "marq-txt" }, texto);
+  contenedor.classList.add("marq");
+  contenedor.title = texto;
+  contenedor.append(s);
+  const ir = () => {
+    const d = s.scrollWidth - contenedor.clientWidth;
+    if (d <= 2) return;
+    contenedor.classList.add("marq-on");
+    s.style.setProperty("--marq-d", -d - 8 + "px");
+    s.style.setProperty("--marq-t", Math.max(1.2, (d + 8) / 45) + "s");
+  };
+  const volver = () => { contenedor.classList.remove("marq-on"); };
+  contenedor.addEventListener("mouseenter", ir);
+  contenedor.addEventListener("focus", ir);
+  contenedor.addEventListener("mouseleave", volver);
+  contenedor.addEventListener("blur", volver);
+  return contenedor;
+}
 function fmtNum(n) { return (Number(n) || 0).toLocaleString("es-ES"); }
 
 // Llamada a la API con JSON. Devuelve { ok, status, data }. 401 -> pantalla de acceso.

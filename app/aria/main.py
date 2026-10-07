@@ -1,5 +1,6 @@
 """ARIA: aplicacion FastAPI (login, chat con Ollama, panel de servicios, Spotify)."""
 import asyncio
+import hashlib
 import html
 import json
 import logging
@@ -26,6 +27,27 @@ PUBLICAS = LIBRES | {"/login"}
 CSP = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'"
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
+
+
+# --- Páginas HTML con versión en los recursos (el navegador nunca usa CSS/JS de una versión anterior) ---
+def _version_estaticos() -> str:
+    h = hashlib.sha1()
+    for f in sorted(config.STATIC_DIR.rglob("*")):
+        if f.is_file():
+            h.update(f.name.encode()); h.update(f.read_bytes())
+    return h.hexdigest()[:10]
+
+
+_VERSION_ESTATICOS = _version_estaticos()
+_PAGINAS: dict = {}
+
+
+def _html_versionado(nombre: str) -> HTMLResponse:
+    if nombre not in _PAGINAS:
+        contenido = (config.STATIC_DIR / nombre).read_text(encoding="utf-8")
+        _PAGINAS[nombre] = re.sub(r'(/static/[\w.-]+\.(?:css|js|svg|webmanifest))"',
+                                  lambda m: f'{m.group(1)}?v={_VERSION_ESTATICOS}"', contenido)
+    return HTMLResponse(_PAGINAS[nombre], headers={"Cache-Control": "no-store"})
 
 @app.on_event("startup")
 async def _arranque():
@@ -153,7 +175,7 @@ async def tls_ask(domain: str = ""):
 # --- Login ---
 @app.get("/login")
 async def login_page():
-    return FileResponse(config.STATIC_DIR / "login.html")
+    return _html_versionado("login.html")
 
 
 @app.post("/login")
@@ -186,7 +208,7 @@ async def logout(request: Request):
 # --- Paginas ---
 @app.get("/")
 async def index():
-    return FileResponse(config.STATIC_DIR / "index.html")
+    return _html_versionado("index.html")
 
 
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")

@@ -181,7 +181,7 @@ const Chat = (() => {
   }
 
   function itemConv(c) {
-    const titulo = el("button", { type: "button", class: "conv-titulo", title: c.titulo }, c.titulo);
+    const titulo = marquesina(el("button", { type: "button", class: "conv-titulo" }), c.titulo);
     titulo.addEventListener("click", () => abrir(c.id));
     const ren = el("button", { type: "button", class: "icono-mini", title: "Renombrar", "aria-label": "Renombrar" }, "✎");
     const del = el("button", { type: "button", class: "icono-mini", title: "Borrar", "aria-label": "Borrar conversación" }, "✕");

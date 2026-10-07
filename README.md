@@ -1,6 +1,6 @@
 # ARIA
 
-Asistente doméstico local estilo "Jarvis" para Raspberry Pi. El modelo de lenguaje se ejecuta en tu propia máquina con [Ollama](https://ollama.com): **sin APIs de pago y sin enviar tus conversaciones a la nube**.
+ARIA es tu asistente doméstico local para Raspberry Pi. El modelo de lenguaje se ejecuta en tu propia máquina con [Ollama](https://ollama.com): **sin APIs de pago y sin enviar tus conversaciones a la nube**.
 
 Incluye:
 
@@ -107,9 +107,20 @@ ARIA solo ofrece al modelo las herramientas cuyas palabras clave aparecen en tu 
 | `estado_sistema` | Temperatura, RAM, disco, carga y tiempo encendida de la Pi |
 | `spotify_play`, `spotify_pause`, `spotify_siguiente`, `spotify_anterior`, `spotify_actual`, `spotify_buscar_y_reproducir` | Control de Spotify |
 | `buscar_en_netflix` | Devuelve un enlace de búsqueda en Netflix |
+| `buscar_en_internet(consulta)`, `noticias(tema)` | Búsqueda en internet y titulares en español (lectura: también para el rol `usuario`) |
 | `registrar_movimiento`, `resumen_mes`, `gastos_por_categoria`, `comparar_meses`, `presupuesto`, `estado_presupuestos`, `buscar_movimientos` | Agente Finanzas (datos del usuario que chatea) |
 | `estado_red`, `dispositivos_red`, `dispositivos_nuevos`, `marcar_dispositivo_conocido`, `medir_latencia`, `test_velocidad` | Agente Redes (un usuario solo `estado_red`) |
 | `informe_seguridad`, `escanear_red`, `estado_escaneo`, `bloqueos_por_cliente` | Agente Seguridad (solo admin) |
+
+### Búsqueda en internet
+
+ARIA busca con **SearXNG**, un metabuscador que corre en el contenedor interno `aria-searxng` (sin puertos publicados: solo la app lo alcanza). ARIA nunca habla directamente con los buscadores.
+
+- Herramientas `buscar_en_internet` y `noticias` (titulares del último día, completados con los de la semana). Los cerebros en la nube las usan para lo reciente o lo que no saben y citan las fuentes al final («Fuentes: …»); el modelo local solo las recibe con palabras clave (busca, internet, noticias, precio, resultado, quién ganó, cuándo…).
+- Resultados compactos (≤ 1 500 caracteres): título, dominio, extracto y enlace, sin parámetros de seguimiento, un resultado por dominio y caché de 10 minutos. El chat muestra «Buscando en internet…» y los enlaces a las fuentes.
+- Configuración en `searxng/settings.yml` (idioma `es-ES`, búsqueda segura moderada, sin proxy de imágenes, limitador desactivado por ser interno). Motores sin clave: DuckDuckGo, Brave, Bing, Google, Wikipedia y de noticias DuckDuckGo/Bing/Google/Brave/Wikinoticias; si uno es bloqueado, responden los demás.
+- `SEARXNG_SECRET` lo genera `install.sh` (o `update.sh` en instalaciones antiguas). `SEARXNG_MEM_LIMIT` limita su memoria (384 m por defecto; consume unos 150 MB).
+- Privacidad: las consultas salen de tu casa hacia los buscadores desde la IP de la Pi, y el texto de los resultados llega al cerebro que uses (incluida la nube).
 
 ### Limitación con Netflix
 
@@ -141,6 +152,23 @@ Se configuran en `.env` (todas opcionales; si faltan, la tarjeta aparece como «
 `install.sh` las rellena solo si están vacías y existen `../SHIELD-DNS/.env` y `../HEIMDALL/.env` (se leen con `grep`, nunca se ejecutan). Tras editar `.env`: `docker compose up -d`.
 
 Seguridad: las claves privadas de WireGuard nunca llegan al navegador salvo el `.conf` que tú descargas expresamente. **Aviso:** los botones «Copiar contraseña» de Inicio entregan la contraseña de Pi-hole y de wg-easy a cualquier persona que haya iniciado sesión en ARIA (solo mediante una petición autenticada y sin caché; no van en el HTML). Protege bien la contraseña de ARIA.
+
+## Memoria
+
+ARIA recuerda cosas tuyas entre días y las usa para darte contexto.
+
+- **Recuerdos** (máx. 300 caracteres, 200 por persona). Dile «recuerda que mi equipo es el Betis» (u «olvida que…»), o añádelos en **Ajustes → Memoria**, donde también puedes verlos, editarlos y borrarlos. Cada persona ve solo los suyos.
+- **Aprendizaje automático** (activado por defecto; interruptor en Ajustes → Memoria): tras cada mensaje, en segundo plano y solo con un cerebro de la nube (nunca el local), ARIA extrae como mucho 3 datos personales duraderos. No guarda contraseñas, claves, tokens, tarjetas ni documentos de identidad. Con el tope de 200 se descartan primero los automáticos menos usados. Con el interruptor apagado no aprende nada ni escribe el diario.
+- **Diario**: cada madrugada (03:30, `ARIA_TZ`) un cerebro de la nube resume en 3–5 viñetas lo que hiciste ese día (sin nube: títulos de las conversaciones). Al arrancar recupera los días perdidos (hasta 14). Ajustes → Memoria muestra los últimos 14 días y deja borrar cada uno.
+- **Privacidad**: la memoria se envía a los cerebros en la nube (Ollama Cloud, Groq, Gemini) junto con tus preguntas (hasta ~1 200 caracteres de recuerdos y ~900 del diario). El cerebro local recibe como máximo ~300 caracteres y nada del diario. «Borrar toda mi memoria» elimina recuerdos y diario.
+
+## Resumen de buenos días
+
+- En **Inicio**, la tarjeta «Tu resumen de hoy» (se puede cerrar por hoy o actualizar) reúne: saludo y fecha, el resumen de ayer, anuncios bloqueados ayer (Pi-hole), dispositivos VPN y cuáles se conectaron en 24 h, temperatura/RAM/disco de la Pi, la última copia fuera de la Pi y 1–2 recuerdos que pueden venir al caso. Los datos de VPN y copias solo los ve el administrador.
+- En el **chat**, el primer «hola» / «buenos días» de cada día se responde con una versión hablada del resumen.
+- `GET /api/briefing` (caché por usuario y día; `?refrescar=1` lo regenera).
+- La copia fuera de la Pi se lee con `git log` del repositorio `ARIA_COPIAS_REPO` (por defecto `/home/usuario/homelab/.copias-repo`) solo si está montado en el contenedor; si no, pone «no disponible».
+- **Tiempo (opcional)**: rellena `ARIA_CIUDAD` (p. ej. `"Ronda, Málaga"`; con «, Provincia» elige el resultado de España de esa provincia) y se usa Open-Meteo (gratis, sin clave) para temperatura actual, máxima/mínima y probabilidad de lluvia. `ARIA_LAT` y `ARIA_LON` fijan las coordenadas y evitan geocodificar; si no, se geocodifica una vez y se guarda en `data/ciudad.json`. Vacío por defecto = sin tiempo.
 
 ## Acceso desde cualquier lugar (dominio propio + Cloudflare)
 
@@ -302,7 +330,7 @@ node app/tests/md.test.js
 | SHIELD-DNS | 53, 8080, 8443 |
 | HEIMDALL | 51820/udp, 51843 |
 
-Ollama y la app no se publican en el host: solo Caddy es accesible desde la red.
+Ollama, SearXNG y la app no se publican en el host: solo Caddy es accesible desde la red.
 
 ## Solución de problemas
 

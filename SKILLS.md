@@ -12,6 +12,7 @@
 | `dispositivos_vpn` | Lista dispositivos VPN y cuáles están conectados |
 | `crear_dispositivo_vpn(nombre)` / `activar_dispositivo_vpn(nombre)` / `desactivar_dispositivo_vpn(nombre)` | Gestión de la VPN por nombre (borrar solo en la interfaz) |
 | `estado_sistema` | Temperatura, RAM, disco, carga y uptime de la Pi |
+| `buscar_en_internet(consulta)` / `noticias(tema)` | Busca en internet (SearXNG) y devuelve títulos, extractos y enlaces; citar las fuentes. Disponible para ambos roles |
 | `buscar_en_netflix` | Devuelve un enlace de búsqueda. ARIA **no** puede controlar Netflix |
 | `registrar_movimiento`, `resumen_mes`, `gastos_por_categoria`, `comparar_meses`, `presupuesto`, `estado_presupuestos`, `buscar_movimientos` | Agente Finanzas (datos del usuario) |
 | `estado_red`, `dispositivos_red`, `dispositivos_nuevos`, `marcar_dispositivo_conocido`, `medir_latencia`, `test_velocidad` | Agente Redes |
@@ -75,6 +76,13 @@ Nunca cambies `ARIA_RED_PERMITIDA` a una red que no sea tuya.
 3. Para entrar desde casa, pulsa «Poner contraseña para casa» y dásela (mínimo 10 caracteres); entra con su email o usuario.
 4. Para quitarle el acceso: «Desactivar» (cierra sus sesiones al instante) o «Eliminar» (borra también sus conversaciones) y retira su email de la política de Access.
 Los emails de `ARIA_ADMIN_EMAILS` en `.env` son siempre administradores y no se pueden eliminar.
+
+## Playbook: ver y borrar lo que ARIA recuerda
+- **Tú mismo**: Ajustes → Memoria. Lista de recuerdos (editar/borrar), añadir uno, diario de 14 días (borrar por día), interruptor «Aprender automáticamente» y «Borrar toda mi memoria».
+- **Por chat**: «recuerda que…», «olvida que…» (herramientas `recordar` / `olvidar`).
+- **Por API** (sesión iniciada): `GET /api/memoria`, `DELETE /api/memoria/{id}`, `DELETE /api/memoria` (todo), `DELETE /api/diario/AAAA-MM-DD`, `POST /api/memoria/ajustes {"aprender": false}`.
+- **Administrador**: `POST /api/diario/generar` (cuerpo opcional `{"fecha":"AAAA-MM-DD","todos":true}`) lanza el diario a mano. Tablas en `data/aria.db`: `recuerdos`, `diario`, `memoria_ajustes`, `resumen_dia`; copia previa a la memoria en `data/aria.db.bak-memoria`.
+- Para que ARIA deje de enviar tu memoria a la nube, borra tus recuerdos y desactiva el aprendizaje.
 
 ## Playbook: actualizar
 `./update.sh`.

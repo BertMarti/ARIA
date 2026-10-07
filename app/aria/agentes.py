@@ -11,6 +11,8 @@ y, opcionalmente, un cerebro preferido (id de `cerebros.PROVEEDORES`). La elecci
 import asyncio
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from . import cerebros, config, tools
 
@@ -40,7 +42,10 @@ _BASE_ARIA = frozenset({
     "fecha_hora", "estado_servicios", "estado_bloqueador", "pausar_bloqueador", "reanudar_bloqueador",
     "dispositivos_vpn", "crear_dispositivo_vpn", "activar_dispositivo_vpn", "desactivar_dispositivo_vpn",
     "estado_sistema", "spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior",
-    "spotify_actual", "spotify_buscar_y_reproducir", "buscar_en_netflix"})
+    "spotify_actual", "spotify_buscar_y_reproducir", "buscar_en_netflix",
+    "recordar", "olvidar", "buscar_en_internet", "noticias", "tiempo"})
+# Memoria personal y búsqueda web también para los especialistas (precios, avisos de seguridad, fabricantes...).
+_COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet"})
 
 FINANZAS_TOOLS = frozenset({"registrar_movimiento", "resumen_mes", "gastos_por_categoria", "comparar_meses",
                             "presupuesto", "estado_presupuestos", "buscar_movimientos"})
@@ -58,7 +63,7 @@ AGENTES: dict = {a.id: a for a in (
            "ingresos positivos. Si te piden apuntar un gasto, usa registrar_movimiento con importe negativo. "
            "Los meses se indican como AAAA-MM. No das asesoramiento de inversión: no eres un asesor financiero "
            "con licencia. No tienes acceso a bancos: los datos vienen de lo que el usuario apunta o importa en CSV.",
-           FINANZAS_TOOLS | {"fecha_hora"},
+           FINANZAS_TOOLS | _COMUNES,
            palabras=(r"\bgast\w*", r"\bingres\w*", r"\bpresupuest\w*", r"\bfinanz\w*", r"\bdinero\b", r"\beuros?\b",
                      r"€", r"\bn[oó]mina\b", r"\bmovimientos?\b", r"\bahorr\w*", r"\bfactur\w*", r"\bcompr[ae]\w*",
                      r"\bpagu[eé]\b", r"\bpag(o|os|ado|ar)\b", r"\bcuenta bancaria\b", r"\bsupermercado\b")),
@@ -67,7 +72,7 @@ AGENTES: dict = {a.id: a for a in (
            "Raspberry Pi 192.168.1.50 con SHIELD-DNS (Pi-hole) y la VPN HEIMDALL (WireGuard)). " + _COMUN +
            "Explica los resultados de forma sencilla (ms, Mbps). El test de velocidad gasta datos y se limita "
            "a uno cada 10 minutos.",
-           REDES_TOOLS | {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn"},
+           REDES_TOOLS | _COMUNES | {"estado_servicios", "estado_bloqueador", "dispositivos_vpn"},
            palabras=(r"\bred(es)?\b", r"\blan\b", r"\bwi-?fi\b", r"\blatencia\b", r"\bping\b", r"\bvelocidad\b",
                      r"\bmbps\b", r"\binternet\b", r"\brouter\b", r"\bdispositivos? (de|en) (la )?(casa|red)\b",
                      r"\bconectad\w+ a la red\b", r"\bdispositivos? nuevos?\b", r"\bfibra\b", r"\bip\b")),
@@ -79,8 +84,8 @@ AGENTES: dict = {a.id: a for a in (
            "Nunca ataques, explotes ni pruebes contraseñas, ni ayudes a hacerlo contra nada; si te lo piden, "
            "niégate y ofrece el informe defensivo. Prioriza los hallazgos por gravedad y da pasos concretos "
            "para corregirlos.",
-           SEGURIDAD_TOOLS | {"fecha_hora", "dispositivos_red", "dispositivos_nuevos", "dispositivos_vpn",
-                              "estado_bloqueador"},
+           SEGURIDAD_TOOLS | _COMUNES | {"noticias", "dispositivos_red", "dispositivos_nuevos", "dispositivos_vpn",
+                                         "estado_bloqueador"},
            roles=frozenset({"admin"}),
            palabras=(r"\bseguridad\b", r"\bescane\w*", r"\bnmap\b", r"\bpuertos?\b", r"\bvulnerab\w*", r"\bcve\b",
                      r"\bintrus\w*", r"\bhack\w*", r"\bataque\w*", r"\bamenaza\w*", r"\bmalware\b",
@@ -192,5 +197,10 @@ def prompt(agente: Agente, nube: bool, nombre: str | None, admin: bool) -> str:
     if not admin:
         p += " Este usuario no es administrador: solo puede consultar; los cambios de la red los hace el administrador."
     if nube:
-        p += " Usa las herramientas solo cuando hagan falta de verdad para responder."
+        n = datetime.now(ZoneInfo(config.TZ))
+        dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+        p += (f" Hoy es {dias[n.weekday()]} {n:%d/%m/%Y} ({n:%H:%M}); fíate de esta fecha, no de tu memoria."
+              " Usa las herramientas solo cuando hagan falta de verdad para responder. Si el usuario te pide que "
+              "recuerdes u olvides algo suyo, usa recordar y olvidar. Si buscas en Internet, cita las fuentes como "
+              "enlaces al final («Fuentes: [título](url)»).")
     return p

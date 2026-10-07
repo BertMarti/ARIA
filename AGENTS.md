@@ -11,11 +11,17 @@ ARIA 2.0: centro de control del laboratorio doméstico en Raspberry Pi (FastAPI 
 - Comprobar: `curl -k https://<IP>/health`
 - Logs: `docker compose logs -f app`
 
+## Búsqueda en internet
+Servicio `searxng` (`searxng/settings.yml`), cliente en `app/aria/busqueda.py`, herramientas `buscar_en_internet` y `noticias` en `tools.py`. Pruebas: `app/tests/test_busqueda.py` (SearXNG falso, sin red). No publiques puertos de SearXNG.
+
 ## Cerebros
 Cadena de IA en `app/aria/cerebros.py` (Ollama Cloud → Groq → Gemini → local). Configuración en `.env` (`ARIA_CEREBROS`, `ARIA_MODELO_*`, claves) y `data/cerebros.json`. Pruebas en `app/tests/test_cerebros.py` con proveedores falsos. No imprimas claves ni las pongas en commits.
 
 ## Usuarios y SSO
 Varios usuarios con rol `admin` o `usuario` (`app/aria/usuarios.py`, `permisos.py`) y SSO con Cloudflare Access (`sso.py`, `ARIA_CF_ACCESS_TEAM`, `ARIA_CF_ACCESS_AUD`, `ARIA_ADMIN_EMAILS`). Los permisos se imponen en el servidor con lista blanca; un endpoint nuevo es de admin salvo que se añada a `permisos.py`. Nunca confíes en la cabecera de email de Cloudflare: solo en el JWT verificado. No añadas tokens de la API de Cloudflare a ARIA. Pruebas: `test_sso.py`, `test_permisos.py`, `test_auth.py`.
+
+## Memoria
+Recuerdos y diario por usuario (`memoria.py`, `aprender.py`, `diario.py`, `briefing.py`). Aprender y resumir van en segundo plano y solo con cerebros de la nube. Todo acceso filtra por el usuario de la sesión; añade pruebas de IDOR si tocas esos endpoints. Un endpoint nuevo para `usuario` debe entrar en `permisos.py` y en `test_toda_ruta_registrada_esta_cubierta`.
 
 ## Agentes especializados
 `app/aria/agentes.py` define ARIA, Finanzas, Redes y Seguridad (solo admin). Finanzas es por usuario (`uid` siempre del servidor). Seguridad usa el contenedor `aria-escaner` (`app/escaner/`), que solo escanea `ARIA_RED_PERMITIDA` (192.168.0.0/24): uso defensivo, sin ataques ni fuerza bruta. Pruebas: `test_agentes.py`, `test_finanzas.py`, `test_seguridad.py`.

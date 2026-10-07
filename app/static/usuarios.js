@@ -39,11 +39,11 @@ const Usuarios = (() => {
           el("span", { class: "muted" }, u.email + (u.usuario ? " · usuario «" + u.usuario + "»" : "")),
           el("span", { class: "muted" }, "Último acceso: " + fecha(u.ultimo_acceso) + (u.tiene_password ? " · con contraseña para casa" : " · sin contraseña para casa"))),
         el("div", { class: "fila-acc" },
-          el("span", { class: "pildora" + (u.activo ? " ok" : " apagada") }, u.activo ? "Activo" : "Desactivado"),
+          el("span", { class: "estado-usuario" + (u.activo ? " ok" : " apagado") }, el("span", { class: "punto " + (u.activo ? "ok" : "apagado") }), u.activo ? "Activo" : "Desactivado"),
           rol,
           el("button", { type: "button", class: "fantasma pequeno", disabled: u.protegido,
             onclick: () => cambiar(u, { activo: !u.activo }, u.activo ? "Usuario desactivado." : "Usuario activado.") }, u.activo ? "Desactivar" : "Activar"),
-          el("button", { type: "button", class: "fantasma pequeno", onclick: () => ponerPassword(u) }, "Poner contraseña para casa"),
+          el("button", { type: "button", class: "fantasma pequeno", title: "Contraseña para entrar desde casa (sin Cloudflare)", onclick: () => ponerPassword(u) }, "Contraseña de casa"),
           el("button", { type: "button", class: "peligro pequeno", disabled: u.protegido, onclick: () => eliminar(u) }, "Eliminar"))));
     }
   }

@@ -30,7 +30,7 @@ const Control = (() => {
     const numero = (v, t) => el("div", { class: "numero" }, el("strong", null, v), el("span", { class: "muted" }, t));
     const top = el("ol", { class: "top-lista" });
     if (!data.top_bloqueados.length) top.append(el("li", { class: "muted" }, "Sin datos todavía."));
-    for (const d of data.top_bloqueados) top.append(el("li", null, el("span", { class: "dominio", title: d.dominio }, d.dominio), el("span", { class: "muted" }, fmtNum(d.cuenta))));
+    for (const d of data.top_bloqueados) top.append(el("li", null, marquesina(el("span", { class: "dominio", tabIndex: 0 }), d.dominio), el("span", { class: "muted" }, fmtNum(d.cuenta))));
     const pausas = el("div", { class: "botones" },
       ...[5, 30, 60].map((m) => el("button", { type: "button", class: "fantasma", onclick: () => pausar(m) }, "Pausar " + m + " min")),
       el("button", { type: "button", class: "primario", onclick: reanudar, disabled: data.bloqueo_activo }, "Reanudar"));

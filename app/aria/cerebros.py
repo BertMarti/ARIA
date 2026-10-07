@@ -165,6 +165,13 @@ def _ultimo_usuario(msgs: list) -> str:
     return next((m.get("content", "") for m in reversed(msgs) if m.get("role") == "user"), "")
 
 
+def _prompt(sistema: str | None, nube: bool, nombre, rol: str, extra: str = "") -> str:
+    """Prompt del agente (o el de ARIA general) con el contexto de memoria al final."""
+    if not sistema:
+        return config.system_prompt(nube, nombre, rol == "admin", extra)
+    return sistema + ("\n\n" + extra if extra else "")
+
+
 class Proveedor:
     id = ""
     nombre = ""
@@ -186,11 +193,12 @@ class Proveedor:
 
     async def ronda(self, msgs: list, con_tools: bool = True, rol: str = "admin",
                     nombre: str | None = None, herramientas: set | None = None,
-                    sistema: str | None = None) -> AsyncIterator[dict]:
+                    sistema: str | None = None, extra: str = "") -> AsyncIterator[dict]:
         """Eventos: {"type": "token"|"pensando"|"llamadas"|"aviso", ...}. Lanza ProveedorError.
 
-        `herramientas`: nombres ofrecidos (ya filtrados por rol y agente); None = todas las del rol.
-        `sistema`: prompt del sistema del agente; None = el de ARIA general."""
+        `herramientas`: nombres ofrecidos (ya filtrados por rol y agente); None = las generales del rol.
+        `sistema`: prompt del sistema del agente; None = el de ARIA general.
+        `extra`: contexto añadido al final del prompt (memoria del usuario)."""
         raise NotImplementedError
         yield  # pragma: no cover
 
@@ -222,9 +230,9 @@ class OllamaNativo(Proveedor):
                     except ValueError:
                         continue
 
-    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None, herramientas=None, sistema=None):
+    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None, herramientas=None, sistema=None, extra=""):
         modelo = self.modelo()
-        base = [{"role": "system", "content": sistema or config.system_prompt(self.nube, nombre, rol == "admin")}] + msgs
+        base = [{"role": "system", "content": _prompt(sistema, self.nube, nombre, rol, extra)}] + msgs
         ofrecibles = (tools.generales() if herramientas is None else set(herramientas)) & tools.permitidas(rol)
         if self.nube:
             pedidas = ofrecibles if con_tools else set()
@@ -294,11 +302,11 @@ class OpenAICompatible(Proveedor):
         self.id, self.nombre, self.url = id, nombre, url
         self.var_clave, self.var_modelo, self.modelo_defecto, self.ayuda = var_clave, var_modelo, modelo_defecto, ayuda
 
-    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None, herramientas=None, sistema=None):
+    async def ronda(self, msgs, con_tools=True, rol="admin", nombre=None, herramientas=None, sistema=None, extra=""):
         clave = os.environ.get(self.var_clave, "").strip()
         if not clave:
             raise ProveedorError("clave", "falta la clave")
-        sistema = sistema or config.system_prompt(True, nombre, rol == "admin")
+        sistema = _prompt(sistema, True, nombre, rol, extra)
         cuerpo = {"model": self.modelo(), "stream": True,
                   "messages": [{"role": "system", "content": sistema}] + a_openai(msgs)}
         ofrecibles = (tools.generales() if herramientas is None else set(herramientas)) & tools.permitidas(rol)
@@ -480,3 +488,37 @@ async def probar(pid: str) -> dict:
     total = time.perf_counter() - t0
     return {"ok": True, "ms": int(total * 1000), "primer_token_ms": int((ttft or total) * 1000),
             "texto": texto.strip()[:80]}
+
+
+async def completar_nube(prompt: str, max_s: float = 60) -> tuple[str, str] | None:
+    """Una respuesta corta (sin herramientas) del primer cerebro EN LA NUBE disponible. Nunca usa el local.
+
+    Devuelve (texto, etiqueta del cerebro) o None si no hay ninguno disponible o todos fallan.
+    Sirve para tareas en segundo plano (extraer recuerdos, resumir el día)."""
+    import asyncio
+
+    async def una(prov) -> str:
+        texto = ""
+        async for ev in prov.ronda([{"role": "user", "content": prompt}], con_tools=False):
+            if ev["type"] == "token":
+                texto += ev["text"]
+        return texto
+
+    for prov in cadena():
+        if not prov.nube:
+            continue
+        try:
+            texto = await asyncio.wait_for(una(prov), max_s)
+        except ProveedorError as e:
+            registrar_fallo(prov.id, e)
+            continue
+        except asyncio.TimeoutError:
+            registrar_fallo(prov.id, ProveedorError("timeout"))
+            continue
+        if texto.strip():
+            return texto, prov.etiqueta()
+    return None
+
+
+def hay_nube() -> bool:
+    return any(p.nube for p in cadena())

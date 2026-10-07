@@ -95,7 +95,13 @@ def test_herramientas_por_agente_y_rol():
     assert agentes.herramientas(fin, "usuario") == set(fin.herramientas)
     redes = agentes.obtener("redes")
     assert agentes.herramientas(redes, "usuario") == {"estado_red", "fecha_hora", "estado_servicios",
-                                                      "estado_bloqueador", "dispositivos_vpn"}
+                                                      "estado_bloqueador", "dispositivos_vpn", "recordar",
+                                                      "olvidar", "buscar_en_internet"}
+    # memoria y búsqueda en todos los agentes; ARIA general conserva también noticias y tiempo
+    for a in agentes.AGENTES.values():
+        assert {"recordar", "olvidar", "buscar_en_internet"} <= agentes.herramientas(a, "admin"), a.id
+    assert {"noticias", "tiempo"} <= agentes.herramientas(agentes.obtener("aria"), "usuario")
+    assert agentes.herramientas(agentes.obtener("aria"), "admin") == tools.generales()
     seg = agentes.obtener("seguridad")
     assert "informe_seguridad" in agentes.herramientas(seg, "admin")
     assert agentes.herramientas(seg, "usuario") & agentes.SEGURIDAD_TOOLS == set()

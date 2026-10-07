@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import config, escaneo, finanzas, red, seguridad, services, shield, sistema, spotify, vpn
+from . import busqueda, config, escaneo, finanzas, memoria, red, seguridad, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -51,7 +51,9 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 
 # Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
 SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn",
-                          "estado_sistema", "buscar_en_netflix"})
+                          "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo"})
+# Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
+MEMORIA = frozenset({"recordar", "olvidar"})
 
 
 # Además, el rol `usuario` puede usar sus finanzas (solo sus datos) y la salud de la red (solo lectura).
@@ -64,7 +66,7 @@ def permitidas(rol: str) -> set:
     if rol == "admin":
         return set(_REGISTRO)
     if rol == "usuario":
-        return set(SOLO_LECTURA | DE_USUARIO) & set(_REGISTRO)
+        return set(SOLO_LECTURA | MEMORIA | DE_USUARIO) & set(_REGISTRO)
     return set()
 
 
@@ -84,7 +86,16 @@ _BLOQUEADOR = r"\b(bloqueador|anuncios?|publicidad|pi-?hole|shield|adblock|ads)\
 _SISTEMA = (r"\b(raspberry|rasp|ram|cpu|uptime|procesador|servidor|temperatura|memoria|disco|"
             r"almacenamiento|espacio|sistema)\b")
 _EXPLICAR = r"!\b(expl[ií]ca\w*|qu[eé] es|qu[eé] significa|para qu[eé] sirve)\b"  # preguntas conceptuales
+# Búsqueda en internet: petición explícita, noticias o datos que cambian con el tiempo.
+_BUSCAR = (r"\b(b[uú]sca\w*|busque\w*|googlea\w*|investiga\w*|internet|google|en la red|en la web|online|"
+           r"wikipedia)\b")
+_NOTICIAS = r"\b(noticias?|titulares?|actualidad|[uú]ltima hora|novedades)\b"
+_DATO_ACTUAL = (r"\b(precio|cotizaci[oó]n|resultado|qui[eé]n gan[oó]|qui[eé]n ha ganado|cu[aá]ndo (es|son|fue|juega|sale|"
+                r"se estrena)|[uú]ltim[oa]s?|esta semana|este a[nñ]o|clasificaci[oó]n|partido|elecciones|"
+                r"cu[aá]nto cuesta|cu[aá]nto vale)\b")
 _INTENCIONES = [
+    ((r"\b(tiempo|llover[aá]?|llueve|lluvia|calor|fr[ií]o|previsi[oó]n|nublado|soleado|tormenta|grados)\b",
+      r"!\b(raspberry|cpu|procesador|cu[aá]nto tiempo|encendid[ao])\b"), {"tiempo"}),
     # (patrones que deben cumplirse TODOS, herramientas que se ofrecen)
     ((r"\b(hora|horas|fecha|d[ií]a|hoy|ma[nñ]ana|semana|mes)\b",
       r"!" + _BLOQUEADOR, r"!" + _SISTEMA, r"!\b(vpn|wireguard|heimdall)\b"), {"fecha_hora"}),
@@ -113,7 +124,14 @@ _INTENCIONES = [
       r"!" + _BLOQUEADOR, r"!\b(raspberry|ram|cpu|espacio|libre|temperatura)\b"),
      {"spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior", "spotify_actual",
       "spotify_buscar_y_reproducir"}),
+    ((_BUSCAR, r"!\b(netflix|spotify)\b"), {"buscar_en_internet"}),
+    ((_NOTICIAS,), {"noticias"}),
+    ((_DATO_ACTUAL, r"!" + _BLOQUEADOR, r"!" + _SISTEMA, r"!\b(vpn|wireguard|heimdall|spotify)\b", _EXPLICAR),
+     {"buscar_en_internet"}),
     ((r"\b(netflix|serie|series|pel[ií]cula|pel[ií]culas|cap[ií]tulo)\b",), {"buscar_en_netflix"}),
+    # Memoria personal: «recuerda que…», «apunta que…» / «olvida que…», «no recuerdes…»
+    ((r"\b(recuerda|recu[eé]rdame|acu[eé]rdate|ac[eé]rdate|apunta|anota|memoriza|ten en cuenta)\b",), {"recordar"}),
+    ((r"\b(olvida\w*|no recuerdes|deja de recordar|borra\w* (de )?(tu )?memoria)\b",), {"olvidar"}),
 ]
 
 
@@ -159,7 +177,8 @@ def registrar_errores(*clases) -> None:
 
 async def ejecutar(nombre: str, args: dict | None, rol: str = "admin", uid: int | None = None,
                    solo: set | None = None) -> str:
-    """Ejecuta una herramienta comprobando el rol y, si se da `solo`, las del agente activo."""
+    """Ejecuta una herramienta comprobando el rol y, si se da `solo`, las del agente activo.
+    Las de memoria usan el usuario fijado en `memoria.uid_actual` por el chat; las de datos propios, `uid`."""
     t = _REGISTRO.get(nombre)
     if not t:
         return f"Herramienta desconocida: {nombre}"
@@ -185,6 +204,34 @@ async def ejecutar(nombre: str, args: dict | None, rol: str = "admin", uid: int 
 async def fecha_hora() -> str:
     n = datetime.now(ZoneInfo(config.TZ))
     return f"{DIAS[n.weekday()]}, {n.day} de {MESES[n.month - 1]} de {n.year}, {n:%H:%M} ({config.TZ})"
+
+
+@tool("buscar_en_internet",
+      "Busca información actual en internet (datos recientes, hechos, precios, resultados, lugares...). "
+      "Devuelve títulos, extractos y enlaces; cita siempre las fuentes al final de la respuesta.",
+      {"consulta": ("string", "Qué buscar, con palabras clave concretas")}, ("consulta",))
+async def buscar_en_internet(consulta: str) -> str:
+    try:
+        return busqueda.formatear(str(consulta), await busqueda.buscar(str(consulta), "general", 5))
+    except busqueda.BusquedaError as e:
+        return str(e)
+
+
+@tool("noticias",
+      "Últimos titulares de noticias en español (de las últimas horas o de la semana). "
+      "Sin tema devuelve la actualidad general de España; cita siempre las fuentes.",
+      {"tema": ("string", "Tema opcional (p. ej. «economía», «Real Madrid», «Jaén»); vacío = actualidad general")})
+async def noticias(tema: str = "") -> str:
+    q = " ".join(str(tema or "").split()) or "última hora España"
+    try:
+        res = await busqueda.buscar(q, "news", 5, "day")
+        if len(res) < 3:  # pocas de hoy: se completa con las de la semana
+            vistos = {r["dominio"] for r in res}
+            res = res + [r for r in await busqueda.buscar(q, "news", 5, "week") if r["dominio"] not in vistos]
+            res = res[:5]
+        return busqueda.formatear(q, res)
+    except busqueda.BusquedaError as e:
+        return str(e)
 
 
 @tool("estado_servicios", "Consulta el estado de los servicios SHIELD-DNS (bloqueo de anuncios) y HEIMDALL (VPN).")
@@ -269,6 +316,23 @@ async def dispositivos_vpn() -> str:
     return f"{len(cl)} dispositivo(s): " + ", ".join(partes) + f". Conectados ahora: {sum(c['conectado'] for c in cl)}."
 
 
+@tool("tiempo", "Previsión del tiempo por días (cielo, máxima, mínima y probabilidad de lluvia). Úsala para "
+      "cualquier pregunta sobre el tiempo, la lluvia o la temperatura exterior, también de fin de semana o próximos días.",
+      {"ciudad": ("string", "Ciudad (opcional; por defecto la del usuario)")})
+async def tiempo(ciudad: str = "", **_ignorado) -> str:
+    from . import briefing
+    p = await briefing.prevision(7, ciudad or None)  # siempre 7 días: el modelo no elige un rango corto por error
+    if not p:
+        return "No hay previsión disponible (falta ARIA_CIUDAD o no responde el servicio del tiempo)."
+    etiqueta = {0: "HOY ", 1: "MAÑANA "}
+    finde = {"sábado", "domingo"}
+    filas = [f"{etiqueta.get(i, '')}{d['dia']} {d['fecha'][8:]}/{d['fecha'][5:7]}"
+             f"{' (FIN DE SEMANA)' if d['dia'] in finde else ''}: {d['cielo']}, "
+             f"mínima {d['min']} °C, máxima {d['max']} °C, lluvia {d['lluvia']} %" for i, d in enumerate(p["dias"])]
+    return (f"Previsión para {p['ciudad']} (usa SOLO estos días; si preguntan por un día que no aparece, dilo):\n"
+            + "\n".join(filas))
+
+
 @tool("estado_sistema", "Estado de la Raspberry Pi: temperatura de la CPU, memoria RAM, disco, carga y tiempo encendida.")
 async def estado_sistema() -> str:
     e = sistema.estado()
@@ -321,6 +385,42 @@ async def activar_dispositivo_vpn(nombre: str) -> str:
       {"nombre": ("string", "Nombre del dispositivo")}, ("nombre",))
 async def desactivar_dispositivo_vpn(nombre: str) -> str:
     return await _cambiar_dispositivo(nombre, False)
+
+
+@tool("recordar",
+      "Guarda un dato personal del usuario (algo suyo, de su casa o de sus preferencias) para recordarlo en "
+      "futuras conversaciones. Úsala cuando diga «recuerda que…», «apunta que…» o similar.",
+      {"dato": ("string", "Lo que hay que recordar, en una frase corta (máximo 300 caracteres)")}, ("dato",))
+async def recordar(dato: str) -> str:
+    uid = memoria.uid_actual.get()
+    if uid is None:
+        return "No sé quién eres, no puedo guardar recuerdos ahora."
+    try:
+        rec, nuevo = memoria.anadir(uid, str(dato), "usuario")
+    except memoria.MemoriaError as e:
+        return str(e)
+    if not nuevo:
+        return f"Ya lo tenía anotado: «{rec['texto']}»."
+    return f"Anotado: «{rec['texto']}». Puedes verlo o borrarlo en Ajustes → Memoria."
+
+
+@tool("olvidar",
+      "Borra un recuerdo del usuario. Admite el número del recuerdo o unas palabras de lo que debe olvidar. "
+      "Úsala cuando diga «olvida que…» o «no recuerdes…».",
+      {"dato_o_id": ("string", "Número del recuerdo o texto (aunque sea parcial) de lo que hay que olvidar")}, ("dato_o_id",))
+async def olvidar(dato_o_id: str) -> str:
+    uid = memoria.uid_actual.get()
+    if uid is None:
+        return "No sé quién eres, no puedo borrar recuerdos ahora."
+    q = str(dato_o_id)
+    hallados = memoria.buscar(uid, q)
+    if not hallados:
+        return "No tengo ningún recuerdo que encaje con eso."
+    if len(hallados) > 1 and not q.strip().lstrip("#").isdigit():
+        lista = "; ".join(f"{h['id']}: {h['texto']}" for h in hallados[:5])
+        return f"Encajan varios recuerdos ({lista}). Dime cuál olvidar (su número)."
+    memoria.borrar(uid, hallados[0]["id"])
+    return f"Olvidado: «{hallados[0]['texto']}»."
 
 
 # --- Finanzas (datos del usuario que chatea) ---------------------------------------------------------

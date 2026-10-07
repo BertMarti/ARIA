@@ -29,6 +29,15 @@ _USUARIO = [
     # Red: solo la salud (latencia ya medida, DNS, VPN y la última velocidad). Dispositivos, mediciones
     # nuevas y todo Seguridad son solo de admin.
     ("GET", r"/api/red/salud"),
+    # Memoria y resumen de buenos días: cada usuario solo ve y cambia lo suyo (se filtra por sesión).
+    ("GET", r"/api/memoria"),
+    ("POST", r"/api/memoria"),
+    ("POST", r"/api/memoria/ajustes"),
+    ("PATCH", r"/api/memoria/\d+"),
+    ("DELETE", r"/api/memoria/\d+"),
+    ("DELETE", r"/api/memoria"),
+    ("DELETE", r"/api/diario/\d{4}-\d{2}-\d{2}"),
+    ("GET", r"/api/briefing"),
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 

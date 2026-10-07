@@ -7,7 +7,7 @@ ARIA 2.0: centro de control del laboratorio doméstico en Raspberry Pi (FastAPI 
 
 ## Comandos
 - Validar: `docker compose config`; pruebas: ver README (sección Pruebas); `node --check app/static/*.js`
-- Levantar: `docker compose up -d --build` y `docker compose ps` (tres contenedores healthy)
+- Levantar: `docker compose up -d --build` y `docker compose ps` (ollama, app y caddy healthy; escaner en marcha)
 - Comprobar: `curl -k https://<IP>/health`
 - Logs: `docker compose logs -f app`
 
@@ -16,6 +16,9 @@ Cadena de IA en `app/aria/cerebros.py` (Ollama Cloud → Groq → Gemini → loc
 
 ## Usuarios y SSO
 Varios usuarios con rol `admin` o `usuario` (`app/aria/usuarios.py`, `permisos.py`) y SSO con Cloudflare Access (`sso.py`, `ARIA_CF_ACCESS_TEAM`, `ARIA_CF_ACCESS_AUD`, `ARIA_ADMIN_EMAILS`). Los permisos se imponen en el servidor con lista blanca; un endpoint nuevo es de admin salvo que se añada a `permisos.py`. Nunca confíes en la cabecera de email de Cloudflare: solo en el JWT verificado. No añadas tokens de la API de Cloudflare a ARIA. Pruebas: `test_sso.py`, `test_permisos.py`, `test_auth.py`.
+
+## Agentes especializados
+`app/aria/agentes.py` define ARIA, Finanzas, Redes y Seguridad (solo admin). Finanzas es por usuario (`uid` siempre del servidor). Seguridad usa el contenedor `aria-escaner` (`app/escaner/`), que solo escanea `ARIA_RED_PERMITIDA` (192.168.0.0/24): uso defensivo, sin ataques ni fuerza bruta. Pruebas: `test_agentes.py`, `test_finanzas.py`, `test_seguridad.py`.
 
 ## Reglas
 - Español (España) en UI, documentación, comentarios y commits.

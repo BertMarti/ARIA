@@ -107,6 +107,9 @@ ARIA solo ofrece al modelo las herramientas cuyas palabras clave aparecen en tu 
 | `estado_sistema` | Temperatura, RAM, disco, carga y tiempo encendida de la Pi |
 | `spotify_play`, `spotify_pause`, `spotify_siguiente`, `spotify_anterior`, `spotify_actual`, `spotify_buscar_y_reproducir` | Control de Spotify |
 | `buscar_en_netflix` | Devuelve un enlace de búsqueda en Netflix |
+| `registrar_movimiento`, `resumen_mes`, `gastos_por_categoria`, `comparar_meses`, `presupuesto`, `estado_presupuestos`, `buscar_movimientos` | Agente Finanzas (datos del usuario que chatea) |
+| `estado_red`, `dispositivos_red`, `dispositivos_nuevos`, `marcar_dispositivo_conocido`, `medir_latencia`, `test_velocidad` | Agente Redes (un usuario solo `estado_red`) |
+| `informe_seguridad`, `escanear_red`, `estado_escaneo`, `bloqueos_por_cliente` | Agente Seguridad (solo admin) |
 
 ### Limitación con Netflix
 
@@ -174,13 +177,61 @@ En `.env` (con `ARIA_CF_ACCESS_TEAM` o `ARIA_CF_ACCESS_AUD` vacíos el SSO queda
 ARIA admite varios usuarios con dos roles:
 
 - **Administrador**: todo (Inicio, Chat, Centro de control, Ajustes completos y gestión de usuarios).
-- **Usuario**: Inicio (solo estado, sin «Copiar contraseña» ni acciones), Chat con sus propias conversaciones (solo con herramientas de consulta: hora, servicios, bloqueador, dispositivos VPN, sistema y Netflix) y, en Ajustes, su contraseña y la voz.
+- **Usuario**: Inicio (solo estado, sin «Copiar contraseña» ni acciones), Chat con sus propias conversaciones (solo con herramientas de consulta: hora, servicios, bloqueador, dispositivos VPN, sistema y Netflix) y, en Ajustes, su contraseña y la voz. También tiene **Finanzas** (solo sus datos) y los agentes Finanzas y Redes del chat (Redes solo de consulta); Red, Seguridad y Control son de administrador.
 
 Los permisos se aplican **en el servidor** en cada petición, no solo ocultando botones. Cada usuario ve únicamente sus conversaciones, y ARIA le trata por su nombre.
 
 Para invitar a alguien: **Ajustes → Usuarios → Invitar usuario** (email, nombre y rol). Después, autoriza también su email en Cloudflare Access (*Zero Trust → Access → Applications → ARIA → Policies*) para que pueda entrar desde fuera; ARIA no toca Cloudflare. Desde casa puede entrar con la contraseña que le pongas con «Poner contraseña para casa». Desde Usuarios también se cambia el rol, se activa o desactiva (sus sesiones se cierran al instante) y se elimina (con sus conversaciones). Nunca se puede quitar ni degradar al último administrador activo ni a los de `ARIA_ADMIN_EMAILS`.
 
 Al actualizar desde la versión de un solo usuario, ARIA hace una copia en `data/aria.db.bak-sso`, crea el administrador `admin` con la contraseña de siempre y le asigna todas las conversaciones existentes.
+
+## Agentes especializados
+
+Además de ARIA (general), el chat tiene tres «cerebros con oficio». Cada uno tiene su propio prompt en español, sus herramientas y los roles que pueden usarlo; la respuesta lleva la insignia del agente junto a la del cerebro.
+
+| Agente | Para qué | Quién |
+|---|---|---|
+| **ARIA** | Charla y todo lo de antes (bloqueador, VPN, sistema, Spotify…). Deriva a los especialistas | Todos |
+| **Finanzas** | Gastos, ingresos, categorías y presupuestos mensuales. Cada usuario solo ve **sus** datos | Todos |
+| **Redes** | Dispositivos de la LAN, latencia, test de velocidad, DNS y VPN | Admin (un usuario solo consulta la salud de la red: latencia, DNS, VPN y la última velocidad) |
+| **Seguridad** | Informe defensivo de la red de casa (escaneo de puertos, servicios de riesgo, CVE…) | Solo admin |
+
+**Cómo elegir agente**
+- Selector de la cabecera del chat: se guarda en la conversación.
+- Prefijo en el mensaje: `@finanzas ¿cuánto llevo gastado?`, `@redes`, `@seguridad`, `@aria` (solo para ese mensaje).
+- Con «ARIA (automático)», ARIA enruta sola: primero un filtro de palabras clave (gratis) y, solo si dos agentes empatan, una clasificación de una línea con el primer cerebro en la nube. A un usuario nunca se le enruta a Seguridad, y si escribe `@seguridad` le responde ARIA con un aviso.
+- Con el cerebro local de respaldo se mantiene el filtro de herramientas por palabras clave.
+
+### Finanzas: importar el CSV del banco
+
+ARIA **no** se conecta a ningún banco ni usa APIs financieras: los datos llegan a mano, por el chat («apunta 12,50 € en Mercadona») o importando un extracto.
+
+1. En la web de tu banco, descarga los movimientos en **CSV** (si solo da Excel, ábrelo y «Guardar como → CSV»).
+2. **Finanzas → Importar extracto CSV** → elige el archivo (máximo 2 MB). Opcionalmente escribe el nombre de la cuenta.
+3. ARIA detecta el separador (`;`, `,` o tabulador), la codificación (UTF-8 o latin-1), las líneas de cabecera del banco, la coma o el punto decimal y las fechas (`dd/mm/aaaa`, `dd/mm/aa`, `aaaa-mm-dd`). Revisa el **mapeo de columnas** (Fecha, Concepto, Importe o Debe/Haber, Cuenta) y la vista previa; si cambias una columna, la vista previa se actualiza.
+4. Pulsa **Importar**. Los movimientos que ya estaban (misma fecha, importe y concepto) no se duplican, así que puedes reimportar un extracto que se solapa con otro.
+
+Las categorías se asignan con reglas (Mercadona → Supermercado, Repsol → Transporte, Netflix → Suscripciones…). Al editar un movimiento puedes marcar «aplicar a movimientos parecidos» y se crea una regla tuya. El botón **Sugerir categorías (nube)** es opcional: envía solo los **conceptos** sin categoría (sin importes ni fechas) al primer cerebro en la nube y nada se aplica hasta que aceptas cada sugerencia. ARIA no da asesoramiento de inversión.
+
+### Red
+
+**Red** une la tabla de red de Pi-hole (`/api/network/devices`: nombres e IP y última consulta DNS) con el último escaneo (MAC, fabricante y puertos; Pi-hole corre en Docker y no ve las MAC de la LAN). Lo que no está marcado como conocido aparece resaltado; puedes ponerle un alias. La latencia se mide con ping (ICMP sin privilegios) al router, 1.1.1.1 y 8.8.8.8. El **test de velocidad** descarga ~15 MB y sube ~5 MB contra `speed.cloudflare.com` (sin programas de terceros) y se permite uno cada 10 minutos. Las mediciones se guardan 90 días y se dibujan en una gráfica SVG propia.
+
+### Seguridad: qué hace y qué no hace el escaneo
+
+El escaneo lo hace un contenedor aparte, **`aria-escaner`** (alpine + nmap): `network_mode: host` (es el único que lo usa; nmap necesita ver la LAN), solo la capacidad `NET_RAW`, sistema de archivos de solo lectura, `no-new-privileges`, sin puertos publicados y sin socket de Docker. La app y el escáner solo se hablan por un volumen compartido (`escaner`): la app deja una petición JSON y el escáner deja el resultado.
+
+**Hace**
+- Descubrir equipos y puertos TCP abiertos con versiones de servicio (`nmap -sS -sV`): perfil rápido (100 puertos más comunes) o completo (1000). En el router mira también UPnP (1900/udp) y NAT-PMP (5351/udp).
+- Solo en la red de `ARIA_RED_PERMITIDA` (por defecto `192.168.0.0/24`). La app **y** el escáner rechazan cualquier otra cosa: IPs públicas, otras redes privadas, nombres de host, IPv6 y opciones de nmap.
+- Un escaneo bajo demanda cada 10 minutos como mucho y uno automático cada domingo a las 04:00.
+- Informe con gravedad (alta, media, baja): servicios de riesgo (Telnet, SMB, RDP, VNC, UPnP, bases de datos, API de Docker), paneles de administración web sin HTTPS, puertos nuevos respecto al escaneo anterior, dispositivos sin reconocer, versiones con vulnerabilidades conocidas (OSV.dev para paquetes Debian y NVD para el resto, APIs públicas sin clave; solo se envían nombre de producto y versión, y se guarda en caché 7 días), peers de WireGuard activos y nunca usados, y lo más bloqueado por Pi-hole en cada dispositivo.
+
+**No hace**
+- No ataca, no explota vulnerabilidades, no prueba contraseñas y no ejecuta scripts NSE.
+- No comprueba la exposición de tu IP pública desde Internet: haría falta un servicio externo que la escanee y no hay ninguno gratuito que sea claramente adecuado. Revisa en el router que solo esté redirigido UDP 51820 (VPN) y que la gestión remota esté desactivada.
+- Las coincidencias de NVD son por número de versión: pueden referirse a otras partes del producto y no al servicio expuesto; los avisos de Debian sin puntuación suelen ser menores o estar mitigados.
+- Escanear la propia Raspberry desde ella misma no muestra los puertos publicados por Docker (80, 443, 53…), solo los del sistema.
 
 ## Actualizar
 
@@ -247,7 +298,7 @@ node app/tests/md.test.js
 
 | Proyecto | Puertos |
 |---|---|
-| ARIA | 80 (redirige a 443), 443 |
+| ARIA | 80 (redirige a 443), 443 (`aria-escaner` no publica nada) |
 | SHIELD-DNS | 53, 8080, 8443 |
 | HEIMDALL | 51820/udp, 51843 |
 

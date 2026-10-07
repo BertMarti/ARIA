@@ -128,7 +128,7 @@ const Ajustes = (() => {
       if (j.nueva.length < 10) { msg.className = "error"; msg.textContent = "La contraseña nueva debe tener al menos 10 caracteres."; return; }
       if (j.nueva !== j.repetida) { msg.className = "error"; msg.textContent = "Las contraseñas nuevas no coinciden."; return; }
       const r = await api("/api/password", { method: "POST", json: j });
-      if (r.ok) { $("form-pass").reset(); msg.className = "ok-txt"; msg.textContent = "Contraseña cambiada. Las demás sesiones se han cerrado."; }
+      if (r.ok) { Sesion.tienePassword = true; $("pass-actual").required = true; $("pass-actual-et").hidden = false; $("form-pass").reset(); msg.className = "ok-txt"; msg.textContent = "Contraseña cambiada. Las demás sesiones se han cerrado."; }
       else { msg.className = "error"; msg.textContent = r.data.error || "No se pudo cambiar la contraseña."; }
     });
   }
@@ -157,7 +157,10 @@ const Ajustes = (() => {
       el("div", null, "El cerebro local no sale de casa; los de la nube (Ollama Cloud, Groq, Gemini) reciben tus mensajes para responder."));
   }
 
-  function activar() { cerebros(); modelos(); spotify(); acerca(); }
+  function activar() {
+    if (Sesion.esAdmin) { cerebros(); modelos(); spotify(); acerca(); }
+    if (!Sesion.tienePassword) { $("pass-actual").required = false; $("pass-actual-et").hidden = true; }
+  }
   function iniciar() { voz(); contrasena(); }
   return { iniciar, activar, modelos };
 })();

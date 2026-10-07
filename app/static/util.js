@@ -98,6 +98,16 @@ function enlaceExterno(url, texto) {
   return el("a", { href: url, target: "_blank", rel: "noopener noreferrer", class: "enlace-panel" }, texto);
 }
 
+// Sesión actual (usuario, rol). Los botones se ocultan por rol, pero quien manda es el servidor (403).
+const Sesion = { rol: "usuario", nombre: "", email: "", tienePassword: true, esAdmin: false };
+async function cargarSesion() {
+  const { ok, data } = await api("/api/info");
+  if (!ok) return;
+  Sesion.rol = data.rol || "usuario"; Sesion.nombre = data.usuario || ""; Sesion.email = data.email || "";
+  Sesion.tienePassword = data.tiene_password !== false; Sesion.esAdmin = Sesion.rol === "admin";
+  document.body.classList.toggle("rol-usuario", !Sesion.esAdmin);
+}
+
 // Ajuste por dispositivo (localStorage puede no estar disponible).
 const Prefs = {
   get(k, def) { try { const v = localStorage.getItem("aria_" + k); return v === null ? def : v; } catch (_) { return def; } },

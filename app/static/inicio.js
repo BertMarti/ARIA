@@ -73,13 +73,15 @@ const Inicio = (() => {
   async function iniciar() {
     const { data } = await api("/api/info");
     if (data.puertos) puertos = data.puertos;
-    usuario = data.usuario || ""; saludo();
+    usuario = Sesion.nombre || data.usuario || ""; saludo();
     $("tile-shield-a").href = enlacePanel("shield", "https://" + location.hostname + ":" + puertos.shield_web + "/admin");
     $("tile-vpn-a").href = enlacePanel("vpn", "https://" + location.hostname + ":" + puertos.vpn);
     document.querySelectorAll("[data-secreto]").forEach((b) => b.addEventListener("click", () => copiarSecreto(b)));
+    if (Sesion.esAdmin) {
     $("qa-pausar").addEventListener("click", pausar);
     $("qa-reanudar").addEventListener("click", reanudar);
     $("qa-vpn").addEventListener("click", () => Control.anadir());
+    }
     $("qa-sistema").addEventListener("click", resumenSistema);
     $("form-preguntar").addEventListener("submit", (e) => {
       e.preventDefault();

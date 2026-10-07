@@ -95,9 +95,12 @@ def a_openai(msgs: list) -> list:
                 args = f.get("arguments") or {}
                 cid = ll.get("id") or f"call_{n}_{i}"
                 pendientes.append((cid, f.get("name", "")))
-                llamadas.append({"id": cid, "type": "function", "function": {
+                llamada = {"id": cid, "type": "function", "function": {
                     "name": f.get("name", ""),
-                    "arguments": args if isinstance(args, str) else json.dumps(args, ensure_ascii=False)}})
+                    "arguments": args if isinstance(args, str) else json.dumps(args, ensure_ascii=False)}}
+                if ll.get("extra_content"):  # Gemini 3 exige devolver su thought_signature
+                    llamada["extra_content"] = ll["extra_content"]
+                llamadas.append(llamada)
             out.append({"role": "assistant", "content": m.get("content") or None, "tool_calls": llamadas})
         elif rol == "tool":
             nombre = m.get("tool_name", "")
@@ -124,7 +127,9 @@ class AcumuladorLlamadas:
                     idx = self._por_id.get(cid, len(self._huecos))
                 else:
                     idx = max(self._huecos, default=0)
-            h = self._huecos.setdefault(idx, {"id": None, "name": "", "args": ""})
+            h = self._huecos.setdefault(idx, {"id": None, "name": "", "args": "", "extra": None})
+            if d.get("extra_content"):
+                h["extra"] = d["extra_content"]
             if d.get("id"):
                 h["id"] = d["id"]
                 self._por_id[d["id"]] = idx
@@ -149,6 +154,8 @@ class AcumuladorLlamadas:
             ll = {"function": {"name": h["name"], "arguments": args}}
             if h["id"]:
                 ll["id"] = h["id"]
+            if h["extra"]:
+                ll["extra_content"] = h["extra"]
             out.append(ll)
         return out
 
@@ -331,7 +338,7 @@ PROVEEDORES = {p.id: p for p in (
                      "GROQ_API_KEY", "ARIA_MODELO_GROQ", "llama-3.3-70b-versatile"),
     OpenAICompatible("gemini", "Google Gemini",
                      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-                     "GEMINI_API_KEY", "ARIA_MODELO_GEMINI", "gemini-2.5-flash"),
+                     "GEMINI_API_KEY", "ARIA_MODELO_GEMINI", "gemini-3.1-flash-lite"),
     OllamaNativo("local", "Local", False, ayuda="Modelo local de Ollama; funciona sin conexión"),
 )}
 ORDEN_DEFECTO = ["ollama_cloud", "groq", "gemini", "local"]

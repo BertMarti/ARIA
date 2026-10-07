@@ -254,3 +254,14 @@ def test_openai_sin_clave_lanza_error_de_clave():
     with pytest.raises(ProveedorError) as e:
         correr(cerebros.PROVEEDORES["groq"].ronda([{"role": "user", "content": "x"}]))
     assert e.value.tipo == "clave"
+
+
+def test_thought_signature_de_gemini_se_devuelve_en_la_siguiente_ronda():
+    a = AcumuladorLlamadas()
+    a.anadir([{"index": 0, "id": "g1", "extra_content": {"google": {"thought_signature": "abc"}},
+               "function": {"name": "fecha_hora", "arguments": "{}"}}])
+    ll = a.resultado()
+    o = a_openai([{"role": "user", "content": "x"}, {"role": "assistant", "content": "", "tool_calls": ll},
+                  {"role": "tool", "tool_name": "fecha_hora", "content": "ok"}])
+    assert o[1]["tool_calls"][0]["extra_content"] == {"google": {"thought_signature": "abc"}}
+    assert o[1]["tool_calls"][0]["id"] == "g1" and o[2]["tool_call_id"] == "g1"

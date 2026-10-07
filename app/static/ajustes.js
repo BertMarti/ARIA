@@ -1,5 +1,5 @@
 "use strict";
-// Ajustes: modelos, voz, contraseña, Spotify y Acerca de.
+// Ajustes: cerebros, modelos, voz, contraseña, Spotify y Acerca de.
 const Ajustes = (() => {
   let descargando = false;
 
@@ -61,6 +61,52 @@ const Ajustes = (() => {
     descargando = false; zona.hidden = !!ok; modelos();
   }
 
+  // --- Cerebros ---
+  const ESTADO_PUNTO = { configurado: "ok", sin_clave: "", espera: "aviso", sin_conexion: "aviso", clave_invalida: "mal" };
+  async function cerebros() {
+    const { ok, data } = await api("/api/brains");
+    const ul = $("cerebros-lista");
+    if (!ok) { ul.replaceChildren(el("li", { class: "error" }, "No se pudo leer la cadena de cerebros.")); return; }
+    ul.replaceChildren();
+    const lista = data.cerebros;
+    const guardar = async (nuevo) => {
+      const r = await api("/api/brains", { method: "POST", json: {
+        orden: nuevo.map((c) => c.id), desactivados: nuevo.filter((c) => !c.activo).map((c) => c.id) } });
+      if (!r.ok) toast(r.data.error || "No se pudo guardar.", "mal");
+      cerebros(); Chat.refrescarCerebro();
+    };
+    lista.forEach((c, i) => {
+      const mover = (d) => { const n = lista.slice(); [n[i], n[i + d]] = [n[i + d], n[i]]; guardar(n); };
+      const tog = el("input", { type: "checkbox", checked: c.activo, disabled: c.bloqueado, "aria-label": "Activar " + c.nombre });
+      tog.addEventListener("change", () => guardar(lista.map((x) => (x.id === c.id ? { ...x, activo: tog.checked } : x))));
+      let detalle = c.detalle;
+      if (c.estado === "sin_clave") detalle = "falta la clave: rellena " + c.clave_var + " en .env";
+      else if (c.clave_var) detalle = "clave configurada ✔ · " + detalle;
+      else if (c.id === "ollama_cloud" && c.estado === "clave_invalida") detalle = "sin sesión: ejecuta «docker exec -it aria-ollama ollama signin»";
+      const res = el("span", { class: "muted cerebro-res", role: "status" });
+      const probar = el("button", { type: "button", class: "fantasma pequeno" }, "Probar");
+      probar.addEventListener("click", async () => {
+        probar.disabled = true; res.className = "muted cerebro-res"; res.textContent = "probando…";
+        const r = await api("/api/brains/test", { method: "POST", json: { id: c.id } });
+        probar.disabled = false;
+        if (r.ok && r.data.ok) { res.className = "ok-txt cerebro-res"; res.textContent = "OK en " + (r.data.ms / 1000).toFixed(1).replace(".", ",") + " s (primer token " + (r.data.primer_token_ms / 1000).toFixed(1).replace(".", ",") + " s)"; }
+        else { res.className = "error cerebro-res"; res.textContent = r.data.error || "Falló la prueba."; }
+        setTimeout(() => { cerebros(); Chat.refrescarCerebro(); }, 1500);
+      });
+      ul.append(el("li", { class: "fila" },
+        el("div", { class: "fila-info" },
+          el("strong", null, (i + 1) + ". " + c.nombre, c.primero ? el("span", { class: "pildora ok cerebro-primero" }, "en cabeza") : null),
+          el("span", { class: "muted" }, c.modelo + (c.nube ? "" : " · modelo de Ajustes → Modelos")),
+          el("span", { class: "estado" }, el("span", { class: "punto " + (ESTADO_PUNTO[c.estado] || "") }), detalle),
+          res),
+        el("div", { class: "fila-acc" },
+          el("button", { type: "button", class: "fantasma pequeno", disabled: i === 0, "aria-label": "Subir " + c.nombre, onclick: () => mover(-1) }, "↑"),
+          el("button", { type: "button", class: "fantasma pequeno", disabled: i === lista.length - 1, "aria-label": "Bajar " + c.nombre, onclick: () => mover(1) }, "↓"),
+          el("label", { class: "interruptor" }, tog, el("span", null, c.bloqueado ? "Siempre" : "Activo")),
+          probar)));
+    });
+  }
+
   // --- Voz ---
   function voz() {
     const t = $("tts-activar");
@@ -106,11 +152,12 @@ const Ajustes = (() => {
     const { data } = await api("/api/info");
     $("acerca-cuerpo").replaceChildren(
       el("div", null, el("strong", null, "ARIA " + (data.version || "")), " — centro de control del laboratorio doméstico."),
-      el("div", null, "Modelo activo: ", el("code", null, data.modelo || "?")),
-      el("div", null, "Todo se ejecuta en esta Raspberry Pi: tus conversaciones no salen de casa."));
+      el("div", null, "Modelo local: ", el("code", null, data.modelo || "?")),
+      el("div", null, "Cerebro en cabeza: ", el("code", null, (data.cerebro && data.cerebro.etiqueta) || "?")),
+      el("div", null, "El cerebro local no sale de casa; los de la nube (Ollama Cloud, Groq, Gemini) reciben tus mensajes para responder."));
   }
 
-  function activar() { modelos(); spotify(); acerca(); }
+  function activar() { cerebros(); modelos(); spotify(); acerca(); }
   function iniciar() { voz(); contrasena(); }
   return { iniciar, activar, modelos };
 })();

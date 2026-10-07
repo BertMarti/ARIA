@@ -124,9 +124,14 @@
   <section id="v-ajustes" class="vista" hidden>
     <header class="vista-cab"><h1>Ajustes</h1></header>
     <div class="rejilla ajustes">
+      <article class="tarjeta ancha" id="ajustes-cerebros">
+        <h2>Cerebros</h2>
+        <p class="muted">ARIA prueba los cerebros en este orden y pasa al siguiente si uno falla o llega a su límite gratuito. El local siempre está disponible como último recurso. Las claves se rellenan en el archivo .env, nunca aquí.</p>
+        <ul id="cerebros-lista" class="filas"></ul>
+      </article>
       <article class="tarjeta ancha" id="ajustes-modelos">
-        <h2>Modelos</h2>
-        <p class="muted">Modelo que usa ARIA para responder. Solo hay uno cargado en memoria a la vez.</p>
+        <h2>Modelos locales</h2>
+        <p class="muted">Modelo que usa el cerebro local de ARIA. Solo hay uno cargado en memoria a la vez.</p>
         <h3>Instalados</h3>
         <ul id="modelos-instalados" class="filas"></ul>
         <h3>Descargar</h3>

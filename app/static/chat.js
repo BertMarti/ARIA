@@ -61,14 +61,27 @@ const Chat = (() => {
   }
 
   // Mensaje de usuario o de ARIA. Devuelve { nodo, actualizar(texto) }.
-  function addMsg(rol, texto) {
+  function addMsg(rol, texto, cerebro) {
     const cont = el("div", { class: "md" });
     const nodo = el("div", { class: "msg " + rol }, cont);
     let actual = texto || "";
     if (actual) renderMd(actual, cont);
-    if (rol === "bot") nodo.append(el("div", { class: "msg-pie" }, botonCopiar(() => actual)));
+    const badge = el("span", { class: "cerebro-badge", title: "Cerebro que respondió" });
+    const ponerBadge = (t) => { badge.textContent = t || ""; badge.hidden = !t; };
+    ponerBadge(cerebro);
+    if (rol === "bot") nodo.append(el("div", { class: "msg-pie" }, badge, botonCopiar(() => actual)));
     caja().append(nodo);
-    return { nodo, actualizar(t) { actual = t; renderMd(t, cont); } };
+    return { nodo, ponerBadge, actualizar(t) { actual = t; renderMd(t, cont); } };
+  }
+  // Cerebro que está en cabeza de la cadena (cabecera del chat).
+  async function refrescarCerebro() {
+    const { ok, data } = await api("/api/info");
+    if (ok && data.cerebro) $("modelo-activo").textContent = data.cerebro.etiqueta;
+  }
+  let pensandoNodo = null;
+  function pensando(en) {
+    if (en && !pensandoNodo) { pensandoNodo = el("div", { class: "msg aviso pensando" }, "pensando…"); caja().append(pensandoNodo); abajo(); }
+    else if (!en && pensandoNodo) { pensandoNodo.remove(); pensandoNodo = null; }
   }
   function addAviso(texto) { caja().append(el("div", { class: "msg aviso" }, texto)); abajo(); }
 
@@ -86,7 +99,7 @@ const Chat = (() => {
     addMsg("user", texto); abajo();
     ponerEstado(true);
     abort = new AbortController();
-    let burbuja = null, acumulado = "", ultimoChip = null, ultimoArgs = {}, todo = "";
+    let burbuja = null, acumulado = "", ultimoChip = null, ultimoArgs = {}, todo = "", etiqueta = "";
     try {
       const r = await fetch("/api/chat", {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: abort.signal,
@@ -97,22 +110,29 @@ const Chat = (() => {
       for await (const ev of lineasNdjson(r)) {
         if (ev.type === "conv") {
           convId = ev.id; $("chat-titulo").textContent = ev.titulo; cargarLista();
+        } else if (ev.type === "cerebro") {
+          etiqueta = ev.etiqueta; if (burbuja) burbuja.ponerBadge(etiqueta);
+        } else if (ev.type === "pensando") {
+          pensando(true);
+        } else if (ev.type === "reinicio") {
+          pensando(false); acumulado = ""; if (burbuja) { burbuja.nodo.remove(); burbuja = null; }
         } else if (ev.type === "token") {
-          if (!burbuja) burbuja = addMsg("bot", "");
+          pensando(false);
+          if (!burbuja) { burbuja = addMsg("bot", ""); burbuja.ponerBadge(etiqueta); }
           acumulado += ev.text; todo += ev.text; burbuja.actualizar(acumulado); abajo();
         } else if (ev.type === "herramienta") {
-          burbuja = null; acumulado = ""; todo += "\n";
+          pensando(false); burbuja = null; acumulado = ""; todo += "\n";
           ultimoArgs = ev.args; ultimoChip = chip(ev.name, ev.args); caja().append(ultimoChip); abajo();
         } else if (ev.type === "resultado") {
           if (ultimoChip) { ultimoChip.title = ev.text; ultimoChip.classList.add("hecho"); botonQr(ultimoChip, ev.name, ultimoArgs, ev.text); }
-        } else if (ev.type === "aviso" || ev.type === "error") addAviso(ev.text);
+        } else if (ev.type === "aviso" || ev.type === "error") { pensando(false); addAviso(ev.text); }
       }
       hablar(todo);
     } catch (e) {
       if (e.name === "AbortError") addAviso("Respuesta detenida.");
       else addAviso("Error de conexión con ARIA.");
     } finally {
-      abort = null; ponerEstado(false); cargarLista(); $("texto").focus();
+      pensando(false); abort = null; ponerEstado(false); cargarLista(); refrescarCerebro(); $("texto").focus();
     }
   }
 
@@ -183,7 +203,7 @@ const Chat = (() => {
         let j = {}; try { j = JSON.parse(m.content); } catch (_) { /* ignorar */ }
         caja().append(chip(j.name || "herramienta", j.args || {}, j.text));
         caja().lastChild.classList.add("hecho");
-      } else addMsg(m.role === "user" ? "user" : "bot", m.content);
+      } else addMsg(m.role === "user" ? "user" : "bot", m.content, m.cerebro);
     }
     if (!data.mensajes.length) vacio();
     abajo(); cerrarLista(); cargarLista();
@@ -216,5 +236,5 @@ const Chat = (() => {
   function autoajustar() { const t = $("texto"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; }
 
   function preguntar(texto) { nueva(); enviar(texto); }
-  return { iniciar, preguntar };
+  return { iniciar, preguntar, refrescarCerebro };
 })();

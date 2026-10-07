@@ -15,7 +15,7 @@
   document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => b.addEventListener("click", () => { location.hash = b.dataset.vista; }));
   window.addEventListener("hashchange", mostrar);
   Chat.iniciar(); Control.iniciar(); Inicio.iniciar(); Ajustes.iniciar();
-  api("/api/info").then(({ data }) => { if (data.modelo) $("modelo-activo").textContent = data.modelo; });
+  Chat.refrescarCerebro();
   if (new URLSearchParams(location.search).get("spotify")) history.replaceState(null, "", "/#ajustes");
   mostrar();
 })();

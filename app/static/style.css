@@ -222,3 +222,14 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 .tile-ico { color: var(--acento); }
 .tile-ico .svg-ico { width: 2rem; height: 2rem; }
 .inicio-cab p { text-transform: none; }
+
+/* Cerebros */
+.cerebro-badge { margin-right: auto; align-self: center; font-size: .72rem; color: var(--muted); opacity: .85; }
+.cerebro-badge[hidden] { display: none; }
+.msg-pie { align-items: center; }
+.cerebro-primero { margin-left: .5rem; font-size: .7rem; }
+.cerebro-res { font-size: .85rem; }
+.fila .interruptor { font-size: .85rem; }
+.msg.pensando { animation: pulso 1.4s ease-in-out infinite; }
+@keyframes pulso { 50% { opacity: .4; } }
+.fila .estado { margin: 0; font-weight: 400; font-size: .9rem; }

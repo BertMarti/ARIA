@@ -3,9 +3,11 @@
 const Inicio = (() => {
   let temporizador = null, puertos = { shield_web: 8443, vpn: 51843 };
 
+  let usuario = "";
   function saludo() {
     const h = new Date().getHours();
-    $("saludo").textContent = h >= 6 && h < 13 ? "Buenos días" : h >= 13 && h < 21 ? "Buenas tardes" : "Buenas noches";
+    const s = h >= 6 && h < 13 ? "Buenos días" : h >= 13 && h < 21 ? "Buenas tardes" : "Buenas noches";
+    $("saludo").textContent = usuario ? s + ", " + usuario : s;
     const f = new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
     $("inicio-fecha").textContent = f.charAt(0).toUpperCase() + f.slice(1);
   }
@@ -71,6 +73,7 @@ const Inicio = (() => {
   async function iniciar() {
     const { data } = await api("/api/info");
     if (data.puertos) puertos = data.puertos;
+    usuario = data.usuario || ""; saludo();
     $("tile-shield-a").href = "https://" + location.hostname + ":" + puertos.shield_web + "/admin";
     $("tile-vpn-a").href = "https://" + location.hostname + ":" + puertos.vpn;
     document.querySelectorAll("[data-secreto]").forEach((b) => b.addEventListener("click", () => copiarSecreto(b)));

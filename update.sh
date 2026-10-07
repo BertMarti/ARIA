@@ -24,7 +24,7 @@ info "Limpiando imágenes sin usar"
 docker image prune -f >/dev/null
 
 info "Esperando a que los servicios estén sanos"
-for c in aria-ollama aria-app aria-caddy; do
+for c in aria-ollama aria-app aria-voz aria-caddy; do
   estado=desconocido
   for _ in $(seq 1 60); do
     estado="$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null || echo desconocido)"

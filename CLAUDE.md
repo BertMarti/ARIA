@@ -3,13 +3,14 @@
 Instrucciones para Claude Code en este repositorio (ARIA).
 
 ## Qué es
-Asistente local estilo "Jarvis" para Raspberry Pi: FastAPI + Ollama + Caddy en Docker Compose. Sin APIs de pago.
+ARIA, asistente doméstico local para Raspberry Pi: FastAPI + Ollama + Caddy en Docker Compose. Sin APIs de pago.
 
 ## Estructura
-- `docker-compose.yml`: servicios `ollama`, `app`, `caddy` (proyecto `aria`, contenedores `aria-*`).
+- `docker-compose.yml`: servicios `ollama`, `app`, `voz`, `caddy` (proyecto `aria`, contenedores `aria-*`). `voz` solo está en la red interna `voz` (sin Internet ni puertos).
 - `caddy/Caddyfile`: HTTPS con CA interna, certificados bajo demanda autorizados por `/internal/tls-ask`.
-- `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `origen.py` (regla CSRF Origin/Sec-Fetch-Site/Referer), `auth.py` (cookie firmada con id de usuario + versión, scrypt, limitador), `usuarios.py` (tabla `usuarios`, roles, migración del admin único), `permisos.py` (lista blanca del rol `usuario`; denegar por defecto), `sso.py` (verificación del JWT de Cloudflare Access con PyJWT), `cerebros.py` (cadena de proveedores: Ollama nativo local/nube + OpenAI-compatible Groq/Gemini, esperas por cuota, `data/cerebros.json`), `chat.py` (bucle de herramientas + relevo entre cerebros + persistencia), `db.py` (SQLite `data/aria.db`), `tools.py` (herramientas + `_INTENCIONES`), `shield.py` (Pi-hole v6, sid único en caché), `vpn.py` (wg-easy v15, lista blanca de campos), `sistema.py` (/proc y /sys), `modelos.py` (Ollama), `services.py`, `spotify.py`, `config.py`.
-- `app/static/`: HTML/CSS/JS sin build (`util.js`, `md.js`, `chat.js`, `control.js`, `inicio.js`, `ajustes.js`, `usuarios.js`, `app.js`), `manifest.webmanifest`, `icon.svg`.
+- `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `origen.py` (regla CSRF Origin/Sec-Fetch-Site/Referer), `auth.py` (cookie firmada con id de usuario + versión, scrypt, limitador), `usuarios.py` (tabla `usuarios`, roles, migración del admin único), `permisos.py` (lista blanca del rol `usuario`; denegar por defecto), `sso.py` (verificación del JWT de Cloudflare Access con PyJWT), `cerebros.py` (cadena de proveedores: Ollama nativo local/nube + OpenAI-compatible Groq/Gemini, esperas por cuota, `data/cerebros.json`), `chat.py` (bucle de herramientas + relevo entre cerebros + persistencia), `db.py` (SQLite `data/aria.db`), `tools.py` (herramientas + `_INTENCIONES`), `shield.py` (Pi-hole v6, sid único en caché), `vpn.py` (wg-easy v15, lista blanca de campos), `sistema.py` (/proc y /sys), `voz.py` (validación de audio, Groq Whisper → aria-voz, limitador por usuario, limpieza de texto para TTS, puente WebSocket), `modelos.py` (Ollama), `services.py`, `spotify.py`, `config.py`.
+- `voz/`: contenedor `aria-voz` (`servidor.py`: faster-whisper base int8, Piper `es_ES-sharvard-medium`, Vosk `vosk-model-small-es` con gramática cerrada para «Aria»; modelos descargados en la imagen por `descargar.py`).
+- `app/static/`: HTML/CSS/JS sin build (`util.js`, `md.js`, `voz.js` (micrófono, TTS, manos libres), `pcm-worklet.js` (AudioWorklet a PCM 16 kHz), `chat.js`, `control.js`, `inicio.js`, `ajustes.js`, `usuarios.js`, `app.js`), `manifest.webmanifest`, `icon.svg`.
 - `app/tests/`: pytest (`python -m pytest`) y `md.test.js` (node).
 - `install.sh` / `update.sh` / `backup.sh` / `uninstall.sh`, `.env.example`, `data/` y `backups/` (ignorados por git).
 
@@ -17,7 +18,7 @@ Asistente local estilo "Jarvis" para Raspberry Pi: FastAPI + Ollama + Caddy en D
 ```bash
 docker compose config
 docker compose up -d --build
-docker compose ps                      # los tres deben estar healthy
+docker compose ps                      # los cuatro deben estar healthy
 curl -k https://<IP>/health            # -> ok
 docker compose logs -f app
 ```
@@ -37,6 +38,14 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 - CSP estricta sin estilos/scripts en línea: los anchos de barras se ponen por CSSOM (`el.style.width`), nunca con atributo `style`.
 - No editar con `sed -i` archivos montados individualmente en contenedores (cambia el inodo).
 - Commits terminan con la línea `Co-Authored-By: ...` que indique el entorno.
+
+## Voz
+- Endpoints `GET /api/voz/estado`, `POST /api/voz/transcribir` (audio crudo; `Content-Type` audio/*), `POST /api/voz/hablar` y WebSocket `/api/voz/despertar`, para ambos roles (lista blanca de `permisos.py`).
+- **El middleware HTTP no se aplica a los WebSocket**: `ws_despertar` comprueba Origin (obligatorio e igual al Host), cookie de sesión y rol. Cualquier WebSocket nuevo debe hacer lo mismo.
+- El audio nunca se escribe en disco ni en SQLite. No añadir logs con audio ni texto transcrito.
+- La palabra de activación es «Aria» (nunca otra). Ajustar señuelos/umbral en `voz/servidor.py` y volver a medir con frases de Piper (ver MEMORY.md).
+- CSP: el audio se reproduce con WebAudio (`decodeAudioData`), así que no hace falta `media-src blob:`; el WebSocket va a `'self'`.
+- `faster-whisper` 1.2.1 no funciona con PyAV 19 (`metadata_errors`): `av<19`. `libvosk.so` necesita `libatomic1`.
 
 ## Añadir una herramienta
 Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`, se añaden sus palabras clave a `_INTENCIONES` (si no, el modelo no la recibe) y una prueba en `app/tests/test_tools.py`. Las herramientas destructivas (borrar) no se exponen al modelo.

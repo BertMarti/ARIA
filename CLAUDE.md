@@ -6,9 +6,9 @@ Instrucciones para Claude Code en este repositorio (ARIA).
 Asistente doméstico local para Raspberry Pi: FastAPI + Ollama + Caddy en Docker Compose. Sin APIs de pago.
 
 ## Estructura
-- `docker-compose.yml`: servicios `ollama`, `app`, `caddy` (proyecto `aria`, contenedores `aria-*`).
+- `docker-compose.yml`: servicios `ollama`, `searxng`, `app`, `caddy` (proyecto `aria`, contenedores `aria-*`).
 - `caddy/Caddyfile`: HTTPS con CA interna, certificados bajo demanda autorizados por `/internal/tls-ask`.
-- `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `origen.py` (regla CSRF Origin/Sec-Fetch-Site/Referer), `auth.py` (cookie firmada con id de usuario + versión, scrypt, limitador), `usuarios.py` (tabla `usuarios`, roles, migración del admin único), `permisos.py` (lista blanca del rol `usuario`; denegar por defecto), `sso.py` (verificación del JWT de Cloudflare Access con PyJWT), `cerebros.py` (cadena de proveedores: Ollama nativo local/nube + OpenAI-compatible Groq/Gemini, esperas por cuota, `data/cerebros.json`), `chat.py` (bucle de herramientas + relevo entre cerebros + persistencia), `db.py` (SQLite `data/aria.db`), `tools.py` (herramientas + `_INTENCIONES`), `shield.py` (Pi-hole v6, sid único en caché), `vpn.py` (wg-easy v15, lista blanca de campos), `sistema.py` (/proc y /sys), `modelos.py` (Ollama), `services.py`, `spotify.py`, `config.py`.
+- `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `origen.py` (regla CSRF Origin/Sec-Fetch-Site/Referer), `auth.py` (cookie firmada con id de usuario + versión, scrypt, limitador), `usuarios.py` (tabla `usuarios`, roles, migración del admin único), `permisos.py` (lista blanca del rol `usuario`; denegar por defecto), `sso.py` (verificación del JWT de Cloudflare Access con PyJWT), `cerebros.py` (cadena de proveedores: Ollama nativo local/nube + OpenAI-compatible Groq/Gemini, esperas por cuota, `data/cerebros.json`), `chat.py` (bucle de herramientas + relevo entre cerebros + persistencia), `db.py` (SQLite `data/aria.db`), `busqueda.py` (cliente de SearXNG: caché 10 min, dedupe por dominio, texto ≤1500), `tools.py` (herramientas + `_INTENCIONES`), `shield.py` (Pi-hole v6, sid único en caché), `vpn.py` (wg-easy v15, lista blanca de campos), `sistema.py` (/proc y /sys), `modelos.py` (Ollama), `services.py`, `spotify.py`, `config.py`.
 - `app/static/`: HTML/CSS/JS sin build (`util.js`, `md.js`, `chat.js`, `control.js`, `inicio.js`, `ajustes.js`, `usuarios.js`, `app.js`), `manifest.webmanifest`, `icon.svg`.
 - `app/tests/`: pytest (`python -m pytest`) y `md.test.js` (node).
 - `install.sh` / `update.sh` / `backup.sh` / `uninstall.sh`, `.env.example`, `data/` y `backups/` (ignorados por git).
@@ -47,6 +47,9 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 
 ## Añadir una herramienta
 Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`, se añaden sus palabras clave a `_INTENCIONES` (si no, el modelo no la recibe) y una prueba en `app/tests/test_tools.py`. Las herramientas destructivas (borrar) no se exponen al modelo.
+
+## Búsqueda en internet
+`aria-searxng` (config en `searxng/settings.yml`, sin puertos publicados, `SEARXNG_SECRET` en `.env`). Herramientas `buscar_en_internet` y `noticias` (en `SOLO_LECTURA`, así que también para `usuario`). Los resultados al modelo van en ≤1500 caracteres con cada URL en su línea; el chat las convierte en enlaces con el DOM (nunca `innerHTML`). Pruebas con SearXNG falso en `app/tests/test_busqueda.py`. Si añades palabras clave de búsqueda, comprueba que la charla normal («hola», «explícame qué es un DNS») no activa nada.
 
 ## Cerebros
 - `chat.responder` recorre `cerebros.cadena()` en cada ronda; un `ProveedorError` salta al siguiente (aviso + evento `reinicio` si ya había tokens). Los mensajes internos están en formato Ollama; `a_openai()` los convierte y `AcumuladorLlamadas` junta los fragmentos de `tool_calls`.

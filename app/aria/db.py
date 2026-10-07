@@ -161,4 +161,4 @@ def historial_modelo(cid: str, maximo: int) -> list:
 
 
 def herramienta_json(nombre: str, args: dict, texto: str = "") -> str:
-    return json.dumps({"name": nombre, "args": args, "text": texto[:500]}, ensure_ascii=False)
+    return json.dumps({"name": nombre, "args": args, "text": texto[:1600]}, ensure_ascii=False)

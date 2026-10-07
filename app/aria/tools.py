@@ -15,7 +15,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import config, memoria, services, shield, sistema, spotify, vpn
+from . import busqueda, config, memoria, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -44,7 +44,7 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 
 # Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
 SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn",
-                          "estado_sistema", "buscar_en_netflix"})
+                          "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
 
@@ -65,6 +65,13 @@ _BLOQUEADOR = r"\b(bloqueador|anuncios?|publicidad|pi-?hole|shield|adblock|ads)\
 _SISTEMA = (r"\b(raspberry|rasp|ram|cpu|uptime|procesador|servidor|temperatura|memoria|disco|"
             r"almacenamiento|espacio|sistema)\b")
 _EXPLICAR = r"!\b(expl[ií]ca\w*|qu[eé] es|qu[eé] significa|para qu[eé] sirve)\b"  # preguntas conceptuales
+# Búsqueda en internet: petición explícita, noticias o datos que cambian con el tiempo.
+_BUSCAR = (r"\b(b[uú]sca\w*|busque\w*|googlea\w*|investiga\w*|internet|google|en la red|en la web|online|"
+           r"wikipedia)\b")
+_NOTICIAS = r"\b(noticias?|titulares?|actualidad|[uú]ltima hora|novedades)\b"
+_DATO_ACTUAL = (r"\b(precio|cotizaci[oó]n|resultado|qui[eé]n gan[oó]|qui[eé]n ha ganado|cu[aá]ndo (es|son|fue|juega|sale|"
+                r"se estrena)|[uú]ltim[oa]s?|esta semana|este a[nñ]o|clasificaci[oó]n|partido|elecciones|"
+                r"cu[aá]nto cuesta|cu[aá]nto vale)\b")
 _INTENCIONES = [
     # (patrones que deben cumplirse TODOS, herramientas que se ofrecen)
     ((r"\b(hora|horas|fecha|d[ií]a|hoy|ma[nñ]ana|semana|mes)\b",
@@ -94,6 +101,10 @@ _INTENCIONES = [
       r"!" + _BLOQUEADOR, r"!\b(raspberry|ram|cpu|espacio|libre|temperatura)\b"),
      {"spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior", "spotify_actual",
       "spotify_buscar_y_reproducir"}),
+    ((_BUSCAR, r"!\b(netflix|spotify)\b"), {"buscar_en_internet"}),
+    ((_NOTICIAS,), {"noticias"}),
+    ((_DATO_ACTUAL, r"!" + _BLOQUEADOR, r"!" + _SISTEMA, r"!\b(vpn|wireguard|heimdall|spotify)\b", _EXPLICAR),
+     {"buscar_en_internet"}),
     ((r"\b(netflix|serie|series|pel[ií]cula|pel[ií]culas|cap[ií]tulo)\b",), {"buscar_en_netflix"}),
     # Memoria personal: «recuerda que…», «apunta que…» / «olvida que…», «no recuerdes…»
     ((r"\b(recuerda|recu[eé]rdame|acu[eé]rdate|ac[eé]rdate|apunta|anota|memoriza|ten en cuenta)\b",), {"recordar"}),
@@ -153,6 +164,34 @@ async def ejecutar(nombre: str, args: dict | None, rol: str = "admin") -> str:
 async def fecha_hora() -> str:
     n = datetime.now(ZoneInfo(config.TZ))
     return f"{DIAS[n.weekday()]}, {n.day} de {MESES[n.month - 1]} de {n.year}, {n:%H:%M} ({config.TZ})"
+
+
+@tool("buscar_en_internet",
+      "Busca información actual en internet (datos recientes, hechos, precios, resultados, lugares...). "
+      "Devuelve títulos, extractos y enlaces; cita siempre las fuentes al final de la respuesta.",
+      {"consulta": ("string", "Qué buscar, con palabras clave concretas")}, ("consulta",))
+async def buscar_en_internet(consulta: str) -> str:
+    try:
+        return busqueda.formatear(str(consulta), await busqueda.buscar(str(consulta), "general", 5))
+    except busqueda.BusquedaError as e:
+        return str(e)
+
+
+@tool("noticias",
+      "Últimos titulares de noticias en español (de las últimas horas o de la semana). "
+      "Sin tema devuelve la actualidad general de España; cita siempre las fuentes.",
+      {"tema": ("string", "Tema opcional (p. ej. «economía», «Real Madrid», «Jaén»); vacío = actualidad general")})
+async def noticias(tema: str = "") -> str:
+    q = " ".join(str(tema or "").split()) or "última hora España"
+    try:
+        res = await busqueda.buscar(q, "news", 5, "day")
+        if len(res) < 3:  # pocas de hoy: se completa con las de la semana
+            vistos = {r["dominio"] for r in res}
+            res = res + [r for r in await busqueda.buscar(q, "news", 5, "week") if r["dominio"] not in vistos]
+            res = res[:5]
+        return busqueda.formatear(q, res)
+    except busqueda.BusquedaError as e:
+        return str(e)
 
 
 @tool("estado_servicios", "Consulta el estado de los servicios SHIELD-DNS (bloqueo de anuncios) y HEIMDALL (VPN).")

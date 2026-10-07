@@ -18,6 +18,14 @@
 - Con la nube, los mensajes salen de casa (Google puede usarlos para mejorar productos en el plan gratuito); el local sigue siendo 100 % privado.
 - Latencias reales (LAN, 2026-10-07, primer token / total): «Hola» Ollama Cloud 0,5/0,6 s, Gemini 1,0/1,1 s, local 0,8-1,2/4,5-5,3 s; «temperatura de la Raspberry» (con herramienta) Ollama Cloud 0,8/0,9 s, Gemini 3,3/3,4 s, local 20/28-32 s; «anuncios bloqueados» Ollama Cloud 1,1/1,3 s, Gemini 2,3/2,3 s, local 15-26/34-48 s. «Probar»: Ollama Cloud 0,5 s, Gemini 1,0 s, local 2 s (modelo caliente).
 
+## Decisiones de búsqueda en internet (2026-10-07)
+- SearXNG propio (`aria-searxng`, imagen oficial arm64) en lugar de una API de pago: sin claves, sin puertos publicados, JSON activado y limitador desactivado (solo interno). `SEARXNG_SECRET` en `.env`.
+- Motores: DuckDuckGo y Bing responden desde esta red; Brave y Google devuelven «too many requests»/«access denied» y quedan como respaldo (SearXNG los suspende solos). Bing y Google vienen desactivados por defecto y se activan en `settings.yml`.
+- Herramientas de solo lectura para ambos roles. El modelo local las recibe por palabras clave; las nubes siempre, con el prompt pidiendo citar «Fuentes:» y con la fecha actual (si no, buscaban «2024»).
+- Se descartan resultados en escrituras no latinas (salían titulares en chino) salvo que la consulta las use.
+- RAM medida: SearXNG ~145 MB RSS (worker ~106 MB), límite 384 MB. El cgroup de memoria no está activo en esta Pi, así que `docker stats` marca 0.
+- Privacidad: las consultas y el texto de los resultados llegan al cerebro en la nube que responda.
+
 ## Decisiones de usuarios y SSO (2026-10-07)
 - SSO por JWT verificado de Cloudflare Access (PyJWT[crypto], JWKS en caché 1 h, refresco en `kid` desconocido con espera de 30 s). Nunca se usa la cabecera de email. Cloudflare caído = fallo transitorio («Entrando…»); sin JWT en el dominio público = formulario de respaldo.
 - Usuarios en la tabla `usuarios` de `data/aria.db`; sesión = id + versión por usuario (cambiar contraseña, desactivar o reactivar la invalida). Las cookies del admin único anterior siguen valiendo hasta que cambie su contraseña.
@@ -68,6 +76,7 @@
 - RAM observada (Pi de 8 GB con escritorio y otros contenedores): con el modelo cargado, ~5,8 GiB usados y ~2,1 GiB disponibles (antes de cargar: ~3,5 GiB usados).
 
 ## Registro de cambios
+- **2026-10-07 · búsqueda en internet**: servicio `aria-searxng`, `busqueda.py`, herramientas `buscar_en_internet` y `noticias`, chip «Buscando en internet…» con enlaces a las fuentes, `SEARXNG_SECRET` en install/update. Verificado con consultas reales (Ronda Jaén, noticias Raspberry Pi, precio luz hoy España) y con un cerebro en la nube que llama a la herramienta y cita fuentes.
 - **2026-10-07 · usuarios y SSO**: inicio de sesión único con Cloudflare Access, varios usuarios con roles admin/usuario aplicados en el servidor, conversaciones por usuario, Ajustes → Usuarios y herramientas de solo lectura para usuarios. Copia previa en `data/aria.db.bak-sso`. Verificado: login LAN de admin y de un usuario de prueba (403 en endpoints de admin, sin ver conversaciones ajenas; usuario y conversaciones de prueba borrados), la URL pública sigue devolviendo el 302 de Access y una petición interna con email falsificado y sin JWT no inicia sesión.
 - **2026-10-07 · v2.0.0**: ARIA pasa a ser el centro de control del laboratorio: Inicio con lanzador, Centro de control (SHIELD-DNS, HEIMDALL, Sistema, Spotify), nuevas herramientas (bloqueador, VPN, sistema, gestión de dispositivos), conversaciones persistentes, selector de modelos, voz opcional, cambio de contraseña, manifest/icono, `update.sh` y `backup.sh`, pruebas pytest y corrección CSRF con `Origin: null`. RAM observada con la v2 en marcha (Pi de 8 GB, modelo descargado de memoria): ~2,9 GiB usados y ~5,0 GiB disponibles; `aria-app` ~41 MiB de RSS.
 - **2026-10-06**: selección de herramientas por intención, rescate de llamadas en JSON, textos con tildes, mensaje de Spotify que no pide claves por el chat.

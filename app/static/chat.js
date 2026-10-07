@@ -13,7 +13,9 @@ const Chat = (() => {
     estado_sistema: "Consultando la Raspberry", spotify_play: "Spotify: reproducir", spotify_pause: "Spotify: pausa",
     spotify_siguiente: "Spotify: siguiente", spotify_anterior: "Spotify: anterior", spotify_actual: "Spotify: ahora suena",
     spotify_buscar_y_reproducir: "Buscando en Spotify", buscar_en_netflix: "Buscando en Netflix",
+    buscar_en_internet: "Buscando en internet…", noticias: "Buscando noticias…",
   };
+  const BUSQUEDA = new Set(["buscar_en_internet", "noticias"]);
   const SUGERENCIAS = [
     "¿Cuántos anuncios has bloqueado hoy?", "¿Qué temperatura tiene la Raspberry?",
     "¿Qué dispositivos hay en la VPN?", "Explícame qué es un DNS",
@@ -43,6 +45,27 @@ const Chat = (() => {
     if (!m || c.querySelector(".chip-qr")) return;
     const nom = String((args && args.nombre) || "dispositivo").trim();
     c.append(el("button", { type: "button", class: "chip-qr", onclick: () => Control.mostrarQr(m[1], nom) }, "Ver QR"));
+  }
+
+  // Enlaces a las fuentes de una búsqueda. Se construyen con el DOM (textContent) y solo http/https.
+  function fuentes(texto) {
+    const lista = [], vistos = new Set();
+    for (const l of String(texto || "").split("\n")) {
+      const m = /^\s+(https?:\/\/\S+)\s*$/.exec(l);
+      if (!m) continue;
+      let u;
+      try { u = new URL(m[1]); } catch (_) { continue; }
+      if ((u.protocol !== "http:" && u.protocol !== "https:") || vistos.has(u.href)) continue;
+      vistos.add(u.href);
+      lista.push(el("a", { href: u.href, target: "_blank", rel: "noopener noreferrer nofollow", title: u.href },
+        u.hostname.replace(/^www\./, "")));
+    }
+    return lista.length ? el("div", { class: "fuentes" }, el("span", { class: "muted" }, "Fuentes:"), ...lista) : null;
+  }
+  function ponerFuentes(chipNodo, nombre, texto) {
+    if (!BUSQUEDA.has(nombre) || !chipNodo || chipNodo.nextSibling?.classList?.contains("fuentes")) return;
+    const f = fuentes(texto);
+    if (f) chipNodo.after(f);
   }
 
   function botonCopiar(obtener) {
@@ -122,9 +145,9 @@ const Chat = (() => {
           acumulado += ev.text; todo += ev.text; burbuja.actualizar(acumulado); abajo();
         } else if (ev.type === "herramienta") {
           pensando(false); burbuja = null; acumulado = ""; todo += "\n";
-          ultimoArgs = ev.args; ultimoChip = chip(ev.name, ev.args); caja().append(ultimoChip); abajo();
+          ultimoArgs = ev.args; ultimoChip = chip(ev.name, ev.args); if (BUSQUEDA.has(ev.name)) ultimoChip.classList.add("buscando"); caja().append(ultimoChip); abajo();
         } else if (ev.type === "resultado") {
-          if (ultimoChip) { ultimoChip.title = ev.text; ultimoChip.classList.add("hecho"); botonQr(ultimoChip, ev.name, ultimoArgs, ev.text); }
+          if (ultimoChip) { ultimoChip.title = ev.text; ultimoChip.classList.remove("buscando"); ultimoChip.classList.add("hecho"); botonQr(ultimoChip, ev.name, ultimoArgs, ev.text); ponerFuentes(ultimoChip, ev.name, ev.text); abajo(); }
         } else if (ev.type === "aviso" || ev.type === "error") { pensando(false); addAviso(ev.text); }
       }
       hablar(todo);
@@ -203,6 +226,7 @@ const Chat = (() => {
         let j = {}; try { j = JSON.parse(m.content); } catch (_) { /* ignorar */ }
         caja().append(chip(j.name || "herramienta", j.args || {}, j.text));
         caja().lastChild.classList.add("hecho");
+        ponerFuentes(caja().lastChild, j.name, j.text);
       } else addMsg(m.role === "user" ? "user" : "bot", m.content, m.cerebro);
     }
     if (!data.mensajes.length) vacio();

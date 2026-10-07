@@ -11,6 +11,9 @@ ARIA 2.0: centro de control del laboratorio doméstico en Raspberry Pi (FastAPI 
 - Comprobar: `curl -k https://<IP>/health`
 - Logs: `docker compose logs -f app`
 
+## Búsqueda en internet
+Servicio `searxng` (`searxng/settings.yml`), cliente en `app/aria/busqueda.py`, herramientas `buscar_en_internet` y `noticias` en `tools.py`. Pruebas: `app/tests/test_busqueda.py` (SearXNG falso, sin red). No publiques puertos de SearXNG.
+
 ## Cerebros
 Cadena de IA en `app/aria/cerebros.py` (Ollama Cloud → Groq → Gemini → local). Configuración en `.env` (`ARIA_CEREBROS`, `ARIA_MODELO_*`, claves) y `data/cerebros.json`. Pruebas en `app/tests/test_cerebros.py` con proveedores falsos. No imprimas claves ni las pongas en commits.
 

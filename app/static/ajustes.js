@@ -108,15 +108,72 @@ const Ajustes = (() => {
   }
 
   // --- Voz ---
+  const fmtVel = (v) => Number(v).toFixed(2).replace(/0$/, "").replace(".", ",") + "×";
+  async function listarMics() {
+    const sel = $("voz-mic");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    const elegido = Prefs.get("mic", "");
+    const mics = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput" && d.deviceId && d.deviceId !== "default");
+    sel.replaceChildren(el("option", { value: "" }, "Predeterminado del sistema"),
+      ...mics.map((d, i) => el("option", { value: d.deviceId, selected: d.deviceId === elegido }, d.label || "Micrófono " + (i + 1))));
+  }
+  let prueba = null;
+  async function probarMic() {
+    if (prueba) { prueba(); return; }
+    const b = $("voz-probar-mic"), zona = $("voz-nivel-zona"), barraNivel = $("voz-nivel");
+    let stream;
+    try { stream = await Voz.abrirMic(); } catch (e) { toast(Voz.errorMic(e), "mal"); return; }
+    listarMics(); // con permiso ya se ven los nombres
+    const c = new AudioContext(), an = c.createAnalyser(); an.fftSize = 1024;
+    c.createMediaStreamSource(stream).connect(an);
+    const datos = new Float32Array(an.fftSize);
+    let max = 0, vivo = true;
+    zona.hidden = false; b.textContent = "Parar prueba";
+    const pintar = () => {
+      if (!vivo) return;
+      an.getFloatTimeDomainData(datos);
+      let s = 0; for (const v of datos) s += v * v;
+      const nivel = Math.min(100, Math.sqrt(s / datos.length) * 400);
+      max = Math.max(max, nivel);
+      barraNivel.style.width = nivel + "%";
+      requestAnimationFrame(pintar);
+    };
+    pintar();
+    const fin = () => {
+      vivo = false; prueba = null; clearTimeout(t);
+      stream.getTracks().forEach((x) => x.stop()); c.close().catch(() => {});
+      b.textContent = "Probar micrófono"; barraNivel.style.width = "0%";
+      $("voz-nivel-txt").textContent = max > 8 ? "El micrófono funciona." : "Apenas se oye nada: revisa el micrófono elegido.";
+    };
+    const t = setTimeout(fin, 6000);
+    prueba = fin;
+  }
+  async function estadoVoz() {
+    const { ok, data } = await api("/api/voz/estado");
+    if (!ok) return;
+    const stt = data.groq ? (data.local ? "Groq (local de respaldo)" : "Groq (el respaldo local no responde)") : (data.local ? "local en la Raspberry" : "no disponible");
+    $("voz-estado").textContent = "Transcripción: " + stt + " · Voz de ARIA: " + (data.local ? "Piper en la Raspberry" : "la del navegador (Piper no responde)") + ".";
+  }
   function voz() {
     const t = $("tts-activar");
-    if (!("speechSynthesis" in window)) { t.disabled = true; $("tts-nota").textContent = "Tu navegador no admite síntesis de voz."; return; }
     t.checked = Prefs.get("tts", "0") === "1";
     t.addEventListener("change", () => {
       Prefs.set("tts", t.checked ? "1" : "0");
-      if (t.checked) { const u = new SpeechSynthesisUtterance("Voz activada."); u.lang = "es-ES"; speechSynthesis.speak(u); }
-      else speechSynthesis.cancel();
+      if (t.checked) Voz.hablar("Leeré las respuestas en voz alta."); else Voz.parar();
     });
+    const vel = $("voz-vel");
+    vel.value = Prefs.get("voz_vel", "1"); $("voz-vel-txt").textContent = fmtVel(vel.value);
+    vel.addEventListener("input", () => { Prefs.set("voz_vel", vel.value); $("voz-vel-txt").textContent = fmtVel(vel.value); });
+    $("voz-probar").addEventListener("click", () => Voz.hablar("Hola, soy ARIA. Así sueno a esta velocidad."));
+    $("voz-mic").addEventListener("change", (e) => Prefs.set("mic", e.target.value));
+    $("voz-probar-mic").addEventListener("click", probarMic);
+    const manos = $("voz-manos");
+    manos.addEventListener("change", () => (manos.checked ? ManosLibres.iniciar() : ManosLibres.parar()));
+    ManosLibres.alCambiar((on) => { manos.checked = on; });
+    if (!Voz.micDisponible()) {
+      for (const id of ["voz-mic", "voz-probar-mic", "voz-manos"]) $(id).disabled = true;
+      $("voz-estado").textContent = "El micrófono solo funciona por HTTPS.";
+    }
   }
 
   // --- Contraseña ---
@@ -158,6 +215,7 @@ const Ajustes = (() => {
   }
 
   function activar() {
+    estadoVoz(); listarMics().catch(() => {});
     if (Sesion.esAdmin) { cerebros(); modelos(); spotify(); acerca(); }
     if (!Sesion.tienePassword) { $("pass-actual").required = false; $("pass-actual-et").hidden = true; }
   }

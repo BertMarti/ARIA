@@ -83,6 +83,7 @@ const Inicio = (() => {
     $("qa-vpn").addEventListener("click", () => Control.anadir());
     }
     $("qa-sistema").addEventListener("click", resumenSistema);
+    Voz.botonMic($("preguntar-mic"), (t) => { $("preguntar-texto").value = t; $("form-preguntar").requestSubmit(); });
     $("form-preguntar").addEventListener("submit", (e) => {
       e.preventDefault();
       const t = $("preguntar-texto").value.trim(); if (!t) return;

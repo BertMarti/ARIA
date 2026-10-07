@@ -3,7 +3,7 @@
 Instrucciones para Claude Code en este repositorio (ARIA).
 
 ## Qué es
-Asistente local estilo "Jarvis" para Raspberry Pi: FastAPI + Ollama + Caddy en Docker Compose. Sin APIs de pago.
+Asistente doméstico local para Raspberry Pi: FastAPI + Ollama + Caddy en Docker Compose. Sin APIs de pago.
 
 ## Estructura
 - `docker-compose.yml`: servicios `ollama`, `app`, `caddy` (proyecto `aria`, contenedores `aria-*`).

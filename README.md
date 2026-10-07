@@ -1,6 +1,6 @@
 # ARIA
 
-Asistente doméstico local estilo "Jarvis" para Raspberry Pi. El modelo de lenguaje se ejecuta en tu propia máquina con [Ollama](https://ollama.com): **sin APIs de pago y sin enviar tus conversaciones a la nube**.
+ARIA es tu asistente doméstico local para Raspberry Pi. El modelo de lenguaje se ejecuta en tu propia máquina con [Ollama](https://ollama.com): **sin APIs de pago y sin enviar tus conversaciones a la nube**.
 
 Incluye:
 

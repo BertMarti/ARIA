@@ -151,6 +151,8 @@ Con un dominio en Cloudflare, ARIA, Pi-hole y el panel de la VPN quedan en `http
    ```
    Crea el túnel, las rutas, la protección y los nombres, y arranca el conector (`cloudflare-tunnel`). Se puede repetir sin problema.
 
+El mismo comando arranca también `cloudflare-ddns`, que mantiene **`vpn.TUDOMINIO`** apuntando a tu IP pública (sin proxy, porque la VPN va directa a tu router por UDP 51820). En HEIMDALL, pon esa dirección como *Host* en *Administración* para que los perfiles de los dispositivos no dependan de una IP que puede cambiar.
+
 Los accesos directos de ARIA se adaptan solos: si entras por `aria.TUDOMINIO`, los paneles se abren por `shield.`/`heimdall.TUDOMINIO`; en casa, por la IP.
 
 ## Actualizar

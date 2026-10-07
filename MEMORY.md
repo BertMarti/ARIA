@@ -57,3 +57,4 @@
 - **2026-10-07**: Ajustes → Certificado: descarga del certificado raíz público de Caddy (install.sh lo copia a data/). Verificado: con él, curl entra sin -k por IP y por .local.
 - **2026-10-07 · cerebros**: cadena multi-proveedor (Ollama Cloud, Groq, Gemini, local) con relevo automático, esperas por cuota, adaptador OpenAI para herramientas, insignia del cerebro en cada respuesta, Ajustes → Cerebros (orden, activar, Probar), `ARIA_NOMBRE_USUARIO` (saludo y prompt) y pruebas pytest con proveedores falsos.
 - **2026-10-07**: acceso público con Cloudflare Tunnel + Access (cloudflare/configurar.sh, idempotente, probado). Los enlaces a los paneles siguen al dominio público. Verificado: los tres nombres devuelven 302 a la pantalla de Access sin sesión.
+- **2026-10-07**: cloudflare-ddns mantiene vpn.tu-dominio.com → IP pública (sin proxy); HEIMDALL usa ese host. Router: reserva 192.168.1.50, DNS de la casa = Pi, UDP 51820 → Pi.

@@ -21,7 +21,7 @@ log = logging.getLogger("uvicorn.error")
 
 MODELOS = Path(os.environ.get("VOZ_MODELOS", "/modelos"))
 WHISPER = os.environ.get("VOZ_WHISPER", "base")
-VOZ_PIPER = os.environ.get("VOZ_PIPER", "es_ES-davefx-medium")
+VOZ_PIPER = os.environ.get("VOZ_PIPER", "es_ES-sharvard-medium")
 HILOS = int(os.environ.get("VOZ_HILOS", "4"))
 MAX_FLUJOS = int(os.environ.get("VOZ_MAX_FLUJOS", "2"))     # escuchas «manos libres» simultáneas
 INACTIVO_S = int(os.environ.get("VOZ_INACTIVO_S", "600"))   # libera Whisper tras este tiempo sin uso
@@ -163,13 +163,13 @@ class Escucha:
         from vosk import KaldiRecognizer
         self.rec = KaldiRecognizer(_modelo_vosk(), SR, GRAMATICA)
         self.rec.SetWords(True)
+        self.total = 0           # muestras recibidas (eje de tiempos de Vosk: Reset() no lo reinicia)
         self.reiniciar()
 
     def reiniciar(self):
         self.rec.Reset()
         self.pcm = bytearray()   # audio reciente (se recorta a MEMORIA_S)
-        self.base = 0            # muestra absoluta del primer byte de self.pcm
-        self.total = 0           # muestras recibidas desde Reset (eje de tiempos de Vosk)
+        self.base = self.total   # muestra absoluta del primer byte de self.pcm
         self.ruido = 200.0       # nivel de fondo estimado (RMS)
         self.enfriar_hasta = 0
         self._sin_orden()

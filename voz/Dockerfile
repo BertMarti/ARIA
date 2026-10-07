@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Modelos dentro de la imagen: Whisper base (fallback local), voz de Piper y Vosk pequeño en español.
 ARG VOZ_WHISPER=base
-ARG VOZ_PIPER=es_ES-davefx-medium
+ARG VOZ_PIPER=es_ES-sharvard-medium
 ARG VOZ_VOSK=vosk-model-small-es-0.42
 ENV VOZ_WHISPER=${VOZ_WHISPER} VOZ_PIPER=${VOZ_PIPER}
 COPY descargar.py .

@@ -164,7 +164,8 @@ def test_migracion_conserva_el_hash_y_la_version(tmp_path, monkeypatch):
 
 
 # --- Herramientas del chat ---
-LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "estado_sistema", "buscar_en_netflix"}
+LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "estado_sistema", "buscar_en_netflix",
+           "buscar_en_internet", "noticias"}
 
 
 def test_herramientas_de_solo_lectura():

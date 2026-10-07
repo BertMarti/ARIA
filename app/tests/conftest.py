@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pytest
 
-from aria import auth, cerebros, config, db, sso, usuarios
+from aria import auth, cerebros, config, cve, db, finanzas, red, sso, usuarios
 
 
 @pytest.fixture(autouse=True)
@@ -23,5 +23,9 @@ def entorno(tmp_path, monkeypatch):
     monkeypatch.setattr(sso, "_claves", {})
     monkeypatch.setattr(sso, "_descargada", 0.0)
     monkeypatch.setattr(sso, "_intento", 0.0)
+    monkeypatch.setattr(config, "ESCANER_DIR", tmp_path / "escaner")
     db.iniciar()
     usuarios.iniciar()
+    finanzas.iniciar()
+    red.iniciar()
+    cve.iniciar()

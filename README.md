@@ -56,7 +56,7 @@ El script es idempotente: puedes relanzarlo sin problema. Hace lo siguiente:
 
 ## Primer acceso
 
-Abre `https://<IP-de-la-Pi>` (o `https://<nombre-de-la-Pi>.local`) e inicia sesión con `ARIA_USER` / `ARIA_PASSWORD` de `.env`. Después puedes cambiar la contraseña desde **Ajustes** (ver la guía rápida).
+Abre **https://aria.local** (la Pi lo anuncia por mDNS en tu red), `https://aria.lan` (si usas SHIELD-DNS o la VPN) o `https://<IP-de-la-Pi>` e inicia sesión con `ARIA_USER` / `ARIA_PASSWORD` de `.env`. Después puedes cambiar la contraseña desde **Ajustes** (ver la guía rápida).
 
 ### Aviso de certificado
 

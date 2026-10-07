@@ -49,6 +49,34 @@ else
 fi
 mkdir -p data
 
+# Nombres para entrar sin la IP: https://aria.local (mDNS) y https://aria.lan (DNS de SHIELD-DNS)
+for n in aria.local aria.lan; do
+  case ",$(get_var ARIA_HOSTS)," in *",$n,"*) ;; *) set_var ARIA_HOSTS "$(get_var ARIA_HOSTS),$n"; info "Añadido $n a ARIA_HOSTS" ;; esac
+done
+if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet avahi-daemon 2>/dev/null; then
+  command -v avahi-publish >/dev/null 2>&1 || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq avahi-utils >/dev/null
+  if [ ! -f /etc/systemd/system/aria-mdns.service ]; then
+    sudo tee /etc/systemd/system/aria-mdns.service >/dev/null <<'UNIT'
+[Unit]
+Description=Anuncia aria.local en la red local (mDNS) para ARIA
+After=avahi-daemon.service network-online.target
+Requires=avahi-daemon.service
+
+[Service]
+ExecStart=/bin/sh -c 'exec /usr/bin/avahi-publish -a -R aria.local "$(hostname -I | cut -d" " -f1)"'
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now aria-mdns.service >/dev/null 2>&1 && info "Publicado aria.local en la red (mDNS)"
+  fi
+else
+  aviso "avahi-daemon no está activo: no se publica aria.local (usa la IP o aria.lan)."
+fi
+
 # Integraciones con SHIELD-DNS y HEIMDALL: si faltan, se rellenan desde sus .env
 # (solo se lee con grep/cut; nunca se hace "source" de esos archivos).
 leer_ajeno() { [ -f "$1" ] && grep -E "^$2=" "$1" | tail -n1 | cut -d= -f2- || true; }
@@ -100,7 +128,7 @@ fi
 IP="$(get_var ARIA_LAN_IP)"
 echo
 info "ARIA está lista"
-echo "  URL:        https://$IP   (también https://$(hostname).local)"
+echo "  URL:        https://aria.local   (si no carga: https://$IP)"
 echo "  Usuario:    $(get_var ARIA_USER)"
 echo "  Contraseña: $(get_var ARIA_PASSWORD)   (guardada en $(pwd)/.env)"
 echo "  El navegador avisará del certificado autofirmado: es lo esperado (ver README)."

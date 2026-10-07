@@ -37,6 +37,9 @@ def iniciar() -> None:
             CREATE INDEX IF NOT EXISTS idx_mensajes_conv ON mensajes(conv_id, id);
             CREATE INDEX IF NOT EXISTS idx_conv_act ON conversaciones(actualizada DESC);
         """)
+        # Migración: etiqueta del cerebro que respondió (p. ej. "Ollama Cloud · gpt-oss:120b").
+        if "cerebro" not in {r["name"] for r in con.execute("PRAGMA table_info(mensajes)")}:
+            con.execute("ALTER TABLE mensajes ADD COLUMN cerebro TEXT")
 
 
 def titulo_desde(texto: str) -> str:
@@ -69,8 +72,8 @@ def obtener(cid: str) -> dict | None:
         c = con.execute("SELECT id, titulo FROM conversaciones WHERE id=?", (cid,)).fetchone()
         if not c:
             return None
-        msgs = [{"role": r["rol"], "content": r["contenido"]} for r in con.execute(
-            "SELECT rol, contenido FROM mensajes WHERE conv_id=? ORDER BY id", (cid,))]
+        msgs = [{"role": r["rol"], "content": r["contenido"], "cerebro": r["cerebro"]} for r in con.execute(
+            "SELECT rol, contenido, cerebro FROM mensajes WHERE conv_id=? ORDER BY id", (cid,))]
     return {"id": c["id"], "titulo": c["titulo"], "mensajes": msgs}
 
 
@@ -87,12 +90,12 @@ def borrar(cid: str) -> bool:
         return con.execute("DELETE FROM conversaciones WHERE id=?", (cid,)).rowcount > 0
 
 
-def anadir(cid: str, rol: str, contenido: str) -> None:
+def anadir(cid: str, rol: str, contenido: str, cerebro: str | None = None) -> None:
     """rol: user | assistant | tool (el contenido de 'tool' es JSON {name,args,text})."""
     ahora = time.time()
     with closing(_con()) as con, con:
-        con.execute("INSERT INTO mensajes (conv_id, rol, contenido, ts) VALUES (?,?,?,?)",
-                    (cid, rol, contenido, ahora))
+        con.execute("INSERT INTO mensajes (conv_id, rol, contenido, ts, cerebro) VALUES (?,?,?,?,?)",
+                    (cid, rol, contenido, ahora, cerebro))
         con.execute("UPDATE conversaciones SET actualizada=? WHERE id=?", (ahora, cid))
 
 

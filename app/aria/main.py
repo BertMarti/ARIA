@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Red
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import auth, chat, config, db, modelos, services, shield, sistema, spotify, vpn
+from . import auth, cerebros, chat, config, db, modelos, services, shield, sistema, spotify, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -136,7 +136,9 @@ async def _json(request: Request) -> dict:
 
 @app.get("/api/info")
 async def api_info():
-    return {"version": config.VERSION, "modelo": config.modelo_activo(),
+    primero = cerebros.cadena()[0]
+    return {"version": config.VERSION, "modelo": config.modelo_activo(), "usuario": config.NOMBRE_USUARIO,
+            "cerebro": {"id": primero.id, "etiqueta": primero.etiqueta()},
             "puertos": {"shield_web": config.SHIELD_WEB_PORT, "vpn": config.HEIMDALL_PORT}}
 
 
@@ -205,6 +207,33 @@ async def api_borrar_conversacion(cid: str):
 
 
 # --- Modelos ---
+# --- Cerebros (cadena de proveedores de IA) ---
+@app.get("/api/brains")
+async def api_cerebros():
+    return {"cerebros": cerebros.estado()}
+
+
+@app.post("/api/brains")
+async def api_cerebros_guardar(request: Request):
+    d = await _json(request)
+    orden, apagados = d.get("orden"), d.get("desactivados", [])
+    ok = (isinstance(orden, list) and isinstance(apagados, list)
+          and all(isinstance(i, str) for i in orden + apagados))
+    if not ok or set(orden) != set(cerebros.PROVEEDORES) or len(set(orden)) != len(orden) \
+            or not set(apagados) <= set(cerebros.PROVEEDORES):
+        return JSONResponse({"error": "Orden de cerebros no válido."}, status_code=400)
+    cerebros.guardar(orden, apagados)
+    return {"cerebros": cerebros.estado()}
+
+
+@app.post("/api/brains/test")
+async def api_cerebros_probar(request: Request):
+    pid = (await _json(request)).get("id")
+    if pid not in cerebros.PROVEEDORES:
+        return JSONResponse({"error": "Cerebro desconocido."}, status_code=400)
+    return await cerebros.probar(pid)
+
+
 @app.get("/api/models")
 async def api_models():
     lista = await modelos.instalados()

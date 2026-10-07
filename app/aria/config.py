@@ -64,7 +64,9 @@ def guardar_modelo(nombre: str) -> None:
     MODEL_FILE.write_text(nombre.strip() + "\n")
 
 
-SYSTEM_PROMPT = (
+NOMBRE_USUARIO = os.environ.get("ARIA_NOMBRE_USUARIO", "").strip()[:40]
+
+_PROMPT_BASE = (
     "Eres ARIA, un asistente doméstico útil que corre en local en una Raspberry Pi. "
     "Responde siempre en español de España, de forma breve y clara. "
     "Usa las herramientas disponibles solo cuando el usuario pida datos en vivo: la hora, el estado "
@@ -73,3 +75,17 @@ SYSTEM_PROMPT = (
     "Si te piden explicar un concepto o charlar, responde sin herramientas. "
     "Recuerda que no puedes reproducir contenido de Netflix: solo puedes dar un enlace de búsqueda."
 )
+
+
+def system_prompt(nube: bool = False) -> str:
+    """Prompt del sistema. Los cerebros en la nube reciben todas las herramientas y una línea extra."""
+    p = _PROMPT_BASE
+    if NOMBRE_USUARIO:
+        p += f" El usuario se llama {NOMBRE_USUARIO}; trátale por su nombre cuando sea natural."
+    if nube:
+        p += (" Tienes herramientas a tu disposición, pero úsalas solo cuando hagan falta de verdad "
+              "para responder; si la pregunta no necesita datos en vivo, contesta directamente.")
+    return p
+
+
+SYSTEM_PROMPT = system_prompt(False)

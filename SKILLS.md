@@ -12,6 +12,7 @@
 | `dispositivos_vpn` | Lista dispositivos VPN y cuáles están conectados |
 | `crear_dispositivo_vpn(nombre)` / `activar_dispositivo_vpn(nombre)` / `desactivar_dispositivo_vpn(nombre)` | Gestión de la VPN por nombre (borrar solo en la interfaz) |
 | `estado_sistema` | Temperatura, RAM, disco, carga y uptime de la Pi |
+| `buscar_en_internet(consulta)` / `noticias(tema)` | Busca en internet (SearXNG) y devuelve títulos, extractos y enlaces; citar las fuentes. Disponible para ambos roles |
 | `buscar_en_netflix` | Devuelve un enlace de búsqueda. ARIA **no** puede controlar Netflix |
 
 Además: Inicio con lanzador de aplicaciones, chat con conversaciones guardadas, Centro de control (SHIELD-DNS, HEIMDALL, Sistema, Spotify) y Ajustes (modelos, voz, contraseña). Las herramientas dependen de que el modelo admita tool calling; si no, ARIA responde sin ellas.

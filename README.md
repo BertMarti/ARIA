@@ -107,6 +107,17 @@ ARIA solo ofrece al modelo las herramientas cuyas palabras clave aparecen en tu 
 | `estado_sistema` | Temperatura, RAM, disco, carga y tiempo encendida de la Pi |
 | `spotify_play`, `spotify_pause`, `spotify_siguiente`, `spotify_anterior`, `spotify_actual`, `spotify_buscar_y_reproducir` | Control de Spotify |
 | `buscar_en_netflix` | Devuelve un enlace de búsqueda en Netflix |
+| `buscar_en_internet(consulta)`, `noticias(tema)` | Búsqueda en internet y titulares en español (lectura: también para el rol `usuario`) |
+
+### Búsqueda en internet
+
+ARIA busca con **SearXNG**, un metabuscador que corre en el contenedor interno `aria-searxng` (sin puertos publicados: solo la app lo alcanza). ARIA nunca habla directamente con los buscadores.
+
+- Herramientas `buscar_en_internet` y `noticias` (titulares del último día, completados con los de la semana). Los cerebros en la nube las usan para lo reciente o lo que no saben y citan las fuentes al final («Fuentes: …»); el modelo local solo las recibe con palabras clave (busca, internet, noticias, precio, resultado, quién ganó, cuándo…).
+- Resultados compactos (≤ 1 500 caracteres): título, dominio, extracto y enlace, sin parámetros de seguimiento, un resultado por dominio y caché de 10 minutos. El chat muestra «Buscando en internet…» y los enlaces a las fuentes.
+- Configuración en `searxng/settings.yml` (idioma `es-ES`, búsqueda segura moderada, sin proxy de imágenes, limitador desactivado por ser interno). Motores sin clave: DuckDuckGo, Brave, Bing, Google, Wikipedia y de noticias DuckDuckGo/Bing/Google/Brave/Wikinoticias; si uno es bloqueado, responden los demás.
+- `SEARXNG_SECRET` lo genera `install.sh` (o `update.sh` en instalaciones antiguas). `SEARXNG_MEM_LIMIT` limita su memoria (384 m por defecto; consume unos 150 MB).
+- Privacidad: las consultas salen de tu casa hacia los buscadores desde la IP de la Pi, y el texto de los resultados llega al cerebro que uses (incluida la nube).
 
 ### Limitación con Netflix
 
@@ -251,7 +262,7 @@ node app/tests/md.test.js
 | SHIELD-DNS | 53, 8080, 8443 |
 | HEIMDALL | 51820/udp, 51843 |
 
-Ollama y la app no se publican en el host: solo Caddy es accesible desde la red.
+Ollama, SearXNG y la app no se publican en el host: solo Caddy es accesible desde la red.
 
 ## Solución de problemas
 

@@ -36,6 +36,17 @@
       </form>
     </header>
 
+    <article class="tarjeta resumen" id="resumen-hoy" hidden>
+      <div class="resumen-cab">
+        <h2>Tu resumen de hoy</h2>
+        <div class="fila-acc">
+          <button type="button" class="fantasma pequeno" id="resumen-actualizar">Actualizar</button>
+          <button type="button" class="fantasma pequeno" id="resumen-cerrar">Cerrar por hoy</button>
+        </div>
+      </div>
+      <div id="resumen-cuerpo" class="resumen-cuerpo" aria-live="polite"></div>
+    </article>
+
     <h2>Aplicaciones</h2>
     <div class="lanzador" id="lanzador">
       <article class="app-tile" id="tile-chat">
@@ -164,6 +175,22 @@
         </label>
         <p class="muted" id="tts-nota">Usa la voz en español de tu navegador. Se queda en este dispositivo.</p>
       </article>
+      <article class="tarjeta ancha" id="ajustes-memoria">
+        <h2>Memoria</h2>
+        <p class="muted">La memoria se envía a los cerebros en la nube (Ollama Cloud, Groq, Gemini) junto con tus preguntas para darte contexto. Solo tú ves la tuya; el cerebro local no sale de casa.</p>
+        <label class="interruptor"><input type="checkbox" id="mem-aprender"><span>Aprender automáticamente de mis conversaciones</span></label>
+        <p class="muted">Si lo desactivas, ARIA no extrae recuerdos nuevos ni escribe el diario de tus días; sigue recordando lo que le pidas tú.</p>
+        <h3>Lo que recuerdo de ti <span class="muted" id="mem-cuenta"></span></h3>
+        <ul id="mem-lista" class="filas"></ul>
+        <form id="form-mem" class="formulario mem-nuevo" autocomplete="off">
+          <label>Añadir algo que deba recordar <input id="mem-nuevo" maxlength="300" placeholder="Mi equipo de fútbol es el Betis" required></label>
+          <button type="submit" class="primario">Añadir</button>
+        </form>
+        <p id="mem-msg" class="muted" role="status"></p>
+        <h3>Diario (últimos 14 días)</h3>
+        <ul id="mem-diario" class="filas"></ul>
+        <div class="botones"><button type="button" class="peligro" id="mem-borrar-todo">Borrar toda mi memoria</button></div>
+      </article>
       <article class="tarjeta" id="ajustes-pass">
         <h2>Contraseña</h2>
         <form id="form-pass" class="formulario" autocomplete="off">
@@ -247,6 +274,7 @@
 <script src="/static/control.js"></script>
 <script src="/static/inicio.js"></script>
 <script src="/static/ajustes.js"></script>
+<script src="/static/memoria.js"></script>
 <script src="/static/usuarios.js"></script>
 <script src="/static/app.js"></script>
 </body>

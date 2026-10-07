@@ -236,3 +236,12 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 .msg.pensando { animation: pulso 1.4s ease-in-out infinite; }
 @keyframes pulso { 50% { opacity: .4; } }
 .fila .estado { margin: 0; font-weight: 400; font-size: .9rem; }
+
+/* Resumen de buenos días y Memoria */
+.resumen { margin-bottom: 1.2rem; }
+.resumen-cab { display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap; }
+.resumen-cab h2 { margin: 0; }
+.resumen-saludo { margin: .6rem 0 .2rem; }
+.resumen-bloque h3 { margin: .8rem 0 .2rem; font-size: .95rem; color: var(--acento); text-transform: none; letter-spacing: 0; }
+.resumen-lista { margin: 0; padding-left: 1.2rem; }
+.mem-nuevo { margin-top: .8rem; }

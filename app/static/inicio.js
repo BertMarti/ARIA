@@ -63,10 +63,41 @@ const Inicio = (() => {
     toast("Sistema: " + partes.join(" · ") + " · encendida " + d.uptime_texto);
   }
 
+  // --- Resumen de buenos días («Tu resumen de hoy») ---
+  const num = (n) => fmtNum(n);
+  const dec = (v) => String(v).replace(".", ",");
+  function lista(items) { return el("ul", { class: "resumen-lista" }, ...items.map((t) => el("li", null, t))); }
+  function bloque(titulo, contenido) { return el("section", { class: "resumen-bloque" }, el("h3", null, titulo), contenido); }
+  function pintarResumen(d) {
+    const c = $("resumen-cuerpo"); c.replaceChildren();
+    c.append(el("p", { class: "resumen-saludo" }, el("strong", null, d.saludo), " · " + d.fecha_texto));
+    if (d.tiempo) c.append(bloque("El tiempo", el("p", null, d.tiempo.ciudad + ": " + d.tiempo.cielo + (d.tiempo.actual != null ? ", ahora " + d.tiempo.actual + " °C" : "") + ", entre " + d.tiempo.min + " y " + d.tiempo.max + " °C" + (d.tiempo.lluvia != null ? " · lluvia " + d.tiempo.lluvia + " %" : ""))));
+    if (d.ayer) c.append(bloque("Ayer", lista(d.ayer.resumen.split("\n").map((l) => l.replace(/^[-•\s]+/, "")).filter(Boolean))));
+    const casa = d.casa || {}, f = [];
+    const a = casa.anuncios;
+    f.push(a ? num(a.bloqueadas) + " anuncios bloqueados " + (a.dia === "ayer" ? "ayer" : "(últimas 24 h)") + " (" + dec(a.porcentaje) + " % de " + num(a.consultas) + " consultas)" : "Anuncios bloqueados: no disponible");
+    if (casa.vpn) {
+      const v = casa.vpn;
+      f.push(v.disponible ? "VPN: " + v.conectados + " de " + v.total + " dispositivos conectados ahora" + (v.ultimas_24h.length ? "; en 24 h: " + v.ultimas_24h.join(", ") : "") : "VPN: no disponible");
+    }
+    const s = casa.sistema;
+    if (s) f.push("Raspberry: " + [s.temperatura != null ? dec(s.temperatura) + " °C" : null, s.ram != null ? "RAM " + s.ram + " %" : null, s.disco != null ? "disco " + s.disco + " %" : null].filter(Boolean).join(" · "));
+    if (casa.copia) f.push("Última copia fuera de la Pi: " + (casa.copia.disponible ? casa.copia.hace + (casa.copia.antigua ? " (antigua)" : "") : "no disponible"));
+    c.append(bloque("En casa", lista(f)));
+    if (d.recuerdos && d.recuerdos.length) c.append(bloque("Por si te viene bien hoy", lista(d.recuerdos)));
+  }
+  async function resumen(refrescar) {
+    const tarjeta = $("resumen-hoy");
+    const { ok, data } = await api("/api/briefing" + (refrescar ? "?refrescar=1" : ""));
+    if (!ok || !data.fecha) { tarjeta.hidden = true; return; }
+    if (!refrescar && Prefs.get("resumen_cerrado", "") === data.fecha) { tarjeta.hidden = true; return; }
+    pintarResumen(data); tarjeta.hidden = false; tarjeta.dataset.fecha = data.fecha;
+  }
+
   function activar(si) {
     clearInterval(temporizador); temporizador = null;
     if (!si) return;
-    saludo(); estados();
+    saludo(); estados(); resumen(false);
     temporizador = setInterval(() => { if (!document.hidden && !document.querySelector("dialog[open]")) estados(); }, 15000);
   }
 
@@ -83,6 +114,8 @@ const Inicio = (() => {
     $("qa-vpn").addEventListener("click", () => Control.anadir());
     }
     $("qa-sistema").addEventListener("click", resumenSistema);
+    $("resumen-cerrar").addEventListener("click", () => { Prefs.set("resumen_cerrado", $("resumen-hoy").dataset.fecha || ""); $("resumen-hoy").hidden = true; });
+    $("resumen-actualizar").addEventListener("click", async () => { await resumen(true); toast("Resumen actualizado."); });
     $("form-preguntar").addEventListener("submit", (e) => {
       e.preventDefault();
       const t = $("preguntar-texto").value.trim(); if (!t) return;

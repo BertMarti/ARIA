@@ -1,0 +1,51 @@
+# SearXNG para ARIA: metabuscador interno (solo accesible desde la red de Docker, sin puertos publicados).
+# La clave secreta se toma de SEARXNG_SECRET (install.sh la genera en .env).
+use_default_settings:
+  engines:
+    # Solo motores que funcionan sin clave de API. Si uno falla o se bloquea, los demás responden.
+    keep_only:
+      - duckduckgo
+      - brave
+      - wikipedia
+      - bing
+      - google
+      - duckduckgo news
+      - bing news
+      - google news
+      - brave.news
+      - wikinews
+
+# bing y google vienen desactivados por defecto; se activan (google suele denegar el acceso: es solo respaldo).
+engines:
+  - name: bing
+    disabled: false
+  - name: google
+    disabled: false
+
+general:
+  instance_name: "ARIA búsqueda"
+  debug: false
+
+search:
+  safe_search: 1
+  autocomplete: ""
+  default_lang: "es-ES"
+  formats:
+    - html
+    - json
+
+server:
+  # Uso interno: no hay limitador (solo ARIA llega aquí) ni proxy de imágenes.
+  limiter: false
+  public_instance: false
+  image_proxy: false
+  secret_key: "cambiar-esto"   # se sustituye por SEARXNG_SECRET
+
+ui:
+  static_use_hash: true
+
+outgoing:
+  request_timeout: 5.0
+  max_request_timeout: 7.0
+  pool_connections: 20
+  pool_maxsize: 10

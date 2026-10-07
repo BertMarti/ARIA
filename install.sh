@@ -49,6 +49,13 @@ else
 fi
 mkdir -p data
 
+# Clave interna de SearXNG (búsqueda en internet): se genera si falta o está vacía.
+if [ -z "$(get_var SEARXNG_SECRET)" ]; then
+  command -v openssl >/dev/null 2>&1 || error "Falta openssl (sudo apt install openssl)."
+  set_var SEARXNG_SECRET "$(openssl rand -hex 32)"
+  info "SEARXNG_SECRET generado"
+fi
+
 # Nombres para entrar sin la IP: https://aria.local (mDNS) y https://aria.lan (DNS de SHIELD-DNS)
 for n in aria.local aria.lan; do
   case ",$(get_var ARIA_HOSTS)," in *",$n,"*) ;; *) set_var ARIA_HOSTS "$(get_var ARIA_HOSTS),$n"; info "Añadido $n a ARIA_HOSTS" ;; esac
@@ -97,7 +104,7 @@ info "Construyendo y arrancando los contenedores"
 docker compose up -d --build
 
 info "Esperando a que los servicios estén sanos"
-for c in aria-ollama aria-app aria-caddy; do
+for c in aria-ollama aria-searxng aria-app aria-caddy; do
   for i in $(seq 1 60); do
     estado="$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null || echo desconocido)"
     [ "$estado" = "healthy" ] && break

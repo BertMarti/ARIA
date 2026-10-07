@@ -139,6 +139,20 @@ Se configuran en `.env` (todas opcionales; si faltan, la tarjeta aparece como «
 
 Seguridad: las claves privadas de WireGuard nunca llegan al navegador salvo el `.conf` que tú descargas expresamente. **Aviso:** los botones «Copiar contraseña» de Inicio entregan la contraseña de Pi-hole y de wg-easy a cualquier persona que haya iniciado sesión en ARIA (solo mediante una petición autenticada y sin caché; no van en el HTML). Protege bien la contraseña de ARIA.
 
+## Acceso desde cualquier lugar (dominio propio + Cloudflare)
+
+Con un dominio en Cloudflare, ARIA, Pi-hole y el panel de la VPN quedan en `https://aria.TUDOMINIO`, `https://shield.TUDOMINIO` y `https://heimdall.TUDOMINIO`, con certificado válido, **sin abrir puertos** y protegidos por **Cloudflare Access**: primero un código que llega a tu email y luego la contraseña de cada app. La sesión de Access dura 30 días por dispositivo.
+
+1. En Cloudflare: compra o añade el dominio, activa **Zero Trust (plan Free)** y añade el método de acceso **One-time PIN** (*Zero Trust → Integrations → Identity providers → Add → One-time PIN*).
+2. Crea un API token con *Zone·DNS·Edit*, *Account·Cloudflare Tunnel·Edit* y *Account·Access: Apps and Policies·Edit*.
+3. En la Raspberry, rellena `~/homelab/cloudflare.env` (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `DOMINIO`, `EMAIL_ACCESO`, varios emails separados por comas) y ejecuta:
+   ```bash
+   ./cloudflare/configurar.sh
+   ```
+   Crea el túnel, las rutas, la protección y los nombres, y arranca el conector (`cloudflare-tunnel`). Se puede repetir sin problema.
+
+Los accesos directos de ARIA se adaptan solos: si entras por `aria.TUDOMINIO`, los paneles se abren por `shield.`/`heimdall.TUDOMINIO`; en casa, por la IP.
+
 ## Actualizar
 
 ```bash

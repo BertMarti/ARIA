@@ -39,7 +39,7 @@ const Control = (() => {
       el("div", { class: "numeros" }, numero(fmtNum(data.consultas), "consultas (24 h)"), numero(fmtNum(data.bloqueadas), "bloqueadas"), numero(data.porcentaje.toString().replace(".", ",") + " %", "bloqueo")),
       barra(data.porcentaje, 101, 101),
       el("h3", null, "Más bloqueados"), top, pausas,
-      el("div", { class: "pie" }, el("span", { class: "muted" }, fmtNum(data.lista_negra) + " dominios en la lista"), enlaceExterno(data.panel, "Abrir panel Pi-hole")));
+      el("div", { class: "pie" }, el("span", { class: "muted" }, fmtNum(data.lista_negra) + " dominios en la lista"), enlaceExterno(enlacePanel("shield", data.panel), "Abrir panel Pi-hole")));
     cuentaAtras();
   }
   function cuentaAtras() {
@@ -88,7 +88,7 @@ const Control = (() => {
     c.replaceChildren(
       el("div", { class: "estado" }, el("span", { class: "punto ok" }), conectados + " de " + data.clientes.length + " conectados"),
       lista,
-      el("div", { class: "pie" }, el("button", { type: "button", class: "primario", onclick: anadir }, "Añadir dispositivo"), enlaceExterno(data.panel, "Abrir panel wg-easy")));
+      el("div", { class: "pie" }, el("button", { type: "button", class: "primario", onclick: anadir }, "Añadir dispositivo"), enlaceExterno(enlacePanel("vpn", data.panel), "Abrir panel wg-easy")));
   }
   async function alternar(d) {
     const r = await api("/api/vpn/clients/" + d.id + "/" + (d.activo ? "disable" : "enable"), { method: "POST" });

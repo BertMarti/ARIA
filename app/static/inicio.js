@@ -74,8 +74,8 @@ const Inicio = (() => {
     const { data } = await api("/api/info");
     if (data.puertos) puertos = data.puertos;
     usuario = data.usuario || ""; saludo();
-    $("tile-shield-a").href = "https://" + location.hostname + ":" + puertos.shield_web + "/admin";
-    $("tile-vpn-a").href = "https://" + location.hostname + ":" + puertos.vpn;
+    $("tile-shield-a").href = enlacePanel("shield", "https://" + location.hostname + ":" + puertos.shield_web + "/admin");
+    $("tile-vpn-a").href = enlacePanel("vpn", "https://" + location.hostname + ":" + puertos.vpn);
     document.querySelectorAll("[data-secreto]").forEach((b) => b.addEventListener("click", () => copiarSecreto(b)));
     $("qa-pausar").addEventListener("click", pausar);
     $("qa-reanudar").addEventListener("click", reanudar);

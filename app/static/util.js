@@ -23,6 +23,16 @@ function fmtBytes(n) {
   while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
   return (i === 0 ? n : n.toFixed(n >= 100 ? 0 : 1)).toString().replace(".", ",") + " " + u[i];
 }
+// Si se entra por el dominio público (aria.<dominio>), los paneles van por shield./heimdall.<dominio>;
+// en casa (IP, .local o .lan) se usa la dirección local que da el servidor.
+function enlacePanel(tipo, urlLocal) {
+  const h = location.hostname;
+  if (h.startsWith("aria.") && !/\.(local|lan)$/.test(h)) {
+    const dom = h.slice(5);
+    return tipo === "shield" ? "https://shield." + dom + "/admin/" : "https://heimdall." + dom + "/";
+  }
+  return urlLocal;
+}
 function fmtNum(n) { return (Number(n) || 0).toLocaleString("es-ES"); }
 
 // Llamada a la API con JSON. Devuelve { ok, status, data }. 401 -> pantalla de acceso.

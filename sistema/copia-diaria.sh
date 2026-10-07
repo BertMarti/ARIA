@@ -44,3 +44,7 @@ ls -1t homelab-*.tar.gz.gpg | tail -n +"$((CONSERVAR + 1))" | xargs -r git rm -q
 git add "$ARCH"
 git commit -qm "Copia $FECHA" && git push -q origin HEAD
 log "Copia cifrada subida: $REPO/$ARCH ($(du -h "$ARCH" | cut -f1))"
+# Estado para el resumen de buenos días de ARIA (solo fecha y nombre, nada sensible)
+if [ -d "$HOMELAB_DIR/ARIA/data" ]; then
+  printf '{"fecha": "%s", "archivo": "%s"}\n' "$(date -Iseconds)" "$ARCH" > "$HOMELAB_DIR/ARIA/data/ultima-copia.json"
+fi

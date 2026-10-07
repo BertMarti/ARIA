@@ -48,7 +48,16 @@ def _edad(t: datetime, ahora: datetime | None = None) -> str:
 
 def ultima_copia() -> dict:
     """Fecha de la última copia cifrada fuera de la Pi (commit más reciente de homelab-*.tar.gz.gpg).
-    Solo si el repositorio está montado en el contenedor; si no, «no disponible»."""
+    Primero lee data/ultima-copia.json (lo escribe sistema/copia-diaria.sh tras subir la copia);
+    si no existe, el repositorio montado (si lo está); si no, «no disponible»."""
+    estado = config.DATA_DIR / "ultima-copia.json"
+    if estado.is_file():
+        try:
+            t = datetime.fromisoformat(json.loads(estado.read_text())["fecha"])
+            horas = (datetime.now(t.tzinfo) - t).total_seconds() / 3600
+            return {"disponible": True, "fecha": t.isoformat(), "hace": _edad(t), "antigua": horas > COPIA_ANTIGUA_H}
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
     repo = Path(config.COPIAS_REPO)
     if not repo.is_dir():
         return {"disponible": False}

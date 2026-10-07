@@ -1,6 +1,8 @@
 """Configuracion de ARIA leida del entorno (.env)."""
 import os
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 
 def _int(name: str, default: int) -> int:
@@ -104,6 +106,8 @@ def system_prompt(nube: bool = False, nombre: str | None = None, admin: bool = T
     if nombre:
         p += f" El usuario se llama {nombre}; trátale por su nombre cuando sea natural."
     if nube:
+        n = datetime.now(ZoneInfo(TZ))
+        p += f" Hoy es {n:%d/%m/%Y} ({n:%H:%M}, {TZ}); fíate de esta fecha, no de tu memoria."
         p += (" Tienes herramientas a tu disposición, pero úsalas solo cuando hagan falta de verdad "
               "para responder; si la pregunta no necesita datos en vivo, contesta directamente. "
               "Para cualquier cosa reciente o factual de la que no estés seguro (noticias, precios, resultados, "

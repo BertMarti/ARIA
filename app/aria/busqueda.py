@@ -29,6 +29,8 @@ _TRACKING = re.compile(r"^(utm_.*|fbclid|gclid|dclid|msclkid|yclid|mc_cid|mc_eid
                        r"cmpid|ocid|_ga|_gl|spm|share|source)$", re.I)
 _ETIQUETAS = re.compile(r"<[^>]*>")
 _ESPACIOS = re.compile(r"\s+")
+# Escrituras que no son el español: se descartan salvo que la propia consulta las use.
+_AJENA = re.compile("[\u0400-\u052f\u0590-\u06ff\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
 
 
 class BusquedaError(Exception):
@@ -72,15 +74,16 @@ def _fecha(v) -> str | None:
         return m.group(0) if m else None
 
 
-def procesar(datos: dict, n: int) -> list:
+def procesar(datos: dict, n: int, consulta: str = "") -> list:
     """JSON de SearXNG -> hasta `n` resultados, uno por dominio."""
+    ajena_ok = bool(_AJENA.search(consulta))
     vistos, out = set(), []
     for r in (datos.get("results") or []) if isinstance(datos, dict) else []:
         if not isinstance(r, dict):
             continue
         url = limpiar_url(r.get("url"))
         titulo = limpiar_texto(r.get("title"), MAX_TITULO)
-        if not url or not titulo:
+        if not url or not titulo or (not ajena_ok and _AJENA.search(titulo)):
             continue
         dom = dominio(url)
         if dom in vistos:
@@ -120,7 +123,7 @@ async def buscar(consulta: str, categoria: str = "general", n: int = 5, rango: s
         raise BusquedaError("La búsqueda ha tardado demasiado; inténtalo de nuevo en un momento.") from e
     except (httpx.HTTPError, ValueError) as e:
         raise BusquedaError("No puedo buscar en internet ahora mismo.") from e
-    res = procesar(datos, n)
+    res = procesar(datos, n, consulta)
     if len(_cache) >= CACHE_MAX:
         for k in sorted(_cache, key=lambda k: _cache[k][0])[:CACHE_MAX // 2]:
             _cache.pop(k, None)

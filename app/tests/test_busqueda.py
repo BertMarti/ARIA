@@ -216,3 +216,25 @@ def test_prompt_de_nube_pide_citar_fuentes():
     p = config.system_prompt(True, "Ana", False)
     assert "Fuentes:" in p and "buscar_en_internet" in p
     assert "Fuentes:" not in config.system_prompt(False)
+
+
+def test_descarta_escrituras_ajenas(monkeypatch):
+    falso_searxng(monkeypatch, respuesta(resultado(1, title="树莓派 新闻"), resultado(2, title="Привет"), resultado(3)))
+    assert [r["titulo"] for r in buscar("raspberry pi")] == ["Título 3"]
+    falso_searxng(monkeypatch, respuesta(resultado(1, title="树莓派 新闻")))
+    assert len(buscar("树莓派 新闻 2")) == 1  # si la consulta ya usa esa escritura, se conservan
+
+
+def test_noticias_completa_con_la_semana(monkeypatch):
+    def h(req):
+        if req.url.params["time_range"] == "day":
+            return httpx.Response(200, json={"results": [resultado(1)]})
+        return httpx.Response(200, json={"results": [resultado(1), resultado(2), resultado(3)]})
+    falso_searxng(monkeypatch, h)
+    txt = asyncio.run(tools.ejecutar("noticias", {"tema": "jaén"}, "usuario"))
+    assert txt.count("https://") == 3
+
+
+def test_prompt_nube_incluye_fecha_actual():
+    from aria import config
+    assert "Hoy es " in config.system_prompt(True) and "Hoy es " not in config.system_prompt(False)

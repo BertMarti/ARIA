@@ -178,7 +178,11 @@ async def buscar_en_internet(consulta: str) -> str:
 async def noticias(tema: str = "") -> str:
     q = " ".join(str(tema or "").split()) or "última hora España"
     try:
-        res = await busqueda.buscar(q, "news", 5, "day") or await busqueda.buscar(q, "news", 5, "week")
+        res = await busqueda.buscar(q, "news", 5, "day")
+        if len(res) < 3:  # pocas de hoy: se completa con las de la semana
+            vistos = {r["dominio"] for r in res}
+            res = res + [r for r in await busqueda.buscar(q, "news", 5, "week") if r["dominio"] not in vistos]
+            res = res[:5]
         return busqueda.formatear(q, res)
     except busqueda.BusquedaError as e:
         return str(e)

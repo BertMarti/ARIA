@@ -68,6 +68,25 @@ docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt ./aria-root.c
 
 Los certificados se emiten bajo demanda solo para los nombres/IPs listados en `ARIA_HOSTS` (`.env`). Si accedes con otro nombre, añádelo ahí y reinicia con `docker compose up -d`.
 
+## Cerebros
+
+ARIA no depende de un solo modelo: tiene una **cadena de cerebros gratuitos** que prueba en orden. Si uno falla (límite de uso gratuito, clave rechazada, sin conexión o más de 30 s sin responder), pasa al siguiente sin que lo notes; el que haya fallado por límite se salta durante 15 minutos (o lo que indique el proveedor). Cada respuesta lleva una insignia con el cerebro que la dio y la cabecera del chat muestra el que está en cabeza.
+
+| # | Cerebro | Modelo por defecto | Clave | Coste |
+|---|---------|--------------------|-------|-------|
+| 1 | **Ollama Cloud** (a través del Ollama local) | `gpt-oss:120b-cloud` | tu cuenta de Ollama: `docker exec -it aria-ollama ollama signin` | 0 € (plan gratuito con límites) |
+| 2 | **Groq** | `llama-3.3-70b-versatile` | `GROQ_API_KEY` en `.env` (console.groq.com/keys) | 0 € |
+| 3 | **Google Gemini** | `gemini-3.1-flash-lite` | `GEMINI_API_KEY` en `.env` (aistudio.google.com/apikey) | 0 € |
+| 4 | **Local** | el de Ajustes → Modelos (`llama3.2:3b`) | ninguna | 0 €, funciona sin internet |
+
+- **Dónde poner las claves:** `nano ~/homelab/ARIA/.env`, rellena `GROQ_API_KEY` y/o `GEMINI_API_KEY` y aplica con `docker compose up -d`. Si una clave está vacía, ese cerebro se omite. Las claves nunca se muestran en la web ni en los registros; Ajustes solo dice «clave configurada ✔» o «falta la clave».
+- **Orden y activación:** Ajustes → **Cerebros** (flechas ↑↓, interruptor y botón **Probar**, que mide la latencia). Se guarda en `data/cerebros.json`, que manda sobre `ARIA_CEREBROS` del `.env`. El cerebro local no se puede desactivar: es el último recurso.
+- **Modelos:** `ARIA_MODELO_OLLAMA_CLOUD`, `ARIA_MODELO_GROQ` y `ARIA_MODELO_GEMINI` en `.env`. Se eligió `gpt-oss:120b-cloud` porque respondió antes que `gpt-oss:20b-cloud` (0,3-0,5 s frente a 2 s hasta el primer token) con la misma calidad en llamadas a herramientas. `gemini-2.5-flash` ya no está disponible para cuentas nuevas de Google (error 404); se usa `gemini-3.1-flash-lite`.
+- **Herramientas:** los cerebros de la nube reciben todas las herramientas y deciden cuándo usarlas; el modelo local pequeño solo recibe las relacionadas con las palabras de tu mensaje (así no las usa sin motivo). El borrado de dispositivos VPN sigue siendo solo de la interfaz.
+- **Razonamiento:** los modelos `gpt-oss` envían su «pensamiento» aparte; ARIA nunca lo muestra como respuesta (solo un «pensando…» mientras llega).
+- **Privacidad:** con el cerebro local nada sale de casa. Con Ollama Cloud, Groq o Gemini, **tus mensajes y los resultados de las herramientas (estado de la Pi, número de anuncios bloqueados, nombres de dispositivos VPN…) se envían a esas empresas** para generar la respuesta. En el plan gratuito de Google, además, **Google puede usar los mensajes para mejorar sus productos**. Si prefieres que todo se quede en casa, desactiva los tres primeros en Ajustes → Cerebros.
+- Tratamiento: ARIA te llama por tu nombre (`ARIA_NOMBRE_USUARIO`, por defecto «Lucía»).
+
 ## Modelo local
 
 El modelo por defecto es `llama3.2:3b` (unos 2 GB). En una Pi de 8 GB funciona, con una velocidad modesta. Desde **Ajustes → Modelos** puedes ver los instalados, cambiar el activo (se guarda en `data/model.txt` y tiene prioridad sobre `ARIA_MODEL`), descargar uno de la lista (`llama3.2:3b`, `llama3.2:1b`, `qwen2.5:3b`, `gemma2:2b`) con barra de progreso y borrar los que no uses (no se puede borrar el activo).

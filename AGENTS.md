@@ -11,6 +11,9 @@ ARIA 2.0: centro de control del laboratorio doméstico en Raspberry Pi (FastAPI 
 - Comprobar: `curl -k https://<IP>/health`
 - Logs: `docker compose logs -f app`
 
+## Cerebros
+Cadena de IA en `app/aria/cerebros.py` (Ollama Cloud → Groq → Gemini → local). Configuración en `.env` (`ARIA_CEREBROS`, `ARIA_MODELO_*`, claves) y `data/cerebros.json`. Pruebas en `app/tests/test_cerebros.py` con proveedores falsos. No imprimas claves ni las pongas en commits.
+
 ## Reglas
 - Español (España) en UI, documentación, comentarios y commits.
 - Sin secretos en el repo (`.env`, `data/` ignorados).

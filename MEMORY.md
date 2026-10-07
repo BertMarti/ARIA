@@ -9,6 +9,15 @@
 - **Spotify Authorization Code** con token en `data/` (permisos 0600). Netflix: solo enlaces de búsqueda (no hay API).
 - `ollama` y `app` no se publican; solo Caddy expone 80/443.
 
+## Decisiones de la cadena de cerebros (2026-10-07)
+- **Cadena Ollama Cloud → Groq → Gemini → local**, todo gratuito. Cada fallo (429/cuota, clave, modelo, timeout, red) pasa al siguiente; la cuota se recuerda 15 min (o `Retry-After`), clave/modelo 30 min, red/timeout 60 s. Esperas solo en memoria; orden y activación en `data/cerebros.json`.
+- **Ollama Cloud por defecto `gpt-oss:120b-cloud`**: medido desde `aria-app` con herramientas, 120b dio primer token 0,3-0,4 s (2,0 s con llamada a herramienta una vez) frente a 2,0-3,2 s de 20b; ambos llaman bien a las herramientas. El razonamiento llega en `message.thinking` y se descarta.
+- **Gemini por defecto `gemini-3.1-flash-lite`**: `gemini-2.5-flash` (y 2.5-flash-lite) responden 404 «no longer available to new users» aunque aparezcan en el listado; `gemini-flash-latest` tardó 12 s. Los modelos Gemini 3 devuelven `thought_signature` en `extra_content` de cada tool_call y hay que reenviarlo.
+- **Groq**: sin clave en esta instalación, no probado en real (solo pruebas unitarias del adaptador OpenAI). Por defecto `llama-3.3-70b-versatile`.
+- Herramientas: las nubes reciben todas; `relevantes()`/`rescatar_llamada()` solo para el local. Mensajes internos en formato Ollama, convertidos al vuelo.
+- Con la nube, los mensajes salen de casa (Google puede usarlos para mejorar productos en el plan gratuito); el local sigue siendo 100 % privado.
+- Latencias reales (LAN, 2026-10-07, primer token / total): «Hola» Ollama Cloud 0,5/0,6 s, Gemini 1,0/1,1 s, local 0,8-1,2/4,5-5,3 s; «temperatura de la Raspberry» (con herramienta) Ollama Cloud 0,8/0,9 s, Gemini 3,3/3,4 s, local 20/28-32 s; «anuncios bloqueados» Ollama Cloud 1,1/1,3 s, Gemini 2,3/2,3 s, local 15-26/34-48 s. «Probar»: Ollama Cloud 0,5 s, Gemini 1,0 s, local 2 s (modelo caliente).
+
 ## Decisiones de v2.0.0
 - **Un único centro de control**: Inicio (lanzador), Chat, Centro de control y Ajustes en una SPA sin build (scripts clásicos, hash routing). Iconos SVG en línea (las fuentes de emoji no están garantizadas).
 - **SHIELD-DNS por API de Pi-hole v6**: un solo `sid` en memoria, reautenticación solo ante 401, `DELETE /api/auth` al apagar (Pi-hole limita las sesiones).
@@ -46,3 +55,4 @@
 - **2026-10-06**: reescritura completa. Docker Compose (ollama, app, caddy), login, chat con streaming y bucle de herramientas, panel de servicios, Spotify, instalador/desinstalador, documentación en español.
 - **2026-10-07 (revisión)**: nombres de dispositivos VPN con tildes/ñ; «desactiva el dispositivo X» funciona sin decir «VPN»; instalar-todo.sh y docs/GUIA.md; flujo «Añadir dispositivo → QR» probado con clics en Chromium sin errores de consola.
 - **2026-10-07**: Ajustes → Certificado: descarga del certificado raíz público de Caddy (install.sh lo copia a data/). Verificado: con él, curl entra sin -k por IP y por .local.
+- **2026-10-07 · cerebros**: cadena multi-proveedor (Ollama Cloud, Groq, Gemini, local) con relevo automático, esperas por cuota, adaptador OpenAI para herramientas, insignia del cerebro en cada respuesta, Ajustes → Cerebros (orden, activar, Probar), `ARIA_NOMBRE_USUARIO` (saludo y prompt) y pruebas pytest con proveedores falsos.

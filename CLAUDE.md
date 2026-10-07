@@ -8,7 +8,7 @@ Asistente local estilo "Jarvis" para Raspberry Pi: FastAPI + Ollama + Caddy en D
 ## Estructura
 - `docker-compose.yml`: servicios `ollama`, `app`, `caddy` (proyecto `aria`, contenedores `aria-*`).
 - `caddy/Caddyfile`: HTTPS con CA interna, certificados bajo demanda autorizados por `/internal/tls-ask`.
-- `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `origen.py` (regla CSRF Origin/Sec-Fetch-Site/Referer), `auth.py` (sesión, scrypt, versión de sesión), `chat.py` (bucle de herramientas + persistencia), `db.py` (SQLite `data/aria.db`), `tools.py` (herramientas + `_INTENCIONES`), `shield.py` (Pi-hole v6, sid único en caché), `vpn.py` (wg-easy v15, lista blanca de campos), `sistema.py` (/proc y /sys), `modelos.py` (Ollama), `services.py`, `spotify.py`, `config.py`.
+- `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `origen.py` (regla CSRF Origin/Sec-Fetch-Site/Referer), `auth.py` (sesión, scrypt, versión de sesión), `cerebros.py` (cadena de proveedores: Ollama nativo local/nube + OpenAI-compatible Groq/Gemini, esperas por cuota, `data/cerebros.json`), `chat.py` (bucle de herramientas + relevo entre cerebros + persistencia), `db.py` (SQLite `data/aria.db`), `tools.py` (herramientas + `_INTENCIONES`), `shield.py` (Pi-hole v6, sid único en caché), `vpn.py` (wg-easy v15, lista blanca de campos), `sistema.py` (/proc y /sys), `modelos.py` (Ollama), `services.py`, `spotify.py`, `config.py`.
 - `app/static/`: HTML/CSS/JS sin build (`util.js`, `md.js`, `chat.js`, `control.js`, `inicio.js`, `ajustes.js`, `app.js`), `manifest.webmanifest`, `icon.svg`.
 - `app/tests/`: pytest (`python -m pytest`) y `md.test.js` (node).
 - `install.sh` / `update.sh` / `backup.sh` / `uninstall.sh`, `.env.example`, `data/` y `backups/` (ignorados por git).
@@ -38,6 +38,12 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 
 ## Añadir una herramienta
 Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`, se añaden sus palabras clave a `_INTENCIONES` (si no, el modelo no la recibe) y una prueba en `app/tests/test_tools.py`. Las herramientas destructivas (borrar) no se exponen al modelo.
+
+## Cerebros
+- `chat.responder` recorre `cerebros.cadena()` en cada ronda; un `ProveedorError` salta al siguiente (aviso + evento `reinicio` si ya había tokens). Los mensajes internos están en formato Ollama; `a_openai()` los convierte y `AcumuladorLlamadas` junta los fragmentos de `tool_calls`.
+- `tools.relevantes()` / `rescatar_llamada()` solo se aplican al proveedor `local`; las nubes reciben todas las herramientas.
+- Nunca imprimir ni guardar claves (`GROQ_API_KEY`, `GEMINI_API_KEY`); la API solo expone si hay clave. Gemini 3 exige devolver `extra_content.thought_signature` en las llamadas.
+- Añadir un proveedor: ver `SKILLS.md`.
 
 ## No hacer
 - No publicar puertos de `ollama` ni `app` en el host.

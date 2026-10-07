@@ -32,8 +32,15 @@ Además: Inicio con lanzador de aplicaciones, chat con conversaciones guardadas,
 6. Prueba con `POST /api/chat` y comprueba que aparece el evento `herramienta`.
 7. Documenta la herramienta en este archivo y en `README.md`.
 
+## Playbook: añadir un proveedor de IA nuevo (cerebro)
+1. Si es compatible con OpenAI (`/chat/completions` con streaming SSE y `tools`): añade en `PROVEEDORES` de `app/aria/cerebros.py` un `OpenAICompatible(id, nombre, url, "MI_CLAVE", "ARIA_MODELO_MIO", "modelo-por-defecto")`. Si no, crea una subclase de `Proveedor` con `async def ronda(self, msgs, con_tools=True)` que emita `{"type":"token"|"pensando"|"llamadas"|"aviso"}` y lance `ProveedorError(tipo, mensaje, espera)` (`cuota`, `clave`, `modelo`, `timeout`, `red`, `http`).
+2. Añade su id a `ORDEN_DEFECTO`, las variables a `.env.example` y documenta coste y privacidad en el README (sección Cerebros).
+3. Comprueba con `curl` el modelo, la latencia y una llamada a herramienta real antes de fijar el modelo por defecto (los modelos se retiran: `gemini-2.5-flash` dio 404).
+4. Añade pruebas en `app/tests/test_cerebros.py` (conversión de mensajes, caída ante 429/timeout/clave) y verifica en Ajustes → Cerebros con «Probar».
+5. Nunca registres ni muestres la clave.
+
 ## Playbook: cambiar de modelo
-1. Ajustes → Modelos: «Descargar» y «Usar» (se guarda en `data/model.txt`).
+1. (Cerebro local) Ajustes → Modelos: «Descargar» y «Usar» (se guarda en `data/model.txt`).
 2. Alternativa: `ARIA_MODEL` en `.env` (el archivo de `data/` tiene prioridad).
 
 ## Playbook: configurar Spotify

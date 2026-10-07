@@ -8,8 +8,8 @@ Asistente local estilo "Jarvis" para Raspberry Pi: FastAPI + Ollama + Caddy en D
 ## Estructura
 - `docker-compose.yml`: servicios `ollama`, `app`, `caddy` (proyecto `aria`, contenedores `aria-*`).
 - `caddy/Caddyfile`: HTTPS con CA interna, certificados bajo demanda autorizados por `/internal/tls-ask`.
-- `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `origen.py` (regla CSRF Origin/Sec-Fetch-Site/Referer), `auth.py` (sesión, scrypt, versión de sesión), `cerebros.py` (cadena de proveedores: Ollama nativo local/nube + OpenAI-compatible Groq/Gemini, esperas por cuota, `data/cerebros.json`), `chat.py` (bucle de herramientas + relevo entre cerebros + persistencia), `db.py` (SQLite `data/aria.db`), `tools.py` (herramientas + `_INTENCIONES`), `shield.py` (Pi-hole v6, sid único en caché), `vpn.py` (wg-easy v15, lista blanca de campos), `sistema.py` (/proc y /sys), `modelos.py` (Ollama), `services.py`, `spotify.py`, `config.py`.
-- `app/static/`: HTML/CSS/JS sin build (`util.js`, `md.js`, `chat.js`, `control.js`, `inicio.js`, `ajustes.js`, `app.js`), `manifest.webmanifest`, `icon.svg`.
+- `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `origen.py` (regla CSRF Origin/Sec-Fetch-Site/Referer), `auth.py` (cookie firmada con id de usuario + versión, scrypt, limitador), `usuarios.py` (tabla `usuarios`, roles, migración del admin único), `permisos.py` (lista blanca del rol `usuario`; denegar por defecto), `sso.py` (verificación del JWT de Cloudflare Access con PyJWT), `cerebros.py` (cadena de proveedores: Ollama nativo local/nube + OpenAI-compatible Groq/Gemini, esperas por cuota, `data/cerebros.json`), `chat.py` (bucle de herramientas + relevo entre cerebros + persistencia), `db.py` (SQLite `data/aria.db`), `tools.py` (herramientas + `_INTENCIONES`), `shield.py` (Pi-hole v6, sid único en caché), `vpn.py` (wg-easy v15, lista blanca de campos), `sistema.py` (/proc y /sys), `modelos.py` (Ollama), `services.py`, `spotify.py`, `config.py`.
+- `app/static/`: HTML/CSS/JS sin build (`util.js`, `md.js`, `chat.js`, `control.js`, `inicio.js`, `ajustes.js`, `usuarios.js`, `app.js`), `manifest.webmanifest`, `icon.svg`.
 - `app/tests/`: pytest (`python -m pytest`) y `md.test.js` (node).
 - `install.sh` / `update.sh` / `backup.sh` / `uninstall.sh`, `.env.example`, `data/` y `backups/` (ignorados por git).
 
@@ -29,7 +29,9 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 - Dependencias mínimas (`app/requirements.txt`); no añadir frameworks de frontend ni paso de build.
 - Recursos de la Pi: 8 GB de RAM compartidos con otros servicios; un solo modelo cargado (`OLLAMA_MAX_LOADED_MODELS=1`).
 - Salida del modelo siempre como texto en el DOM (nunca `innerHTML` con contenido del modelo).
-- Toda ruta requiere sesión salvo `/login`, `/health`, `/internal/tls-ask` y CSS/JS de login, manifest e icono (lista `PUBLICAS` en `main.py`).
+- Toda ruta requiere sesión salvo `/login`, `/health`, `/internal/tls-ask` y CSS/JS de login, manifest e icono (lista `PUBLICAS` en `main.py`). Tras la sesión, `permisos.permitido(rol, método, ruta)` decide: `admin` todo; `usuario` solo la lista blanca de `permisos.py`. **Un endpoint nuevo es solo para admin salvo que se añada ahí** (hay una prueba que recorre todas las rutas).
+- SSO: nunca confiar en `Cf-Access-Authenticated-User-Email`; solo vale el JWT verificado (`sso.identificar`). Sin red a Cloudflare es fallo transitorio (página «Entrando…» que reintenta), con JWT inválido se cae al formulario. Las pruebas usan una clave RSA local y `sso._descargar_jwks` simulado.
+- Conversaciones: toda función de `db.py` recibe `uid` y filtra por `user_id` (prueba IDOR en `test_permisos.py`). Herramientas del chat por rol: `tools.permitidas(rol)`; `ejecutar` rechaza las no permitidas.
 - CSRF: `origen.origen_permitido`. `Origin: null` solo vale con `Sec-Fetch-Site: same-origin` (o Referer del mismo host). Caddy usa `Referrer-Policy strict-origin-when-cross-origin`.
 - Las claves privadas de WireGuard nunca van al navegador (solo el `.conf` descargado a petición). `/api/secret/{shield|vpn}` devuelve las contraseñas de los paneles solo a sesiones autenticadas.
 - CSP estricta sin estilos/scripts en línea: los anchos de barras se ponen por CSSOM (`el.style.width`), nunca con atributo `style`.

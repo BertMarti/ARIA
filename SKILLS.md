@@ -49,6 +49,13 @@ Además: Inicio con lanzador de aplicaciones, chat con conversaciones guardadas,
 3. Rellena `SPOTIFY_CLIENT_ID` y `SPOTIFY_CLIENT_SECRET` en `.env`; `docker compose up -d`.
 4. En Ajustes → Spotify, pulsa "Conectar Spotify". El token queda en `data/spotify_token.json`.
 
+## Playbook: invitar a alguien
+1. Ajustes → Usuarios → «Invitar usuario»: email, nombre y rol (`usuario` salvo que deba administrar).
+2. Para que entre desde fuera, añade su email en Cloudflare Access: Zero Trust → Access → Applications → ARIA → Policies (ARIA no lo hace por ti).
+3. Para entrar desde casa, pulsa «Poner contraseña para casa» y dásela (mínimo 10 caracteres); entra con su email o usuario.
+4. Para quitarle el acceso: «Desactivar» (cierra sus sesiones al instante) o «Eliminar» (borra también sus conversaciones) y retira su email de la política de Access.
+Los emails de `ARIA_ADMIN_EMAILS` en `.env` son siempre administradores y no se pueden eliminar.
+
 ## Playbook: actualizar
 `./update.sh`.
 

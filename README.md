@@ -56,7 +56,7 @@ El script es idempotente: puedes relanzarlo sin problema. Hace lo siguiente:
 
 ## Primer acceso
 
-Abre **https://aria.local** (la Pi lo anuncia por mDNS en tu red), `https://aria.lan` (si usas SHIELD-DNS o la VPN) o `https://<IP-de-la-Pi>` e inicia sesión con `ARIA_USER` / `ARIA_PASSWORD` de `.env`. Después puedes cambiar la contraseña desde **Ajustes** (ver la guía rápida).
+Abre **https://aria.local** (la Pi lo anuncia por mDNS en tu red), `https://aria.lan` (si usas SHIELD-DNS o la VPN) o `https://<IP-de-la-Pi>` e inicia sesión con `ARIA_USER` / `ARIA_PASSWORD` de `.env` (en la primera arrancada se crea con ellos el administrador `admin`; también sirve su email). Después puedes cambiar la contraseña desde **Ajustes** (ver la guía rápida).
 
 ### Aviso de certificado
 
@@ -154,6 +154,33 @@ Con un dominio en Cloudflare, ARIA, Pi-hole y el panel de la VPN quedan en `http
 El mismo comando arranca también `cloudflare-ddns`, que mantiene **`vpn.TUDOMINIO`** apuntando a tu IP pública (sin proxy, porque la VPN va directa a tu router por UDP 51820). En HEIMDALL, pon esa dirección como *Host* en *Administración* para que los perfiles de los dispositivos no dependan de una IP que puede cambiar.
 
 Los accesos directos de ARIA se adaptan solos: si entras por `aria.TUDOMINIO`, los paneles se abren por `shield.`/`heimdall.TUDOMINIO`; en casa, por la IP.
+
+## Inicio de sesión único
+
+Por el dominio público (`https://aria.TUDOMINIO`) ARIA no pide contraseña: reconoce a la persona que Cloudflare Access ya ha identificado (código por email o Google). ARIA **verifica la firma** del JWT que Cloudflare añade a cada petición (`Cf-Access-Jwt-Assertion`: RS256, `aud`, `iss`, caducidad y email); la cabecera de email por sí sola no vale nada. Si el email es de un usuario activo de ARIA, entra directamente; si no, ve «Tu cuenta (email) no tiene acceso a ARIA. Pide al administrador que te invite.».
+
+En `.env` (con `ARIA_CF_ACCESS_TEAM` o `ARIA_CF_ACCESS_AUD` vacíos el SSO queda desactivado):
+
+| Variable | Qué es |
+|---|---|
+| `ARIA_CF_ACCESS_TEAM` | Dominio de tu equipo, p. ej. `mi-equipo.cloudflareaccess.com` |
+| `ARIA_CF_ACCESS_AUD` | Etiqueta AUD de la aplicación ARIA (Zero Trust → Access → Applications → ARIA) |
+| `ARIA_ADMIN_EMAILS` | Emails siempre administradores; se crean solos en su primer acceso |
+
+«Salir» por el dominio público borra la sesión de ARIA y cierra también la de Cloudflare Access. En casa (`https://<IP>`, `aria.local`, `aria.lan`) no interviene Cloudflare y se entra con usuario o email y contraseña como siempre. Las claves públicas de Cloudflare se guardan una hora en memoria y se vuelven a pedir si aparece una clave desconocida.
+
+## Usuarios
+
+ARIA admite varios usuarios con dos roles:
+
+- **Administrador**: todo (Inicio, Chat, Centro de control, Ajustes completos y gestión de usuarios).
+- **Usuario**: Inicio (solo estado, sin «Copiar contraseña» ni acciones), Chat con sus propias conversaciones (solo con herramientas de consulta: hora, servicios, bloqueador, dispositivos VPN, sistema y Netflix) y, en Ajustes, su contraseña y la voz.
+
+Los permisos se aplican **en el servidor** en cada petición, no solo ocultando botones. Cada usuario ve únicamente sus conversaciones, y ARIA le trata por su nombre.
+
+Para invitar a alguien: **Ajustes → Usuarios → Invitar usuario** (email, nombre y rol). Después, autoriza también su email en Cloudflare Access (*Zero Trust → Access → Applications → ARIA → Policies*) para que pueda entrar desde fuera; ARIA no toca Cloudflare. Desde casa puede entrar con la contraseña que le pongas con «Poner contraseña para casa». Desde Usuarios también se cambia el rol, se activa o desactiva (sus sesiones se cierran al instante) y se elimina (con sus conversaciones). Nunca se puede quitar ni degradar al último administrador activo ni a los de `ARIA_ADMIN_EMAILS`.
+
+Al actualizar desde la versión de un solo usuario, ARIA hace una copia en `data/aria.db.bak-sso`, crea el administrador `admin` con la contraseña de siempre y le asigna todas las conversaciones existentes.
 
 ## Actualizar
 

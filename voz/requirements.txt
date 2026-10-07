@@ -1,0 +1,9 @@
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+websockets>=13,<16
+faster-whisper==1.2.1
+# PyAV 19 quitó el argumento metadata_errors que usa faster-whisper 1.2.1 para decodificar.
+av>=15,<19
+piper-tts==1.8.0
+vosk==0.3.45
+numpy>=1.26,<3

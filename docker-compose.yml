@@ -1,4 +1,4 @@
-# ARIA - asistente local estilo "Jarvis". Proyecto de Compose: aria
+# ARIA - asistente doméstico local. Proyecto de Compose: aria
 name: aria
 
 services:
@@ -32,6 +32,7 @@ services:
       OLLAMA_URL: http://ollama:11434
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks: [default, voz]
     volumes:
       - ./data:/data
     depends_on:
@@ -44,6 +45,25 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # Voz: transcripción local (faster-whisper), voz de ARIA (Piper) y palabra «Aria» (Vosk).
+  # Sin puertos en el host y en una red interna sin salida a Internet: solo la app llega a él.
+  voz:
+    build: ./voz
+    image: aria-voz:local
+    container_name: aria-voz
+    restart: unless-stopped
+    networks: [voz]
+    environment:
+      VOZ_HILOS: ${VOZ_HILOS:-4}
+      VOZ_CONFIANZA: ${VOZ_CONFIANZA:-0.6}
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   caddy:
     image: caddy:2-alpine
@@ -68,6 +88,10 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+
+networks:
+  voz:
+    internal: true
 
 volumes:
   ollama_data:

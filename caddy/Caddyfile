@@ -27,7 +27,9 @@ https:// {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "microphone=(self), camera=(), geolocation=()"
 	}
+	# reverse_proxy también pasa los WebSocket (/api/voz/despertar, «manos libres»).
 	reverse_proxy app:8000 {
 		flush_interval -1
 	}

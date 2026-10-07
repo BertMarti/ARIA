@@ -208,6 +208,27 @@ tar -xzf /ruta/aria-AAAAMMDD-HHMM.tar.gz     # recupera .env y data/
 
 Si la restauración es sobre una instalación existente, ejecuta antes `docker compose down` y después `docker compose up -d`.
 
+## Copias de seguridad fuera de la Pi (cifradas)
+
+`./sistema/instalar-copias.sh` activa una copia **diaria a las 04:30**: ejecuta el `backup.sh` de ARIA, HEIMDALL y SHIELD-DNS, añade `~/homelab/cloudflare.env`, lo **cifra con AES-256** y lo sube al repositorio **privado** `TU-USUARIO/homelab-copias` (se guardan las 14 últimas). La contraseña está en `~/homelab/.clave-copias`: **guárdala también fuera de la Pi** (gestor de contraseñas). Sin ella las copias no se pueden abrir.
+
+Registro: `journalctl -t homelab-copias`. Copia manual: `./sistema/copia-diaria.sh`.
+
+**Restaurar tras perder la Raspberry:**
+```bash
+gh auth login
+gh repo clone TU-USUARIO/homelab-copias copias && cd copias
+gpg -d homelab-AAAAMMDD-HHMM.tar.gz.gpg | tar -xzf -     # pide la contraseña
+# Reinstala todo y restaura cada app con su copia:
+curl -fsSL https://raw.githubusercontent.com/BertMarti/ARIA/main/instalar-todo.sh | bash
+cp homelab/cloudflare.env ~/homelab/
+for p in SHIELD-DNS HEIMDALL ARIA; do mkdir -p ~/homelab/$p/backups; done
+cp homelab/shield-dns-*.tar.gz ~/homelab/SHIELD-DNS/backups/ && (cd ~/homelab/SHIELD-DNS && ./restore.sh backups/shield-dns-*.tar.gz)
+cp homelab/heimdall-*.tar.gz  ~/homelab/HEIMDALL/backups/  && (cd ~/homelab/HEIMDALL  && ./restore.sh backups/heimdall-*.tar.gz)
+cp homelab/aria-*.tar.gz      ~/homelab/ARIA/backups/
+```
+Para ARIA, extrae su copia en `~/homelab/ARIA` (`tar -xzf backups/aria-*.tar.gz`) y ejecuta `./install.sh`; después `./cloudflare/configurar.sh`.
+
 ## Desinstalar
 
 ```bash

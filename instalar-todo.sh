@@ -7,7 +7,7 @@
 # Opciones (variables de entorno):
 #   HOMELAB_DIR=~/homelab        carpeta donde se clonan los tres proyectos
 #   SOLO="SHIELD-DNS ARIA"       instalar solo algunos
-#   COPIAS_AUTOMATICAS=1         programar una copia de seguridad diaria a las 04:30
+#   COPIAS_AUTOMATICAS=1         copia diaria cifrada a GitHub privado (04:30)
 set -euo pipefail
 
 HOMELAB_DIR="${HOMELAB_DIR:-$HOME/homelab}"
@@ -39,9 +39,8 @@ done
 [ -x "$HOMELAB_DIR/ARIA/sistema/instalar-autocuracion.sh" ] && sudo "$HOMELAB_DIR/ARIA/sistema/instalar-autocuracion.sh" || true
 
 if [ "${COPIAS_AUTOMATICAS:-0}" = "1" ]; then
-  LINEA="30 4 * * * for p in SHIELD-DNS HEIMDALL ARIA; do [ -x $HOMELAB_DIR/\$p/backup.sh ] && $HOMELAB_DIR/\$p/backup.sh >> $HOMELAB_DIR/copias.log 2>&1; done # homelab-copias"
-  ( crontab -l 2>/dev/null | grep -v '# homelab-copias' ; echo "$LINEA" ) | crontab -
-  ok "Copia de seguridad diaria programada a las 04:30 (registro en $HOMELAB_DIR/copias.log)"
+  # Copia diaria cifrada a un repositorio privado de GitHub (necesita `gh auth login`)
+  "$HOMELAB_DIR/ARIA/sistema/instalar-copias.sh"
 fi
 
 IP="$(hostname -I | awk '{print $1}')"

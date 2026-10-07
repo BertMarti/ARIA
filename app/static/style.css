@@ -143,6 +143,11 @@ body.app { display: grid; grid-template-columns: var(--nav-w) 1fr; height: 100dv
 .chip { align-self: flex-start; display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--acento); background: rgba(56, 214, 255, .07);
   border: 1px solid rgba(56, 214, 255, .3); border-radius: 99px; padding: .15rem .75rem; }
 .chip.hecho { color: var(--muted); border-color: var(--borde-fuerte); background: rgba(255, 255, 255, .03); }
+.fuentes { align-self: flex-start; display: flex; flex-wrap: wrap; gap: .3rem .5rem; align-items: center; font-size: .75rem; margin: -.2rem 0 .2rem .4rem; }
+.fuentes a { color: var(--acento); text-decoration: none; border: 1px solid var(--borde-fuerte); border-radius: 99px; padding: .05rem .6rem; }
+.fuentes a:hover { border-color: var(--acento); }
+.chip.buscando .chip-ico { animation: pulso 1s ease-in-out infinite; }
+@keyframes pulso { 50% { opacity: .35; } }
 .chip-ico { font-size: .9em; }
 .md > :first-child { margin-top: 0; }
 .md > :last-child { margin-bottom: 0; }

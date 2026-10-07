@@ -180,6 +180,44 @@ async def _tiempo() -> dict | None:
         return None
 
 
+_DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+
+
+async def prevision(dias: int = 3, ciudad: str | None = None) -> dict | None:
+    """Previsión diaria de Open-Meteo (1–7 días). Sin `ciudad`, la de ARIA_CIUDAD; con ella, se geocodifica
+    (prefiriendo España). None si no hay ubicación o el servicio no responde."""
+    dias = max(1, min(7, int(dias or 3)))
+    try:
+        async with httpx.AsyncClient(timeout=6) as c:
+            if ciudad and memoria.normalizar(ciudad) not in memoria.normalizar(config.CIUDAD or ""):
+                r = await c.get("https://geocoding-api.open-meteo.com/v1/search",
+                                params={"name": ciudad.split(",")[0].strip()[:60], "count": 10, "language": "es"})
+                res = r.json().get("results") or []
+                cand = [x for x in res if x.get("country_code") == "ES"] or res
+                if not cand:
+                    return None
+                ub = {"nombre": cand[0].get("name") or ciudad, "lat": cand[0]["latitude"], "lon": cand[0]["longitude"]}
+            else:
+                if not config.CIUDAD and config.LAT is None:
+                    return None
+                ub = await _coordenadas(c)
+                if not ub:
+                    return None
+            r = await c.get("https://api.open-meteo.com/v1/forecast", params={
+                "latitude": ub["lat"], "longitude": ub["lon"], "timezone": config.TZ, "forecast_days": dias,
+                "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"})
+            d = r.json()["daily"]
+            out = []
+            for i, f in enumerate(d["time"]):
+                dia = date.fromisoformat(f)
+                out.append({"fecha": f, "dia": _DIAS[dia.weekday()], "cielo": _cielo(int(d["weather_code"][i])),
+                            "max": round(d["temperature_2m_max"][i]), "min": round(d["temperature_2m_min"][i]),
+                            "lluvia": d["precipitation_probability_max"][i]})
+            return {"ciudad": ub["nombre"], "dias": out}
+    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError):
+        return None
+
+
 def recuerdos_de_hoy(uid: int, dia: date, n: int = 2) -> list:
     """1–2 recuerdos que pueden venir al caso hoy: primero los que nombran el día de la semana o el mes;
     después otros elegidos al azar (estable durante el día)."""

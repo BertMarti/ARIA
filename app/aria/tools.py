@@ -44,7 +44,7 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 
 # Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
 SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn",
-                          "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias"})
+                          "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
 
@@ -73,6 +73,8 @@ _DATO_ACTUAL = (r"\b(precio|cotizaci[oó]n|resultado|qui[eé]n gan[oó]|qui[eé]
                 r"se estrena)|[uú]ltim[oa]s?|esta semana|este a[nñ]o|clasificaci[oó]n|partido|elecciones|"
                 r"cu[aá]nto cuesta|cu[aá]nto vale)\b")
 _INTENCIONES = [
+    ((r"\b(tiempo|llover[aá]?|llueve|lluvia|calor|fr[ií]o|previsi[oó]n|nublado|soleado|tormenta|grados)\b",
+      r"!\b(raspberry|cpu|procesador|cu[aá]nto tiempo|encendid[ao])\b"), {"tiempo"}),
     # (patrones que deben cumplirse TODOS, herramientas que se ofrecen)
     ((r"\b(hora|horas|fecha|d[ií]a|hoy|ma[nñ]ana|semana|mes)\b",
       r"!" + _BLOQUEADOR, r"!" + _SISTEMA, r"!\b(vpn|wireguard|heimdall)\b"), {"fecha_hora"}),
@@ -274,6 +276,23 @@ async def dispositivos_vpn() -> str:
     partes = [f"{c['nombre']} ({'conectado' if c['conectado'] else 'desconectado'}"
               f"{'' if c['activo'] else ', desactivado'})" for c in cl]
     return f"{len(cl)} dispositivo(s): " + ", ".join(partes) + f". Conectados ahora: {sum(c['conectado'] for c in cl)}."
+
+
+@tool("tiempo", "Previsión del tiempo por días (cielo, máxima, mínima y probabilidad de lluvia). Úsala para "
+      "cualquier pregunta sobre el tiempo, la lluvia o la temperatura exterior, también de fin de semana o próximos días.",
+      {"ciudad": ("string", "Ciudad (opcional; por defecto la del usuario)")})
+async def tiempo(ciudad: str = "", **_ignorado) -> str:
+    from . import briefing
+    p = await briefing.prevision(7, ciudad or None)  # siempre 7 días: el modelo no elige un rango corto por error
+    if not p:
+        return "No hay previsión disponible (falta ARIA_CIUDAD o no responde el servicio del tiempo)."
+    etiqueta = {0: "HOY ", 1: "MAÑANA "}
+    finde = {"sábado", "domingo"}
+    filas = [f"{etiqueta.get(i, '')}{d['dia']} {d['fecha'][8:]}/{d['fecha'][5:7]}"
+             f"{' (FIN DE SEMANA)' if d['dia'] in finde else ''}: {d['cielo']}, "
+             f"mínima {d['min']} °C, máxima {d['max']} °C, lluvia {d['lluvia']} %" for i, d in enumerate(p["dias"])]
+    return (f"Previsión para {p['ciudad']} (usa SOLO estos días; si preguntan por un día que no aparece, dilo):\n"
+            + "\n".join(filas))
 
 
 @tool("estado_sistema", "Estado de la Raspberry Pi: temperatura de la CPU, memoria RAM, disco, carga y tiempo encendida.")

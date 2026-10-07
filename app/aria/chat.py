@@ -42,12 +42,13 @@ async def responder(mensajes: list, rol: str = "admin", quien: str | None = None
                 ctx[prov.nube] = ""
         return {"extra": ctx[prov.nube]} if ctx[prov.nube] else {}
 
-    for _ in range(MAX_RONDAS):
+    for n_ronda in range(MAX_RONDAS):
+        ultima = n_ronda == MAX_RONDAS - 1  # la última ronda va sin herramientas: obliga a responder
         llamadas, texto, hecha = [], "", False
         for prov in cerebros.cadena():
             enviados, anunciado = False, False
             try:
-                async for ev in prov.ronda(msgs, rol=rol, nombre=quien, **memoria_para(prov)):
+                async for ev in prov.ronda(msgs, con_tools=not ultima, rol=rol, nombre=quien, **memoria_para(prov)):
                     if ev["type"] in ("token", "pensando", "llamadas") and not anunciado:
                         anunciado = True
                         yield {"type": "cerebro", "id": prov.id, "nombre": prov.nombre,

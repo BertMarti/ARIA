@@ -1,6 +1,6 @@
 """Configuracion de ARIA leida del entorno (.env)."""
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -121,7 +121,10 @@ def system_prompt(nube: bool = False, nombre: str | None = None, admin: bool = T
         p += f" El usuario se llama {nombre}; trátale por su nombre cuando sea natural."
     if nube:
         n = datetime.now(ZoneInfo(TZ))
-        p += f" Hoy es {n:%d/%m/%Y} ({n:%H:%M}, {TZ}); fíate de esta fecha, no de tu memoria."
+        dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+        sab = n + timedelta(days=(5 - n.weekday()) % 7)
+        p += (f" Hoy es {dias[n.weekday()]} {n:%d/%m/%Y} ({n:%H:%M}, {TZ}); fíate de esta fecha, no de tu memoria."
+              f" Este fin de semana es el sábado {sab:%d/%m} y el domingo {sab + timedelta(days=1):%d/%m}.")
         p += (" Tienes herramientas a tu disposición, pero úsalas solo cuando hagan falta de verdad "
               "para responder; si la pregunta no necesita datos en vivo, contesta directamente. "
               "Si el usuario te pide que recuerdes u olvides algo suyo, usa las herramientas recordar y olvidar. "

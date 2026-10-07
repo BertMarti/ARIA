@@ -168,7 +168,7 @@ def test_migracion_conserva_el_hash_y_la_version(tmp_path, monkeypatch):
 
 # --- Herramientas del chat ---
 LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "estado_sistema", "buscar_en_netflix",
-           "buscar_en_internet", "noticias",
+           "buscar_en_internet", "noticias", "tiempo",
            "recordar", "olvidar"}  # las de memoria las tiene todo rol, sobre sus propios datos
 
 

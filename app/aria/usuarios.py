@@ -66,6 +66,32 @@ def iniciar() -> None:
         else:
             admin_id = fila["id"]
         con.execute("UPDATE conversaciones SET user_id=? WHERE user_id IS NULL", (admin_id,))
+        _fusionar_alias(con)
+
+
+def canonico(email: str) -> str:
+    """Todos los emails de ARIA_ADMIN_EMAILS son la misma persona: se usa el primero."""
+    e = (email or "").strip().lower()
+    return config.ADMIN_EMAILS[0] if config.ADMIN_EMAILS and e in config.ADMIN_EMAILS else e
+
+
+def _fusionar_alias(con) -> None:
+    """Si un email secundario de ARIA_ADMIN_EMAILS tiene usuario propio, se une al principal
+    (sus conversaciones pasan al principal y el usuario duplicado desaparece)."""
+    if len(config.ADMIN_EMAILS) < 2:
+        return
+    principal = con.execute("SELECT id FROM usuarios WHERE email=?", (config.ADMIN_EMAILS[0],)).fetchone()
+    for alias in config.ADMIN_EMAILS[1:]:
+        fila = con.execute("SELECT id FROM usuarios WHERE email=?", (alias,)).fetchone()
+        if fila is None:
+            continue
+        if principal is None:
+            con.execute("UPDATE usuarios SET email=? WHERE id=?", (config.ADMIN_EMAILS[0], fila["id"]))
+            principal = fila
+            continue
+        if fila["id"] != principal["id"]:
+            con.execute("UPDATE conversaciones SET user_id=? WHERE user_id=?", (principal["id"], fila["id"]))
+            con.execute("DELETE FROM usuarios WHERE id=?", (fila["id"],))
 
 
 # --- Consultas ---
@@ -84,7 +110,7 @@ def por_email(email: str, interno: bool = False) -> dict | None:
 
 def por_identificador(ident: str, interno: bool = False) -> dict | None:
     """Email o nombre de usuario (sin distinguir mayúsculas)."""
-    i = (ident or "").strip().lower()
+    i = canonico(ident)
     return _uno("email=? OR usuario=?", (i, i), interno) if i else None
 
 
@@ -142,7 +168,7 @@ def por_sso(email: str) -> dict | None:
     """Usuario ARIA para una identidad ya verificada de Cloudflare Access (None = no tiene acceso).
 
     Los emails de ARIA_ADMIN_EMAILS son siempre administradores activos y se crean en su primer acceso."""
-    e = (email or "").strip().lower()
+    e = canonico(email)
     if e in config.ADMIN_EMAILS:
         u = por_email(e)
         if u is None:

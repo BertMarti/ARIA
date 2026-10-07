@@ -67,3 +67,4 @@
 - **2026-10-07**: acceso público con Cloudflare Tunnel + Access (cloudflare/configurar.sh, idempotente, probado). Los enlaces a los paneles siguen al dominio público. Verificado: los tres nombres devuelven 302 a la pantalla de Access sin sesión.
 - **2026-10-07**: cloudflare-ddns mantiene vpn.tu-dominio.com → IP pública (sin proxy); HEIMDALL usa ese host. Router: reserva 192.168.1.50, DNS de la casa = Pi, UDP 51820 → Pi.
 - **2026-10-07**: plan B ante caídas: DNS secundario AdGuard en el router, autoheal (systemd timer) y watchdog; alerta de Cloudflare por email. Probado: autoheal reinicia un contenedor unhealthy. Descartado: fallback de upstream en Pi-hole con strict-order (se queda esperando a Unbound; la reserva del router ya cubre el caso).
+- **2026-10-07**: los emails de ARIA_ADMIN_EMAILS son la misma persona (usuarios.canonico); al arrancar se fusionan duplicados (conversaciones al principal). Copia previa en data/aria.db.bak-fusion.

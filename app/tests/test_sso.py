@@ -180,7 +180,9 @@ def test_email_en_la_pagina_va_escapado(cliente):
 def test_admin_se_autocrea(cliente):
     r = cliente.get("/api/info", headers=con(token("pepe2@example.com")))
     assert r.status_code == 200 and r.json()["rol"] == "admin"
-    assert usuarios.por_email("pepe2@example.com")["rol"] == "admin"
+    # el email secundario no crea un usuario aparte: entra como el principal
+    assert usuarios.por_email("pepe@example.com")["rol"] == "admin"
+    assert usuarios.por_email("pepe2@example.com") is None
 
 
 def test_admin_email_se_restaura_si_alguien_lo_degrada_en_la_bd(cliente):
@@ -233,3 +235,32 @@ def test_salir_en_la_lan_sigue_igual(cf):
 def test_sso_desactivado_ignora_el_jwt(cliente, monkeypatch):
     monkeypatch.setattr(config, "CF_AUD", "")
     assert cliente.get("/api/info", headers=con(token("ana@example.com"))).status_code == 401
+
+
+def test_los_emails_de_admin_son_la_misma_persona(cliente):
+    r1 = cliente.get("/", headers=con(token("pepe2@example.com")))
+    assert r1.status_code == 200
+    yo = cliente.get("/api/info").json()
+    assert yo["email"] == "pepe@example.com"  # el secundario entra como el principal
+    cliente.cookies.clear()
+    cliente.get("/", headers=con(token("pepe@example.com")))
+    assert cliente.get("/api/info").json()["email"] == "pepe@example.com"
+    assert [u["email"] for u in usuarios.listar()].count("pepe@example.com") == 1
+    assert usuarios.por_email("pepe2@example.com") is None
+
+
+def test_fusion_de_usuario_duplicado_conserva_conversaciones(cf, monkeypatch):
+    from contextlib import closing
+    from aria import db
+    monkeypatch.setattr(config, "ADMIN_EMAILS", [])
+    principal = usuarios.crear("pepe@example.com", "Lucía", "admin")
+    duplicado = usuarios.crear("pepe2@example.com", "Lucía", "admin")
+    with closing(db._con()) as c, c:
+        c.execute("INSERT INTO conversaciones (id, titulo, creada, actualizada, user_id) VALUES ('x1','t',0,0,?)",
+                  (duplicado["id"],))
+    monkeypatch.setattr(config, "ADMIN_EMAILS", ["pepe@example.com", "pepe2@example.com"])
+    usuarios.iniciar()
+    assert usuarios.por_email("pepe2@example.com") is None
+    with closing(db._con()) as c:
+        assert c.execute("SELECT user_id FROM conversaciones WHERE id='x1'").fetchone()[0] == principal["id"]
+    assert usuarios.por_identificador("pepe2@example.com")["id"] == principal["id"]

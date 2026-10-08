@@ -405,6 +405,28 @@
         </form>
         <p id="rut-msg" class="muted" role="status"></p>
       </article>
+      <article class="tarjeta ancha solo-admin" id="ajustes-automatizaciones">
+        <h2>Automatizaciones</h2>
+        <p class="muted">Reglas «cuando pase algo, haz esto». Las acciones están limitadas y cada ejecución queda registrada.</p>
+        <div class="botones"><button type="button" class="primario pequeno" id="auto-nueva">Nueva regla</button>
+          <button type="button" class="fantasma pequeno" data-auto-plantilla="noche">Dispositivo desconocido de noche</button>
+          <button type="button" class="fantasma pequeno" data-auto-plantilla="temperatura">Raspberry a 75 °C</button></div>
+        <div class="botones"><button type="button" class="fantasma pequeno" data-auto-plantilla="shield">Si cae SHIELD-DNS</button><button type="button" class="fantasma pequeno" data-auto-plantilla="rutina">Todos los días a las 7:30</button></div>
+        <ul id="auto-lista" class="filas" aria-live="polite"><li class="muted">Cargando…</li></ul>
+        <p id="auto-msg" class="muted" role="status"></p>
+        <dialog id="auto-dialog"><form method="dialog" id="auto-form" class="formulario">
+          <h3>Cuando → Si → Entonces</h3>
+          <label>Nombre <input id="auto-nombre" maxlength="80" required></label>
+          <label>Cuando <select id="auto-tipo"><option value="aviso">Llega un aviso</option><option value="hora">A una hora</option><option value="umbral">Se supera un umbral</option></select></label>
+          <label id="auto-aviso-et">Tipo de aviso <select id="auto-aviso"></select></label>
+          <label id="auto-hora-et" hidden>Hora <input id="auto-hora" type="time" value="07:30"></label>
+          <label id="auto-umbral-et" hidden>Temperatura (°C) <input id="auto-valor" type="number" value="75" min="1" max="150"></label>
+          <label>Entonces <select id="auto-accion"><option value="avisar">Avisarme</option><option value="pausar_internet_dispositivo">Pausar internet del dispositivo</option><option value="pausar_bloqueador">Pausar bloqueador</option><option value="reanudar_bloqueador">Reanudar bloqueador</option><option value="ejecutar_rutina">Ejecutar una rutina</option><option value="escanear_red">Escanear la red</option></select></label>
+          <label>Texto del aviso <input id="auto-texto" maxlength="600" value="Regla de ARIA ejecutada."></label>
+          <label id="auto-rutina-et" hidden>Id de rutina <input id="auto-rutina" type="number" min="1"></label>
+          <div class="botones"><button type="submit" class="primario">Crear</button><button type="button" class="fantasma" id="auto-cancelar">Cancelar</button></div>
+        </form></dialog>
+      </article>
       <article class="tarjeta" id="ajustes-voz">
         <h2>Voz</h2>
         <label>Micrófono
@@ -580,6 +602,7 @@
 <script src="/static/usuarios.js"></script>
 <script src="/static/avisos.js"></script>
 <script src="/static/rutinas.js"></script>
+<script src="/static/automatizaciones.js"></script>
 <script src="/static/paleta.js"></script>
 <script src="/static/compartir.js"></script>
 <script src="/static/vendor/leaflet/leaflet.js"></script>

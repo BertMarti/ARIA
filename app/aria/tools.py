@@ -929,12 +929,35 @@ async def borrar_rutina(uid, id_o_nombre) -> str:
     return f"Rutina borrada: «{hallados[0]['nombre']}»."
 
 
+@tool("crear_automatizacion", "Propone una automatización y espera confirmación explícita antes de crearla.",
+      {"nombre": ("string", "Nombre de la regla"), "disparador": ("string", "Evento, hora o umbral en lenguaje natural"),
+       "accion": ("string", "Acción segura que se ejecutará")}, ("nombre", "disparador", "accion"))
+async def crear_automatizacion(nombre, disparador, accion) -> str:
+    return (f"Propongo la automatización «{nombre}»: cuando {disparador}, entonces {accion}. "
+            "Confírmala en Ajustes → Automatizaciones o responde «confirmo» para que ARIA la cree.")
+
+
+@tool("mis_automatizaciones", "Lista las automatizaciones del usuario administrador.", usa_uid=True)
+async def mis_automatizaciones(uid) -> str:
+    rs = await asyncio.to_thread(automatizaciones.listar, uid)
+    return "No tienes automatizaciones." if not rs else "; ".join(f"{r['id']}: {r['nombre']}" for r in rs) + "."
+
+
+@tool("borrar_automatizacion", "Solicita confirmación antes de borrar una automatización.",
+      {"id": ("integer", "Número de la automatización")}, ("id",))
+async def borrar_automatizacion(id) -> str:
+    return f"Confirma en Ajustes → Automatizaciones que quieres borrar la automatización {id}."
+
+
 _INTENCIONES += [
     ((r"https?://",), {"resumir_enlace"}),
     ((r"\brutinas?\b", r"\b(crea\w*|nueva|programa\w*|a[ñn]ade\w*|haz\w*|hazme|pon\w*|configura\w*)\b",
       r"!\b(borra\w*|quita\w*|elimina\w*)\b"), {"crear_rutina"}),
     ((r"\brutinas?\b", r"\b(mis|qu[eé]|cu[aá]les|tengo|lista\w*|ver)\b", r"!\b(crea\w*|nueva)\b"), {"mis_rutinas"}),
     ((r"\brutinas?\b", r"\b(borra\w*|quita\w*|elimina\w*|cancela\w*)\b"), {"borrar_rutina", "mis_rutinas"}),
+    ((r"\b(automatizaci[oó]n|regla)\b", r"\b(crea\w*|programa\w*|cuando|si)\b"), {"crear_automatizacion"}),
+    ((r"\b(automatizaciones?|reglas)\b", r"\b(mis|lista\w*|cu[aá]les|ver)\b"), {"mis_automatizaciones"}),
+    ((r"\b(automatizaci[oó]n|regla)\b", r"\b(borra\w*|elimina\w*|quita\w*)\b"), {"borrar_automatizacion", "mis_automatizaciones"}),
 ]
 
 

@@ -66,6 +66,7 @@ _USUARIO = [
     ("PATCH", r"/api/rutinas/\d+"),
     ("DELETE", r"/api/rutinas/\d+"),
     ("POST", r"/api/rutinas/\d+/ejecutar"),
+    # Automatizaciones: siempre de administrador; se comprueban además en el servidor.
     # Módulos: la lista se filtra por rol en el servidor (un usuario solo ve los suyos y sin detalles).
     ("GET", r"/api/modulos"),
     # Mapas: intermediario de solo lectura para los dos roles.

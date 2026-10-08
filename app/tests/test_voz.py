@@ -229,7 +229,7 @@ def test_post_de_voz_con_origen_ajeno(admin):
 
 def test_cabecera_permissions_policy(admin):
     r = cliente_de(admin).get("/")
-    assert r.headers["permissions-policy"] == "microphone=(self), camera=(), geolocation=()"
+    assert r.headers["permissions-policy"] == "microphone=(self), camera=(), geolocation=(self)"
     assert "unsafe-inline" not in r.headers["content-security-policy"]
     login = TestClient(main.app, base_url=LAN).get("/login")
     assert "microphone=(self)" in login.headers["permissions-policy"]

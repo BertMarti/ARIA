@@ -28,7 +28,7 @@ PUBLICAS = LIBRES | {"/login"}
 CSP = ("default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self'; script-src 'self'; worker-src 'self'; "
        "frame-ancestors 'none'")
 # El micrófono solo para ARIA (ni iframes ni otros orígenes); cámara y ubicación, para nadie.
-PERMISOS_NAVEGADOR = "microphone=(self), camera=(), geolocation=()"
+PERMISOS_NAVEGADOR = "microphone=(self), camera=(), geolocation=(self)"  # geolocalización: botón «Mi ubicación» del mapa
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 

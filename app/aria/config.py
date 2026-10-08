@@ -153,6 +153,9 @@ def system_prompt(nube: bool = False, nombre: str | None = None, admin: bool = T
         p += (" Tienes herramientas a tu disposición, pero úsalas solo cuando hagan falta de verdad "
               "para responder; si la pregunta no necesita datos en vivo, contesta directamente. "
               "Si el usuario te pide que recuerdes u olvides algo suyo, usa las herramientas recordar y olvidar. "
+              "Si te pide que le avises o le recuerdes algo en un momento concreto («recuérdame mañana a las 9…», "
+              "«avísame en 20 minutos», «todos los lunes a las 8…»), usa la herramienta recordatorio con la fecha y "
+              "hora ISO que calcules a partir de la de hoy (recordar es solo para datos permanentes). "
               "Para cualquier cosa reciente o factual de la que no estés seguro (noticias, precios, resultados, "
               "datos de lugares o personas) usa buscar_en_internet o noticias, y cita las fuentes como enlaces "
               "al final de la respuesta con el formato «Fuentes: [título](url), ...».")

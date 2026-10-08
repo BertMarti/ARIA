@@ -43,9 +43,11 @@ _BASE_ARIA = frozenset({
     "dispositivos_vpn", "crear_dispositivo_vpn", "activar_dispositivo_vpn", "desactivar_dispositivo_vpn",
     "estado_sistema", "spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior",
     "spotify_actual", "spotify_buscar_y_reproducir", "buscar_en_netflix",
-    "recordar", "olvidar", "buscar_en_internet", "noticias", "tiempo"})
+    "recordar", "olvidar", "buscar_en_internet", "noticias", "tiempo",
+    "recordatorio", "mis_recordatorios", "borrar_recordatorio"})
 # Memoria personal y búsqueda web también para los especialistas (precios, avisos de seguridad, fabricantes...).
-_COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet"})
+_COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet",
+                      "recordatorio", "mis_recordatorios", "borrar_recordatorio"})
 
 FINANZAS_TOOLS = frozenset({"registrar_movimiento", "resumen_mes", "gastos_por_categoria", "comparar_meses",
                             "presupuesto", "estado_presupuestos", "buscar_movimientos"})
@@ -201,6 +203,6 @@ def prompt(agente: Agente, nube: bool, nombre: str | None, admin: bool) -> str:
         dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
         p += (f" Hoy es {dias[n.weekday()]} {n:%d/%m/%Y} ({n:%H:%M}); fíate de esta fecha, no de tu memoria."
               " Usa las herramientas solo cuando hagan falta de verdad para responder. Si el usuario te pide que "
-              "recuerdes u olvides algo suyo, usa recordar y olvidar. Si buscas en Internet, cita las fuentes como "
+              "recuerdes u olvides algo suyo, usa recordar y olvidar. Para avisos a una hora («recuérdame mañana a las 9…») usa recordatorio con la fecha ISO calculada. Si buscas en Internet, cita las fuentes como "
               "enlaces al final («Fuentes: [título](url)»).")
     return p

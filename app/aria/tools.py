@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import busqueda, config, escaneo, finanzas, memoria, red, seguridad, services, shield, sistema, spotify, vpn
+from . import busqueda, config, recordatorios, escaneo, finanzas, memoria, red, seguridad, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -54,6 +54,8 @@ SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador",
                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
+# Recordatorios: todo rol, siempre los del usuario que habla.
+RECORDATORIOS = frozenset({"recordatorio", "mis_recordatorios", "borrar_recordatorio"})
 
 
 # Además, el rol `usuario` puede usar sus finanzas (solo sus datos) y la salud de la red (solo lectura).
@@ -66,7 +68,7 @@ def permitidas(rol: str) -> set:
     if rol == "admin":
         return set(_REGISTRO)
     if rol == "usuario":
-        return set(SOLO_LECTURA | MEMORIA | DE_USUARIO) & set(_REGISTRO)
+        return set(SOLO_LECTURA | MEMORIA | RECORDATORIOS | DE_USUARIO) & set(_REGISTRO)
     return set()
 
 
@@ -93,6 +95,9 @@ _NOTICIAS = r"\b(noticias?|titulares?|actualidad|[uú]ltima hora|novedades)\b"
 _DATO_ACTUAL = (r"\b(precio|cotizaci[oó]n|resultado|qui[eé]n gan[oó]|qui[eé]n ha ganado|cu[aá]ndo (es|son|fue|juega|sale|"
                 r"se estrena)|[uú]ltim[oa]s?|esta semana|este a[nñ]o|clasificaci[oó]n|partido|elecciones|"
                 r"cu[aá]nto cuesta|cu[aá]nto vale)\b")
+_CUANDO = (r"\b(en \d+ ?(min\w*|h|horas?|d[ií]as?)|en (media|una) hora|dentro de|ma[nñ]ana|pasado ma[nñ]ana|hoy|"
+           r"esta (tarde|noche)|a las? \d|a mediod[ií]a|el (lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)|"
+           r"todos los|cada (d[ií]a|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo))\b")
 _INTENCIONES = [
     ((r"\b(tiempo|llover[aá]?|llueve|lluvia|calor|fr[ií]o|previsi[oó]n|nublado|soleado|tormenta|grados)\b",
       r"!\b(raspberry|cpu|procesador|cu[aá]nto tiempo|encendid[ao])\b"), {"tiempo"}),
@@ -130,7 +135,14 @@ _INTENCIONES = [
      {"buscar_en_internet"}),
     ((r"\b(netflix|serie|series|pel[ií]cula|pel[ií]culas|cap[ií]tulo)\b",), {"buscar_en_netflix"}),
     # Memoria personal: «recuerda que…», «apunta que…» / «olvida que…», «no recuerdes…»
-    ((r"\b(recuerda|recu[eé]rdame|acu[eé]rdate|ac[eé]rdate|apunta|anota|memoriza|ten en cuenta)\b",), {"recordar"}),
+    ((r"\b(recuerda|acu[eé]rdate|ac[eé]rdate|apunta|anota|memoriza|ten en cuenta)\b",), {"recordar"}),
+    ((r"\brecu[eé]rdame\b", r"!" + _CUANDO), {"recordar", "recordatorio"}),
+    # Recordatorios: «recuérdame mañana a las 9…», «avísame en 20 minutos», «ponme un recordatorio».
+    ((r"\b(recu[eé]rdame|av[ií]same|recordatorio|alarma)\b", r"!\b(mis|qu[eé]|cu[aá]les|borra\w*|quita\w*|elimina\w*|cancela\w*)\b"),
+     {"recordatorio"}),
+    ((r"\b(recuerda|apunta|anota)\b", _CUANDO, r"!\bque\b"), {"recordatorio"}),
+    ((r"\brecordatorios?\b", r"\b(mis|qu[eé]|cu[aá]les|tengo|lista\w*|pendientes?)\b"), {"mis_recordatorios"}),
+    ((r"\brecordatorios?\b", r"\b(borra\w*|quita\w*|elimina\w*|cancela\w*)\b"), {"borrar_recordatorio", "mis_recordatorios"}),
     ((r"\b(olvida\w*|no recuerdes|deja de recordar|borra\w* (de )?(tu )?memoria)\b",), {"olvidar"}),
 ]
 
@@ -642,3 +654,41 @@ _INTENCIONES += [
     ((r"\b(bloquead\w*|bloqueos?|rastreadores?|trackers?|malware)\b", r"\b(dispositivos?|clientes?|cada|qui[eé]n|por)\b"),
      {"bloqueos_por_cliente"}),
 ]
+
+
+# --- Recordatorios (del usuario que chatea) ------------------------------------------------------------
+@tool("recordatorio",
+      "Programa un recordatorio para el usuario: ARIA le avisará a esa hora por Telegram, notificación y la campana. "
+      "Calcula tú la fecha y hora a partir de la fecha de hoy que tienes arriba.",
+      {"texto": ("string", "Qué hay que recordar, en pocas palabras (p. ej. «llamar al taller»)"),
+       "cuando": ("string", "Fecha y hora LOCAL en formato ISO AAAA-MM-DDTHH:MM (p. ej. 2026-10-09T09:00). «Por la "
+                            "tarde» = 17:00, «por la mañana» = 09:00, «por la noche» = 21:00. Si es recurrente, la "
+                            "primera vez."),
+       "repetir": ("string", "Vacío si es una sola vez; «diario», «semanal» (mismo día de la semana) o «laborables»")},
+      ("texto", "cuando"), usa_uid=True)
+async def recordatorio(uid, texto, cuando, repetir="") -> str:
+    try:
+        r = await asyncio.to_thread(recordatorios.crear, uid, texto, cuando, repetir or None)
+    except recordatorios.RecordatorioError as e:
+        return str(e)
+    return f"Recordatorio {r['id']} programado: «{r['texto']}», {r['descripcion']}."
+
+
+@tool("mis_recordatorios", "Lista los recordatorios pendientes del usuario (número, texto y cuándo).", usa_uid=True)
+async def mis_recordatorios(uid) -> str:
+    rs = await asyncio.to_thread(recordatorios.listar, uid)
+    if not rs:
+        return "No tienes recordatorios pendientes."
+    return f"{len(rs)} recordatorio(s): " + "; ".join(f"{r['id']}: {r['texto']} ({r['descripcion']})" for r in rs[:30]) + "."
+
+
+@tool("borrar_recordatorio", "Borra un recordatorio del usuario por su número o por unas palabras de su texto.",
+      {"id_o_texto": ("string", "Número del recordatorio o palabras de su texto")}, ("id_o_texto",), usa_uid=True)
+async def borrar_recordatorio(uid, id_o_texto) -> str:
+    hallados = await asyncio.to_thread(recordatorios.buscar, uid, id_o_texto)
+    if not hallados:
+        return "No encuentro ese recordatorio."
+    if len(hallados) > 1:
+        return "Encajan varios: " + "; ".join(f"{r['id']}: {r['texto']}" for r in hallados[:5]) + ". Dime el número."
+    await asyncio.to_thread(recordatorios.borrar, uid, hallados[0]["id"])
+    return f"Recordatorio borrado: «{hallados[0]['texto']}»."

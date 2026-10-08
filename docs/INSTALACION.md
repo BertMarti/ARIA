@@ -1,3 +1,9 @@
+<p align="center">
+  <sub>Parte del ecosistema ARIA&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/BertMarti/ARIA">🤖 ARIA</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/BertMarti/SHIELD-DNS">🛡️ SHIELD-DNS</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/BertMarti/HEIMDALL">🔐 HEIMDALL</a></sub>
+  <br>
+  <a href="../README.md">🏠 README</a>&nbsp;&nbsp;·&nbsp;&nbsp;<b>📘 Instalación</b>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="USO.md">🧭 Uso</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="MODULOS.md">🧩 Módulos</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="PLAN.md">🗺️ Hoja de ruta</a>
+</p>
+
 # Instalación paso a paso
 
 Esta guía es para ti si nunca has montado un servidor en casa. Vas a instalar ARIA en una Raspberry Pi o en un PC con Linux, entrar desde el navegador y, si quieres, conectarla con el bloqueador de anuncios (SHIELD-DNS), la VPN (HEIMDALL), Telegram y tu propio dominio.
@@ -38,6 +44,21 @@ En los ejemplos usamos estas direcciones inventadas. Cámbialas por las tuyas:
 - **HEIMDALL** (opcional): una VPN para entrar en tu casa desde fuera y llevarte el bloqueo de anuncios en el móvil.
 
 Las tres pueden convivir en la misma máquina: cada una usa sus propios puertos.
+
+```mermaid
+flowchart LR
+    subgraph MAQ["🖥️ Tu máquina 192.168.1.50"]
+        A["🤖 ARIA<br/>80 · 443"]
+        S["🛡️ SHIELD-DNS<br/>53 · 8080 · 8443"]
+        H["🔐 HEIMDALL<br/>51820/udp · 51843"]
+    end
+    D["📱 Dispositivos de casa"] -- "web" --> A
+    D -- "DNS" --> S
+    F["🌍 Móvil fuera de casa"] -- "VPN" --> H
+    A -. "opcional" .-> S
+    A -. "opcional" .-> H
+    H -. "DNS de la VPN" .-> S
+```
 
 ## 2. Elige el hardware
 
@@ -106,7 +127,17 @@ cd ARIA
 curl -fsSL https://raw.githubusercontent.com/BertMarti/ARIA/main/instalar-todo.sh | bash
 ```
 
-`instalar-todo.sh` clona los tres repositorios en `~/homelab` y los instala en este orden: SHIELD-DNS, HEIMDALL y ARIA (así HEIMDALL usa SHIELD-DNS como DNS y ARIA se conecta a los dos). También activa la [autocuración](#14-autocuración). Opciones, como variables delante del comando:
+`instalar-todo.sh` clona los tres repositorios en `~/homelab` y los instala en este orden: SHIELD-DNS, HEIMDALL y ARIA (así HEIMDALL usa SHIELD-DNS como DNS y ARIA se conecta a los dos). También activa la [autocuración](#14-autocuración).
+
+```mermaid
+flowchart LR
+    C["📥 Clona los tres<br/>en ~/homelab"] --> S["1 · SHIELD-DNS"]
+    S --> H["2 · HEIMDALL<br/>usa SHIELD-DNS como DNS"]
+    H --> A["3 · ARIA<br/>se conecta a los dos"]
+    A --> AC["🩺 Autocuración"]
+```
+
+Opciones, como variables delante del comando:
 
 | Variable | Qué hace |
 |---|---|

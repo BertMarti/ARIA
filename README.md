@@ -1,92 +1,146 @@
-# ARIA
+<a name="readme-top"></a>
+
+<p align="center">
+  <sub>Parte del ecosistema ARIA&nbsp;&nbsp;·&nbsp;&nbsp;<b>🤖 ARIA</b>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/BertMarti/SHIELD-DNS">🛡️ SHIELD-DNS</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/BertMarti/HEIMDALL">🔐 HEIMDALL</a></sub>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/banner-oscuro.svg">
+    <source media="(prefers-color-scheme: light)" srcset="docs/img/banner-claro.svg">
+    <img alt="ARIA: tu asistente de IA autoalojado para gestionar las apps de casa" src="docs/img/banner-oscuro.svg" width="100%">
+  </picture>
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="Licencia MIT" src="https://img.shields.io/badge/licencia-MIT-38d6ff?style=flat-square"></a>
+  <img alt="100 % autoalojado" src="https://img.shields.io/badge/100%20%25-autoalojado-34d399?style=flat-square">
+  <img alt="Gratis" src="https://img.shields.io/badge/precio-gratis-7c8cff?style=flat-square">
+  <img alt="Docker Compose" src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white">
+  <img alt="Raspberry Pi arm64" src="https://img.shields.io/badge/Raspberry%20Pi-arm64-C51A4A?style=flat-square&logo=raspberrypi&logoColor=white">
+  <img alt="Linux amd64 y arm64" src="https://img.shields.io/badge/Linux-amd64%20%7C%20arm64-FCC624?style=flat-square&logo=linux&logoColor=black">
+  <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white">
+  <img alt="En español" src="https://img.shields.io/badge/idioma-espa%C3%B1ol-f5b84b?style=flat-square">
+</p>
+
+<p align="center">
+  <b><a href="#-inicio-rápido-5-minutos">🚀 Instalar</a></b>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="docs/INSTALACION.md">📘 Guía de instalación</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="docs/USO.md">🧭 Guía de uso</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="docs/MODULOS.md">🧩 Módulos</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="docs/PLAN.md">🗺️ Hoja de ruta</a>
+</p>
 
 **ARIA es un asistente de inteligencia artificial autoalojado que gestiona tus aplicaciones de casa.** Se instala con un comando en una Raspberry Pi o en un PC con Linux, se abre desde el navegador o el móvil y entiende español: le hablas o le escribes y ella consulta, enciende, pausa o te avisa.
 
 ARIA se amplía con **módulos**: cada aplicación que añades aparece en su página de Inicio, gana herramientas en el chat y puede mandarte avisos. Trae dos aplicaciones integradas como ejemplo, [SHIELD-DNS](https://github.com/BertMarti/SHIELD-DNS) (bloqueador de anuncios) y [HEIMDALL](https://github.com/BertMarti/HEIMDALL) (VPN), pero puedes añadir todas las que quieras.
 
-- **Gratis.** Usa capas gratuitas de IA en la nube (Ollama Cloud, Groq, Gemini) y, si fallan, un modelo local.
-- **Tuyo.** Corre en tu máquina, con tus usuarios y tus datos en una carpeta `data/`.
-- **Para toda la casa.** Varios usuarios con roles, app instalable en el móvil, Telegram y notificaciones.
+<table>
+  <tr>
+    <td width="33%" valign="top"><h3>💸 Gratis</h3>Usa capas gratuitas de IA en la nube (Ollama Cloud, Groq, Gemini) y, si fallan, un modelo local.</td>
+    <td width="33%" valign="top"><h3>🏠 Tuyo</h3>Corre en tu máquina, con tus usuarios y tus datos en una carpeta <code>data/</code>.</td>
+    <td width="33%" valign="top"><h3>👨‍👩‍👧 Para toda la casa</h3>Varios usuarios con roles, app instalable en el móvil, Telegram y notificaciones.</td>
+  </tr>
+</table>
 
-## Índice
+<p align="center">
+  <img alt="Página de Inicio de ARIA con el resumen del día, las aplicaciones y el estado del sistema" src="docs/img/captura-inicio.png" width="100%">
+  <br><sub>Inicio de ARIA en una instancia de demostración con datos ficticios.</sub>
+</p>
 
-- [Qué puede hacer](#qué-puede-hacer)
-- [Cómo está hecha](#cómo-está-hecha)
-- [Requisitos](#requisitos)
-- [Inicio rápido (5 minutos)](#inicio-rápido-5-minutos)
-- [Guías](#guías)
-- [Configuración](#configuración)
-- [Añade tus propias aplicaciones (módulos)](#añade-tus-propias-aplicaciones-módulos)
-- [Cerebros: de dónde salen las respuestas](#cerebros-de-dónde-salen-las-respuestas)
-- [Seguridad y privacidad](#seguridad-y-privacidad)
-- [Contenedores y puertos](#contenedores-y-puertos)
-- [Para desarrolladores](#para-desarrolladores)
-- [Hoja de ruta](#hoja-de-ruta)
-- [Licencia](#licencia)
+## 📑 Índice
 
-## Qué puede hacer
+- [✨ Qué puede hacer](#-qué-puede-hacer)
+- [📸 Capturas](#-capturas)
+- [🧩 Cómo está hecha](#-cómo-está-hecha)
+- [📋 Requisitos](#-requisitos)
+- [🚀 Inicio rápido (5 minutos)](#-inicio-rápido-5-minutos)
+- [📚 Guías](#-guías)
+- [⚙️ Configuración](#️-configuración)
+- [🔌 Añade tus propias aplicaciones (módulos)](#-añade-tus-propias-aplicaciones-módulos)
+- [🧠 Cerebros: de dónde salen las respuestas](#-cerebros-de-dónde-salen-las-respuestas)
+- [🔒 Seguridad y privacidad](#-seguridad-y-privacidad)
+- [🐳 Contenedores y puertos](#-contenedores-y-puertos)
+- [🆘 Problemas frecuentes](#-problemas-frecuentes)
+- [🛠️ Para desarrolladores](#️-para-desarrolladores)
+- [🗺️ Hoja de ruta](#️-hoja-de-ruta)
+- [🌐 El ecosistema ARIA](#-el-ecosistema-aria)
+- [📄 Licencia](#-licencia)
 
-### Asistente y chat
-- Chat con conversaciones guardadas, respuestas en directo, botón Detener, copiar y Markdown.
-- **Agentes especializados**: ARIA (general), `@finanzas`, `@redes` y `@seguridad`. ARIA elige el adecuado sola o lo eliges tú.
-- **Búsqueda en internet y noticias** con un metabuscador propio (SearXNG), citando las fuentes.
-- **Resumir enlaces** que pegas o compartes desde el móvil.
-- **Visión**: mándale una foto y pregúntale por ella; si es un ticket, te propone apuntar el gasto.
+## ✨ Qué puede hacer
 
-### Voz
-- Micrófono (pulsar para hablar), botón **Leer** en cada respuesta y modo **manos libres**: dices «Aria» y tu pregunta.
-- Voz natural en la nube con respaldo local en tu máquina; transcripción en la nube con respaldo local.
+| | Grupo | Qué incluye |
+|:---:|---|---|
+| 💬 | **Asistente y chat** | Chat con conversaciones guardadas, respuestas en directo, botón Detener, copiar y Markdown.<br>**Agentes especializados**: ARIA (general), `@finanzas`, `@redes` y `@seguridad`. ARIA elige el adecuado sola o lo eliges tú.<br>**Búsqueda en internet y noticias** con un metabuscador propio (SearXNG), citando las fuentes.<br>**Resumir enlaces** que pegas o compartes desde el móvil.<br>**Visión**: mándale una foto y pregúntale por ella; si es un ticket, te propone apuntar el gasto. |
+| 🎙️ | **Voz** | Micrófono (pulsar para hablar), botón **Leer** en cada respuesta y modo **manos libres**: dices «Aria» y tu pregunta.<br>Voz natural en la nube con respaldo local en tu máquina; transcripción en la nube con respaldo local. |
+| 🧠 | **Memoria y automatización** | **Memoria**: recuerda datos tuyos («recuerda que…») y escribe un **diario** de cada día.<br>**Resumen de buenos días** en Inicio, en el chat y, si quieres, por Telegram o notificación.<br>**Recordatorios** en lenguaje natural («recuérdame mañana a las 9…») y **rutinas** programadas («cada mañana a las 8, dime el tiempo y tres titulares»). |
+| 🔔 | **Avisos y canales** | Campana de avisos en la web, **bot de Telegram** propio y **notificaciones push** en el móvil o el navegador.<br>Vigila la casa sola: servicios caídos, dispositivos desconocidos, temperatura, disco, copias atrasadas… |
+| 🏡 | **Tu casa y tu red** | **Finanzas personales**: movimientos, categorías, presupuestos e importación del CSV del banco.<br>**Inventario de red**: dispositivos de la LAN, latencia, test de velocidad e historial.<br>**Seguridad**: escaneo defensivo de puertos de tu red y búsqueda de vulnerabilidades conocidas.<br>**Control parental** por dispositivo (pausar internet, bloquear TikTok, YouTube…, horarios), mediante SHIELD-DNS. |
+| 🧩 | **Aplicaciones (módulos)** | **SHIELD-DNS**: estadísticas, pausar y reanudar el bloqueo de anuncios.<br>**HEIMDALL**: ver, crear, activar y desactivar dispositivos de la VPN con su código QR.<br>**Uptime web** (módulo de ejemplo): «¿responde example.org?» y avisos si una web se cae.<br>**Las tuyas**: un mosaico en Inicio, herramientas en el chat, avisos y endpoints propios. Ver [docs/MODULOS.md](docs/MODULOS.md).<br>Spotify y Netflix existen en el código pero están **aparcados** (desactivados por defecto, `ARIA_SPOTIFY=0` / `ARIA_NETFLIX=0`). |
+| 🔑 | **Acceso y usuarios** | HTTPS automático en tu red (`https://aria.local`, la IP o `https://aria.lan`).<br>Opcional: tu dominio con **Cloudflare Tunnel + Access**, sin abrir puertos y con inicio de sesión único.<br>Varios usuarios con rol **administrador** o **usuario**; permisos comprobados en el servidor.<br>Paleta de órdenes **Ctrl+K**, app instalable (PWA) y menú **Compartir** de Android. |
 
-### Memoria y automatización
-- **Memoria**: recuerda datos tuyos («recuerda que…») y escribe un **diario** de cada día.
-- **Resumen de buenos días** en Inicio, en el chat y, si quieres, por Telegram o notificación.
-- **Recordatorios** en lenguaje natural («recuérdame mañana a las 9…») y **rutinas** programadas («cada mañana a las 8, dime el tiempo y tres titulares»).
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
 
-### Avisos y canales
-- Campana de avisos en la web, **bot de Telegram** propio y **notificaciones push** en el móvil o el navegador.
-- Vigila la casa sola: servicios caídos, dispositivos desconocidos, temperatura, disco, copias atrasadas…
+## 📸 Capturas
 
-### Tu casa y tu red
-- **Finanzas personales**: movimientos, categorías, presupuestos e importación del CSV del banco.
-- **Inventario de red**: dispositivos de la LAN, latencia, test de velocidad e historial.
-- **Seguridad**: escaneo defensivo de puertos de tu red y búsqueda de vulnerabilidades conocidas.
-- **Control parental** por dispositivo (pausar internet, bloquear TikTok, YouTube…, horarios), mediante SHIELD-DNS.
+> [!NOTE]
+> Todas las capturas salen de una instancia de demostración con **datos ficticios** (Ana, Lucía, red `192.168.1.x`). Las respuestas del chat son de ejemplo.
 
-### Aplicaciones (módulos)
-- **SHIELD-DNS**: estadísticas, pausar y reanudar el bloqueo de anuncios.
-- **HEIMDALL**: ver, crear, activar y desactivar dispositivos de la VPN con su código QR.
-- **Uptime web** (módulo de ejemplo): «¿responde example.org?» y avisos si una web se cae.
-- **Las tuyas**: un mosaico en Inicio, herramientas en el chat, avisos y endpoints propios. Ver [docs/MODULOS.md](docs/MODULOS.md).
-- Spotify y Netflix existen en el código pero están **aparcados** (desactivados por defecto, `ARIA_SPOTIFY=0` / `ARIA_NETFLIX=0`).
+<table>
+  <tr>
+    <td width="50%"><img alt="Chat con ARIA: pregunta por el estado de la casa y pausa del bloqueador" src="docs/img/captura-chat.png"><p align="center"><sub><b>Chat</b>: herramientas en vivo y el cerebro que respondió</sub></p></td>
+    <td width="50%"><img alt="Página Red con el inventario de dispositivos de casa" src="docs/img/captura-red.png"><p align="center"><sub><b>Red</b>: inventario, latencia y un dispositivo desconocido</sub></p></td>
+  </tr>
+  <tr>
+    <td><img alt="Ventana de control parental de un dispositivo" src="docs/img/captura-control-parental.png"><p align="center"><sub><b>Control parental</b>: pausar, bloquear servicios y horarios</sub></p></td>
+    <td><img alt="Ajustes, sección Módulos, con SHIELD-DNS, HEIMDALL y Uptime web" src="docs/img/captura-modulos.png"><p align="center"><sub><b>Ajustes → Módulos</b>: integradas y las tuyas</sub></p></td>
+  </tr>
+  <tr>
+    <td><img alt="Panel de avisos abierto desde la campana" src="docs/img/captura-avisos.png"><p align="center"><sub><b>Avisos</b>: la campana de la casa</sub></p></td>
+    <td><img alt="Ajustes, sección Rutinas" src="docs/img/captura-rutinas.png"><p align="center"><sub><b>Rutinas</b>: tareas que ARIA hace sola</sub></p></td>
+  </tr>
+</table>
 
-### Acceso y usuarios
-- HTTPS automático en tu red (`https://aria.local`, la IP o `https://aria.lan`).
-- Opcional: tu dominio con **Cloudflare Tunnel + Access**, sin abrir puertos y con inicio de sesión único.
-- Varios usuarios con rol **administrador** o **usuario**; permisos comprobados en el servidor.
-- Paleta de órdenes **Ctrl+K**, app instalable (PWA) y menú **Compartir** de Android.
+<details>
+<summary><b>📱 Más capturas: móvil, Centro de control y Finanzas</b></summary>
+<br>
 
-> No hay capturas de pantalla en el repositorio todavía.
+<p align="center">
+  <img alt="Inicio de ARIA en el móvil" src="docs/img/captura-movil-inicio.png" width="300">
+  &nbsp;&nbsp;
+  <img alt="Chat del agente Redes en el móvil" src="docs/img/captura-movil-chat.png" width="300">
+</p>
 
-## Cómo está hecha
+<p align="center"><img alt="Centro de control con SHIELD-DNS, HEIMDALL y el sistema" src="docs/img/captura-centro-control.png" width="100%"><br><sub><b>Centro de control</b>: SHIELD-DNS, HEIMDALL y la máquina</sub></p>
+
+<p align="center"><img alt="Finanzas: resumen del mes, gastos por categoría y presupuestos" src="docs/img/captura-finanzas.png" width="100%"><br><sub><b>Finanzas</b>: resumen del mes, categorías y presupuestos</sub></p>
+
+</details>
+
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
+
+## 🧩 Cómo está hecha
 
 ARIA es un **núcleo** (la app web, el chat y los cerebros) y un **cargador de módulos**. Cada aplicación de tu casa se conecta como un módulo: las integradas (SHIELD-DNS y HEIMDALL) vienen de serie y las tuyas se añaden como carpetas en `modulos/`.
 
 ```mermaid
 flowchart LR
-    U["Navegador / móvil<br/>Telegram"] --> C["Caddy (HTTPS)<br/>puertos 80/443"]
-    C --> A["ARIA app<br/>chat · agentes · avisos · rutinas"]
-    A --> CB["Cerebros<br/>Ollama Cloud → Groq → Gemini → local"]
-    A --> S["SearXNG<br/>búsqueda"]
-    A --> V["aria-voz<br/>voz local"]
-    A --> E["aria-escaner<br/>nmap defensivo"]
-    A --> M{{"Módulos"}}
-    M --> M1["SHIELD-DNS<br/>(integrado)"]
-    M --> M2["HEIMDALL<br/>(integrado)"]
-    M --> M3["uptime<br/>(ejemplo)"]
-    M --> M4["tu-app<br/>(modulos/tu-app)"]
+    U["📱 Navegador / móvil<br/>Telegram"] --> C["🔒 Caddy HTTPS<br/>puertos 80/443"]
+    C --> A["🤖 ARIA app<br/>chat · agentes · avisos · rutinas"]
+    A --> CB["🧠 Cerebros<br/>Ollama Cloud → Groq → Gemini → local"]
+    A --> S["🔎 SearXNG<br/>búsqueda"]
+    A --> V["🎙️ aria-voz<br/>voz local"]
+    A --> E["🛰️ aria-escaner<br/>nmap defensivo"]
+    A --> M{{"🧩 Módulos"}}
+    M --> M1["🛡️ SHIELD-DNS<br/>integrado"]
+    M --> M2["🔐 HEIMDALL<br/>integrado"]
+    M --> M3["🌍 uptime<br/>ejemplo"]
+    M --> M4["✨ tu-app<br/>modulos/tu-app"]
 ```
 
-Si tu visor no muestra el diagrama, este es el mismo esquema en texto:
+<details>
+<summary>Si tu visor no muestra el diagrama, aquí está el mismo esquema en texto</summary>
 
 ```
  Navegador / móvil / Telegram
@@ -104,52 +158,113 @@ Si tu visor no muestra el diagrama, este es el mismo esquema en texto:
    └─ tu-app      (modulos/…)    │  lo que tú quieras
 ```
 
-## Requisitos
+</details>
+
+### Qué pasa cuando le preguntas algo
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor T as Tú
+    participant C as Caddy HTTPS
+    participant A as ARIA
+    participant IA as Cerebro de IA
+    participant H as Herramienta o módulo
+    T->>C: «¿Cuántos anuncios has bloqueado hoy?»
+    C->>A: Petición con tu sesión
+    A->>A: Elige el agente y comprueba tus permisos
+    A->>IA: Pregunta y herramientas disponibles
+    IA-->>A: Quiero usar «estado_bloqueador»
+    A->>H: Consulta a SHIELD-DNS
+    H-->>A: Datos en vivo
+    A->>IA: Resultado de la herramienta
+    IA-->>A: Respuesta redactada
+    A-->>T: Respuesta en directo con la insignia del cerebro y del agente
+```
+
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
+
+## 📋 Requisitos
 
 | | Mínimo | Recomendado |
 |---|---|---|
-| Máquina | Raspberry Pi 4/5 o PC/mini-PC con Linux (arm64 o amd64) | Raspberry Pi 5 o mini-PC |
-| RAM | 4 GB (usando sobre todo los cerebros en la nube y un modelo local pequeño) | 8 GB o más |
-| Disco | 16 GB libres | 32 GB libres, mejor en SSD |
-| Sistema | Raspberry Pi OS 64 bits, Debian o Ubuntu | Raspberry Pi OS 64 bits (Bookworm) |
-| Software | Docker con `docker compose` v2 (el instalador ofrece instalarlo) | — |
-| Red | Puertos 80 y 443 libres en la máquina | IP fija para la máquina (reserva DHCP en el router) |
+| 🖥️ Máquina | Raspberry Pi 4/5 o PC/mini-PC con Linux (arm64 o amd64) | Raspberry Pi 5 o mini-PC |
+| 🧮 RAM | 4 GB (usando sobre todo los cerebros en la nube y un modelo local pequeño) | 8 GB o más |
+| 💾 Disco | 16 GB libres | 32 GB libres, mejor en SSD |
+| 🐧 Sistema | Raspberry Pi OS 64 bits, Debian o Ubuntu | Raspberry Pi OS 64 bits (Bookworm) |
+| 🐳 Software | Docker con `docker compose` v2 (el instalador ofrece instalarlo) | — |
+| 🌐 Red | Puertos 80 y 443 libres en la máquina | IP fija para la máquina (reserva DHCP en el router) |
 
-- Las imágenes de Docker ocupan unos 10 GB (la de Ollama es la mayor) y el modelo local por defecto, unos 2 GB.
-- **Windows**: ARIA no está probada en Windows. Con WSL2 la parte web podría funcionar, pero el escáner de red, SHIELD-DNS (puerto 53) y HEIMDALL (WireGuard) necesitan ver tu red de verdad, y eso en WSL2/Docker Desktop no está garantizado. Para algo fiable usa una Raspberry Pi o un PC con Linux.
+Las imágenes de Docker ocupan unos 10 GB (la de Ollama es la mayor) y el modelo local por defecto, unos 2 GB.
 
-## Inicio rápido (5 minutos)
+> [!WARNING]
+> **Windows**: ARIA no está probada en Windows. Con WSL2 la parte web podría funcionar, pero el escáner de red, SHIELD-DNS (puerto 53) y HEIMDALL (WireGuard) necesitan ver tu red de verdad, y eso en WSL2/Docker Desktop no está garantizado. Para algo fiable usa una Raspberry Pi o un PC con Linux.
 
-1. **Clona el repositorio** en `~/homelab` (los scripts de copias y de Cloudflare esperan esa carpeta):
-   ```bash
-   mkdir -p ~/homelab && cd ~/homelab
-   git clone https://github.com/BertMarti/ARIA.git && cd ARIA
-   ```
-2. **Instala**:
-   ```bash
-   ./install.sh
-   ```
-   Si no tienes Docker, te ofrece instalarlo; después cierra sesión, vuelve a entrar y repite `./install.sh`.
-3. **Entra** en `https://aria.local` (o `https://192.168.1.50`, con la IP de tu máquina). El navegador avisará del certificado: es lo esperado la primera vez.
-4. **Inicia sesión** con el usuario `admin` y la contraseña que muestra el instalador (también está en `ARIA_PASSWORD` dentro del archivo `.env`).
-5. **Opcional, pero recomendado**: añade una clave gratuita de Groq o Gemini (o conecta Ollama Cloud) para respuestas rápidas. Ver [Claves gratuitas](docs/INSTALACION.md#6-claves-gratuitas-de-ia-opcional).
+## 🚀 Inicio rápido (5 minutos)
 
-¿Quieres también el bloqueador de anuncios y la VPN? Instala las tres aplicaciones de una vez:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/BertMarti/ARIA/main/instalar-todo.sh | bash
+```mermaid
+flowchart LR
+    A["1️⃣ Clonar<br/>en ~/homelab"] --> B["2️⃣ ./install.sh"]
+    B --> C{"¿Docker<br/>instalado?"}
+    C -- "No" --> D["Lo instala:<br/>cierra sesión y repite"]
+    D --> B
+    C -- "Sí" --> E["3️⃣ Entrar en<br/>aria.local"]
+    E --> F["4️⃣ Iniciar sesión<br/>admin + contraseña"]
+    F --> G["5️⃣ Opcional:<br/>clave gratuita de IA"]
 ```
 
-## Guías
+**1. Clona el repositorio** en `~/homelab` (los scripts de copias y de Cloudflare esperan esa carpeta):
+
+```bash
+mkdir -p ~/homelab && cd ~/homelab
+git clone https://github.com/BertMarti/ARIA.git && cd ARIA
+```
+
+> ✅ **Comprobación:** `ls` muestra `install.sh`, `docker-compose.yml` y la carpeta `docs/`.
+
+**2. Instala**:
+
+```bash
+./install.sh
+```
+
+Si no tienes Docker, te ofrece instalarlo; después cierra sesión, vuelve a entrar y repite `./install.sh`.
+
+> ✅ **Comprobación:** al terminar, el instalador muestra la dirección, el usuario y la contraseña, y `docker compose ps` lista los contenedores en marcha (`healthy`).
+
+**3. Entra** en `https://aria.local` (o `https://192.168.1.50`, con la IP de tu máquina). El navegador avisará del certificado: es lo esperado la primera vez.
+
+> ✅ **Comprobación:** ves la pantalla de inicio de sesión de ARIA.
+
+**4. Inicia sesión** con el usuario `admin` y la contraseña que muestra el instalador (también está en `ARIA_PASSWORD` dentro del archivo `.env`).
+
+> ✅ **Comprobación:** aparece **Inicio** con tu resumen del día y los mosaicos de tus aplicaciones.
+
+**5. Opcional, pero recomendado**: añade una clave gratuita de Groq o Gemini (o conecta Ollama Cloud) para respuestas rápidas. Ver [Claves gratuitas](docs/INSTALACION.md#6-claves-gratuitas-de-ia-opcional).
+
+> ✅ **Comprobación:** en **Ajustes → Cerebros** el cerebro aparece con «clave configurada» y **Probar** responde.
+
+> [!TIP]
+> ¿Quieres también el bloqueador de anuncios y la VPN? Instala las tres aplicaciones de una vez:
+>
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/BertMarti/ARIA/main/instalar-todo.sh | bash
+> ```
+>
+> Las instala en este orden: SHIELD-DNS, HEIMDALL y ARIA. Todos los detalles, en la [guía de instalación](docs/INSTALACION.md#opción-b-aria--shield-dns--heimdall-de-una-vez).
+
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
+
+## 📚 Guías
 
 | Guía | Para qué |
 |---|---|
-| [Instalación paso a paso](docs/INSTALACION.md) | Hardware, Docker, primer acceso, claves gratuitas, certificado, dominio propio, router, Telegram, copias, actualizar y problemas frecuentes |
-| [Guía de uso](docs/USO.md) | Cada sección de la web, frases de ejemplo, agentes, voz, memoria, rutinas, Telegram, control parental, usuarios |
-| [Módulos](docs/MODULOS.md) | Conectar tus propias aplicaciones a ARIA (para desarrolladores) |
-| [Hoja de ruta](docs/PLAN.md) | Ideas de lo que puede venir |
+| 📘 [Instalación paso a paso](docs/INSTALACION.md) | Hardware, Docker, primer acceso, claves gratuitas, certificado, dominio propio, router, Telegram, copias, actualizar y problemas frecuentes |
+| 🧭 [Guía de uso](docs/USO.md) | Cada sección de la web, frases de ejemplo, agentes, voz, memoria, rutinas, Telegram, control parental, usuarios |
+| 🧩 [Módulos](docs/MODULOS.md) | Conectar tus propias aplicaciones a ARIA (para desarrolladores) |
+| 🗺️ [Hoja de ruta](docs/PLAN.md) | Ideas de lo que puede venir |
 
-## Configuración
+## ⚙️ Configuración
 
 Toda la configuración está en el archivo `.env` (lo crea `install.sh` a partir de [`.env.example`](.env.example)). Tras editarlo, aplica los cambios con:
 
@@ -157,7 +272,12 @@ Toda la configuración está en el archivo `.env` (lo crea `install.sh` a partir
 docker compose up -d
 ```
 
-Variables principales (la lista completa y comentada está en `.env.example`):
+> [!IMPORTANT]
+> Algunos ajustes se cambian también desde la web y entonces **la web manda** sobre `.env`: el orden de los cerebros (Ajustes → Cerebros, guardado en `data/cerebros.json`), el modelo local activo (`data/model.txt`) y la contraseña (si la cambias en Ajustes).
+
+<details>
+<summary><b>📋 Variables principales</b> (la lista completa y comentada está en <code>.env.example</code>)</summary>
+<br>
 
 | Área | Variable | Por defecto | Para qué |
 |---|---|---|---|
@@ -197,11 +317,30 @@ Variables principales (la lista completa y comentada está en `.env.example`):
 | | `UPTIME_URLS` | vacía | Webs que vigila el módulo `uptime` |
 | Aparcados | `ARIA_SPOTIFY`, `ARIA_NETFLIX` | `0` | Reactivan Spotify / Netflix |
 
-Algunos ajustes se cambian también desde la web y entonces **la web manda** sobre `.env`: el orden de los cerebros (Ajustes → Cerebros, guardado en `data/cerebros.json`), el modelo local activo (`data/model.txt`) y la contraseña (si la cambias en Ajustes).
+</details>
 
-## Añade tus propias aplicaciones (módulos)
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
 
-Un módulo es una carpeta en `modulos/`. El más sencillo solo necesita un `modulo.json` y ya pone un mosaico en Inicio con un punto verde o rojo según si tu aplicación responde:
+## 🔌 Añade tus propias aplicaciones (módulos)
+
+Un módulo es una carpeta en `modulos/`. ARIA lo carga al arrancar y lo enchufa en varios sitios a la vez:
+
+```mermaid
+flowchart LR
+    subgraph CARPETA["📁 modulos/tu-app/"]
+        J["modulo.json<br/>manifiesto"]
+        P["modulo.py<br/>opcional"]
+    end
+    J --> L["⚙️ Cargador de módulos<br/>al arrancar ARIA"]
+    P --> L
+    L --> I["🏠 Mosaico en Inicio<br/>con punto de salud"]
+    L --> HT["💬 Herramientas en el chat<br/>Telegram y rutinas"]
+    L --> AV["🔔 Avisos periódicos"]
+    L --> EP["🔗 Endpoints propios<br/>/api/modulos/tu-app/"]
+    L --> AJ["🧩 Ajustes → Módulos"]
+```
+
+El más sencillo solo necesita un `modulo.json` y ya pone un mosaico en Inicio con un punto verde o rojo según si tu aplicación responde:
 
 ```bash
 cp -r modulos/_plantilla modulos/recetas
@@ -226,13 +365,28 @@ rm modulos/recetas/modulo.py modulos/recetas/compose.ejemplo.yml
 docker compose restart app
 ```
 
+> ✅ **Comprobación:** en **Ajustes → Módulos** aparece «Recetas» y en Inicio, su mosaico.
+
 Con un `modulo.py` puedes añadir además herramientas al chat («¿qué receta toca hoy?»), avisos periódicos y endpoints propios. Todo está explicado, con la referencia del SDK, en **[docs/MODULOS.md](docs/MODULOS.md)**.
 
+> [!WARNING]
 > Un módulo con `modulo.py` es código que se ejecuta dentro de ARIA. Instala solo módulos que hayas leído o de fuentes de confianza.
 
-## Cerebros: de dónde salen las respuestas
+## 🧠 Cerebros: de dónde salen las respuestas
 
 ARIA prueba una **cadena de cerebros gratuitos** en orden. Si uno falla (límite gratuito agotado, clave rechazada, sin conexión o más de 30 s sin responder), pasa al siguiente sin que lo notes. Cada respuesta lleva una insignia con el cerebro que la dio.
+
+```mermaid
+flowchart LR
+    Q["💬 Tu pregunta"] --> O["1 · Ollama Cloud"]
+    O -- "falla" --> G["2 · Groq"]
+    G -- "falla" --> M["3 · Google Gemini"]
+    M -- "falla" --> L["4 · Local Ollama<br/>sin internet"]
+    O -- "responde" --> R["✅ Respuesta<br/>con insignia"]
+    G -- "responde" --> R
+    M -- "responde" --> R
+    L --> R
+```
 
 | # | Cerebro | Clave | Notas |
 |---|---|---|---|
@@ -243,18 +397,50 @@ ARIA prueba una **cadena de cerebros gratuitos** en orden. Si uno falla (límite
 
 Sin ninguna clave, ARIA funciona solo con el modelo local. Orden y activación: **Ajustes → Cerebros** (con botón **Probar**). El cerebro local no se puede desactivar: es el último recurso.
 
-## Seguridad y privacidad
+<details>
+<summary><b>🎙️ ¿Y la voz, la transcripción y la visión?</b></summary>
+<br>
+
+Cada parte tiene su propia cadena de respaldo (detalles en [la guía de uso](docs/USO.md#cuando-algo-falla)):
+
+```mermaid
+flowchart TB
+    subgraph VOZ["🔊 Voz de ARIA"]
+        direction LR
+        V1["Gemini «Leda»"] -- "falla" --> V2["Piper<br/>en tu máquina"]
+        V2 -- "falla" --> V3["Voz del navegador"]
+    end
+    subgraph STT["📝 Transcripción de lo que dices"]
+        direction LR
+        T1["Groq Whisper"] -- "falla" --> T2["Whisper<br/>en tu máquina"]
+    end
+    subgraph VIS["📷 Visión de fotos"]
+        direction LR
+        F1["Gemini"] -- "falla" --> F2["Groq"]
+    end
+```
+
+- La palabra «Aria» del modo manos libres se detecta en tu máquina (Vosk, contenedor `aria-voz`).
+- El modelo local nunca se usa para imágenes.
+
+</details>
+
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
+
+## 🔒 Seguridad y privacidad
 
 - **Lo que sale de casa.** Con el cerebro local no sale nada. Con Ollama Cloud, Groq o Gemini, tus mensajes, parte de tu memoria y los resultados de las herramientas (estado de la máquina, anuncios bloqueados, nombres de dispositivos…) se envían a esas empresas. En el plan gratuito de Google, Google puede usarlos para mejorar sus productos. Si no quieres, desactiva esos cerebros en Ajustes → Cerebros.
 - **Voz e imágenes.** El audio y las fotos se procesan en memoria y **no se guardan nunca**; solo queda el texto. Al hablar, el audio va a Groq (o se transcribe en tu máquina si no hay clave). Las fotos van a Gemini o Groq, sin metadatos (GPS, cámara…).
 - **Acceso.** HTTPS siempre, contraseñas cifradas (scrypt), 5 intentos fallidos bloquean la IP 5 minutos, protección CSRF y permisos por rol comprobados en el servidor.
 - **Secretos.** `.env` y `data/` no se suben a git. Las claves de las IA nunca se muestran en la web. Las claves privadas de WireGuard solo llegan al navegador cuando descargas un `.conf`.
-- **Ojo:** los botones «Copiar contraseña» de Inicio dan la contraseña de los paneles de SHIELD-DNS y HEIMDALL a los administradores. Protege bien tu contraseña de ARIA.
 - **Escaneo defensivo.** El agente Seguridad solo escanea la red de `ARIA_RED_PERMITIDA`, nunca ataca ni prueba contraseñas.
 - **Módulos.** Son código con los mismos permisos que ARIA: instala solo los de confianza.
 - **Copias.** Las copias contienen secretos: guárdalas fuera de la máquina y cifradas (ver [copias diarias](docs/INSTALACION.md#13-copias-de-seguridad-diarias-y-cifradas)).
 
-## Contenedores y puertos
+> [!CAUTION]
+> Los botones «Copiar contraseña» de Inicio dan la contraseña de los paneles de SHIELD-DNS y HEIMDALL a los administradores. Protege bien tu contraseña de ARIA.
+
+## 🐳 Contenedores y puertos
 
 | Contenedor | Para qué | Puertos en tu máquina |
 |---|---|---|
@@ -277,7 +463,73 @@ docker compose ps           # estado
 docker compose logs -f app  # registros
 ```
 
-## Para desarrolladores
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
+
+## 🆘 Problemas frecuentes
+
+Los más habituales. La lista completa está en la [guía de instalación](docs/INSTALACION.md#17-problemas-frecuentes).
+
+<details>
+<summary><b>«No puedo hablar con Docker» al instalar</b></summary>
+<br>
+
+Tu usuario aún no está en el grupo `docker`. Cierra sesión, vuelve a entrar y repite.
+</details>
+
+<details>
+<summary><b>La página no carga</b></summary>
+<br>
+
+`docker compose ps` y `docker compose logs caddy app`. Comprueba que nada más usa los puertos 80 y 443:
+
+```bash
+sudo ss -tlnp | grep -E ':80 |:443 '
+```
+</details>
+
+<details>
+<summary><b><code>aria.local</code> no carga</b></summary>
+<br>
+
+Usa la IP (`https://192.168.1.50`). Algunos Android y Windows no resuelven `.local`.
+</details>
+
+<details>
+<summary><b>Olvidé la contraseña de <code>admin</code></b></summary>
+<br>
+
+Si nunca la cambiaste en Ajustes, está en `.env` (`ARIA_PASSWORD`). Si la cambiaste, otro administrador puede ponerte una nueva en Ajustes → Usuarios.
+</details>
+
+<details>
+<summary><b>Las respuestas tardan mucho</b></summary>
+<br>
+
+Estás usando el cerebro local. Añade una [clave gratuita](docs/INSTALACION.md#6-claves-gratuitas-de-ia-opcional) o mira Ajustes → Cerebros.
+</details>
+
+<details>
+<summary><b>SHIELD-DNS o HEIMDALL salen «no conectado»</b></summary>
+<br>
+
+Revisa en el `.env` de ARIA que `SHIELD_URL` y `VPN_URL` llevan la IP de tu máquina ([paso 7](docs/INSTALACION.md#7-ajusta-aria-a-tu-red)) y que están sus contraseñas (`SHIELD_PASSWORD`, `VPN_USER`, `VPN_PASSWORD`). Si las apps están en `~/homelab`, repite `./install.sh` y copia las contraseñas solo.
+</details>
+
+<details>
+<summary><b>El micrófono no funciona</b></summary>
+<br>
+
+Hace falta HTTPS y dar permiso al navegador. Instala el certificado ([paso 8](docs/INSTALACION.md#8-entrar-desde-casa-sin-avisos-de-certificado)) y revisa el permiso del micrófono del sitio.
+</details>
+
+<details>
+<summary><b>Recibo «No se puede entrar en ARIA desde fuera» sin tener dominio</b></summary>
+<br>
+
+Deja vacía `ARIA_URL_PUBLICA` en `.env` y `docker compose up -d`.
+</details>
+
+## 🛠️ Para desarrolladores
 
 - Código en `app/aria/` (FastAPI), web sin paso de compilación en `app/static/`, pruebas en `app/tests/`.
 - Notas para agentes de programación: [AGENTS.md](AGENTS.md), [CLAUDE.md](CLAUDE.md), [SKILLS.md](SKILLS.md) y decisiones técnicas en [MEMORY.md](MEMORY.md).
@@ -287,10 +539,27 @@ docker compose logs -f app  # registros
   node app/tests/md.test.js
   ```
 
-## Hoja de ruta
+## 🗺️ Hoja de ruta
 
 Ideas de nuevas aplicaciones (Home Assistant, calendario, Jellyfin, precio de la luz…) y mejoras del núcleo en **[docs/PLAN.md](docs/PLAN.md)**. La mayoría se pueden hacer como módulos.
 
-## Licencia
+## 🌐 El ecosistema ARIA
+
+| | Proyecto | Qué hace | Puertos |
+|:---:|---|---|---|
+| 🤖 | **ARIA** (este repositorio) | Asistente de IA y panel central de la casa | 80, 443 |
+| 🛡️ | [SHIELD-DNS](https://github.com/BertMarti/SHIELD-DNS) | Bloqueador de anuncios para toda la casa (Pi-hole v6 + Unbound) | 53, 8080, 8443 |
+| 🔐 | [HEIMDALL](https://github.com/BertMarti/HEIMDALL) | VPN WireGuard para entrar en casa desde fuera (wg-easy + Caddy) | 51820/udp, 51843 |
+
+```mermaid
+flowchart LR
+    ARIA["🤖 ARIA"] -- "estadísticas, pausa,<br/>inventario y control parental" --> SD["🛡️ SHIELD-DNS"]
+    ARIA -- "dispositivos, QR<br/>y avisos de conexión" --> HD["🔐 HEIMDALL"]
+    HD -- "DNS de la VPN:<br/>sin anuncios fuera de casa" --> SD
+```
+
+## 📄 Licencia
 
 MIT. Consulta [LICENSE](LICENSE).
+
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>

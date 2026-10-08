@@ -1,3 +1,9 @@
+<p align="center">
+  <sub>Parte del ecosistema ARIA&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/BertMarti/ARIA">🤖 ARIA</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/BertMarti/SHIELD-DNS">🛡️ SHIELD-DNS</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="https://github.com/BertMarti/HEIMDALL">🔐 HEIMDALL</a></sub>
+  <br>
+  <a href="../README.md">🏠 README</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="INSTALACION.md">📘 Instalación</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="USO.md">🧭 Uso</a>&nbsp;&nbsp;·&nbsp;&nbsp;<b>🧩 Módulos</b>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="PLAN.md">🗺️ Hoja de ruta</a>
+</p>
+
 # Módulos de ARIA: guía para desarrolladores
 
 Un **módulo** es una carpeta dentro de `modulos/` que enchufa a ARIA una aplicación tuya o una función nueva
@@ -59,6 +65,21 @@ modulos/
      golpe** solo si `registrar` termina sin errores. Si algo falla (excepción, error de sintaxis, nombre
      repetido...), el módulo queda en «error» con el mensaje, **se deshace lo que hubiera registrado a medias**
      y ARIA arranca igual.
+
+```mermaid
+flowchart TD
+    C["📁 Carpeta en modulos/"] --> J{"¿modulo.json<br/>válido?"}
+    J -- "No" --> E["🔴 Error<br/>con el motivo"]
+    J -- "Sí" --> M{"¿Está en<br/>ARIA_MODULOS?"}
+    M -- "No" --> D["⚪ Desactivado"]
+    M -- "Sí" --> V{"¿Tiene todas sus<br/>variables de env?"}
+    V -- "No" --> SC["🟡 Sin configurar"]
+    V -- "Sí" --> P{"¿Hay modulo.py?"}
+    P -- "No" --> A["🟢 Activo"]
+    P -- "Sí" --> R{"¿registrar aria<br/>termina sin errores?"}
+    R -- "Sí" --> A
+    R -- "No" --> E2["🔴 Error<br/>se deshace lo registrado<br/>y ARIA arranca igual"]
+```
 
 Estados que verás en Ajustes → Módulos: **Activo**, **Sin configurar**, **Desactivado** y **Error** (con el
 mensaje). El punto de color indica la salud (si el manifiesto tiene `salud`).

@@ -311,6 +311,19 @@ async def tts(request: Request):
     return Response(wav, media_type="audio/wav")
 
 
+@app.post("/ogg")
+async def ogg(request: Request):
+    """WAV (p. ej. la voz de Gemini que genera la app) -> OGG/Opus para las notas de voz de Telegram."""
+    datos = await request.body()
+    if len(datos) > 8_000_000 or datos[:4] != b"RIFF" or datos[8:12] != b"WAVE":
+        return JSONResponse({"error": "WAV no válido"}, status_code=400)
+    try:
+        return Response(await asyncio.to_thread(wav_a_ogg, datos), media_type="audio/ogg")
+    except Exception:  # noqa: BLE001
+        log.exception("No se pudo convertir a OGG/Opus")
+        return JSONResponse({"error": "no se pudo convertir"}, status_code=500)
+
+
 @app.websocket("/despertar")
 async def despertar(ws: WebSocket):
     global _flujos

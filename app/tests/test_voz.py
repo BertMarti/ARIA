@@ -36,6 +36,7 @@ def limpio(monkeypatch):
     monkeypatch.setattr(voz, "_espera_groq", 0.0)
     monkeypatch.setattr(voz, "_escuchas", {})
     monkeypatch.setenv("GROQ_API_KEY", "clave-de-prueba")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)  # la síntesis con Gemini se prueba en test_voz_gemini.py
 
 
 def red_falsa(monkeypatch, groq, local, llamadas):

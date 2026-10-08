@@ -129,6 +129,36 @@ async def resumen_dia(desde: float, hasta: float) -> dict | None:
     return {"consultas": total, "bloqueadas": bloqueadas, "porcentaje": round(bloqueadas * 100 / total, 1)}
 
 
+async def listas() -> dict:
+    """Última actualización y tamaño de Gravity según la API v6."""
+    j = await _llamar("GET", "/api/info/ftl")
+    gravity = j.get("gravity") or j.get("FTL") or j
+    fecha = gravity.get("gravity_last_update") or gravity.get("last_update") or gravity.get("updated")
+    dominios = gravity.get("domains_being_blocked") or gravity.get("domains") or 0
+    return {"actualizada": fecha, "dominios": dominios}
+
+
+async def actualizar_listas() -> dict:
+    if not configurado():
+        raise ShieldError("SHIELD-DNS no está conectado.")
+    global _sid
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120, connect=10)) as c:
+            async with _lock:
+                sid = _sid or await _autenticar(c)
+            r = await c.post(f"{config.SHIELD_URL}/api/action/gravity", headers={"X-FTL-SID": sid})
+            if r.status_code == 401:
+                async with _lock:
+                    sid = await _autenticar(c)
+                r = await c.post(f"{config.SHIELD_URL}/api/action/gravity", headers={"X-FTL-SID": sid})
+            if r.status_code >= 400:
+                raise ShieldError(f"SHIELD-DNS devolvió un error ({r.status_code}).")
+            lineas = r.text.splitlines()
+    except (httpx.HTTPError, UnicodeError):
+        raise ShieldError("No se pudo actualizar las listas de SHIELD-DNS.") from None
+    return {"ok": True, "lineas": lineas[-8:]}
+
+
 # --- Grupos, clientes y dominios (control parental, ver control.py) -----------------------------------------
 # Pi-hole v6: /api/groups, /api/clients y /api/domains/deny/regex. Los clientes se identifican por IP y un
 # cliente listado solo pertenece a los grupos que se le indiquen (hay que incluir el 0 = Default para que

@@ -132,7 +132,7 @@ def test_campana_api_e_idor(admin, ana, buzon):
 def test_ajustes_api_tipos_por_rol(admin, ana):
     ca = cliente_de(ana)
     d = ca.get("/api/avisos/ajustes").json()
-    assert d["tipos"] == [] and d["telegram"]["configurado"] is False and d["push"]["clave"]
+    assert [t["id"] for t in d["tipos"]] == ["agenda"] and d["telegram"]["configurado"] is False and d["push"]["clave"]
     assert len(cliente_de(admin).get("/api/avisos/ajustes").json()["tipos"]) == len(avisos.TIPOS)
     r = ca.post("/api/avisos/ajustes", json={"silencio": {"activo": False}, "voz_telegram": True})
     assert r.json()["ajustes"]["voz_telegram"] is True

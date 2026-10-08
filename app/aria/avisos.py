@@ -44,10 +44,13 @@ TIPOS = {
     "sistema": ("Raspberry: temperatura, disco o RAM", True, True),
     "cerebros": ("Solo responde el cerebro local", True, True),
     "vpn_conexion": ("Un dispositivo se conecta a la VPN", True, False),
+    "vpn_ubicacion": ("Conexión VPN desde un sitio nuevo", True, True),
     "control": ("Control parental: un horario empieza o termina", True, True),
+    "telemetria": ("Picos de CPU, temperatura o contenedores", True, True),
+    "agenda": ("Eventos y cumpleaños de tu agenda", False, True),
 }
 # Tipos que no se pueden silenciar con los interruptores (los pide el propio usuario).
-SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina"}
+SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina", "agenda"}
 
 
 @dataclass
@@ -444,6 +447,11 @@ async def tick(ahora: float | None = None) -> None:
         await recordatorios.disparar_vencidos(ahora)
     except Exception:  # noqa: BLE001
         log.exception("Falló el disparo de recordatorios")
+    try:
+        from . import agenda
+        await agenda.disparar_avisos(ahora)
+    except Exception:  # noqa: BLE001
+        log.exception("Falló el disparo de agenda")
     try:
         from . import rutinas
         await rutinas.disparar_vencidas(ahora)

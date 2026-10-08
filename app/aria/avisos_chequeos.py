@@ -5,7 +5,7 @@ from contextlib import closing
 
 import httpx
 
-from . import avisos, cerebros, config, db, services, sistema, vpn
+from . import avisos, cerebros, config, db, services, sistema, telemetria, vpn, vpn_ubicaciones
 from .avisos import Chequeo, Problema
 
 TEMP_MAX = 75.0
@@ -149,6 +149,21 @@ async def cerebros_caidos() -> list | None:
                                    "cerebro local (más lento). Revisa las claves y los límites en Ajustes → Cerebros.")]
 
 
+async def telemetria_picos() -> list | None:
+    try:
+        d = await asyncio.to_thread(telemetria.leer)
+    except RuntimeError:
+        return None
+    u = telemetria.estados(d)
+    problemas = []
+    if u["cpu"]["activo"]:
+        problemas.append(Problema("cpu", "La CPU de la Raspberry lleva dos minutos por encima del 90 %."))
+    for c in u["contenedores"]:
+        if c["activo"]:
+            problemas.append(Problema(c["nombre"], f"El contenedor {c['nombre']} está consumiendo demasiados recursos."))
+    return problemas
+
+
 def registrar() -> None:
     """Registra los chequeos iniciales (idempotente)."""
     for c in (
@@ -171,8 +186,13 @@ def registrar() -> None:
         Chequeo("ram", "sistema", "aviso", ram, intervalo_s=60, confirmaciones=3, cooldown_s=3600,
                 texto_ok="La RAM de la Raspberry vuelve a estar holgada.", enlace="control"),
         Chequeo("vpn_conexion", "vpn_conexion", "info", vpn_conexiones, intervalo_s=60, cooldown_s=600,
-                linea_base=True, enlace="control"),
+                 linea_base=True, enlace="control"),
+        Chequeo("vpn_ubicaciones", "vpn_ubicacion", "aviso", vpn_ubicaciones.comprobar, intervalo_s=120,
+                 evento=True, enlace="control"),
         Chequeo("cerebros", "cerebros", "aviso", cerebros_caidos, intervalo_s=60, confirmaciones=SIN_NUBE_S // 60,
-                texto_ok="Los cerebros en la nube vuelven a responder.", enlace="ajustes"),
+                 texto_ok="Los cerebros en la nube vuelven a responder.", enlace="ajustes"),
+        # telemetria.estados ya exige dos minutos de CPU y cinco de contenedor; no duplicar la confirmación aquí.
+        Chequeo("telemetria", "telemetria", "aviso", telemetria_picos, intervalo_s=60, confirmaciones=1,
+                 texto_ok="Los picos del sistema han vuelto a la normalidad.", enlace="control"),
     ):
         avisos.registrar_chequeo(c)

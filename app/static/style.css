@@ -55,6 +55,9 @@ label input { margin-top: .3rem; }
 .botones { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
 .pildora { background: rgba(56, 214, 255, .08); border: 1px solid var(--borde-fuerte); border-radius: 99px; padding: .1rem .7rem; font-size: .8rem; color: var(--acento); white-space: nowrap; }
 .pildora.ok { color: var(--ok); border-color: rgba(52, 211, 153, .5); background: rgba(52, 211, 153, .08); }
+.estado-listas { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .6rem; }
+.graficas { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin: .7rem 0; }
+.grafica { width: 100%; min-height: 80px; color: var(--acento); background: rgba(5, 9, 16, .35); border: 1px solid var(--borde); border-radius: 8px; }
 
 /* Estructura */
 body.app { display: grid; grid-template-columns: var(--nav-w) 1fr; height: 100dvh; overflow: hidden; }

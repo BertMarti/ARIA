@@ -83,8 +83,20 @@ SERVICIOS: dict = {
                                "disneystreaming.com"]),
     "primevideo": ("Prime Video", ["primevideo.com", "amazonvideo.com", "aiv-cdn.net", "aiv-delivery.net",
                                    "pv-cdn.net"]),
+    # No es una app: son los servidores de DNS cifrado (DoT/DoH, «DNS privado» de Android, Private Relay de iCloud).
+    # Bloquearlos obliga al dispositivo a usar el DNS de casa (SHIELD-DNS) y así no se salta el bloqueador ni el
+    # control parental. Un dispositivo con un servidor de DNS privado puesto A MANO se queda sin DNS hasta que lo
+    # cambie a «automático»; por eso es opcional y por dispositivo.
+    "dns-privado": ("DNS privado / DoH", ["dns.google", "dns.adguard.com", "dns.adguard-dns.com",
+                                          "dns-unfiltered.adguard.com", "family.adguard-dns.com", "cloudflare-dns.com",
+                                          "one.one.one.one", "dns.quad9.net", "dns9.quad9.net", "dns10.quad9.net",
+                                          "dns11.quad9.net", "dns.nextdns.io", "doh.opendns.com",
+                                          "doh.familyshield.opendns.com", "doh.cleanbrowsing.org", "dns.mullvad.net",
+                                          "dns.controld.com", "doh.dns.sb", "dns.alidns.com", "doh.pub",
+                                          "mask.icloud.com", "mask-h2.icloud.com", "use-application-dns.net"]),
 }
-_SINONIMOS = {"tik tok": "tiktok", "tiktoks": "tiktok", "yt": "youtube", "you tube": "youtube", "insta": "instagram",
+_SINONIMOS = {"dns privado": "dns-privado", "doh": "dns-privado", "dns cifrado": "dns-privado",
+              "dns seguro": "dns-privado", "tik tok": "tiktok", "tiktoks": "tiktok", "yt": "youtube", "you tube": "youtube", "insta": "instagram",
               "ig": "instagram", "face": "facebook", "fb": "facebook", "feisbuk": "facebook", "wasap": "whatsapp",
               "whats app": "whatsapp", "wa": "whatsapp", "snap": "snapchat", "twitter": "x", "tuiter": "x",
               "epic": "fortnite", "epic games": "fortnite", "epicgames": "fortnite", "fortnait": "fortnite",

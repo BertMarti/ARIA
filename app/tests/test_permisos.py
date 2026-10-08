@@ -132,8 +132,11 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("PATCH", "/api/conversations/{cid}"), ("DELETE", "/api/conversations/{cid}"),
                     ("GET", "/api/voz/estado"), ("POST", "/api/voz/transcribir"), ("POST", "/api/voz/hablar"),
                     ("GET", "/api/memoria"), ("POST", "/api/memoria"), ("POST", "/api/memoria/ajustes"),
-                    ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
-                    ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),
+                     ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
+                     ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),
+                     ("GET", "/api/proyectos"), ("POST", "/api/proyectos"), ("PATCH", "/api/proyectos/{pid}"),
+                     ("DELETE", "/api/proyectos/{pid}"), ("GET", "/api/proyectos/{pid}/decisiones"),
+                     ("POST", "/api/proyectos/{pid}/decisiones"), ("DELETE", "/api/decisiones/{did}"),
                 } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION | RUTAS_USUARIO_AGENDA | RUTAS_USUARIO_MODULOS | RUTAS_USUARIO_MAPAS | permisos.rutas_modulos_usuario(), (m, r.path)
                 if r.path.startswith("/api/modulos/"):
                     # Las de módulos solo se abren si su registro las declara (siempre bajo /api/modulos/<id>/).
@@ -237,7 +240,7 @@ LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_
            "resumir_enlace",  # leer una web pública (anti-SSRF en enlaces.py)
            "crear_rutina", "mis_rutinas", "borrar_rutina",  # y sus rutinas
            "crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos",  # y su agenda
-           "mapa_ir", "ruta", "sitios_cerca"}  # mapas (servicios públicos de OpenStreetMap)
+            "mapa_ir", "ruta", "sitios_cerca"} | tools.PROYECTOS  # mapas y proyectos personales
 
 
 def test_herramientas_de_solo_lectura():

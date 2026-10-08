@@ -71,6 +71,16 @@ def iniciar() -> None:
                 user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
                 fecha TEXT NOT NULL, datos TEXT NOT NULL, saludado INTEGER NOT NULL DEFAULT 0,
                 creado REAL NOT NULL, PRIMARY KEY (user_id, fecha));
+            CREATE TABLE IF NOT EXISTS proyectos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                nombre TEXT NOT NULL, descripcion TEXT NOT NULL DEFAULT '', estado TEXT NOT NULL DEFAULT 'idea'
+                    CHECK (estado IN ('idea','en_curso','pausado','terminado')), creado REAL NOT NULL, actualizado REAL NOT NULL);
+            CREATE INDEX IF NOT EXISTS idx_proyectos_user ON proyectos(user_id, actualizado DESC);
+            CREATE TABLE IF NOT EXISTS decisiones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                proyecto_id INTEGER NOT NULL REFERENCES proyectos(id) ON DELETE CASCADE, texto TEXT NOT NULL,
+                motivo TEXT NOT NULL DEFAULT '', fecha REAL NOT NULL);
+            CREATE INDEX IF NOT EXISTS idx_decisiones_proyecto ON decisiones(user_id, proyecto_id, fecha DESC);
         """)
         # Migración: etiqueta del cerebro que respondió (p. ej. "Ollama Cloud · gpt-oss:120b").
         if "cerebro" not in {r["name"] for r in con.execute("PRAGMA table_info(mensajes)")}:
@@ -83,6 +93,10 @@ def iniciar() -> None:
             con.execute("ALTER TABLE conversaciones ADD COLUMN agente TEXT")
         if "agente" not in {r["name"] for r in con.execute("PRAGMA table_info(mensajes)")}:
             con.execute("ALTER TABLE mensajes ADD COLUMN agente TEXT")
+        if "modo" not in {r["name"] for r in con.execute("PRAGMA table_info(memoria_ajustes)")}:
+            con.execute("ALTER TABLE memoria_ajustes ADD COLUMN modo TEXT NOT NULL DEFAULT 'amable'")
+        if "discrepar" not in {r["name"] for r in con.execute("PRAGMA table_info(memoria_ajustes)")}:
+            con.execute("ALTER TABLE memoria_ajustes ADD COLUMN discrepar INTEGER NOT NULL DEFAULT 0")
         con.execute("CREATE INDEX IF NOT EXISTS idx_conv_user ON conversaciones(user_id, actualizada DESC)")
 
 

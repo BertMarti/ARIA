@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import agenda, busqueda, config, control, enlaces, escaneo, finanzas, mapas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn, vpn_ubicaciones
+from . import agenda, busqueda, config, control, enlaces, escaneo, finanzas, mapas, memoria, proyectos, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -55,6 +55,7 @@ SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador",
                            "resumir_enlace", "mapa_ir", "ruta", "sitios_cerca"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
+PROYECTOS = frozenset({"nuevo_proyecto", "mis_proyectos", "estado_proyecto", "registrar_decision", "decisiones", "actualizar_proyecto", "cambiar_personalidad"})
 # Recordatorios: todo rol, siempre los del usuario que habla.
 RECORDATORIOS = frozenset({"recordatorio", "mis_recordatorios", "borrar_recordatorio"})
 AGENDA = frozenset({"crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos"})
@@ -80,7 +81,7 @@ def permitidas(rol: str) -> set:
         return set(_REGISTRO)
     if rol == "usuario":
         de_modulos = {n for n, i in _DE_MODULOS.items() if i["usuario"]}
-    return set(SOLO_LECTURA | MEMORIA | RECORDATORIOS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
+    return set(SOLO_LECTURA | MEMORIA | PROYECTOS | RECORDATORIOS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
     return set()
 
 
@@ -162,6 +163,8 @@ _INTENCIONES = [
     ((r"\brecordatorios?\b", r"\b(mis|qu[eé]|cu[aá]les|tengo|lista\w*|pendientes?)\b"), {"mis_recordatorios"}),
     ((r"\brecordatorios?\b", r"\b(borra\w*|quita\w*|elimina\w*|cancela\w*)\b"), {"borrar_recordatorio", "mis_recordatorios"}),
     ((r"\b(olvida\w*|no recuerdes|deja de recordar|borra\w* (de )?(tu )?memoria)\b",), {"olvidar"}),
+    ((r"\b(proyecto|decid[ií]|decidimos|hemos decidido|en qu[eé] estoy|qu[eé] decidimos)\b",), PROYECTOS),
+    ((r"\b(s[eé] m[aá]s sincera|vuelve a ser amable|responde m[aá]s breve)\b",), {"cambiar_personalidad"}),
 ]
 
 
@@ -521,6 +524,76 @@ async def olvidar(dato_o_id: str) -> str:
         return f"Encajan varios recuerdos ({lista}). Dime cuál olvidar (su número)."
     memoria.borrar(uid, hallados[0]["id"])
     return f"Olvidado: «{hallados[0]['texto']}»."
+
+
+def _proyecto_por_nombre(uid, nombre):
+    n = memoria.normalizar(nombre)
+    return next((p for p in proyectos.listar(uid) if memoria.normalizar(p["nombre"]) == n), None)
+
+
+@tool("cambiar_personalidad", "Cambia la forma de responder de ARIA para este usuario.",
+      {"modo": ("string", "amable, sincera o breve"), "discrepar": ("boolean", "si puede discrepar")}, ("modo",))
+async def cambiar_personalidad(modo: str, discrepar: bool = False) -> str:
+    uid = memoria.uid_actual.get()
+    if uid is None:
+        return "No sé quién eres, no puedo cambiar tus preferencias."
+    try:
+        p = memoria.fijar_personalidad(uid, str(modo).lower(), bool(discrepar))
+    except memoria.MemoriaError as e:
+        return str(e)
+    return f"Personalidad cambiada a {p['modo']}" + ("; puedo discrepar." if p["discrepar"] else ".")
+
+
+@tool("nuevo_proyecto", "Crea un proyecto personal del usuario.",
+      {"nombre": ("string", "Nombre"), "descripcion": ("string", "Descripción opcional")}, ("nombre",), usa_uid=True)
+async def nuevo_proyecto(nombre: str, descripcion: str = "", uid: int = None) -> str:
+    try:
+        return json.dumps(proyectos.crear(uid, nombre, descripcion), ensure_ascii=False)
+    except proyectos.ProyectoError as e:
+        return str(e)
+
+
+@tool("mis_proyectos", "Lista los proyectos personales del usuario.", usa_uid=True)
+async def mis_proyectos(uid: int = None) -> str:
+    return json.dumps(proyectos.listar(uid), ensure_ascii=False)
+
+
+@tool("estado_proyecto", "Consulta un proyecto por su nombre.", {"proyecto": ("string", "Nombre del proyecto")}, ("proyecto",), usa_uid=True)
+async def estado_proyecto(proyecto: str, uid: int = None) -> str:
+    p = _proyecto_por_nombre(uid, proyecto)
+    return json.dumps(p, ensure_ascii=False) if p else "No encuentro ese proyecto."
+
+
+@tool("registrar_decision", "Registra una decisión en uno de tus proyectos.",
+      {"proyecto": ("string", "Nombre"), "decision": ("string", "Decisión"), "motivo": ("string", "Motivo opcional")},
+      ("proyecto", "decision"), usa_uid=True)
+async def registrar_decision(proyecto: str, decision: str, motivo: str = "", uid: int = None) -> str:
+    p = _proyecto_por_nombre(uid, proyecto)
+    if not p:
+        return "No encuentro ese proyecto."
+    try:
+        return json.dumps(proyectos.registrar_decision(uid, p["id"], decision, motivo), ensure_ascii=False)
+    except proyectos.ProyectoError as e:
+        return str(e)
+
+
+@tool("decisiones", "Lista las decisiones de un proyecto.", {"proyecto": ("string", "Nombre")}, ("proyecto",), usa_uid=True)
+async def decisiones(proyecto: str, uid: int = None) -> str:
+    p = _proyecto_por_nombre(uid, proyecto)
+    return json.dumps(proyectos.decisiones(uid, p["id"]), ensure_ascii=False) if p else "No encuentro ese proyecto."
+
+
+@tool("actualizar_proyecto", "Actualiza el estado de un proyecto, sin borrarlo.",
+      {"proyecto": ("string", "Nombre"), "estado": ("string", "idea, en_curso, pausado o terminado")},
+      ("proyecto", "estado"), usa_uid=True)
+async def actualizar_proyecto(proyecto: str, estado: str, uid: int = None) -> str:
+    p = _proyecto_por_nombre(uid, proyecto)
+    if not p:
+        return "No encuentro ese proyecto."
+    try:
+        return json.dumps(proyectos.actualizar(uid, p["id"], estado=estado), ensure_ascii=False)
+    except proyectos.ProyectoError as e:
+        return str(e)
 
 
 @tool("crear_evento", "Crea un evento personal en la agenda.",

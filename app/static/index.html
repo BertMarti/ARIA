@@ -435,7 +435,10 @@
       <article class="tarjeta ancha" id="ajustes-memoria">
         <h2>Memoria</h2>
         <p class="muted">La memoria se envía a los cerebros en la nube (Ollama Cloud, Groq, Gemini) junto con tus preguntas para darte contexto. Solo tú ves la tuya; el cerebro local no sale de casa.</p>
-        <label class="interruptor"><input type="checkbox" id="mem-aprender"><span>Aprender automáticamente de mis conversaciones</span></label>
+         <label class="interruptor"><input type="checkbox" id="mem-aprender"><span>Aprender automáticamente de mis conversaciones</span></label>
+         <h3>Personalidad de ARIA</h3>
+         <label>Modo <select id="mem-personalidad"><option value="amable">Amable</option><option value="sincera">Sincera</option><option value="breve">Breve</option></select></label>
+         <label class="interruptor"><input type="checkbox" id="mem-discrepar"><span>Puede discrepar de mí</span></label>
         <p class="muted">Si lo desactivas, ARIA no extrae recuerdos nuevos ni escribe el diario de tus días; sigue recordando lo que le pidas tú.</p>
         <h3>Lo que recuerdo de ti <span class="muted" id="mem-cuenta"></span></h3>
         <ul id="mem-lista" class="filas"></ul>
@@ -446,8 +449,15 @@
         <p id="mem-msg" class="muted" role="status"></p>
         <h3>Diario (últimos 14 días)</h3>
         <ul id="mem-diario" class="filas"></ul>
-        <div class="botones"><button type="button" class="peligro" id="mem-borrar-todo">Borrar toda mi memoria</button></div>
-      </article>
+         <div class="botones"><button type="button" class="peligro" id="mem-borrar-todo">Borrar toda mi memoria</button></div>
+         <h3>Proyectos</h3>
+         <form id="form-proyecto" class="formulario" autocomplete="off">
+           <label>Nombre <input id="proy-nombre" maxlength="120" required></label>
+           <label>Descripción <input id="proy-descripcion" maxlength="500"></label>
+           <button type="submit" class="primario">Crear proyecto</button>
+         </form>
+         <ul id="proy-lista" class="filas"></ul>
+       </article>
       <article class="tarjeta" id="ajustes-pass">
         <h2>Contraseña</h2>
         <form id="form-pass" class="formulario" autocomplete="off">

@@ -7,7 +7,7 @@ import json
 import logging
 import re
 
-from . import cerebros, memoria
+from . import cerebros, memoria, proyectos
 
 log = logging.getLogger("aria.memoria")
 
@@ -25,7 +25,9 @@ PROMPT = (
     "documentos de identidad, ni datos de acceso. Redacta cada dato en español, en tercera persona y breve "
     "(máximo 200 caracteres), por ejemplo «Su equipo de fútbol es el Betis».\n"
     "Responde SOLO con JSON estricto, sin texto extra ni bloques de código: "
-    '{{"hechos": ["...", "..."]}}. Si no hay nada que recordar: {{"hechos": []}}.\n\n'
+    '{{"hechos": ["...", "..."], "decisiones": [{{"proyecto": "nombre exacto", "decision": "...", "motivo": "..."}}]}}. '
+    "Incluye una decisión solo si el mensaje dice claramente que se ha decidido algo y el proyecto aparece en la lista. "
+    "Si no hay nada: {{\"hechos\": [], \"decisiones\": []}}.\n\n"
     "MENSAJE:\n<<<\n{mensaje}\n>>>"
 )
 
@@ -48,6 +50,26 @@ def parsear(respuesta: str) -> list:
     if not isinstance(datos, list):
         return []
     return [memoria.limpiar(x) for x in datos if isinstance(x, str) and memoria.limpiar(x)]
+
+
+def parsear_decisiones(respuesta: str, existentes: list) -> list:
+    """Devuelve decisiones solo si el modelo nombra exactamente un proyecto existente."""
+    try:
+        t = (respuesta or "").strip()
+        datos = json.loads(t[t.find("{"):t.rfind("}") + 1])
+        datos = datos.get("decisiones", []) if isinstance(datos, dict) else []
+    except (ValueError, TypeError):
+        return []
+    nombres = {memoria.normalizar(p["nombre"]): p for p in existentes}
+    out = []
+    for d in datos:
+        if not isinstance(d, dict):
+            continue
+        p = nombres.get(memoria.normalizar(d.get("proyecto", "")))
+        texto = memoria.limpiar(d.get("decision", ""))
+        if p and texto and len(texto) <= 500 and not memoria.parece_secreto(texto):
+            out.append((p["id"], texto, memoria.limpiar(d.get("motivo", ""))[:500]))
+    return out
 
 
 def guardar(uid: int, candidatos: list) -> list:
@@ -79,10 +101,16 @@ async def extraer(uid: int, nombre: str, texto: str) -> list:
     if not cerebros.hay_nube():
         return []
     r = await cerebros.completar_nube(PROMPT.format(n=MAX_NUEVOS, nombre=memoria.limpiar(nombre) or "el usuario",
-                                                    mensaje=memoria.limpiar(texto)[:1500]))
+                                                     mensaje=memoria.limpiar(texto)[:1500]))
     if not r:
         return []
-    return guardar(uid, parsear(r[0]))
+    guardados = guardar(uid, parsear(r[0]))
+    for pid, decision, motivo in parsear_decisiones(r[0], proyectos.listar(uid)):
+        try:
+            proyectos.registrar_decision(uid, pid, decision, motivo)
+        except proyectos.ProyectoError:
+            pass
+    return guardados
 
 
 async def _tarea(uid: int, nombre: str, texto: str) -> None:

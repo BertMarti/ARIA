@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_agenda, api_avisos, api_control, api_finanzas, api_modulos, api_red, api_rutinas, arranque, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, finanzas, mapas, memoria, modelos, modulos, permisos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_agenda, api_avisos, api_control, api_finanzas, api_modulos, api_red, api_rutinas, arranque, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, finanzas, mapas, memoria, modelos, modulos, permisos, proyectos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -525,7 +525,8 @@ FECHA_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 def _memoria_json(uid: int) -> dict:
     return {"recuerdos": memoria.listar(uid), "aprender": memoria.aprende(uid), "max": memoria.MAX_RECUERDOS,
-            "max_texto": memoria.MAX_TEXTO, "diario": memoria.ultimos_dias(uid, 14)}
+            "max_texto": memoria.MAX_TEXTO, "diario": memoria.ultimos_dias(uid, 14), "personalidad": memoria.personalidad(uid),
+            "proyectos": proyectos.listar(uid)}
 
 
 @app.get("/api/memoria")
@@ -547,11 +548,86 @@ async def api_memoria_anadir(request: Request):
 
 @app.post("/api/memoria/ajustes")
 async def api_memoria_ajustes(request: Request):
-    v = (await _json(request)).get("aprender")
-    if not isinstance(v, bool):
+    d = await _json(request)
+    if "aprender" in d:
+        v = d.get("aprender")
+    else:
+        v = None
+    if v is None and (not isinstance(d.get("modo"), str) or not isinstance(d.get("discrepar"), bool)):
         return JSONResponse({"error": "Valor no válido."}, status_code=400)
-    await asyncio.to_thread(memoria.fijar_aprender, request.state.usuario["id"], v)
-    return {"aprender": v}
+    if v is not None and not isinstance(v, bool):
+        return JSONResponse({"error": "Valor no válido."}, status_code=400)
+    if v is not None:
+        await asyncio.to_thread(memoria.fijar_aprender, request.state.usuario["id"], v)
+    if "modo" in d:
+        try:
+            p = await asyncio.to_thread(memoria.fijar_personalidad, request.state.usuario["id"], d["modo"], d["discrepar"])
+        except memoria.MemoriaError as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+    else:
+        p = memoria.personalidad(request.state.usuario["id"])
+    respuesta = {"aprender": memoria.aprende(request.state.usuario["id"])}
+    if "modo" in d:
+        respuesta["personalidad"] = p
+    return respuesta
+
+
+# --- Proyectos y decisiones, siempre limitados al usuario de la sesión -------------------------
+@app.get("/api/proyectos")
+async def api_proyectos(request: Request):
+    return {"proyectos": await asyncio.to_thread(proyectos.listar, request.state.usuario["id"])}
+
+
+@app.post("/api/proyectos")
+async def api_proyecto_crear(request: Request):
+    d = await _json(request)
+    try:
+        p = await asyncio.to_thread(proyectos.crear, request.state.usuario["id"], d.get("nombre"), d.get("descripcion", ""), d.get("estado", "idea"))
+    except proyectos.ProyectoError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    return {"proyecto": p}
+
+
+@app.patch("/api/proyectos/{pid}")
+async def api_proyecto_actualizar(pid: int, request: Request):
+    d = await _json(request)
+    try:
+        p = await asyncio.to_thread(proyectos.actualizar, request.state.usuario["id"], pid, d.get("nombre"), d.get("descripcion"), d.get("estado"))
+    except proyectos.ProyectoError as e:
+        return JSONResponse({"error": str(e)}, status_code=404 if "no encontrado" in str(e) else 400)
+    return {"proyecto": p}
+
+
+@app.delete("/api/proyectos/{pid}")
+async def api_proyecto_borrar(pid: int, request: Request):
+    if not await asyncio.to_thread(proyectos.borrar, request.state.usuario["id"], pid):
+        return JSONResponse({"error": "Proyecto no encontrado."}, status_code=404)
+    return {"ok": True}
+
+
+@app.get("/api/proyectos/{pid}/decisiones")
+async def api_decisiones(pid: int, request: Request):
+    try:
+        return {"decisiones": await asyncio.to_thread(proyectos.decisiones, request.state.usuario["id"], pid)}
+    except proyectos.ProyectoError:
+        return JSONResponse({"error": "Proyecto no encontrado."}, status_code=404)
+
+
+@app.post("/api/proyectos/{pid}/decisiones")
+async def api_decision_crear(pid: int, request: Request):
+    d = await _json(request)
+    try:
+        x = await asyncio.to_thread(proyectos.registrar_decision, request.state.usuario["id"], pid, d.get("decision"), d.get("motivo", ""))
+    except proyectos.ProyectoError as e:
+        return JSONResponse({"error": str(e)}, status_code=404 if "no encontrado" in str(e) else 400)
+    return {"decision": x}
+
+
+@app.delete("/api/decisiones/{did}")
+async def api_decision_borrar(did: int, request: Request):
+    if not await asyncio.to_thread(proyectos.borrar_decision, request.state.usuario["id"], did):
+        return JSONResponse({"error": "Decisión no encontrada."}, status_code=404)
+    return {"ok": True}
 
 
 @app.patch("/api/memoria/{rid}")

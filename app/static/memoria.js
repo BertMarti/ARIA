@@ -38,6 +38,8 @@ const Memoria = (() => {
     const ul = $("mem-lista"), dia = $("mem-diario");
     if (!ok) { ul.replaceChildren(el("li", { class: "error" }, "No se pudo leer la memoria.")); return; }
     $("mem-aprender").checked = !!data.aprender;
+    $("mem-personalidad").value = data.personalidad?.modo || "amable";
+    $("mem-discrepar").checked = !!data.personalidad?.discrepar;
     $("mem-cuenta").textContent = "(" + data.recuerdos.length + " de " + data.max + ")";
     ul.replaceChildren();
     if (!data.recuerdos.length) ul.append(el("li", { class: "muted" }, "Todavía no recuerdo nada de ti."));
@@ -57,6 +59,36 @@ const Memoria = (() => {
           ...e.resumen.split("\n").filter(Boolean).map((l) => el("span", { class: "muted" }, l))),
         el("div", { class: "fila-acc" }, el("button", { type: "button", class: "peligro pequeno", onclick: () => borrarDia(e.fecha) }, "Borrar"))));
     }
+    pintarProyectos(data.proyectos || []);
+  }
+
+  function pintarProyectos(lista) {
+    const ul = $("proy-lista");
+    ul.replaceChildren();
+    if (!lista.length) { ul.append(el("li", { class: "muted" }, "Todavía no tienes proyectos.")); return; }
+    for (const p of lista) {
+      const estado = el("select", { "aria-label": "Estado de " + p.nombre });
+      for (const v of ["idea", "en_curso", "pausado", "terminado"]) estado.append(el("option", { value: v }, v.replace("_", " ")));
+      estado.value = p.estado;
+      const borrar = el("button", { type: "button", class: "peligro pequeno" }, "Borrar");
+      const editar = el("button", { type: "button", class: "fantasma pequeno" }, "Editar");
+      editar.addEventListener("click", async () => {
+        const nombre = window.prompt("Nombre del proyecto", p.nombre);
+        if (nombre === null) return;
+        const descripcion = window.prompt("Descripción", p.descripcion || "");
+        const x = await api("/api/proyectos/" + p.id, { method: "PATCH", json: { nombre, descripcion } });
+        if (!x.ok) aviso(x.data.error || "No se pudo editar.", true); else cargar();
+      });
+      borrar.addEventListener("click", async () => { if (await confirmar("Borrar proyecto", "También se borrarán sus decisiones.", "Borrar")) { await api("/api/proyectos/" + p.id, { method: "DELETE" }); cargar(); } });
+      estado.addEventListener("change", async () => { await api("/api/proyectos/" + p.id, { method: "PATCH", json: { estado: estado.value } }); cargar(); });
+      const info = el("div", { class: "fila-info" }, el("strong", null, p.nombre), el("span", { class: "muted" }, p.descripcion || "Sin descripción"));
+      const decisiones = el("ul", { class: "filas" });
+      api("/api/proyectos/" + p.id + "/decisiones").then((x) => {
+        for (const d of (x.data.decisiones || [])) decisiones.append(el("li", { class: "muted" }, new Date(d.fecha * 1000).toLocaleDateString("es-ES") + " · " + d.texto));
+      });
+      info.append(decisiones);
+      ul.append(el("li", { class: "fila" }, info, el("div", { class: "fila-acc" }, estado, editar, borrar)));
+    }
   }
 
   function iniciar() {
@@ -71,10 +103,22 @@ const Memoria = (() => {
       if (!x.ok) { t.checked = !t.checked; aviso(x.data.error || "No se pudo guardar.", true); }
       else aviso(t.checked ? "ARIA aprenderá de tus conversaciones." : "ARIA ya no aprenderá sola de tus conversaciones.");
     });
+    async function personalidad() {
+      const x = await api("/api/memoria/ajustes", { method: "POST", json: { modo: $("mem-personalidad").value, discrepar: $("mem-discrepar").checked } });
+      if (!x.ok) aviso(x.data.error || "No se pudo guardar la personalidad.", true); else aviso("Personalidad guardada.");
+    }
+    $("mem-personalidad").addEventListener("change", personalidad);
+    $("mem-discrepar").addEventListener("change", personalidad);
     $("mem-borrar-todo").addEventListener("click", async () => {
       if (!(await confirmar("Borrar toda mi memoria", "Se borrarán todos tus recuerdos y el diario. Tus conversaciones no se tocan.", "Borrar todo"))) return;
       const x = await api("/api/memoria", { method: "DELETE" });
       aviso(x.ok ? "Memoria borrada." : (x.data.error || "No se pudo borrar."), !x.ok); cargar();
+    });
+    $("form-proyecto").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const x = await api("/api/proyectos", { method: "POST", json: { nombre: $("proy-nombre").value, descripcion: $("proy-descripcion").value } });
+      if (!x.ok) { aviso(x.data.error || "No se pudo crear el proyecto.", true); return; }
+      $("proy-nombre").value = ""; $("proy-descripcion").value = ""; cargar();
     });
   }
   return { iniciar, activar: cargar };

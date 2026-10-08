@@ -46,7 +46,8 @@ _BASE_ARIA = frozenset({
     "recordar", "olvidar", "buscar_en_internet", "noticias", "tiempo",
     "recordatorio", "mis_recordatorios", "borrar_recordatorio", "resumir_enlace",
     "crear_rutina", "mis_rutinas", "borrar_rutina",
-    "mapa_ir", "ruta", "sitios_cerca"})
+    "mapa_ir", "ruta", "sitios_cerca",
+    "sistema_en_directo"})
 # Memoria personal y búsqueda web también para los especialistas (precios, avisos de seguridad, fabricantes...).
 _COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet", "resumir_enlace",
                       "recordatorio", "mis_recordatorios", "borrar_recordatorio"})

@@ -70,6 +70,7 @@ _USUARIO = [
     ("GET", r"/api/modulos"),
     # Mapas: intermediario de solo lectura para los dos roles.
     ("GET", r"/api/mapa/(buscar|ruta|cerca)"),
+    # Sistema en directo y reinicio: nunca se abren al rol usuario.
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 

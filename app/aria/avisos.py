@@ -45,6 +45,7 @@ TIPOS = {
     "cerebros": ("Solo responde el cerebro local", True, True),
     "vpn_conexion": ("Un dispositivo se conecta a la VPN", True, False),
     "control": ("Control parental: un horario empieza o termina", True, True),
+    "telemetria": ("Picos de CPU, temperatura o contenedores", True, True),
 }
 # Tipos que no se pueden silenciar con los interruptores (los pide el propio usuario).
 SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina"}
@@ -525,4 +526,3 @@ class Limitador:
             return False
         q.append(ahora)
         return True
-

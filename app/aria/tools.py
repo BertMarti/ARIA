@@ -139,6 +139,7 @@ _INTENCIONES = [
     ((r"\b(temperatura|memoria|ram|cpu|disco|almacenamiento|espacio|sistema)\b",
       r"\b(libre|libres|queda\w*|usad\w+|ocupad\w+|tiene|estado|c[oó]mo|cu[aá]nt\w+|qu[eé])\b", _EXPLICAR),
      {"estado_sistema"}),
+    ((r"\b(en directo|telemetr[ií]a|contenedor(?:es)?|picos? de cpu)\b",), {"sistema_en_directo"}),
     ((r"\b(spotify|m[uú]sica|canci[oó]n|canciones|pon|ponme|reproduce|pausa|para la|siguiente|anterior|suena|sonando|artista|disco|[aá]lbum)\b",
       r"!" + _BLOQUEADOR, r"!\b(raspberry|ram|cpu|espacio|libre|temperatura)\b"),
      {"spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior", "spotify_actual",
@@ -432,6 +433,15 @@ async def estado_sistema() -> str:
         out.append("Carga media: " + " / ".join(f"{x:.2f}" for x in e["carga"]))
     out.append(f"Encendida desde hace {e['uptime_texto']}")
     return ". ".join(out) + "."
+
+
+@tool("sistema_en_directo", "Consulta la telemetría reciente de la Raspberry y sus contenedores. Solo lectura.")
+async def sistema_en_directo() -> str:
+    from . import telemetria
+    try:
+        return await asyncio.to_thread(telemetria.texto)
+    except RuntimeError as e:
+        return str(e)
 
 
 @tool("crear_dispositivo_vpn",

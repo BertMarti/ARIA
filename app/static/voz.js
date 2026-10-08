@@ -34,6 +34,23 @@ const Voz = (() => {
       throw e;
     }
   }
+  // Micrófono que entrega silencio absoluto (silenciado en los cascos o en Windows, o el equivocado):
+  // sin esto, Whisper «oye» frases inventadas como «Gracias.».
+  const SILENCIO = 0.002;  // pico máximo (0-1) por debajo del cual no hay voz que transcribir
+  function avisoSilencio(nombre) {
+    return "No llega sonido del micrófono" + (nombre ? " «" + nombre.replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)$/i, "") + "»" : "") +
+      ". Puede estar silenciado (en los cascos, la varilla o el botón de silencio; o en Windows: Configuración → Sonido → Entrada) " +
+      "o ser otro el que usas: elígelo en Ajustes → Voz.";
+  }
+  async function picoAudio(blob) {
+    const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!Ctx) return 1;
+    const audio = await new Ctx(1, 16000, 16000).decodeAudioData(await blob.arrayBuffer());
+    let m = 0;
+    for (let c = 0; c < audio.numberOfChannels; c++) for (const v of audio.getChannelData(c)) { const a = Math.abs(v); if (a > m) m = a; }
+    return m;
+  }
+
   function errorMic(e) {
     if (e && e.name === "NotAllowedError") return "Permiso de micrófono denegado. Actívalo desde el candado de la barra de direcciones.";
     if (e && e.name === "NotFoundError") return "No se encontró ningún micrófono.";
@@ -92,6 +109,7 @@ const Voz = (() => {
     async function terminar(enviar) {
       if (!g) return;
       const { rec, stream, inicio, trozos } = g;
+      const nombreMic = (stream.getAudioTracks()[0] || {}).label || "";
       clearInterval(g.reloj); clearTimeout(g.limite); g = null;
       const fin = new Promise((res) => { rec.onstop = res; });
       try { rec.stop(); } catch (_) { /* ya parado */ }
@@ -103,6 +121,7 @@ const Voz = (() => {
       if (Date.now() - inicio < MIN_GRAB_MS || !blob.size) { poner("libre"); toast("Mantén pulsado el micrófono mientras hablas."); return; }
       poner("ocupado", "Transcribiendo…"); ocupado = true;
       try {
+        if ((await picoAudio(blob).catch(() => 1)) < SILENCIO) { toast(avisoSilencio(nombreMic), "mal"); return; }
         const d = await transcribir(blob);
         if (d.texto) alTexto(d.texto); else toast("No te he entendido. Prueba otra vez.");
       } catch (e) { toast(e.message, "mal"); }
@@ -213,7 +232,7 @@ const Voz = (() => {
     } catch (_) { /* sin audio */ }
   }
 
-  return { botonMic, hablar, parar, pitido, abrirMic, errorMic, micDisponible, audioCtx, trocear };
+  return { botonMic, hablar, parar, pitido, abrirMic, errorMic, avisoSilencio, micDisponible, audioCtx, trocear };
 })();
 
 // «Manos libres»: el navegador envía el micrófono (PCM 16 kHz) por WebSocket; aria-voz avisa
@@ -244,7 +263,17 @@ const ManosLibres = (() => {
       const nodo = new AudioWorkletNode(ctxMic, "pcm16k");
       const mudo = ctxMic.createGain(); mudo.gain.value = 0;
       src.connect(nodo); nodo.connect(mudo); mudo.connect(ctxMic.destination);
-      nodo.port.onmessage = (e) => { if (enviando && ws && ws.readyState === 1) ws.send(e.data); };
+      // Si en los primeros 3 s no llega ni el ruido de fondo, el micrófono está silenciado: se avisa una vez.
+      let bloques = 0, pico = 0, avisado = false;
+      const nombreMic = (stream.getAudioTracks()[0] || {}).label || "";
+      nodo.port.onmessage = (e) => {
+        if (!avisado) {
+          for (const v of new Int16Array(e.data)) { const a = v < 0 ? -v : v; if (a > pico) pico = a; }
+          if (pico >= 65) avisado = true;  // 65/32768 = SILENCIO
+          else if (++bloques >= 38) { avisado = true; toast(Voz.avisoSilencio(nombreMic), "mal"); estado("Manos libres: no llega sonido del micrófono", "abriendo"); }
+        }
+        if (enviando && ws && ws.readyState === 1) ws.send(e.data);
+      };
     } catch (e) { parar(); toast(Voz.errorMic(e), "mal"); return; }
     if (!activa) { parar(); return; }
     ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/api/voz/despertar");

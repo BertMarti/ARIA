@@ -235,7 +235,9 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 /* Cerebros */
 .cerebro-badge { margin-right: auto; align-self: center; font-size: .72rem; color: var(--muted); opacity: .85; }
 .cerebro-badge[hidden] { display: none; }
-.msg-pie { align-items: center; }
+.msg-pie { align-items: center; flex-wrap: wrap; row-gap: .2rem; }
+.msg-pie .copiar, .agente-badge { white-space: nowrap; flex: 0 0 auto; }
+.cerebro-badge { min-width: 0; overflow-wrap: anywhere; }
 .cerebro-primero { margin-left: .5rem; font-size: .7rem; }
 .cerebro-res { font-size: .85rem; }
 .fila .interruptor { font-size: .85rem; }

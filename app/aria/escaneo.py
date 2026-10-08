@@ -96,6 +96,14 @@ def resultados(n: int = 10) -> list:
     return sorted(out, key=lambda r: r.get("fin") or 0, reverse=True)
 
 
+def vecinos(max_edad_s: float = 300) -> dict:
+    """IP -> MAC vistos ahora mismo por la Raspberry (lo publica aria-escaner cada minuto)."""
+    v = _leer_json(config.ESCANER_DIR / "vecinos.json") or {}
+    if not isinstance(v, dict) or time.time() - float(v.get("ts") or 0) > max_edad_s:
+        return {}
+    return {str(ip): str(mac).upper() for ip, mac in (v.get("vecinos") or {}).items()}
+
+
 def ultimo() -> dict | None:
     r = resultados(1)
     return r[0] if r else None

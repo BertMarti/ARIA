@@ -91,6 +91,26 @@ def escanear(pet: dict, estado: dict) -> dict:
     return res
 
 
+def vecinos() -> dict:
+    """IP -> MAC de la tabla ARP del sistema (red de la casa, entradas completas). Pasivo: no envía nada."""
+    red = ipaddress.ip_network(RED, strict=False)
+    out = {}
+    try:
+        lineas = Path("/proc/net/arp").read_text().splitlines()[1:]
+    except OSError:
+        return out
+    for linea in lineas:
+        p = linea.split()
+        if len(p) < 4 or p[2] != "0x2" or p[3] == "00:00:00:00:00:00":
+            continue
+        try:
+            if ipaddress.ip_address(p[0]) in red:
+                out[p[0]] = p[3].upper()
+        except ValueError:
+            continue
+    return out
+
+
 def limpiar() -> None:
     viejos = sorted((DIR / "resultados").glob("*.json"))[:-GUARDAR]
     for p in viejos:
@@ -110,7 +130,11 @@ def main() -> None:
     if PROGRAMADO and not estado.get("siguiente_programado"):
         estado["siguiente_programado"] = proximo_programado(datetime.now())
     print(f"aria-escaner listo; red permitida {RED}", flush=True)
+    ultimos_vecinos = 0.0
     while True:
+        if time.time() - ultimos_vecinos >= 60:  # para que ARIA siga a los dispositivos aunque cambien de IP
+            escribir(DIR / "vecinos.json", {"ts": time.time(), "vecinos": vecinos()})
+            ultimos_vecinos = time.time()
         estado["latido"] = time.time()
         pet = None
         pendientes = sorted((DIR / "peticiones").glob("*.json"))

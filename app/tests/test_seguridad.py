@@ -174,3 +174,56 @@ def test_matriz_finanzas_y_salud(monkeypatch):
     assert cliente_de(admin).get("/api/seguridad/escaneo").status_code == 200
     r = cliente_de(admin).post("/api/seguridad/escaneo", json={"objetivos": ["8.8.8.8"]})
     assert r.status_code == 400 and "fuera de la red" in r.json()["error"]
+
+
+# --- Dispositivos que cambian de IP (vecinos ARP de aria-escaner) ---
+def _ph(ip, ultima):
+    return {"hwaddr": f"ip-{ip}", "lastQuery": ultima, "numQueries": 3, "ips": [{"ip": ip, "lastSeen": ultima}]}
+
+
+def test_vecinos_mandan_sobre_el_escaneo_viejo():
+    hosts = [{"ip": "192.168.0.60", "mac": "62:00:00:00:00:01", "fabricante": None, "puertos": []}]
+    ds = red.combinar([_ph("192.168.0.60", 100), _ph("192.168.0.58", 200)], hosts, {"192.168.0.58": "62:00:00:00:00:01"})
+    por_ip = {d["ip"]: d["clave"] for d in ds}
+    assert por_ip == {"192.168.0.58": "62:00:00:00:00:01", "192.168.0.60": "ip-192.168.0.60"}
+
+
+def test_dispositivo_conocido_que_cambia_de_ip_no_sale_como_nuevo(monkeypatch):
+    mac = "62:00:00:00:00:01"
+    hosts = [{"ip": "192.168.0.60", "mac": mac, "fabricante": None, "puertos": []}]
+    red._sincronizar(red.combinar([_ph("192.168.0.60", 100)], hosts))
+    assert red.marcar_conocido(mac, True, "Móvil de Ana")
+    # Cambia a .58: Pi-hole aún lo ve como ip-.58 (y la .60 vieja sigue en su tabla) hasta que llegan los vecinos
+    antes = red._sincronizar(red.combinar([_ph("192.168.0.60", 100), _ph("192.168.0.58", 150)], hosts))
+    assert {d["ip"]: d["conocido"] for d in antes} == {"192.168.0.58": False, "192.168.0.60": True}
+    t0 = time.time()
+    monkeypatch.setattr(red.time, "time", lambda: t0)
+    ds = red._sincronizar(red.combinar([_ph("192.168.0.60", 100), _ph("192.168.0.58", 150)], hosts,
+                                       {"192.168.0.58": mac}))
+    assert [(d["ip"], d["clave"], d["conocido"], d["alias"]) for d in ds] == [("192.168.0.58", mac, True, "Móvil de Ana")]
+    from contextlib import closing
+    with closing(red.db._con()) as con:
+        claves = {r[0] for r in con.execute("SELECT clave FROM red_inventario")}
+    assert claves == {mac}  # ni ip-.58 ni ip-.60 quedan como «desconocidos»
+    # Si más tarde otro aparato usa la .60 (actividad posterior al cambio), sí aparece como nuevo
+    ds = red._sincronizar(red.combinar([_ph("192.168.0.60", t0 + 3600), _ph("192.168.0.58", 150)], hosts,
+                                       {"192.168.0.58": mac}))
+    assert {d["ip"]: d["conocido"] for d in ds} == {"192.168.0.58": True, "192.168.0.60": False}
+
+
+def test_fusion_conserva_alias_de_la_fila_por_ip():
+    mac = "62:00:00:00:00:02"
+    red._sincronizar(red.combinar([_ph("192.168.0.70", 100)], []))
+    assert red.marcar_conocido("ip-192.168.0.70", True, "Tele")
+    red._sincronizar(red.combinar([], [{"ip": "192.168.0.71", "mac": mac, "fabricante": None, "puertos": []}]))
+    ds = red._sincronizar(red.combinar([_ph("192.168.0.70", 100)], [], {"192.168.0.70": mac}))
+    assert [(d["clave"], d["alias"], d["conocido"]) for d in ds] == [(mac, "Tele", True)]
+
+
+def test_vecinos_viejos_se_ignoran(tmp_path, monkeypatch):
+    from aria import escaneo
+    monkeypatch.setattr(config, "ESCANER_DIR", tmp_path)
+    (tmp_path / "vecinos.json").write_text(json.dumps({"ts": time.time() - 3600, "vecinos": {"192.168.0.5": "aa:bb:cc:dd:ee:ff"}}))
+    assert escaneo.vecinos() == {}
+    (tmp_path / "vecinos.json").write_text(json.dumps({"ts": time.time(), "vecinos": {"192.168.0.5": "aa:bb:cc:dd:ee:ff"}}))
+    assert escaneo.vecinos() == {"192.168.0.5": "AA:BB:CC:DD:EE:FF"}

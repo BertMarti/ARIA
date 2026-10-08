@@ -45,6 +45,8 @@ def iniciar() -> None:
             CREATE TABLE IF NOT EXISTS red_mediciones (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, tipo TEXT NOT NULL, datos TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS idx_red_med ON red_mediciones(tipo, ts);
+            -- IP que tuvo un dispositivo conocido antes de cambiar de dirección (para no verla como «nuevo»)
+            CREATE TABLE IF NOT EXISTS red_ip_antiguas (ip TEXT PRIMARY KEY, clave TEXT NOT NULL, hasta REAL NOT NULL);
         """)
 
 
@@ -56,8 +58,9 @@ def _en_lan(ip: str) -> bool:
 
 
 # --- Dispositivos ------------------------------------------------------------------------------------
-def combinar(pihole: list, escaneo_hosts: list) -> list:
-    """Une la tabla de Pi-hole y el último escaneo por IP (solo IPv4 de la red permitida)."""
+def combinar(pihole: list, escaneo_hosts: list, vecinos: dict | None = None) -> list:
+    """Une la tabla de Pi-hole, el último escaneo y los vecinos ARP actuales por IP (solo IPv4 de la red permitida).
+    Los vecinos mandan sobre el escaneo: si una MAC del escaneo se ve ahora en otra IP, su IP vieja queda sin MAC."""
     por_ip: dict = {}
     for d in pihole or []:
         hw = (d.get("hwaddr") or "").upper()
@@ -84,7 +87,16 @@ def combinar(pihole: list, escaneo_hosts: list) -> list:
         x["fabricante"] = h.get("fabricante") or x["fabricante"]
         x["nombre"] = x["nombre"] or h.get("nombre")
         x["puertos"] = [p["puerto"] for p in h.get("puertos") or []]
+    vec = {ip: mac for ip, mac in (vecinos or {}).items() if _en_lan(ip)}
+    vivas = set(vec.values())
+    for ip, mac in vec.items():
+        por_ip.setdefault(ip, {"ip": ip, "mac": None, "nombre": None, "fabricante": None,
+                               "ultima_consulta": None, "consultas": 0, "puertos": None})
     for x in por_ip.values():
+        if x["ip"] in vec:
+            x["mac"] = vec[x["ip"]]
+        elif x["mac"] in vivas:   # dato viejo del escaneo: ese dispositivo está ahora en otra IP
+            x["mac"] = None
         x["clave"] = x["mac"] or f"ip-{x['ip']}"
     return sorted(por_ip.values(), key=lambda x: tuple(int(p) for p in x["ip"].split(".")))
 
@@ -93,10 +105,28 @@ def _sincronizar(dispositivos: list) -> list:
     """Actualiza el inventario y devuelve los dispositivos con `conocido`, `alias` y `primera_vez`."""
     ahora = time.time()
     with closing(db._con()) as con, con:
+        omitir = set()
         for d in dispositivos:
             # si ahora conocemos la MAC de una IP que estaba como ip-x, se hereda su estado
             previa = con.execute("SELECT * FROM red_inventario WHERE clave=?", (f"ip-{d['ip']}",)).fetchone()
-            if d["mac"] and previa and not con.execute("SELECT 1 FROM red_inventario WHERE clave=?", (d["mac"],)).fetchone():
+            fila_mac = con.execute("SELECT * FROM red_inventario WHERE clave=?", (d["mac"],)).fetchone() if d["mac"] else None
+            if fila_mac and fila_mac["ip"] and fila_mac["ip"] != d["ip"]:
+                # el dispositivo ha cambiado de IP: se apunta la vieja para no tomarla por un aparato nuevo
+                con.execute("INSERT OR REPLACE INTO red_ip_antiguas (ip, clave, hasta) VALUES (?,?,?)",
+                            (fila_mac["ip"], d["mac"], ahora))
+            if fila_mac and previa:
+                _fusionar(con, f"ip-{d['ip']}", d["mac"], previa, fila_mac)
+            if not d["mac"]:
+                ant = con.execute("SELECT * FROM red_ip_antiguas WHERE ip=?", (d["ip"],)).fetchone()
+                if ant and (d.get("ultima_consulta") or 0) <= ant["hasta"] + 60:
+                    # IP vieja de un dispositivo que ya está en otra: sin actividad desde el cambio, no se muestra
+                    if previa and not previa["conocido"] and not _tiene_control(con, previa["clave"]):
+                        con.execute("DELETE FROM red_inventario WHERE clave=?", (previa["clave"],))
+                    omitir.add(d["ip"])
+                    continue
+                if ant:  # hay actividad nueva en esa IP: es otro aparato
+                    con.execute("DELETE FROM red_ip_antiguas WHERE ip=?", (d["ip"],))
+            if d["mac"] and previa and not fila_mac:
                 con.execute("UPDATE red_inventario SET clave=?, mac=? WHERE clave=?", (d["mac"], d["mac"], f"ip-{d['ip']}"))
                 for tabla in ("control_pausas", "control_servicios", "control_horarios"):  # control parental sigue al dispositivo
                     try:
@@ -111,7 +141,35 @@ def _sincronizar(dispositivos: list) -> list:
                         (d["clave"], d["mac"], d["ip"], d["nombre"], d["fabricante"], ahora, ahora))
             r = con.execute("SELECT conocido, alias, primera_vez FROM red_inventario WHERE clave=?", (d["clave"],)).fetchone()
             d.update({"conocido": bool(r["conocido"]), "alias": r["alias"], "primera_vez": r["primera_vez"]})
-    return dispositivos
+    return [d for d in dispositivos if d["ip"] not in omitir]
+
+
+_TABLAS_CONTROL = ("control_pausas", "control_servicios", "control_horarios")
+
+
+def _tiene_control(con, clave: str) -> bool:
+    for tabla in _TABLAS_CONTROL:
+        try:
+            if con.execute(f"SELECT 1 FROM {tabla} WHERE clave=? LIMIT 1", (clave,)).fetchone():
+                return True
+        except sqlite3.OperationalError:
+            pass
+    return False
+
+
+def _fusionar(con, clave_ip: str, mac: str, previa, fila_mac) -> None:
+    """Une la fila `ip-x` con la de su MAC (que ya existía): el alias y «conocido» no se pierden."""
+    if previa["alias"] and not fila_mac["alias"]:
+        con.execute("UPDATE red_inventario SET alias=? WHERE clave=?", (previa["alias"], mac))
+    if previa["conocido"] and not fila_mac["conocido"]:
+        con.execute("UPDATE red_inventario SET conocido=1 WHERE clave=?", (mac,))
+    for tabla in _TABLAS_CONTROL:
+        try:
+            con.execute(f"UPDATE OR IGNORE {tabla} SET clave=? WHERE clave=?", (mac, clave_ip))
+            con.execute(f"DELETE FROM {tabla} WHERE clave=?", (clave_ip,))
+        except sqlite3.OperationalError:
+            pass
+    con.execute("DELETE FROM red_inventario WHERE clave=?", (clave_ip,))
 
 
 async def dispositivos() -> list:
@@ -123,7 +181,8 @@ async def dispositivos() -> list:
         except shield.ShieldError:
             pihole = []
     ult = await asyncio.to_thread(escaneo.ultimo)
-    lista = combinar(pihole, (ult or {}).get("hosts") or [])
+    vec = await asyncio.to_thread(escaneo.vecinos)
+    lista = combinar(pihole, (ult or {}).get("hosts") or [], vec)
     return await asyncio.to_thread(_sincronizar, lista)
 
 

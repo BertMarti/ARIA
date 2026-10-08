@@ -102,3 +102,6 @@ Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`
 - Puertos 53, 8080, 8443, 51820/udp y 51843 pertenecen a otros proyectos.
 - No hacer `git push` sin revisión.
 - No afirmar que ARIA controla Netflix: solo genera enlaces de búsqueda.
+
+## Otros modelos
+Para repartir tareas con otros modelos (Copilot, GPT, Gemini, gratuitos de OpenCode Zen) sigue `AGENTS.md` → «Trabajo con varios modelos»: Claude orquesta y revisa; los delegados trabajan en un worktree aparte y nunca reciben secretos ni datos personales.

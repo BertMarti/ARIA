@@ -53,8 +53,35 @@ Extensiones enchufables en `modulos/<id>/` (montada `:ro` en `/srv/modulos`): `m
 - Solo tocar contenedores `aria-*`. No hacer push sin revisión.
 - La documentación debe describir solo lo que existe.
 
-## Reparto sugerido de trabajo entre subagentes (plan Claude Pro)
-Para ahorrar cuota, usar un modelo más barato/rápido para lo mecánico y reservar el más capaz para lo que requiere criterio:
-- Modelo económico: ediciones mecánicas, traducciones, actualizar documentación, renombrados, añadir una herramienta sencilla siguiendo el patrón de `tools.py`.
-- Modelo potente: diseño de funcionalidades, seguridad (auth, CSRF, TLS), depuración de fallos en el bucle de herramientas o en Caddy, revisión final.
-- Hacer las pruebas reales (`docker compose`, `curl`) en el hilo principal; los subagentes parten sin contexto, así que darles rutas y objetivo concretos.
+## Trabajo con varios modelos (opcional, vía OpenCode)
+
+Un agente orquestador (por ejemplo Claude en Claude Code) puede repartir tareas entre los modelos que tengas conectados en [OpenCode](https://opencode.ai): GitHub Copilot, ChatGPT, Gemini, modelos gratuitos de OpenCode Zen, etc. Así se ahorra cuota del modelo principal sin perder el control.
+
+**Papeles**
+- **Orquestador:** entiende la petición, planifica, divide en tareas pequeñas con rutas y objetivo concretos, revisa todo lo que vuelve, pasa las pruebas, hace commit y despliega. Es el único que hace commit, push o despliega.
+- **Delegados:** reciben una tarea cerrada (escribir una función, redactar documentación, revisar un diff) y devuelven el resultado.
+
+**Cómo delegar**
+```bash
+opencode models                    # modelos disponibles (proveedor/modelo)
+opencode auth list                 # cuentas conectadas
+# Revisión o consulta, sin tocar archivos:
+opencode run --agent plan -m <proveedor/modelo> --dir <repo> "Revisa ... y lista los problemas"
+# Cambios: siempre en un worktree aparte, nunca en la copia desplegada
+git worktree add ../.wt/<tarea> -b feat/<tarea>
+opencode run -m <proveedor/modelo> --dir ../.wt/<tarea> "Implementa ... siguiendo AGENTS.md"
+```
+
+**Reparto orientativo**
+| Tarea | Modelo |
+|---|---|
+| Diseño, seguridad, depuración difícil, revisión final | El más capaz (orquestador) |
+| Implementar funciones siguiendo un patrón existente | Modelo de código (Copilot / GPT) |
+| Documentación, traducciones, textos | Modelo rápido (Gemini / Copilot) |
+| Búsquedas, resúmenes, borradores sin datos sensibles | Modelos gratuitos (Zen) |
+
+**Reglas**
+- Nunca pases a un delegado secretos, `.env`, contraseñas ni datos personales. Con los modelos **gratuitos**, todavía menos: algunos usan lo que reciben para entrenar.
+- Los delegados no hacen commit, push ni despliegues, ni tocan servicios en marcha. Las revisiones se hacen con `--agent plan` (solo lectura).
+- Todo lo que devuelva un delegado lo revisa el orquestador y pasa la suite completa de pruebas antes de integrarse.
+- Dale a cada delegado el contexto que necesita (rutas, este `AGENTS.md`, criterios de aceptación): no comparte la memoria del orquestador.

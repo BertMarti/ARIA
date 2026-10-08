@@ -7,7 +7,7 @@ import asyncio
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from . import escaneo, red, seguridad, shield
+from . import escaneo, estadisticas, red, seguridad, shield
 
 router = APIRouter()
 
@@ -73,6 +73,22 @@ async def velocidad():
 @router.get("/api/red/historial")
 async def historial(dias: int = 7):
     return await asyncio.to_thread(red.historial, dias)
+
+
+@router.get("/api/red/estadisticas")
+async def estadisticas_red(horas: int = 24):
+    try:
+        return await estadisticas.resumen(horas)
+    except estadisticas.EstadisticasError as e:
+        return _err(str(e), 502 if "conectado" in str(e) or "contactar" in str(e) else 400)
+
+
+@router.get("/api/red/estadisticas/{clave}")
+async def estadisticas_dispositivo(clave: str, horas: int = 24):
+    try:
+        return await estadisticas.detalle(clave, horas)
+    except estadisticas.EstadisticasError as e:
+        return _err(str(e), 502 if "conectado" in str(e) or "contactar" in str(e) else 404)
 
 
 @router.get("/api/seguridad/informe")

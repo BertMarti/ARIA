@@ -1,7 +1,7 @@
 "use strict";
 // Centro de control: SHIELD-DNS, HEIMDALL, Sistema y Spotify.
 const Control = (() => {
-  let temporizador = null, finPausa = 0, relojPausa = null;
+  let temporizador = null, temporizadorDirecto = null, finPausa = 0, relojPausa = null;
 
   function noConectado(cuerpo, msg, ayuda) {
     cuerpo.replaceChildren(
@@ -34,13 +34,23 @@ const Control = (() => {
     const pausas = el("div", { class: "botones" },
       ...[5, 30, 60].map((m) => el("button", { type: "button", class: "fantasma", onclick: () => pausar(m) }, "Pausar " + m + " min")),
       el("button", { type: "button", class: "primario", onclick: reanudar, disabled: data.bloqueo_activo }, "Reanudar"));
+    let listas = null;
+    try { listas = (await api("/api/sistema/listas")).data; } catch (_) { /* SHIELD puede no estar disponible */ }
     c.replaceChildren(
       estado,
       el("div", { class: "numeros" }, numero(fmtNum(data.consultas), "consultas (24 h)"), numero(fmtNum(data.bloqueadas), "bloqueadas"), numero(data.porcentaje.toString().replace(".", ",") + " %", "bloqueo")),
       barra(data.porcentaje, 101, 101),
+      el("h3", null, "Listas de bloqueo"), el("div", { class: "estado-listas" }, listas && listas.dominios ? fmtNum(listas.dominios) + " dominios" : "No disponible",
+        el("button", { type: "button", class: "fantasma pequeno", onclick: actualizarListas }, "Actualizar listas")),
       el("h3", null, "Más bloqueados"), top, pausas,
       el("div", { class: "pie" }, el("span", { class: "muted" }, fmtNum(data.lista_negra) + " dominios en la lista"), enlaceExterno(enlacePanel("shield", data.panel), "Abrir panel Pi-hole")));
     cuentaAtras();
+  }
+  async function actualizarListas(e) {
+    const b = e.currentTarget; b.disabled = true; b.textContent = "Actualizando…";
+    const r = await api("/api/sistema/listas/actualizar", { method: "POST" });
+    toast(r.ok ? "Listas actualizadas." : (r.data.error || "No se pudieron actualizar las listas."), r.ok ? "" : "mal");
+    shield();
   }
   function cuentaAtras() {
     clearInterval(relojPausa);
@@ -76,10 +86,16 @@ const Control = (() => {
     if (!data.clientes.length) lista.append(el("li", { class: "muted" }, "Aún no hay dispositivos."));
     for (const d of data.clientes) {
       const clase = !d.activo ? "mal" : d.conectado ? "ok" : "";
-      lista.append(el("li", { class: "dispositivo" + (d.activo ? "" : " apagado") },
+      const caduca = d.caduca ? new Date(d.caduca) : null;
+      const caducado = caduca && caduca <= new Date();
+      const estadoCaduca = !caduca ? "Nunca caduca" : caducado ? "Caducado" : "Caduca en " +
+        Math.max(1, Math.ceil((caduca - Date.now()) / 3600000)) + " h";
+      lista.append(el("li", { class: "dispositivo" + (d.activo && !caducado ? "" : " apagado") },
         el("span", { class: "punto " + clase, title: !d.activo ? "Desactivado" : d.conectado ? "Conectado" : "Sin conexión" }),
         el("div", { class: "disp-info" },
-          el("strong", null, d.nombre), el("span", { class: "muted" }, (d.ip || "") + " · ↓ " + fmtBytes(d.recibido) + " ↑ " + fmtBytes(d.enviado))),
+          el("strong", null, d.nombre), el("span", { class: "muted" }, estadoCaduca + " · " + (d.ip || "") + " · ↓ " + fmtBytes(d.recibido) + " ↑ " + fmtBytes(d.enviado)),
+          d.ubicaciones && d.ubicaciones.length ? el("span", { class: "muted" }, "Última conexión desde: " + d.ubicaciones[0].ciudad + ", " + d.ubicaciones[0].pais + " (" + d.ubicaciones[0].operador + ")",
+            d.ubicaciones.length > 1 ? " · Historial: " + d.ubicaciones.map((x) => x.ciudad + ", " + x.pais + " (" + x.operador + ")").join(" · ") : "") : null),
         el("div", { class: "disp-acc" },
           el("button", { type: "button", class: "fantasma pequeno", onclick: () => verQr(d) }, "QR"),
           el("button", { type: "button", class: "fantasma pequeno", onclick: () => alternar(d) }, d.activo ? "Desactivar" : "Activar"),
@@ -112,25 +128,63 @@ const Control = (() => {
   function anadir() {
     $("vpn-titulo").textContent = "Añadir dispositivo";
     $("form-vpn").hidden = false; $("vpn-resultado").hidden = true; $("vpn-nombre").value = "";
+    $("vpn-caduca").value = ""; $("vpn-fecha-wrap").hidden = true; $("vpn-fecha").value = "";
     $("dlg-vpn").showModal(); $("vpn-nombre").focus();
   }
   function iniciarVpn() {
     $("form-vpn").addEventListener("submit", async (e) => {
       e.preventDefault();
       const nombre = $("vpn-nombre").value.trim();
+      const opcion = $("vpn-caduca").value;
+      const caduca = opcion === "fecha" ? $("vpn-fecha").value : opcion;
+      if (opcion === "fecha" && !caduca) { toast("Elige una fecha de caducidad.", "mal"); return; }
       const btn = e.submitter; if (btn) btn.disabled = true;
-      const r = await api("/api/vpn/clients", { method: "POST", json: { nombre } });
+      const r = await api("/api/vpn/clients", { method: "POST", json: { nombre, caduca } });
       if (btn) btn.disabled = false;
       if (!r.ok) { toast(r.data.error || "No se pudo crear el dispositivo.", "mal"); return; }
       mostrarQr(r.data.id, nombre); vpn();
     });
     $("dlg-vpn").addEventListener("click", (e) => { if (e.target.closest("[data-cerrar]")) $("dlg-vpn").close(); });
     $("dlg-vpn").addEventListener("close", () => { $("vpn-qr").removeAttribute("src"); });
+    $("vpn-caduca").addEventListener("change", () => { $("vpn-fecha-wrap").hidden = $("vpn-caduca").value !== "fecha"; });
   }
 
   // --- Sistema ---
   async function sistema() {
     return pintarSistema(cuerpoDe("card-sistema"), (await api("/api/system")));
+  }
+  function linea(datos, clave) {
+    const svg = el("svg", { viewBox: "0 0 300 80", class: "grafica", role: "img", "aria-label": clave });
+    const vals = datos.map((x) => Number(x[clave])).filter(Number.isFinite);
+    if (!vals.length) return svg;
+    const max = Math.max(...vals, 1), min = Math.min(...vals, 0), rango = max - min || 1;
+    const puntos = vals.map((v, i) => `${(i / Math.max(vals.length - 1, 1)) * 300},${76 - ((v - min) / rango) * 68}`).join(" ");
+    svg.append(el("polyline", { points: puntos, fill: "none", stroke: "currentColor", "stroke-width": "2" }));
+    return svg;
+  }
+  async function directo() {
+    const c = cuerpoDe("card-directo");
+    const r = await api("/api/sistema/directo");
+    if (!r.ok) { fallo(c, r.data.error || "No se pudo leer la telemetría."); return; }
+    const d = r.data, s = d.sistema || {}, cs = d.contenedores || [];
+    const tabla = el("table", { class: "tabla" }, el("thead", null, el("tr", null, el("th", null, "Contenedor"), el("th", null, "CPU"), el("th", null, "Memoria"), el("th", null, "Red"))), el("tbody"));
+    for (const x of cs) tabla.lastChild.append(el("tr", null, el("td", null, x.nombre || "-"), el("td", null, Number(x.cpu || 0).toFixed(1) + " %"), el("td", null, x.memoria == null ? "-" : fmtBytes(x.memoria)), el("td", null, fmtBytes(x.red_rx || 0) + " / " + fmtBytes(x.red_tx || 0))));
+    const hist = (await api("/api/sistema/historial?horas=1")).data.historial || [];
+    c.replaceChildren(el("div", { class: "numeros" }, el("div", { class: "numero" }, el("strong", null, Number(s.cpu || 0).toFixed(1) + " %"), el("span", { class: "muted" }, "CPU")), el("div", { class: "numero" }, el("strong", null, s.temperatura == null ? "-" : s.temperatura + " °C"), el("span", { class: "muted" }, "Temperatura"))), el("div", { class: "graficas" }, linea(hist, "cpu"), linea(hist, "temperatura")), tabla, el("button", { type: "button", class: "peligro", onclick: reiniciar }, "Reiniciar la Raspberry"));
+  }
+  async function reiniciar() {
+    if (!(await confirmar("Reiniciar la Raspberry", "La Raspberry se apagará en 15 segundos.", "Reiniciar"))) return;
+    const r = await api("/api/sistema/reiniciar", { method: "POST", json: { confirmar: true } });
+    if (!r.ok) { toast(r.data.error || "No se pudo programar el reinicio.", "mal"); return; }
+    const boton = document.querySelector("#card-directo .peligro"), inicio = Date.now();
+    const reloj = setInterval(async () => {
+      const quedan = Math.max(0, 15 - Math.floor((Date.now() - inicio) / 1000));
+      if (boton) boton.textContent = quedan ? "Reiniciando en " + quedan + " s" : "Volviendo…";
+      if (!quedan) {
+        try { const h = await fetch("/health", { cache: "no-store" }); if (h.ok) { clearInterval(reloj); location.reload(); } } catch (_) { /* la Pi está reiniciando */ }
+      }
+    }, 1000);
+    toast("Reinicio programado. Volviendo…");
   }
   function pintarSistema(c, { ok, data }) {
     if (!ok) { fallo(c, "No se pudo leer el estado."); return; }
@@ -172,13 +226,14 @@ const Control = (() => {
 
   function actualizar() {
     const h = $("control-hora"); if (h) h.textContent = "Actualizado " + new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    return Promise.allSettled([shield(), vpn(), sistema(), ...(Sesion.funciones.spotify ? [spotify()] : [])]);
+    return Promise.allSettled([shield(), vpn(), sistema(), directo(), ...(Sesion.funciones.spotify ? [spotify()] : [])]);
   }
   // Se refresca cada ~15 s solo mientras la vista está abierta y la pestaña visible.
   function activar(si) {
-    clearInterval(temporizador); clearInterval(relojPausa); temporizador = null;
+    clearInterval(temporizador); clearInterval(temporizadorDirecto); clearInterval(relojPausa); temporizador = temporizadorDirecto = null;
     if (!si) return;
     actualizar();
+    temporizadorDirecto = setInterval(() => { if (!document.hidden && !document.querySelector("dialog[open]")) directo(); }, 5000);
     temporizador = setInterval(() => { if (!document.hidden && !document.querySelector("dialog[open]")) actualizar(); }, 15000);
   }
   document.addEventListener("visibilitychange", () => { if (!document.hidden && temporizador) actualizar(); });

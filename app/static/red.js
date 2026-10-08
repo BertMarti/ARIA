@@ -2,6 +2,7 @@
 // Red (solo admin): salud, latencia, test de velocidad, historial (SVG propio) y dispositivos de la LAN.
 const Red = (() => {
   let iniciado = false;
+  let estadisticasDatos = [];
   const SVG = "http://www.w3.org/2000/svg";
   const fmtHora = (ts) => new Date(ts * 1000).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const fmtNumero = (v) => (v === null || v === undefined ? "—" : String(v).replace(".", ","));
@@ -11,6 +12,43 @@ const Red = (() => {
     for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, String(v));
     for (const h of hijos) if (h) e.append(h);
     return e;
+  }
+
+  function barras(titulo, lista) {
+    const W = 420, H = 180, max = Math.max(...lista.map((x) => x.veces), 1), ancho = Math.max(12, (W - 70) / Math.max(lista.length, 1) - 5);
+    const g = svg("svg", { viewBox: `0 0 ${W} ${H}`, class: "grafica", role: "img", "aria-label": titulo });
+    lista.forEach((x, i) => {
+      const h = x.veces * 130 / max, xpos = 45 + i * (W - 55) / Math.max(lista.length, 1);
+      g.append(svg("rect", { x: xpos, y: 145 - h, width: ancho, height: h, class: "g-barra" }),
+        svg("title", null, document.createTextNode(x.dominio + ": " + x.veces)));
+    });
+    return el("figure", { class: "g-fig" }, el("figcaption", { class: "muted" }, titulo), g);
+  }
+
+  function pintarDetalle(d) {
+    const z = $("red-est-detalle"); z.hidden = false; z.replaceChildren(
+      el("h3", null, d.nombre + " · " + d.ip),
+      d.serie.length ? grafica("Consultas", "consultas", [{ nombre: d.nombre, clase: "s1", puntos: d.serie.map((p) => [p.ts, p.consultas]) }]) : el("p", { class: "muted" }, "Sin serie temporal."),
+      barras("Dominios permitidos", d.permitidos), barras("Dominios bloqueados", d.bloqueados));
+  }
+
+  function pintarEstadisticas() {
+    const tb = $("red-est-tabla").querySelector("tbody");
+    if (!estadisticasDatos.length) { tb.replaceChildren(el("tr", null, el("td", { colSpan: 4, class: "muted" }, "Sin datos."))); return; }
+    tb.replaceChildren(...estadisticasDatos.map((d) => {
+      const fila = el("tr", { class: "clicable" }, el("td", null, d.nombre, barra(d.porcentaje, 101, 101)),
+        el("td", { class: "mono" }, d.ip), el("td", { class: "mono" }, d.consultas.toLocaleString("es-ES")),
+        el("td", null, fmtNumero(d.porcentaje) + " %", el("div", { class: "barra-mini" }, el("span"))));
+      fila.querySelector(".barra-mini span").style.width = Math.min(100, d.porcentaje) + "%";
+      fila.addEventListener("click", async () => { const r = await api(`/api/red/estadisticas/${encodeURIComponent(d.clave)}?horas=${$("red-est-horas").value}`); if (r.ok) pintarDetalle(r.data); });
+      return fila;
+    }));
+  }
+
+  async function cargarEstadisticas() {
+    const r = await api("/api/red/estadisticas?horas=" + $("red-est-horas").value);
+    if (!r.ok) { $("red-est-nota").textContent = r.data.error || "No se pudieron cargar las estadísticas."; return; }
+    estadisticasDatos = r.data.dispositivos || []; $("red-est-nota").textContent = `${r.data.totales.consultas.toLocaleString("es-ES")} consultas · ${r.data.totales.bloqueadas.toLocaleString("es-ES")} bloqueadas (${fmtNumero(r.data.totales.porcentaje)} %)`; pintarEstadisticas();
   }
 
   // Gráfica de líneas sencilla: series = [{nombre, clase, puntos:[[ts, valor]]}]
@@ -114,7 +152,7 @@ const Red = (() => {
     return r;
   }
 
-  function cargar() { $("red-hora").textContent = new Date().toLocaleTimeString("es-ES"); salud(); historial(); dispositivos(); }
+  function cargar() { $("red-hora").textContent = new Date().toLocaleTimeString("es-ES"); salud(); historial(); dispositivos(); cargarEstadisticas(); }
 
   function iniciar() {
     if (iniciado) return; iniciado = true;
@@ -128,6 +166,10 @@ const Red = (() => {
       if (!(await confirmar("Marcar todos como conocidos", "Todos los dispositivos actuales dejarán de aparecer como «sin reconocer».", "Marcar"))) return;
       await api("/api/red/dispositivos/conocer-todos", { method: "POST" }); dispositivos();
     });
+    $("red-est-horas").addEventListener("change", cargarEstadisticas);
+    document.querySelectorAll("#red-est-tabla th[data-orden]").forEach((th) => th.addEventListener("click", () => {
+      const k = th.dataset.orden; estadisticasDatos.sort((a, b) => b[k] - a[k]); pintarEstadisticas();
+    }));
   }
 
   function activar(si) { if (si && Sesion.esAdmin) cargar(); }

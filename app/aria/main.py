@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agentes, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, arranque, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, finanzas, informacion, memoria, modelos, modulos, permisos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn
+from . import agenda, agentes, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, estadisticas, finanzas, informacion, mapas, memoria, modelos, modulos, permisos, proyectos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -25,10 +25,10 @@ app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 LIBRES = {"/health", "/internal/tls-ask", "/static/style.css", "/static/login.js",
           "/static/manifest.webmanifest", "/static/icon.svg", "/sw.js"}
 PUBLICAS = LIBRES | {"/login"}
-CSP = ("default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; worker-src 'self'; "
+CSP = ("default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self'; script-src 'self'; worker-src 'self'; "
        "frame-ancestors 'none'")
 # El micrófono solo para ARIA (ni iframes ni otros orígenes); cámara y ubicación, para nadie.
-PERMISOS_NAVEGADOR = "microphone=(self), camera=(), geolocation=()"
+PERMISOS_NAVEGADOR = "microphone=(self), camera=(), geolocation=(self)"  # geolocalización: botón «Mi ubicación» del mapa
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 
@@ -58,6 +58,8 @@ async def _arranque():
     if not auth.habilitado():
         log.error("Faltan ARIA_USER / ARIA_PASSWORD o ARIA_SECRET (>=16 caracteres): login deshabilitado.")
     db.iniciar()
+    telemetria.iniciar()
+    vpn_ubicaciones.iniciar()
     usuarios.iniciar()
     finanzas.iniciar()
     red.iniciar()
@@ -68,7 +70,9 @@ async def _arranque():
     # Avisos: tablas, chequeos, canales y planificador (recordatorios, resumen programado). Telegram con long polling.
     avisos.iniciar()
     recordatorios.iniciar()
+    agenda.iniciar()
     rutinas.iniciar()
+    automatizaciones.iniciar()
     push.iniciar()
     telegram.iniciar()
     avisos_chequeos.registrar()
@@ -243,8 +247,12 @@ app.include_router(api_red.router)
 app.include_router(api_control.router)
 app.include_router(api_avisos.router)
 app.include_router(api_rutinas.router)
+app.include_router(api_automatizaciones.router)
+app.include_router(api_agenda.router)
 app.include_router(api_modulos.router)
 app.include_router(api_informacion.router)
+app.include_router(api_sistema.router)
+app.include_router(mapas.router)
 # Módulos de modulos/ (o ARIA_MODULOS_DIR): se cargan al importar para que sus rutas existan antes de servir.
 # Un módulo roto nunca impide arrancar (queda en «error» en Ajustes → Módulos).
 modulos.cargar(app)
@@ -522,7 +530,8 @@ FECHA_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 def _memoria_json(uid: int) -> dict:
     return {"recuerdos": memoria.listar(uid), "aprender": memoria.aprende(uid), "max": memoria.MAX_RECUERDOS,
-            "max_texto": memoria.MAX_TEXTO, "diario": memoria.ultimos_dias(uid, 14)}
+            "max_texto": memoria.MAX_TEXTO, "diario": memoria.ultimos_dias(uid, 14), "personalidad": memoria.personalidad(uid),
+            "proyectos": proyectos.listar(uid)}
 
 
 @app.get("/api/memoria")
@@ -544,11 +553,86 @@ async def api_memoria_anadir(request: Request):
 
 @app.post("/api/memoria/ajustes")
 async def api_memoria_ajustes(request: Request):
-    v = (await _json(request)).get("aprender")
-    if not isinstance(v, bool):
+    d = await _json(request)
+    if "aprender" in d:
+        v = d.get("aprender")
+    else:
+        v = None
+    if v is None and (not isinstance(d.get("modo"), str) or not isinstance(d.get("discrepar"), bool)):
         return JSONResponse({"error": "Valor no válido."}, status_code=400)
-    await asyncio.to_thread(memoria.fijar_aprender, request.state.usuario["id"], v)
-    return {"aprender": v}
+    if v is not None and not isinstance(v, bool):
+        return JSONResponse({"error": "Valor no válido."}, status_code=400)
+    if v is not None:
+        await asyncio.to_thread(memoria.fijar_aprender, request.state.usuario["id"], v)
+    if "modo" in d:
+        try:
+            p = await asyncio.to_thread(memoria.fijar_personalidad, request.state.usuario["id"], d["modo"], d["discrepar"])
+        except memoria.MemoriaError as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+    else:
+        p = memoria.personalidad(request.state.usuario["id"])
+    respuesta = {"aprender": memoria.aprende(request.state.usuario["id"])}
+    if "modo" in d:
+        respuesta["personalidad"] = p
+    return respuesta
+
+
+# --- Proyectos y decisiones, siempre limitados al usuario de la sesión -------------------------
+@app.get("/api/proyectos")
+async def api_proyectos(request: Request):
+    return {"proyectos": await asyncio.to_thread(proyectos.listar, request.state.usuario["id"])}
+
+
+@app.post("/api/proyectos")
+async def api_proyecto_crear(request: Request):
+    d = await _json(request)
+    try:
+        p = await asyncio.to_thread(proyectos.crear, request.state.usuario["id"], d.get("nombre"), d.get("descripcion", ""), d.get("estado", "idea"))
+    except proyectos.ProyectoError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    return {"proyecto": p}
+
+
+@app.patch("/api/proyectos/{pid}")
+async def api_proyecto_actualizar(pid: int, request: Request):
+    d = await _json(request)
+    try:
+        p = await asyncio.to_thread(proyectos.actualizar, request.state.usuario["id"], pid, d.get("nombre"), d.get("descripcion"), d.get("estado"))
+    except proyectos.ProyectoError as e:
+        return JSONResponse({"error": str(e)}, status_code=404 if "no encontrado" in str(e) else 400)
+    return {"proyecto": p}
+
+
+@app.delete("/api/proyectos/{pid}")
+async def api_proyecto_borrar(pid: int, request: Request):
+    if not await asyncio.to_thread(proyectos.borrar, request.state.usuario["id"], pid):
+        return JSONResponse({"error": "Proyecto no encontrado."}, status_code=404)
+    return {"ok": True}
+
+
+@app.get("/api/proyectos/{pid}/decisiones")
+async def api_decisiones(pid: int, request: Request):
+    try:
+        return {"decisiones": await asyncio.to_thread(proyectos.decisiones, request.state.usuario["id"], pid)}
+    except proyectos.ProyectoError:
+        return JSONResponse({"error": "Proyecto no encontrado."}, status_code=404)
+
+
+@app.post("/api/proyectos/{pid}/decisiones")
+async def api_decision_crear(pid: int, request: Request):
+    d = await _json(request)
+    try:
+        x = await asyncio.to_thread(proyectos.registrar_decision, request.state.usuario["id"], pid, d.get("decision"), d.get("motivo", ""))
+    except proyectos.ProyectoError as e:
+        return JSONResponse({"error": str(e)}, status_code=404 if "no encontrado" in str(e) else 400)
+    return {"decision": x}
+
+
+@app.delete("/api/decisiones/{did}")
+async def api_decision_borrar(did: int, request: Request):
+    if not await asyncio.to_thread(proyectos.borrar_decision, request.state.usuario["id"], did):
+        return JSONResponse({"error": "Decisión no encontrada."}, status_code=404)
+    return {"ok": True}
 
 
 @app.patch("/api/memoria/{rid}")
@@ -807,7 +891,10 @@ async def api_vpn_lista(request: Request):
     try:
         clientes = await vpn.listar()
         if request.state.usuario["rol"] != "admin":  # los usuarios solo ven el estado, sin IP ni tráfico
-            clientes = [{k: c[k] for k in ("id", "nombre", "activo", "conectado")} for c in clientes]
+            clientes = [{k: c.get(k) for k in ("id", "nombre", "activo", "conectado", "caduca")} for c in clientes]
+        if request.state.usuario["rol"] == "admin":
+            for cliente in clientes:
+                cliente["ubicaciones"] = vpn_ubicaciones.historial(cliente["id"], 10)
         return {"conectado": True, "clientes": clientes, "panel": vpn.panel_url()}
     except vpn.VpnError as e:
         return {"conectado": False, "error": True, "mensaje": str(e)}
@@ -819,9 +906,12 @@ def _vpn_error(e: Exception) -> JSONResponse:
 
 @app.post("/api/vpn/clients")
 async def api_vpn_crear(request: Request):
-    nombre = (await _json(request)).get("nombre")
+    datos = await _json(request)
+    nombre, caduca = datos.get("nombre"), datos.get("caduca")
+    if caduca is not None and not isinstance(caduca, str):
+        return _vpn_error(vpn.VpnError("Caducidad no válida."))
     try:
-        return {"id": await vpn.crear(nombre if isinstance(nombre, str) else "")}
+        return {"id": await vpn.crear(nombre if isinstance(nombre, str) else "", caduca)}
     except vpn.VpnError as e:
         return _vpn_error(e)
 
@@ -865,6 +955,11 @@ async def api_vpn_borrar(cid: int):
     except vpn.VpnError as e:
         return _vpn_error(e)
     return {"ok": True}
+
+
+@app.get("/api/vpn/clients/{cid}/ubicaciones")
+async def api_vpn_ubicaciones(cid: int):
+    return {"ubicaciones": await asyncio.to_thread(vpn_ubicaciones.historial, cid, 10)}
 
 
 @app.get("/api/spotify/status")

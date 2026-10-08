@@ -38,15 +38,9 @@ class Agente:
 _COMUN = ("Responde siempre en español de España, de forma breve y clara. Usa las herramientas solo "
           "cuando haga falta un dato en vivo y no inventes sus resultados. ")
 
-_BASE_ARIA = frozenset({
-    "fecha_hora", "estado_servicios", "estado_bloqueador", "pausar_bloqueador", "reanudar_bloqueador",
-    "dispositivos_vpn", "crear_dispositivo_vpn", "activar_dispositivo_vpn", "desactivar_dispositivo_vpn",
-    "estado_sistema", "spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior",
-    "spotify_actual", "spotify_buscar_y_reproducir", "buscar_en_netflix",
-    "recordar", "olvidar", "buscar_en_internet", "noticias", "tiempo",
-    "recordatorio", "mis_recordatorios", "borrar_recordatorio", "resumir_enlace",
-    "crear_rutina", "mis_rutinas", "borrar_rutina",
-    "resumen_noticias", "precio", "mis_mercados", "mis_inversiones"})
+# ARIA general usa TODAS las herramientas generales (las que no son de un especialista): así una función nueva
+# no tiene que añadirse a mano aquí. Ver herramientas().
+_BASE_ARIA = frozenset()
 # Memoria personal y búsqueda web también para los especialistas (precios, avisos de seguridad, fabricantes...).
 _COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet", "resumir_enlace",
                       "recordatorio", "mis_recordatorios", "borrar_recordatorio"})
@@ -54,6 +48,7 @@ _COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet",
 FINANZAS_TOOLS = frozenset({"registrar_movimiento", "resumen_mes", "gastos_por_categoria", "comparar_meses",
                             "presupuesto", "estado_presupuestos", "buscar_movimientos"})
 REDES_TOOLS = frozenset({"estado_red", "dispositivos_red", "dispositivos_nuevos", "marcar_dispositivo_conocido",
+                         "estadisticas_dispositivo",
                          "medir_latencia", "test_velocidad", "pausar_internet", "reanudar_internet",
                          "bloquear_servicio", "desbloquear_servicio", "estado_control"})
 SEGURIDAD_TOOLS = frozenset({"informe_seguridad", "escanear_red", "estado_escaneo", "bloqueos_por_cliente"})
@@ -81,9 +76,10 @@ AGENTES: dict = {a.id: a for a in (
            "(«una hora» = 60). Es un bloqueo por DNS: dilo si preguntan, porque un dispositivo con DNS propio, DNS "
            "cifrado o VPN puede seguir con conexión. Nunca hay una acción para todos los dispositivos, ni se puede "
            "pausar el router ni la Raspberry.",
-           REDES_TOOLS | _COMUNES | {"estado_servicios", "estado_bloqueador", "dispositivos_vpn"},
+           REDES_TOOLS | _COMUNES | {"estado_servicios", "estado_bloqueador", "dispositivos_vpn", "ubicaciones_vpn"},
            palabras=(r"\bred(es)?\b", r"\blan\b", r"\bwi-?fi\b", r"\blatencia\b", r"\bping\b", r"\bvelocidad\b",
-                     r"\bmbps\b", r"\binternet\b", r"\brouter\b", r"\bdispositivos? (de|en) (la )?(casa|red)\b",
+                      r"\bmbps\b", r"\binternet\b", r"\brouter\b", r"\b(estad[ií]stic\w*|cu[aá]nto navega|qu[eé] (consulta|bloquea))\b",
+                      r"\bdispositivos? (de|en) (la )?(casa|red)\b",
                      r"\bconectad\w+ a la red\b", r"\bdispositivos? nuevos?\b", r"\bfibra\b", r"\bip\b", r"\bcontrol parental\b", r"\bsin internet\b",
                      r"\b(paus\w+|cort\w+|bloque\w+|desbloque\w+|reanud\w+)\b.{0,40}\b(internet|wi-?fi|ipad|tablet|"
                      r"m[oó]vil|switch|fire ?tv|consola|tele|tiktok|youtube|instagram|fortnite|roblox|twitch|netflix)\b")),
@@ -121,7 +117,8 @@ def disponibles(rol: str) -> list:
 
 def herramientas(agente: Agente, rol: str) -> set:
     """Herramientas del agente (más las de módulos que lo declaren) que además puede usar ese rol."""
-    return (set(agente.herramientas) | tools.de_modulos(agente.id)) & tools.permitidas(rol)
+    base = tools.generales() if agente.id == "aria" else set(agente.herramientas)
+    return (base | tools.de_modulos(agente.id)) & tools.permitidas(rol)
 
 
 def separar_prefijo(texto: str) -> tuple:

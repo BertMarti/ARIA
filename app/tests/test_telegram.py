@@ -182,7 +182,7 @@ def test_nuevovpn_solo_admin_y_con_confirmacion(bot, admin, ana, monkeypatch):
     async def listar():
         return []
 
-    async def crear(nombre):
+    async def crear(nombre, caduca=None):
         creados.append(nombre)
         return 7
 

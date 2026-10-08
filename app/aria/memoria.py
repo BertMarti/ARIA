@@ -215,7 +215,27 @@ def aprende(uid: int) -> bool:
 def fijar_aprender(uid: int, valor: bool) -> None:
     with closing(db._con()) as con, con:
         con.execute("INSERT INTO memoria_ajustes (user_id, aprender) VALUES (?,?) "
-                    "ON CONFLICT(user_id) DO UPDATE SET aprender=excluded.aprender", (uid, 1 if valor else 0))
+                     "ON CONFLICT(user_id) DO UPDATE SET aprender=excluded.aprender", (uid, 1 if valor else 0))
+
+
+MODOS_PERSONALIDAD = ("amable", "sincera", "breve")
+
+
+def personalidad(uid: int) -> dict:
+    with closing(db._con()) as con:
+        r = con.execute("SELECT modo, discrepar FROM memoria_ajustes WHERE user_id=?", (uid,)).fetchone()
+    return {"modo": (r["modo"] if r and r["modo"] in MODOS_PERSONALIDAD else "amable"),
+            "discrepar": bool(r["discrepar"]) if r else False}
+
+
+def fijar_personalidad(uid: int, modo: str, discrepar: bool) -> dict:
+    if modo not in MODOS_PERSONALIDAD:
+        raise MemoriaError("Modo de personalidad no válido.")
+    with closing(db._con()) as con, con:
+        con.execute("INSERT INTO memoria_ajustes (user_id, aprender, modo, discrepar) VALUES (?,1,?,?) "
+                    "ON CONFLICT(user_id) DO UPDATE SET modo=excluded.modo, discrepar=excluded.discrepar",
+                    (uid, modo, int(bool(discrepar))))
+    return personalidad(uid)
 
 
 # --- Diario ------------------------------------------------------------------------------------------
@@ -270,6 +290,7 @@ def contexto(uid: int, nombre: str, mensaje: str, nube: bool) -> str:
     """Bloque de memoria para el prompt del sistema. Nube: hasta ~1 200 caracteres de recuerdos y ~900 de
     diario (3 entradas). Local: máximo 300 caracteres en total, 5 recuerdos y sin diario (lee ~11 tokens/s).
     Marca como usados los recuerdos que se inyectan."""
+    from . import proyectos
     nombre = limpiar(nombre)[:40] or "el usuario"
     hechos = ordenar_por_relevancia(listar(uid), mensaje)
     usados, partes = [], []
@@ -314,4 +335,15 @@ def contexto(uid: int, nombre: str, mensaje: str, nube: bool) -> str:
         with closing(db._con()) as con, con:
             con.executemany("UPDATE recuerdos SET usado=? WHERE user_id=? AND id=?",
                             [(time.time(), uid, i) for i in usados])
-    return "\n\n".join(partes)
+    modo = personalidad(uid)
+    if modo["modo"] == "sincera":
+        partes.insert(0, "Personalidad: sé clara y honesta; señala riesgos, supuestos dudosos y alternativas sin ser borde.")
+    elif modo["modo"] == "breve":
+        partes.insert(0, "Personalidad: responde con lo mínimo imprescindible.")
+    if modo["discrepar"]:
+        partes.insert(0, "El usuario permite que discrepes: no le des la razón si una idea tiene riesgos.")
+    pc = proyectos.contexto(uid, mensaje, nube)
+    if pc:
+        partes.append(pc)
+    resultado = "\n\n".join(partes)
+    return _recortar(resultado, PRESUPUESTO_LOCAL) if not nube else resultado

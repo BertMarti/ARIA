@@ -40,6 +40,13 @@ _USUARIO = [
     ("GET", r"/api/memoria"),
     ("POST", r"/api/memoria"),
     ("POST", r"/api/memoria/ajustes"),
+    ("GET", r"/api/proyectos"),
+    ("POST", r"/api/proyectos"),
+    ("PATCH", r"/api/proyectos/\d+"),
+    ("DELETE", r"/api/proyectos/\d+"),
+    ("GET", r"/api/proyectos/\d+/decisiones"),
+    ("POST", r"/api/proyectos/\d+/decisiones"),
+    ("DELETE", r"/api/decisiones/\d+"),
     ("PATCH", r"/api/memoria/\d+"),
     ("DELETE", r"/api/memoria/\d+"),
     ("DELETE", r"/api/memoria"),
@@ -60,12 +67,21 @@ _USUARIO = [
     ("POST", r"/api/push/suscripciones"),
     ("DELETE", r"/api/push/suscripciones/\d+"),
     ("POST", r"/api/push/prueba"),
+    ("GET", r"/api/agenda"),
+    ("POST", r"/api/agenda"),
+    ("PATCH", r"/api/agenda/\d+"),
+    ("DELETE", r"/api/agenda/\d+"),
+    ("GET", r"/api/cumpleanos"),
+    ("POST", r"/api/cumpleanos"),
+    ("PATCH", r"/api/cumpleanos/\d+"),
+    ("DELETE", r"/api/cumpleanos/\d+"),
     # Rutinas: cada usuario solo las suyas (el id sale de la sesión; las ajenas dan 404).
     ("GET", r"/api/rutinas"),
     ("POST", r"/api/rutinas"),
     ("PATCH", r"/api/rutinas/\d+"),
     ("DELETE", r"/api/rutinas/\d+"),
     ("POST", r"/api/rutinas/\d+/ejecutar"),
+    # Automatizaciones: siempre de administrador; se comprueban además en el servidor.
     # Módulos: la lista se filtra por rol en el servidor (un usuario solo ve los suyos y sin detalles).
     ("GET", r"/api/modulos"),
     # Información: preferencias y datos de mercado filtrados por el usuario de sesión.
@@ -73,6 +89,9 @@ _USUARIO = [
     ("POST", r"/api/informacion/(temas|seguimiento)"),
     ("DELETE", r"/api/informacion/temas"),
     ("DELETE", r"/api/informacion/seguimiento/\d+"),
+    # Mapas: intermediario de solo lectura para los dos roles.
+    ("GET", r"/api/mapa/(buscar|ruta|cerca)"),
+    # Sistema en directo y reinicio: nunca se abren al rol usuario.
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 

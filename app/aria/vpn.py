@@ -3,7 +3,7 @@
 Solo se exponen campos de una lista blanca: las claves privadas nunca llegan al navegador.
 """
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
@@ -54,6 +54,8 @@ def limpiar_cliente(c: dict) -> dict:
         "enviado": c.get("transferTx") or 0,
         "creado": c.get("createdAt"),
         "caduca": c.get("expiresAt"),
+        "endpoint": c.get("endpoint"),
+        "enlace_unico": c.get("oneTimeLink"),
     }
 
 
@@ -94,10 +96,39 @@ async def listar() -> list:
     return [limpiar_cliente(c) for c in datos if isinstance(c, dict)]
 
 
-async def crear(nombre: str) -> int:
+def caducidad(valor: str | None, ahora: datetime | None = None) -> str | None:
+    """Convierte una caducidad corta o fecha ISO en ISO UTC para wg-easy."""
+    if valor is None or not str(valor).strip() or str(valor).strip().lower() in ("nunca", "never"):
+        return None
+    texto = str(valor).strip().lower()
+    base = ahora or datetime.now(timezone.utc)
+    if texto in ("24h", "24 h", "24 horas"):
+        fecha = base + timedelta(hours=24)
+    elif texto in ("7d", "7 d", "7 dias", "7 días"):
+        fecha = base + timedelta(days=7)
+    else:
+        try:
+            fecha = datetime.fromisoformat(texto.replace("z", "+00:00"))
+        except ValueError:
+            # Reutiliza el intérprete local de recordatorios para frases en español.
+            try:
+                from . import recordatorios
+                fecha, repeticion = recordatorios.interpretar(str(valor), base)
+                if repeticion:
+                    raise ValueError
+            except (ValueError, recordatorios.RecordatorioError):
+                raise VpnError("Caducidad no válida: usa 24h, 7d, una fecha AAAA-MM-DD o lenguaje natural.") from None
+        if fecha.tzinfo is None:
+            fecha = fecha.replace(tzinfo=timezone.utc)
+    if fecha <= base:
+        raise VpnError("La caducidad debe estar en el futuro.")
+    return fecha.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+async def crear(nombre: str, expires_at: str | None = None) -> int:
     if not nombre_valido(nombre):
         raise VpnError("Nombre no válido: usa letras, números, espacios y - _ . (máximo 32).")
-    r = await _llamar("POST", "/api/client", json={"name": nombre.strip(), "expiresAt": None})
+    r = await _llamar("POST", "/api/client", json={"name": nombre.strip(), "expiresAt": caducidad(expires_at)})
     try:
         return int(r.json()["clientId"])
     except (ValueError, KeyError, TypeError):

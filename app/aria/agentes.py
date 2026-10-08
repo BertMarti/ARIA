@@ -44,9 +44,10 @@ _BASE_ARIA = frozenset({
     "estado_sistema", "spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior",
     "spotify_actual", "spotify_buscar_y_reproducir", "buscar_en_netflix",
     "recordar", "olvidar", "buscar_en_internet", "noticias", "tiempo",
-    "recordatorio", "mis_recordatorios", "borrar_recordatorio"})
+    "recordatorio", "mis_recordatorios", "borrar_recordatorio", "resumir_enlace",
+    "crear_rutina", "mis_rutinas", "borrar_rutina"})
 # Memoria personal y búsqueda web también para los especialistas (precios, avisos de seguridad, fabricantes...).
-_COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet",
+_COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet", "resumir_enlace",
                       "recordatorio", "mis_recordatorios", "borrar_recordatorio"})
 
 FINANZAS_TOOLS = frozenset({"registrar_movimiento", "resumen_mes", "gastos_por_categoria", "comparar_meses",

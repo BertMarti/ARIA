@@ -46,7 +46,7 @@ TIPOS = {
     "vpn_conexion": ("Un dispositivo se conecta a la VPN", True, False),
 }
 # Tipos que no se pueden silenciar con los interruptores (los pide el propio usuario).
-SIEMPRE = {"recordatorio", "prueba", "resumen"}
+SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina"}
 
 
 @dataclass
@@ -417,7 +417,7 @@ _ultimo_purgado = 0.0
 
 
 async def tick(ahora: float | None = None) -> None:
-    """Una vuelta del planificador: chequeos que tocan, recordatorios vencidos y resumen de buenos días."""
+    """Una vuelta del planificador: chequeos que tocan, recordatorios y rutinas vencidos y resumen de buenos días."""
     global _ultimo_purgado
     from . import recordatorios
     ahora = time.time() if ahora is None else ahora
@@ -433,6 +433,11 @@ async def tick(ahora: float | None = None) -> None:
         await recordatorios.disparar_vencidos(ahora)
     except Exception:  # noqa: BLE001
         log.exception("Falló el disparo de recordatorios")
+    try:
+        from . import rutinas
+        await rutinas.disparar_vencidas(ahora)
+    except Exception:  # noqa: BLE001
+        log.exception("Falló el disparo de rutinas")
     try:
         await briefings_programados()
     except Exception:  # noqa: BLE001

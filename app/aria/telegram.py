@@ -26,7 +26,7 @@ from contextlib import closing
 
 import httpx
 
-from . import avisos, config, db, recordatorios
+from . import avisos, config, db, enlaces, recordatorios, rutinas
 
 log = logging.getLogger("aria.telegram")
 
@@ -40,8 +40,9 @@ MAX_TEXTO = 4000
 
 COMANDOS = [
     ("estado", "Resumen de la casa"), ("resumen", "Resumen de buenos días"), ("tiempo", "Previsión del tiempo"),
-    ("recordatorios", "Tus recordatorios"), ("gastos", "Gastos de este mes"), ("vpn", "Dispositivos de la VPN"),
-    ("anuncios", "Bloqueador de anuncios"), ("nuevovpn", "Nuevo dispositivo VPN (admin)"),
+    ("recordatorios", "Tus recordatorios"), ("rutinas", "Tus rutinas programadas"), ("gastos", "Gastos de este mes"),
+    ("red", "Salud de la red y dispositivos nuevos"), ("vpn", "Dispositivos de la VPN"),
+    ("bloqueo", "Bloqueador de anuncios (SHIELD)"), ("nuevovpn", "Nuevo dispositivo VPN (admin)"),
     ("nuevo", "Empezar otra conversación"), ("desvincular", "Desvincular este chat"), ("ayuda", "Ayuda"),
 ]
 OPS_ADMIN = {"pausar", "reanudar", "nuevovpn"}
@@ -385,6 +386,11 @@ async def procesar(update: dict, b=None) -> None:
         return
     if cmd:
         await _comando(b, chat_id, u, cmd.group(1).lower(), (cmd.group(2) or "").strip())
+    elif enlaces.solo_url(texto):
+        url = enlaces.solo_url(texto)
+        f = await asyncio.to_thread(ficha, chat_id, u["id"], "resumir", {"url": url}, 3600)
+        await b.llamar("sendMessage", chat_id=chat_id, text="¿Quieres que lo resuma?",
+                       reply_markup=teclado([boton("Resumir", f)]))
     elif texto.strip():
         await _charlar(b, chat_id, u, texto.strip()[:MAX_TEXTO])
     elif isinstance(m.get("voice"), dict):
@@ -550,8 +556,12 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
         await enviar(await asyncio.to_thread(_texto_gastos, u["id"]))
     elif cmd == "vpn":
         await enviar(await _texto_vpn())
-    elif cmd == "anuncios":
+    elif cmd in ("anuncios", "bloqueo"):
         await _anuncios(b, chat_id, u)
+    elif cmd == "red":
+        await enviar(await texto_red(u))
+    elif cmd == "rutinas":
+        await _rutinas(b, chat_id, u)
     elif cmd == "nuevovpn":
         if not admin:
             await enviar("Eso solo lo puede hacer un administrador.")
@@ -572,6 +582,54 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
                      teclado([boton("Confirmar", f_ok), boton("Cancelar", f_no)]))
     else:
         await enviar("No conozco ese comando. Escribe /ayuda.")
+
+
+async def texto_red(u: dict) -> str:
+    """Salud de la red para todos; número de dispositivos y los nuevos, solo para administradores
+    (quién está en casa es privado)."""
+    from . import red
+    lineas = ["**La red de casa**"]
+    try:
+        s = await red.salud()
+        lat = "; ".join(f"{d['nombre']} {_num(d['media_ms'])} ms" if d["media_ms"] is not None else f"{d['nombre']} sin respuesta"
+                        for d in s["latencia"]["destinos"])
+        lineas += [f"- Latencia: {lat}", f"- DNS (SHIELD): {s['dns']}", f"- VPN: {s['vpn']}"]
+        if s["velocidad"]:
+            v = s["velocidad"]
+            lineas.append(f"- Último test de velocidad: {_num(v['bajada_mbps'])} ↓ / {_num(v['subida_mbps'])} ↑ Mbps")
+    except Exception:  # noqa: BLE001 - un dato que falla no impide el resto
+        log.warning("Telegram /red: no se pudo leer la salud de la red")
+        lineas.append("- No he podido medir la salud de la red ahora mismo.")
+    if u["rol"] != "admin":
+        return "\n".join(lineas)
+    try:
+        ds = await red.dispositivos()
+    except Exception:  # noqa: BLE001
+        lineas.append("- No he podido leer los dispositivos.")
+        return "\n".join(lineas)
+    nuevos = [d for d in ds if not d["conocido"]]
+    lineas.append(f"\nDispositivos: {len(ds)}, sin reconocer: {len(nuevos)}")
+    for d in nuevos[:10]:
+        lineas.append(f"- {d.get('nombre') or d.get('fabricante') or 'sin nombre'} ({d['ip']})")
+    if len(nuevos) > 10:
+        lineas.append(f"- … y {len(nuevos) - 10} más (míralos en ARIA → Red)")
+    return "\n".join(lineas)
+
+
+async def _rutinas(b, chat_id: int, u: dict) -> None:
+    rs = await asyncio.to_thread(rutinas.listar, u["id"])
+    if not rs:
+        await enviar_texto(b, chat_id, "No tienes rutinas. Créalas en ARIA → Ajustes → Rutinas o dime, por ejemplo, "
+                           "«crea una rutina que cada día a las 8 me diga el tiempo y 3 titulares».")
+        return
+    filas, lineas = [], ["**Tus rutinas**"]
+    for r in rs:
+        lineas.append(f"- {r['nombre']}: {r['descripcion']}{'' if r['activa'] else ' (EN PAUSA)'}")
+        corto = r["nombre"] if len(r["nombre"]) <= 22 else r["nombre"][:21] + "…"
+        f_ej = await asyncio.to_thread(ficha, chat_id, u["id"], "rutina_ejecutar", {"rid": r["id"]}, 3600)
+        f_pa = await asyncio.to_thread(ficha, chat_id, u["id"], "rutina_activa", {"rid": r["id"], "activa": not r["activa"]}, 3600)
+        filas.append([boton(f"Ejecutar ahora · {corto}", f_ej), boton("Reanudar" if not r["activa"] else "Pausar", f_pa)])
+    await enviar_texto(b, chat_id, "\n".join(lineas), teclado(*filas))
 
 
 async def _texto_tiempo(ciudad: str) -> str:
@@ -685,6 +743,28 @@ async def _accion(b, cq: dict, chat_id: int, u: dict, accion: str, d: dict) -> s
     if accion == "cancelar":
         await _quitar_botones(b, cq)
         return "Cancelado."
+    if accion == "resumir":
+        await _quitar_botones(b, cq)
+        await _charlar(b, chat_id, u, f"Resume este enlace: {str(d.get('url', ''))[:enlaces.MAX_URL]}")
+        return "Resumido."
+    if accion == "rutina_ejecutar":
+        r = await asyncio.to_thread(rutinas.obtener, u["id"], int(d.get("rid", 0)))
+        if not r:
+            return "Esa rutina ya no existe."
+        tarea = asyncio.create_task(_escribiendo(b, chat_id))
+        try:
+            res = await rutinas.ejecutar(r, canales_=[])  # el resultado va a este chat (y a la campana)
+        finally:
+            tarea.cancel()
+        await enviar_texto(b, chat_id, res["texto"] or "No hay resultado.")
+        return "Hecho." if res["estado"] == "ok" else "No se pudo."
+    if accion == "rutina_activa":
+        r = await asyncio.to_thread(rutinas.actualizar, u["id"], u["rol"], int(d.get("rid", 0)), {"activa": bool(d.get("activa"))})
+        if not r:
+            return "Esa rutina ya no existe."
+        await _quitar_botones(b, cq)
+        await enviar_texto(b, chat_id, f"Rutina «{r['nombre']}» {'reanudada' if r['activa'] else 'en pausa'}.")
+        return "Reanudada." if r["activa"] else "En pausa."
     if accion == "pedir":  # paso previo: se pide «Confirmar»
         if d.get("op") in OPS_ADMIN and not admin:
             return "Eso solo lo puede hacer un administrador."

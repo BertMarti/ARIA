@@ -96,8 +96,9 @@ def test_gestion_vpn_no_se_activa_en_charla(texto):
 
 
 def test_borrar_vpn_sigue_sin_ser_herramienta():
-    # (borrar_recordatorio solo toca los recordatorios del propio usuario)
-    assert not any("eliminar" in n or "borrar" in n for n in tools._REGISTRO if n != "borrar_recordatorio")
+    # (borrar_recordatorio y borrar_rutina solo tocan lo del propio usuario)
+    assert not any("eliminar" in n or "borrar" in n for n in tools._REGISTRO
+                   if n not in ("borrar_recordatorio", "borrar_rutina"))
 
 
 def test_nombre_invalido_en_crear():

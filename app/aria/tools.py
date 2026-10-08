@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import busqueda, config, recordatorios, escaneo, finanzas, memoria, red, seguridad, services, shield, sistema, spotify, vpn
+from . import busqueda, config, enlaces, recordatorios, rutinas, escaneo, finanzas, memoria, red, seguridad, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -51,11 +51,21 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 
 # Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
 SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn",
-                          "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo"})
+                          "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo",
+                          "resumir_enlace"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
 # Recordatorios: todo rol, siempre los del usuario que habla.
 RECORDATORIOS = frozenset({"recordatorio", "mis_recordatorios", "borrar_recordatorio"})
+# Rutinas (gestión desde el chat): todo rol, siempre las del usuario que habla.
+GESTION_RUTINAS = frozenset({"crear_rutina", "mis_rutinas", "borrar_rutina"})
+# Lo que puede usar una rutina programada: SOLO consultas (nada que cambie la casa, los datos ni la memoria,
+# ni crear o borrar recordatorios/rutinas, ni gastar ancho de banda con un test de velocidad o un escaneo).
+# Se cruza además con las del rol y las del agente.
+RUTINAS = frozenset(SOLO_LECTURA | {
+    "estado_red", "dispositivos_red", "dispositivos_nuevos", "medir_latencia", "informe_seguridad", "estado_escaneo",
+    "bloqueos_por_cliente", "resumen_mes", "gastos_por_categoria", "comparar_meses", "estado_presupuestos",
+    "buscar_movimientos", "mis_recordatorios", "mis_rutinas"})
 
 
 # Además, el rol `usuario` puede usar sus finanzas (solo sus datos) y la salud de la red (solo lectura).
@@ -68,7 +78,7 @@ def permitidas(rol: str) -> set:
     if rol == "admin":
         return set(_REGISTRO)
     if rol == "usuario":
-        return set(SOLO_LECTURA | MEMORIA | RECORDATORIOS | DE_USUARIO) & set(_REGISTRO)
+        return set(SOLO_LECTURA | MEMORIA | RECORDATORIOS | GESTION_RUTINAS | DE_USUARIO) & set(_REGISTRO)
     return set()
 
 
@@ -692,6 +702,76 @@ async def borrar_recordatorio(uid, id_o_texto) -> str:
         return "Encajan varios: " + "; ".join(f"{r['id']}: {r['texto']}" for r in hallados[:5]) + ". Dime el número."
     await asyncio.to_thread(recordatorios.borrar, uid, hallados[0]["id"])
     return f"Recordatorio borrado: «{hallados[0]['texto']}»."
+
+
+# --- Enlaces --------------------------------------------------------------------------------------------
+@tool("resumir_enlace",
+      "Abre una página web (http/https pública) y devuelve su título y texto para resumirla o comentarla. Úsala "
+      "cuando el usuario pegue o comparta un enlace y pida un resumen, tu opinión o qué dice.",
+      {"url": ("string", "La dirección completa de la página (https://…)")}, ("url",))
+async def resumir_enlace(url: str) -> str:
+    try:
+        return await enlaces.leer(str(url))
+    except enlaces.EnlaceError as e:
+        return f"No he podido leer ese enlace: {e}"
+
+
+# --- Rutinas (del usuario que chatea) --------------------------------------------------------------------
+def _rol_de(uid: int) -> str:
+    from . import usuarios
+    u = usuarios.por_id(uid)
+    return u["rol"] if u and u["activo"] else "ninguno"
+
+
+@tool("crear_rutina",
+      "Crea una rutina: una tarea que ARIA hará sola a una hora fija (p. ej. «cada mañana a las 8, dime el tiempo y "
+      "3 titulares») y cuyo resultado envía por Telegram, notificación o la campana. Las rutinas solo consultan.",
+      {"nombre": ("string", "Nombre corto (p. ej. «Tiempo y noticias»)"),
+       "prompt": ("string", "Lo que ARIA debe hacer cada vez, como si se lo pidiera el usuario"),
+       "horario": ("string", "Cuándo, en español: «todos los días a las 08:00», «de lunes a viernes a las 7:30», "
+                             "«los lunes y jueves a las 9:00», «cada 3 horas» (mínimo cada hora)"),
+       "canal": ("string", "telegram (por defecto), push, ambos o web (solo la campana)"),
+       "agente": ("string", "aria (por defecto), finanzas, redes o seguridad")},
+      ("nombre", "prompt", "horario"), usa_uid=True)
+async def crear_rutina(uid, nombre, prompt, horario, canal="telegram", agente="aria") -> str:
+    try:
+        r = await asyncio.to_thread(rutinas.crear, uid, await asyncio.to_thread(_rol_de, uid),
+                                    {"nombre": nombre, "prompt": prompt, "horario": horario,
+                                     "canal": canal or "telegram", "agente": agente or "aria"})
+    except rutinas.RutinaError as e:
+        return str(e)
+    return (f"Rutina {r['id']} creada: «{r['nombre']}», {r['descripcion']}, por {rutinas.NOMBRE_CANAL[r['canal']]}. "
+            "Puedes pausarla, editarla o ejecutarla ya en Ajustes → Rutinas.")
+
+
+@tool("mis_rutinas", "Lista las rutinas del usuario (número, nombre, cuándo y si están en pausa).", usa_uid=True)
+async def mis_rutinas(uid) -> str:
+    rs = await asyncio.to_thread(rutinas.listar, uid)
+    if not rs:
+        return "No tienes rutinas. Por ejemplo: «crea una rutina que cada día a las 8 me diga el tiempo»."
+    return f"{len(rs)} rutina(s): " + "; ".join(
+        f"{r['id']}: {r['nombre']} ({r['descripcion']}{'' if r['activa'] else ', EN PAUSA'})" for r in rs) + "."
+
+
+@tool("borrar_rutina", "Borra una rutina del usuario por su número o por palabras de su nombre.",
+      {"id_o_nombre": ("string", "Número de la rutina o palabras de su nombre")}, ("id_o_nombre",), usa_uid=True)
+async def borrar_rutina(uid, id_o_nombre) -> str:
+    hallados = await asyncio.to_thread(rutinas.buscar, uid, id_o_nombre)
+    if not hallados:
+        return "No encuentro esa rutina."
+    if len(hallados) > 1:
+        return "Encajan varias: " + "; ".join(f"{r['id']}: {r['nombre']}" for r in hallados[:5]) + ". Dime el número."
+    await asyncio.to_thread(rutinas.borrar, uid, hallados[0]["id"])
+    return f"Rutina borrada: «{hallados[0]['nombre']}»."
+
+
+_INTENCIONES += [
+    ((r"https?://",), {"resumir_enlace"}),
+    ((r"\brutinas?\b", r"\b(crea\w*|nueva|programa\w*|a[ñn]ade\w*|haz\w*|hazme|pon\w*|configura\w*)\b",
+      r"!\b(borra\w*|quita\w*|elimina\w*)\b"), {"crear_rutina"}),
+    ((r"\brutinas?\b", r"\b(mis|qu[eé]|cu[aá]les|tengo|lista\w*|ver)\b", r"!\b(crea\w*|nueva)\b"), {"mis_rutinas"}),
+    ((r"\brutinas?\b", r"\b(borra\w*|quita\w*|elimina\w*|cancela\w*)\b"), {"borrar_rutina", "mis_rutinas"}),
+]
 
 
 # Spotify y Netflix quedan aparcados salvo ARIA_SPOTIFY=1 / ARIA_NETFLIX=1 (ver config.py).

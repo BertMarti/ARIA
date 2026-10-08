@@ -336,6 +336,36 @@
         </form>
         <p id="rec-msg" class="muted" role="status"></p>
       </article>
+      <article class="tarjeta ancha" id="ajustes-rutinas">
+        <h2>Rutinas</h2>
+        <p class="muted">Tareas que ARIA hace sola a su hora y te envía el resultado: «cada mañana a las 8, dime el tiempo y 3 titulares de tecnología». Solo consultan (nunca cambian nada de la casa) y usan los cerebros en la nube; si solo está el local, se saltan con una nota. También puedes pedírselas en el chat («crea una rutina…») o verlas en Telegram con /rutinas. Pulsa Ctrl+K (⌘K en Mac) para ejecutar una al momento.</p>
+        <p id="rut-aviso-nube" class="aviso-txt" hidden>Ahora mismo no hay ningún cerebro en la nube disponible: las rutinas no se ejecutarán hasta que vuelva.</p>
+        <ul id="rut-lista" class="filas" aria-live="polite"></ul>
+        <h3 id="rut-form-titulo">Nueva rutina</h3>
+        <form id="form-rut" class="formulario" autocomplete="off">
+          <label>Nombre <input id="rut-nombre" maxlength="60" placeholder="Tiempo y noticias" required></label>
+          <label>Qué debe hacer ARIA <textarea id="rut-prompt" rows="3" maxlength="1000" placeholder="Dime el tiempo de hoy en Ronda y 3 titulares de tecnología" required></textarea></label>
+          <fieldset class="rut-cuando">
+            <legend>Cuándo</legend>
+            <div class="fila-form">
+              <label>Repetir <select id="rut-tipo"><option value="diaria">A una hora</option><option value="cada">Cada N horas</option></select></label>
+              <label id="rut-hora-et">A las <input id="rut-hora" type="time" value="08:00" required></label>
+              <label id="rut-horas-et" hidden>Cada <input id="rut-horas" type="number" min="1" max="168" value="3" inputmode="numeric"> horas</label>
+            </div>
+            <div id="rut-dias" class="rut-dias" role="group" aria-label="Días de la semana (ninguno marcado = todos)"></div>
+            <p class="muted pequeno-txt" id="rut-dias-nota">Sin días marcados, todos los días.</p>
+          </fieldset>
+          <div class="fila-form">
+            <label>Agente <select id="rut-agente"></select></label>
+            <label>Enviar por <select id="rut-canal"><option value="telegram">Telegram</option><option value="push">Notificación</option><option value="ambos">Telegram y notificación</option><option value="web">Solo la campana</option></select></label>
+          </div>
+          <div class="botones">
+            <button type="submit" class="primario" id="rut-guardar">Crear rutina</button>
+            <button type="button" class="fantasma" id="rut-cancelar" hidden>Cancelar</button>
+          </div>
+        </form>
+        <p id="rut-msg" class="muted" role="status"></p>
+      </article>
       <article class="tarjeta" id="ajustes-voz">
         <h2>Voz</h2>
         <label>Micrófono
@@ -466,6 +496,24 @@
   </div>
 </dialog>
 
+<dialog id="dlg-paleta" class="modal paleta" aria-labelledby="paleta-titulo">
+  <h2 id="paleta-titulo" class="sr">Paleta de órdenes</h2>
+  <input id="paleta-texto" type="text" role="combobox" aria-expanded="true" aria-controls="paleta-lista" aria-autocomplete="list" aria-label="Escribe una orden: ir a una sección, nueva conversación, voz, rutinas…" placeholder="Escribe una orden…" autocomplete="off" spellcheck="false">
+  <ul id="paleta-lista" class="paleta-lista" role="listbox" aria-label="Órdenes"></ul>
+  <p class="muted pequeno-txt paleta-pie"><kbd>↑</kbd> <kbd>↓</kbd> para moverte · <kbd>Intro</kbd> para elegir · <kbd>Esc</kbd> para cerrar</p>
+</dialog>
+
+<dialog id="dlg-compartir" class="modal" aria-labelledby="compartir-titulo">
+  <h2 id="compartir-titulo">Compartido con ARIA</h2>
+  <p id="compartir-contenido" class="compartir-contenido"></p>
+  <p class="muted">¿Qué quieres que haga?</p>
+  <div class="botones">
+    <button type="button" class="fantasma" id="compartir-no">Cancelar</button>
+    <button type="button" class="fantasma" id="compartir-opina">¿Qué opinas?</button>
+    <button type="button" class="primario" id="compartir-resume">Resume esto</button>
+  </div>
+</dialog>
+
 <script src="/static/util.js"></script>
 <script src="/static/md.js"></script>
 <script src="/static/voz.js"></script>
@@ -479,6 +527,9 @@
 <script src="/static/memoria.js"></script>
 <script src="/static/usuarios.js"></script>
 <script src="/static/avisos.js"></script>
+<script src="/static/rutinas.js"></script>
+<script src="/static/paleta.js"></script>
+<script src="/static/compartir.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

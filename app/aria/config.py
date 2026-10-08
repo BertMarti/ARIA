@@ -164,6 +164,9 @@ def system_prompt(nube: bool = False, nombre: str | None = None, admin: bool = T
               "Si te pide que le avises o le recuerdes algo en un momento concreto («recuérdame mañana a las 9…», "
               "«avísame en 20 minutos», «todos los lunes a las 8…»), usa la herramienta recordatorio con la fecha y "
               "hora ISO que calcules a partir de la de hoy (recordar es solo para datos permanentes). "
+              "Si quiere que hagas algo tú solo de forma periódica («cada mañana a las 8 dime el tiempo», «crea una "
+              "rutina…»), usa crear_rutina (un recordatorio solo le avisa con un texto fijo). "
+              "Si pega o comparte un enlace y pide un resumen o tu opinión, usa resumir_enlace. "
               "Para cualquier cosa reciente o factual de la que no estés seguro (noticias, precios, resultados, "
               "datos de lugares o personas) usa buscar_en_internet o noticias, y cita las fuentes como enlaces "
               "al final de la respuesta con el formato «Fuentes: [título](url), ...».")

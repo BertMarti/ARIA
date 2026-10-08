@@ -57,6 +57,12 @@ _USUARIO = [
     ("POST", r"/api/push/suscripciones"),
     ("DELETE", r"/api/push/suscripciones/\d+"),
     ("POST", r"/api/push/prueba"),
+    # Rutinas: cada usuario solo las suyas (el id sale de la sesión; las ajenas dan 404).
+    ("GET", r"/api/rutinas"),
+    ("POST", r"/api/rutinas"),
+    ("PATCH", r"/api/rutinas/\d+"),
+    ("DELETE", r"/api/rutinas/\d+"),
+    ("POST", r"/api/rutinas/\d+/ejecutar"),
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 

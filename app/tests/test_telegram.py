@@ -470,3 +470,89 @@ def test_preparar_quita_webhook_y_registra_comandos(monkeypatch):
     assert correr(tg.preparar(b))
     metodos = [m for m, _ in b.llamadas]
     assert metodos == ["getMe", "getWebhookInfo", "deleteWebhook", "setMyCommands"]
+
+
+# --- Rutinas, red, bloqueo y enlaces --------------------------------------------------------------------------------
+def test_preparar_registra_los_comandos_nuevos(monkeypatch):
+    b = FalsoBot()
+    monkeypatch.setattr(tg, "_yo", {})
+    correr(tg.preparar(b))
+    cmds = {c["command"] for c in b.ultimo("setMyCommands")["commands"]}
+    assert {"tiempo", "red", "bloqueo", "vpn", "resumen", "ayuda", "rutinas"} <= cmds
+
+
+def test_rutinas_por_telegram(bot, admin, ana, monkeypatch):
+    from aria import rutinas
+    monkeypatch.setattr(rutinas, "_en_curso", set())
+    rutinas.iniciar()
+    vincular(bot, ana, 200)
+    correr(tg.procesar(msg(200, "/rutinas"), bot))
+    assert "No tienes rutinas" in bot.textos()[-1]
+    r = rutinas.crear(ana["id"], "usuario", {"nombre": "Tiempo", "prompt": "el tiempo", "horario": "cada hora"})
+    otra = rutinas.crear(admin["id"], "admin", {"nombre": "Ajena", "prompt": "x", "horario": "cada hora"})
+    correr(tg.procesar(msg(200, "/rutinas"), bot))
+    t = bot.ultimo()
+    assert "Tiempo" in t["text"] and "Ajena" not in t["text"]
+    ejecutar, pausar = fichas(t["reply_markup"])
+    vistos = []
+
+    async def ejecutar_falso(rr, canales_=None, ahora=None):
+        vistos.append((rr["id"], canales_))
+        return {"estado": "ok", "texto": "**Rutina «Tiempo»**\n\nSol."}
+    monkeypatch.setattr(rutinas, "ejecutar", ejecutar_falso)
+    correr(tg.procesar(pulsar(200, ejecutar), bot))
+    assert vistos == [(r["id"], [])] and "Sol." in bot.textos()[-1]
+    correr(tg.procesar(pulsar(200, pausar), bot))
+    assert not rutinas.obtener(ana["id"], r["id"])["activa"] and "en pausa" in bot.textos()[-1]
+    # Una ficha forjada con la rutina de otro usuario no hace nada
+    f = tg.ficha(200, ana["id"], "rutina_ejecutar", {"rid": otra["id"]})
+    correr(tg.procesar(pulsar(200, f), bot))
+    assert len(vistos) == 1 and bot.ultimo("answerCallbackQuery")["text"] == "Esa rutina ya no existe."
+
+
+def test_solo_un_enlace_ofrece_resumir(bot, ana, monkeypatch):
+    vistos = []
+    _responder_falso(monkeypatch, texto="Resumen del artículo.", vistos=vistos)
+    vincular(bot, ana, 200)
+    correr(tg.procesar(msg(200, "https://example.com/noticia"), bot))
+    assert vistos == [] and bot.ultimo()["text"] == "¿Quieres que lo resuma?"
+    (resumir,) = fichas(bot.ultimo()["reply_markup"])
+    correr(tg.procesar(pulsar(200, resumir), bot))
+    assert vistos == [("usuario", "Resume este enlace: https://example.com/noticia")]
+    assert bot.textos()[-1] == "Resumen del artículo."
+    correr(tg.procesar(msg(200, "mira https://example.com y dime"), bot))  # con más texto: va al chat directamente
+    assert len(vistos) == 2
+
+
+def test_red_segun_rol(bot, admin, ana, monkeypatch):
+    from aria import red
+
+    async def salud():
+        return {"latencia": {"destinos": [{"nombre": "router", "media_ms": 1.5}]}, "dns": "funciona",
+                "vpn": "funciona", "velocidad": None, "vpn_clientes": None}
+
+    async def dispositivos():
+        return [{"ip": "192.168.0.10", "nombre": "movil", "conocido": True},
+                {"ip": "192.168.0.99", "nombre": "", "fabricante": "Espressif", "conocido": False}]
+    monkeypatch.setattr(red, "salud", salud)
+    monkeypatch.setattr(red, "dispositivos", dispositivos)
+    vincular(bot, ana, 200)
+    correr(tg.procesar(msg(200, "/red"), bot))
+    t = bot.ultimo()["text"]
+    assert "1,5 ms" in t and "192.168.0.99" not in t and "Dispositivos" not in t
+    vincular(bot, admin, 100)
+    correr(tg.procesar(msg(100, "/red"), bot))
+    t = bot.ultimo()["text"]
+    assert "Dispositivos: 2, sin reconocer: 1" in t and "Espressif (192.168.0.99)" in t
+
+
+def test_bloqueo_es_el_bloqueador(bot, ana, monkeypatch):
+    from aria import shield
+
+    async def resumen():
+        return {"bloqueo_activo": True, "consultas": 10, "bloqueadas": 4, "porcentaje": 40.0}
+    monkeypatch.setattr(shield, "configurado", lambda: True)
+    monkeypatch.setattr(shield, "resumen", resumen)
+    vincular(bot, ana, 200)
+    correr(tg.procesar(msg(200, "/bloqueo"), bot))
+    assert "4 bloqueadas" in bot.ultimo()["text"] and "reply_markup" not in bot.ultimo()

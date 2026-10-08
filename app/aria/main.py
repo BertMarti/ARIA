@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agentes, api_avisos, api_finanzas, api_red, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, cve, db, diario, finanzas, memoria, modelos, permisos, push, recordatorios, red, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, voz, vpn
+from . import agentes, api_avisos, api_rutinas, api_finanzas, api_red, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, cve, db, diario, finanzas, memoria, modelos, permisos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, voz, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -67,6 +67,7 @@ async def _arranque():
     # Avisos: tablas, chequeos, canales y planificador (recordatorios, resumen programado). Telegram con long polling.
     avisos.iniciar()
     recordatorios.iniciar()
+    rutinas.iniciar()
     push.iniciar()
     telegram.iniciar()
     avisos_chequeos.registrar()
@@ -235,6 +236,7 @@ app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
 app.include_router(api_finanzas.router)
 app.include_router(api_red.router)
 app.include_router(api_avisos.router)
+app.include_router(api_rutinas.router)
 
 
 @app.get("/sw.js")

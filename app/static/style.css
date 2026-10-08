@@ -397,3 +397,32 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 
 /* Spotify aparcado (ARIA_SPOTIFY=0) */
 .sin-spotify #tile-spotify, .sin-spotify #card-spotify, .sin-spotify #ajustes-spotify { display: none !important; }
+
+/* Rutinas (Ajustes) */
+.rut-cuando { border: 1px solid var(--borde); border-radius: 10px; padding: .4rem .8rem .6rem; margin: .4rem 0; }
+.rut-cuando legend { color: var(--muted); font-size: .85rem; padding: 0 .3rem; }
+.rut-dias { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .6rem; }
+.rut-dia { display: inline-flex; align-items: center; justify-content: center; position: relative; cursor: pointer; }
+.rut-dia input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.rut-dia span { display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem; border-radius: 50%;
+  border: 1px solid var(--borde-fuerte); font-weight: 600; color: var(--muted); }
+.rut-dia input:checked + span { background: var(--acento); color: var(--acento-txt); border-color: transparent; }
+.rut-dia input:focus-visible + span { outline: 2px solid var(--acento); outline-offset: 2px; }
+.rut-prompt { overflow-wrap: anywhere; }
+.rut-pausa { margin-left: .5rem; }
+#form-rut textarea { width: 100%; resize: vertical; font: inherit; }
+
+/* Paleta de órdenes (Ctrl+K) */
+.modal.paleta { width: min(94vw, 560px); padding: .8rem; margin-top: 12vh; }
+.paleta input { width: 100%; font-size: 1.05rem; }
+.paleta-lista { list-style: none; margin: .6rem 0 0; padding: 0; max-height: 50vh; overflow-y: auto; display: grid; gap: .15rem; }
+.paleta-op { display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: .55rem .7rem; border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
+.paleta-op:hover { background: rgba(56, 214, 255, .06); }
+.paleta-op.activa { background: rgba(56, 214, 255, .12); border-color: var(--acento); }
+.paleta-vacia { padding: .55rem .7rem; }
+.paleta-pie { margin: .6rem 0 0; }
+kbd { font-family: var(--mono); font-size: .8em; border: 1px solid var(--borde-fuerte); border-bottom-width: 2px; border-radius: 5px; padding: 0 .35rem; color: var(--txt); }
+
+/* Compartir con ARIA */
+.compartir-contenido { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto; background: rgba(5, 9, 16, .35);
+  border: 1px solid var(--borde); border-radius: 10px; padding: .6rem .8rem; margin: 0 0 .6rem; }

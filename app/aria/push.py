@@ -240,6 +240,7 @@ async def canal(uid: int, aviso: dict) -> bool:
     """Canal del motor de avisos."""
     t = aviso["tipo"]
     titulo = ("ARIA · Recordatorio" if t == "recordatorio" else "ARIA · Buenos días" if t == "resumen"
+              else "ARIA · Rutina" if t == "rutina"
               else "ARIA · Importante" if aviso["severidad"] == "grave" else "ARIA")
     url = "/#" + aviso["enlace"] if aviso.get("enlace") else "/"
     r = await enviar(uid, titulo, aviso["texto"], url, f"aria-{aviso['tipo']}",

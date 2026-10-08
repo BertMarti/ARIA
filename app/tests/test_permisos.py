@@ -76,6 +76,12 @@ RUTAS_USUARIO_AVISOS = {
     ("POST", "/api/push/suscripciones"), ("DELETE", "/api/push/suscripciones/{sid}"), ("POST", "/api/push/prueba"),
 }
 
+# Rutinas: los dos roles, cada uno las suyas (IDOR en test_rutinas.py).
+RUTAS_USUARIO_RUTINAS = {
+    ("GET", "/api/rutinas"), ("POST", "/api/rutinas"), ("PATCH", "/api/rutinas/{rid}"),
+    ("DELETE", "/api/rutinas/{rid}"), ("POST", "/api/rutinas/{rid}/ejecutar"),
+}
+
 
 def test_toda_ruta_registrada_esta_cubierta():
     """Si alguien añade un endpoint, debe salir en la lista blanca de `usuario` o devolverle 403."""
@@ -99,7 +105,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("GET", "/api/memoria"), ("POST", "/api/memoria"), ("POST", "/api/memoria/ajustes"),
                     ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
                     ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),
-                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS, (m, r.path)
+                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS, (m, r.path)
     assert not permisos.permitido("desconocido", "GET", "/")
 
 
@@ -191,7 +197,9 @@ def test_migracion_conserva_el_hash_y_la_version(tmp_path, monkeypatch):
 LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "estado_sistema", "buscar_en_netflix",
            "buscar_en_internet", "noticias", "tiempo",
            "recordar", "olvidar",  # las de memoria las tiene todo rol, sobre sus propios datos
-           "recordatorio", "mis_recordatorios", "borrar_recordatorio"}  # y los recordatorios (los suyos)
+           "recordatorio", "mis_recordatorios", "borrar_recordatorio",  # y los recordatorios (los suyos)
+           "resumir_enlace",  # leer una web pública (anti-SSRF en enlaces.py)
+           "crear_rutina", "mis_rutinas", "borrar_rutina"}  # y sus rutinas
 
 
 def test_herramientas_de_solo_lectura():

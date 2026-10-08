@@ -20,6 +20,8 @@ const Chat = (() => {
     dispositivos_nuevos: "Dispositivos nuevos", marcar_dispositivo_conocido: "Marcando dispositivo",
     medir_latencia: "Midiendo latencia", test_velocidad: "Test de velocidad", informe_seguridad: "Informe de seguridad",
     escanear_red: "Pidiendo escaneo", estado_escaneo: "Estado del escáner", bloqueos_por_cliente: "Bloqueos por dispositivo",
+    resumir_enlace: "Leyendo el enlace…", crear_rutina: "Creando rutina", mis_rutinas: "Consultando rutinas",
+    borrar_rutina: "Borrando rutina",
   };
   let agentes = {};             // id -> {nombre, icono, descripcion}
   let agentePendiente = "aria"; // agente elegido antes de crear la conversación

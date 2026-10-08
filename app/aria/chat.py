@@ -21,15 +21,20 @@ def limpiar(mensajes) -> list:
 
 
 async def responder(mensajes: list, rol: str = "admin", quien: str | None = None,
-                    agente: "agentes.Agente | None" = None, uid: int | None = None) -> AsyncIterator[dict]:
+                    agente: "agentes.Agente | None" = None, uid: int | None = None, solo_nube: bool = False,
+                    limite: "set | frozenset | None" = None) -> AsyncIterator[dict]:
     """Genera eventos: cerebro, pensando, token, herramienta, resultado, aviso, reinicio, error, fin.
 
     En cada ronda se prueba la cadena de cerebros en orden; si uno falla se pasa al siguiente.
     Con `agente`, se usan su prompt, sus herramientas (cruzadas con las del rol) y su cerebro preferido.
+    `solo_nube` quita el cerebro local de la cadena y `limite` recorta aún más las herramientas (rutinas:
+    solo las de consulta); `tools.ejecutar` vuelve a comprobarlo con `solo`.
     """
     msgs = limpiar(mensajes)
     ultimo_error = None
     permitidas = agentes.herramientas(agente, rol) if agente else None
+    if limite is not None:
+        permitidas = (permitidas if permitidas is not None else tools.generales() & tools.permitidas(rol)) & set(limite)
     uid, ctx = (uid if uid is not None else memoria.uid_actual.get()), {}
 
     def memoria_para(prov) -> dict:
@@ -51,12 +56,16 @@ async def responder(mensajes: list, rol: str = "admin", quien: str | None = None
         cadena = cerebros.cadena()
         if agente:
             cadena = cerebros.con_preferido(cadena, agente.cerebro)
+        if solo_nube:
+            cadena = [p for p in cadena if p.nube]
         for prov in cadena:
             enviados, anunciado = False, False
             de_agente = {}
             if agente:
                 de_agente = {"herramientas": permitidas,
                          "sistema": agentes.prompt(agente, prov.nube, quien, rol == "admin")}
+            elif permitidas is not None:
+                de_agente = {"herramientas": permitidas}
             try:
                 async for ev in prov.ronda(msgs, con_tools=not ultima, rol=rol, nombre=quien,
                                            **de_agente, **memoria_para(prov)):

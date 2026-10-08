@@ -40,7 +40,7 @@ _COMUN = ("Responde siempre en español de España, de forma breve y clara. Usa 
 
 _BASE_ARIA = frozenset({
     "fecha_hora", "estado_servicios", "estado_bloqueador", "pausar_bloqueador", "reanudar_bloqueador",
-    "dispositivos_vpn", "crear_dispositivo_vpn", "activar_dispositivo_vpn", "desactivar_dispositivo_vpn",
+    "dispositivos_vpn", "ubicaciones_vpn", "crear_dispositivo_vpn", "activar_dispositivo_vpn", "desactivar_dispositivo_vpn",
     "estado_sistema", "spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior",
     "spotify_actual", "spotify_buscar_y_reproducir", "buscar_en_netflix",
     "recordar", "olvidar", "buscar_en_internet", "noticias", "tiempo",
@@ -81,7 +81,7 @@ AGENTES: dict = {a.id: a for a in (
            "(«una hora» = 60). Es un bloqueo por DNS: dilo si preguntan, porque un dispositivo con DNS propio, DNS "
            "cifrado o VPN puede seguir con conexión. Nunca hay una acción para todos los dispositivos, ni se puede "
            "pausar el router ni la Raspberry.",
-           REDES_TOOLS | _COMUNES | {"estado_servicios", "estado_bloqueador", "dispositivos_vpn"},
+           REDES_TOOLS | _COMUNES | {"estado_servicios", "estado_bloqueador", "dispositivos_vpn", "ubicaciones_vpn"},
            palabras=(r"\bred(es)?\b", r"\blan\b", r"\bwi-?fi\b", r"\blatencia\b", r"\bping\b", r"\bvelocidad\b",
                      r"\bmbps\b", r"\binternet\b", r"\brouter\b", r"\bdispositivos? (de|en) (la )?(casa|red)\b",
                      r"\bconectad\w+ a la red\b", r"\bdispositivos? nuevos?\b", r"\bfibra\b", r"\bip\b", r"\bcontrol parental\b", r"\bsin internet\b",

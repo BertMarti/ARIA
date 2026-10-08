@@ -5,7 +5,7 @@ from contextlib import closing
 
 import httpx
 
-from . import avisos, cerebros, config, db, services, sistema, vpn
+from . import avisos, cerebros, config, db, services, sistema, vpn, vpn_ubicaciones
 from .avisos import Chequeo, Problema
 
 TEMP_MAX = 75.0
@@ -171,7 +171,9 @@ def registrar() -> None:
         Chequeo("ram", "sistema", "aviso", ram, intervalo_s=60, confirmaciones=3, cooldown_s=3600,
                 texto_ok="La RAM de la Raspberry vuelve a estar holgada.", enlace="control"),
         Chequeo("vpn_conexion", "vpn_conexion", "info", vpn_conexiones, intervalo_s=60, cooldown_s=600,
-                linea_base=True, enlace="control"),
+                 linea_base=True, enlace="control"),
+        Chequeo("vpn_ubicaciones", "vpn_ubicacion", "aviso", vpn_ubicaciones.comprobar, intervalo_s=120,
+                 evento=True, enlace="control"),
         Chequeo("cerebros", "cerebros", "aviso", cerebros_caidos, intervalo_s=60, confirmaciones=SIN_NUBE_S // 60,
                 texto_ok="Los cerebros en la nube vuelven a responder.", enlace="ajustes"),
     ):

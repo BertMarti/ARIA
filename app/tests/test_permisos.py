@@ -163,7 +163,7 @@ def test_vpn_para_usuario_sin_ip_ni_trafico(ana, monkeypatch):
         return [{"id": 1, "nombre": "m", "activo": True, "ip": "10.8.0.2", "conectado": True, "recibido": 5}]
     monkeypatch.setattr(main.vpn, "listar", lista)
     c = cliente_de(ana).get("/api/vpn/clients").json()["clientes"][0]
-    assert set(c) == {"id", "nombre", "activo", "conectado"}
+    assert set(c) == {"id", "nombre", "activo", "conectado", "caduca"}
 
 
 # --- Conversaciones: aislamiento (IDOR) ---

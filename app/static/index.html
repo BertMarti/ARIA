@@ -489,6 +489,8 @@
   <form id="form-vpn" class="formulario">
     <label>Nombre del dispositivo <input id="vpn-nombre" maxlength="32" placeholder="móvil-de-ana" pattern="[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ ._\-]{1,32}" required></label>
     <p class="muted">Letras (también con tilde y ñ), números, espacios y - _ . (máximo 32).</p>
+    <label>Caducidad <select id="vpn-caduca"><option value="">Nunca</option><option value="24h">24 horas</option><option value="7d">7 días</option><option value="fecha">Fecha concreta</option></select></label>
+    <label id="vpn-fecha-wrap" hidden>Fecha de caducidad <input id="vpn-fecha" type="date"></label>
     <div class="botones">
       <button type="button" class="fantasma" data-cerrar>Cancelar</button>
       <button type="submit" class="primario">Crear</button>

@@ -32,7 +32,7 @@
   <a href="docs/PLAN.md">🗺️ Hoja de ruta</a>
 </p>
 
-**ARIA es un asistente de inteligencia artificial autoalojado que gestiona tus aplicaciones de casa.** Se instala con un comando en una Raspberry Pi o en un PC con Linux, se abre desde el navegador o el móvil y entiende español: le hablas o le escribes y ella consulta, enciende, pausa o te avisa.
+**ARIA es un asistente de inteligencia artificial autoalojado que gestiona tus aplicaciones de casa.** Se instala con un comando en una Raspberry Pi o en un PC con Linux, se abre desde el navegador o el móvil y entiende español: le hablas o le escribes y ella consulta, enciende, pausa o te avisa. HEIMDALL admite dispositivos temporales y avisa al administrador si una VPN conecta desde un país u operador nuevo. Para ello solo envía la IP pública al servicio HTTPS de geolocalización; las IP privadas y las del rango local se ignoran y la respuesta se guarda en ARIA durante siete días para no repetir consultas.
 
 ARIA se amplía con **módulos**: cada aplicación que añades aparece en su página de Inicio, gana herramientas en el chat y puede mandarte avisos. Trae dos aplicaciones integradas como ejemplo, [SHIELD-DNS](https://github.com/BertMarti/SHIELD-DNS) (bloqueador de anuncios) y [HEIMDALL](https://github.com/BertMarti/HEIMDALL) (VPN), pero puedes añadir todas las que quieras.
 

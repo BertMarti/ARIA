@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agentes, api_avisos, api_control, api_finanzas, api_modulos, api_red, api_rutinas, arranque, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, finanzas, mapas, memoria, modelos, modulos, permisos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn
+from . import agentes, api_avisos, api_control, api_finanzas, api_modulos, api_red, api_rutinas, arranque, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, finanzas, mapas, memoria, modelos, modulos, permisos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -58,6 +58,7 @@ async def _arranque():
     if not auth.habilitado():
         log.error("Faltan ARIA_USER / ARIA_PASSWORD o ARIA_SECRET (>=16 caracteres): login deshabilitado.")
     db.iniciar()
+    vpn_ubicaciones.iniciar()
     usuarios.iniciar()
     finanzas.iniciar()
     red.iniciar()
@@ -807,7 +808,10 @@ async def api_vpn_lista(request: Request):
     try:
         clientes = await vpn.listar()
         if request.state.usuario["rol"] != "admin":  # los usuarios solo ven el estado, sin IP ni tráfico
-            clientes = [{k: c[k] for k in ("id", "nombre", "activo", "conectado")} for c in clientes]
+            clientes = [{k: c.get(k) for k in ("id", "nombre", "activo", "conectado", "caduca")} for c in clientes]
+        if request.state.usuario["rol"] == "admin":
+            for cliente in clientes:
+                cliente["ubicaciones"] = vpn_ubicaciones.historial(cliente["id"], 10)
         return {"conectado": True, "clientes": clientes, "panel": vpn.panel_url()}
     except vpn.VpnError as e:
         return {"conectado": False, "error": True, "mensaje": str(e)}
@@ -819,9 +823,12 @@ def _vpn_error(e: Exception) -> JSONResponse:
 
 @app.post("/api/vpn/clients")
 async def api_vpn_crear(request: Request):
-    nombre = (await _json(request)).get("nombre")
+    datos = await _json(request)
+    nombre, caduca = datos.get("nombre"), datos.get("caduca")
+    if caduca is not None and not isinstance(caduca, str):
+        return _vpn_error(vpn.VpnError("Caducidad no válida."))
     try:
-        return {"id": await vpn.crear(nombre if isinstance(nombre, str) else "")}
+        return {"id": await vpn.crear(nombre if isinstance(nombre, str) else "", caduca)}
     except vpn.VpnError as e:
         return _vpn_error(e)
 
@@ -865,6 +872,11 @@ async def api_vpn_borrar(cid: int):
     except vpn.VpnError as e:
         return _vpn_error(e)
     return {"ok": True}
+
+
+@app.get("/api/vpn/clients/{cid}/ubicaciones")
+async def api_vpn_ubicaciones(cid: int):
+    return {"ubicaciones": await asyncio.to_thread(vpn_ubicaciones.historial, cid, 10)}
 
 
 @app.get("/api/spotify/status")

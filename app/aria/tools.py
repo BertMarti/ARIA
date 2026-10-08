@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import busqueda, config, control, enlaces, escaneo, finanzas, mapas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn
+from . import busqueda, config, control, enlaces, escaneo, finanzas, mapas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -128,8 +128,10 @@ _INTENCIONES = [
     ((_BLOQUEADOR, r"\b(reanud\w+|activ[ae]\w*|reactiv\w+|enciend\w+|encend\w+|conect[ae]\w*|vuelve\w*|contin[uú]\w+)\b"),
      {"reanudar_bloqueador"}),
     ((r"\b(vpn|wireguard|heimdall)\b",
-      r"\b(dispositivos?|conectad\w+|clientes?|cu[aá]nt\w+|hay|lista\w*|m[oó]viles?|tel[eé]fonos?|qui[eé]n\w*)\b"),
-     {"dispositivos_vpn"}),
+       r"\b(dispositivos?|conectad\w+|clientes?|cu[aá]nt\w+|hay|lista\w*|m[oó]viles?|tel[eé]fonos?|qui[eé]n\w*)\b"),
+      {"dispositivos_vpn"}),
+    ((r"\b(vpn|wireguard|heimdall)\b", r"\b(ubicaci[oó]n|d[oó]nde|desde qu[eé] sitio|conexiones)\b"),
+      {"ubicaciones_vpn"}),
     ((r"\b(vpn|wireguard|heimdall)\b",
       r"\b(a[ñn]ad\w*|cre[ao]\w*|nuev[oa]s?|agreg\w+|dar de alta|alta)\b", _EXPLICAR), {"crear_dispositivo_vpn"}),
     ((r"\b(vpn|wireguard|heimdall|dispositivos?)\b",
@@ -436,16 +438,30 @@ async def estado_sistema() -> str:
 
 @tool("crear_dispositivo_vpn",
       "Crea un dispositivo nuevo (móvil, portátil...) en la VPN HEIMDALL. No devuelve claves: el usuario escanea el QR en la web.",
-      {"nombre": ("string", "Nombre del dispositivo (letras sin tilde, números, espacios y - _ .; máximo 32)")}, ("nombre",))
-async def crear_dispositivo_vpn(nombre: str) -> str:
+     {"nombre": ("string", "Nombre del dispositivo (letras sin tilde, números, espacios y - _ .; máximo 32)")}, ("nombre",))
+async def crear_dispositivo_vpn(nombre: str, caduca: str = "") -> str:
     nombre = str(nombre).strip()
     if not vpn.nombre_valido(nombre):
         return "Nombre no válido: usa letras sin tilde, números, espacios y - _ . (máximo 32 caracteres)."
     if any(c["nombre"].lower() == nombre.lower() for c in await vpn.listar()):
         return f"Ya existe un dispositivo llamado «{nombre}» en la VPN."
-    cid = await vpn.crear(nombre)
+    cid = await vpn.crear(nombre, caduca or None)
     return (f"Dispositivo «{nombre}» creado (id {cid}). Para conectarlo, abre Centro de control → HEIMDALL "
             "y pulsa «QR» en ese dispositivo para escanearlo con la app WireGuard.")
+
+
+@tool("ubicaciones_vpn", "Consulta las últimas ubicaciones conocidas de los dispositivos VPN (solo lectura).",
+      {"dispositivo": ("string", "Nombre o id del dispositivo; vacío = todos")})
+async def ubicaciones_vpn(dispositivo: str = "") -> str:
+    clientes = await vpn.listar()
+    texto = str(dispositivo).strip().lower()
+    if texto:
+        clientes = [c for c in clientes if str(c["id"]) == texto or c["nombre"].lower() == texto]
+    filas = []
+    for c in clientes:
+        hs = vpn_ubicaciones.historial(c["id"], 10)
+        filas.append(c["nombre"] + ": " + ("; ".join(f"{x['ciudad']}, {x['pais']} ({x['operador']})" for x in hs) or "sin ubicaciones aprendidas"))
+    return "\n".join(filas) or "No encuentro ese dispositivo VPN."
 
 
 async def _cambiar_dispositivo(nombre: str, activo: bool) -> str:

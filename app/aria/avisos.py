@@ -44,6 +44,7 @@ TIPOS = {
     "sistema": ("Raspberry: temperatura, disco o RAM", True, True),
     "cerebros": ("Solo responde el cerebro local", True, True),
     "vpn_conexion": ("Un dispositivo se conecta a la VPN", True, False),
+    "vpn_ubicacion": ("Conexión VPN desde un sitio nuevo", True, True),
     "control": ("Control parental: un horario empieza o termina", True, True),
 }
 # Tipos que no se pueden silenciar con los interruptores (los pide el propio usuario).
@@ -525,4 +526,3 @@ class Limitador:
             return False
         q.append(ahora)
         return True
-

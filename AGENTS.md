@@ -80,6 +80,27 @@ opencode run -m <proveedor/modelo> --dir ../.wt/<tarea> "Implementa ... siguiend
 | Documentación, traducciones, textos | Modelo rápido (Gemini / Copilot) |
 | Búsquedas, resúmenes, borradores sin datos sensibles | Modelos gratuitos (Zen) |
 
+**Perfil restringido para delegados** (`~/.config/opencode/opencode.jsonc`). Usa una lista de comandos permitidos, no de prohibidos:
+```jsonc
+{
+  "agent": {
+    "delegado": {
+      "mode": "primary",
+      "permission": {
+        "*": "deny", "read": "allow", "edit": "allow", "glob": "allow", "grep": "allow", "list": "allow",
+        "webfetch": "allow", "external_directory": "deny",
+        "bash": { "*": "deny", "ls *": "allow", "cat *": "allow", "grep *": "allow", "find *": "allow",
+                  "git status*": "allow", "git diff*": "allow", "git log*": "allow",
+                  "node --check *": "allow", "python3 -m py_compile *": "allow" }
+      }
+    }
+  }
+}
+```
+Se usa con `opencode run --agent delegado -m <modelo> --dir <worktree> "Lee TAREA.md y cúmplela; termina con INFORME.md"`. `TAREA.md` e `INFORME.md` están en `.gitignore`.
+
+**Flujo por mejora:** encargo (`TAREA.md`) → implementa un modelo de código → revisa otro modelo en solo lectura → el orquestador corrige, pasa la suite completa, integra y despliega.
+
 **Reglas**
 - Nunca pases a un delegado secretos, `.env`, contraseñas ni datos personales. Con los modelos **gratuitos**, todavía menos: algunos usan lo que reciben para entrenar.
 - Los delegados no hacen commit, push ni despliegues, ni tocan servicios en marcha. Las revisiones se hacen con `--agent plan` (solo lectura).

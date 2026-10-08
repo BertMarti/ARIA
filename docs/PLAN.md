@@ -98,6 +98,15 @@ Cómo leer las tablas:
 
 ---
 
+## En marcha (octubre de 2026)
+
+Elegido para la siguiente versión, inspirado en asistentes tipo «Jarvis»:
+- **Modo HUD:** pantalla completa con un orbe animado que reacciona a la voz y widgets.
+- **Agenda y cumpleaños:** con avisos y resumen de buenos días.
+- **Mapas libres:** OpenStreetMap, rutas y sitios cercanos, sin claves.
+- **Centro de información:** noticias por temas con resumen, bolsa y criptomonedas.
+- **Estadísticas por dispositivo** e **informe semanal** de la red y la VPN.
+
 ## 3. Orden propuesto
 
 Ordenado por lo que más aporta con menos esfuerzo y menos consumo en la Pi:

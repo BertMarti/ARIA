@@ -68,6 +68,11 @@ _USUARIO = [
     ("POST", r"/api/rutinas/\d+/ejecutar"),
     # Módulos: la lista se filtra por rol en el servidor (un usuario solo ve los suyos y sin detalles).
     ("GET", r"/api/modulos"),
+    # Información: preferencias y datos de mercado filtrados por el usuario de sesión.
+    ("GET", r"/api/informacion/(noticias|resumen|temas|mercados|buscar|seguimiento|historico)"),
+    ("POST", r"/api/informacion/(temas|seguimiento)"),
+    ("DELETE", r"/api/informacion/temas"),
+    ("DELETE", r"/api/informacion/seguimiento/\d+"),
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 

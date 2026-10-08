@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import busqueda, config, control, enlaces, escaneo, finanzas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn
+from . import busqueda, config, control, enlaces, escaneo, finanzas, informacion, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -52,7 +52,7 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 # Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
 SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn",
                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo",
-                          "resumir_enlace"})
+                          "resumir_enlace", "resumen_noticias", "precio", "mis_mercados", "mis_inversiones"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
 # Recordatorios: todo rol, siempre los del usuario que habla.
@@ -145,6 +145,9 @@ _INTENCIONES = [
     ((_DATO_ACTUAL, r"!" + _BLOQUEADOR, r"!" + _SISTEMA, r"!\b(vpn|wireguard|heimdall|spotify)\b", _EXPLICAR),
      {"buscar_en_internet"}),
     ((r"\b(netflix|serie|series|pel[ií]cula|pel[ií]culas|cap[ií]tulo)\b",), {"buscar_en_netflix"}),
+    ((r"\b(resumen|res[uú]meme|titulares?|noticias?)\b", r"\b(tema|actualidad|tecnolog[ií]a|econom[ií]a|deportes?|ciencia|espa[nñ]a)\b"), {"resumen_noticias"}),
+    ((r"\b(precio|cotizaci[oó]n|valor)\b", r"\b(bitcoin|btc|ethereum|eth|ibex|apple|acciones?|bolsa)\b"), {"precio"}),
+    ((r"\b(mercados?|inversiones?|cartera|bolsa)\b",), {"mis_mercados", "mis_inversiones"}),
     # Memoria personal: «recuerda que…», «apunta que…» / «olvida que…», «no recuerdes…»
     ((r"\b(recuerda|acu[eé]rdate|ac[eé]rdate|apunta|anota|memoriza|ten en cuenta)\b",), {"recordar"}),
     ((r"\brecu[eé]rdame\b", r"!" + _CUANDO), {"recordar", "recordatorio"}),
@@ -255,6 +258,53 @@ async def noticias(tema: str = "") -> str:
         return busqueda.formatear(q, res)
     except busqueda.BusquedaError as e:
         return str(e)
+
+
+@tool("resumen_noticias", "Resume las noticias recientes de un tema y conserva los enlaces de las fuentes.",
+      {"tema": ("string", "Tema de las noticias")}, ("tema",))
+async def resumen_noticias(tema: str) -> str:
+    try:
+        d = await informacion.resumen(tema[:40])
+        if d["sin_nube"]:
+            return "Titulares (no hay cerebro en la nube):\n" + "\n".join(f"- {x['titulo']} {x['url']}" for x in d["titulares"])
+        return d["resumen"] + "\nFuentes:\n" + "\n".join(x["url"] for x in d["titulares"])
+    except (busqueda.BusquedaError, informacion.InformacionError) as e:
+        return str(e)
+
+
+@tool("precio", "Consulta el precio actual de una acción, índice, divisa o criptomoneda.",
+      {"simbolo": ("string", "Nombre o símbolo, por ejemplo bitcoin, ibex o AAPL")}, ("simbolo",))
+async def precio(simbolo: str) -> str:
+    try:
+        x = informacion._valor(simbolo)
+        dato = (await informacion._coingecko([x["simbolo"]]))[0] if x["tipo"] == "cripto" else await informacion.yahoo(x["simbolo"])
+        if dato.get("error"): return dato["error"]
+        return f"{x.get('nombre', simbolo)}: {dato.get('precio')} {dato.get('divisa', 'EUR')} (variación diaria: {dato.get('variacion', 'sin datos')})."
+    except informacion.InformacionError as e:
+        return str(e)
+
+
+@tool("mis_mercados", "Consulta un resumen de los mercados y valores del seguimiento del usuario.", usa_uid=True)
+async def mis_mercados(uid: int) -> str:
+    d = await informacion.mercados(uid)
+    return "\n".join(f"{x.get('nombre', x['simbolo'])}: {x.get('precio', x.get('error', 'sin datos'))} {x.get('divisa', '')}" for x in d["valores"])
+
+
+@tool("mis_inversiones", "Resume la cartera y su evolución para el usuario actual.", usa_uid=True)
+async def mis_inversiones(uid: int) -> str:
+    d = await informacion.mercados(uid)
+    partes = []
+    for x in d["valores"]:
+        if (x.get("cantidad") is not None and x.get("precio") is not None
+                and x.get("precio_medio") is not None and x.get("valor_posicion") is not None):
+            diaria = x.get("variacion_dia", x.get("variacion"))
+            diaria = "sin datos" if diaria is None else f"{diaria:+.2f} %"
+            partes.append(f"{x['nombre']}: {x['cantidad']} unidades, {x['valor_posicion']:.2f} EUR, "
+                          f"ganancia/pérdida {x['ganancia_euros']:+.2f} EUR ({x['ganancia_porcentaje']:+.2f} %), "
+                          f"variación diaria {diaria}")
+        else:
+            partes.append(f"{x['nombre']}: {x.get('precio', x.get('error', 'sin datos'))} {x.get('divisa', '')}")
+    return "Tu cartera hoy: " + "; ".join(partes)
 
 
 @tool("estado_servicios", "Consulta el estado de los servicios SHIELD-DNS (bloqueo de anuncios) y HEIMDALL (VPN).")

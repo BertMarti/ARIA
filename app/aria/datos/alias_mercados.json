@@ -1,0 +1,309 @@
+{
+ "alias": {
+  "bitcoin": {
+   "tipo": "cripto",
+   "id": "bitcoin",
+   "nombre": "Bitcoin"
+  },
+  "btc": {
+   "tipo": "cripto",
+   "id": "bitcoin",
+   "nombre": "Bitcoin"
+  },
+  "ethereum": {
+   "tipo": "cripto",
+   "id": "ethereum",
+   "nombre": "Ethereum"
+  },
+  "eth": {
+   "tipo": "cripto",
+   "id": "ethereum",
+   "nombre": "Ethereum"
+  },
+  "solana": {
+   "tipo": "cripto",
+   "id": "solana",
+   "nombre": "Solana"
+  },
+  "sol": {
+   "tipo": "cripto",
+   "id": "solana",
+   "nombre": "Solana"
+  },
+  "xrp": {
+   "tipo": "cripto",
+   "id": "ripple",
+   "nombre": "XRP"
+  },
+  "cardano": {
+   "tipo": "cripto",
+   "id": "cardano",
+   "nombre": "Cardano"
+  },
+  "ada": {
+   "tipo": "cripto",
+   "id": "cardano",
+   "nombre": "Cardano"
+  },
+  "dogecoin": {
+   "tipo": "cripto",
+   "id": "dogecoin",
+   "nombre": "Dogecoin"
+  },
+  "doge": {
+   "tipo": "cripto",
+   "id": "dogecoin",
+   "nombre": "Dogecoin"
+  },
+  "polkadot": {
+   "tipo": "cripto",
+   "id": "polkadot",
+   "nombre": "Polkadot"
+  },
+  "dot": {
+   "tipo": "cripto",
+   "id": "polkadot",
+   "nombre": "Polkadot"
+  },
+  "chainlink": {
+   "tipo": "cripto",
+   "id": "chainlink",
+   "nombre": "Chainlink"
+  },
+  "link": {
+   "tipo": "cripto",
+   "id": "chainlink",
+   "nombre": "Chainlink"
+  },
+  "tron": {
+   "tipo": "cripto",
+   "id": "tron",
+   "nombre": "Tron"
+  },
+  "trx": {
+   "tipo": "cripto",
+   "id": "tron",
+   "nombre": "Tron"
+  },
+  "avalanche": {
+   "tipo": "cripto",
+   "id": "avalanche-2",
+   "nombre": "Avalanche"
+  },
+  "avax": {
+   "tipo": "cripto",
+   "id": "avalanche-2",
+   "nombre": "Avalanche"
+  },
+  "litecoin": {
+   "tipo": "cripto",
+   "id": "litecoin",
+   "nombre": "Litecoin"
+  },
+  "ltc": {
+   "tipo": "cripto",
+   "id": "litecoin",
+   "nombre": "Litecoin"
+  },
+  "shiba": {
+   "tipo": "cripto",
+   "id": "shiba-inu",
+   "nombre": "Shiba Inu"
+  },
+  "shib": {
+   "tipo": "cripto",
+   "id": "shiba-inu",
+   "nombre": "Shiba Inu"
+  },
+  "ibex": {
+   "tipo": "bolsa",
+   "id": "^IBEX",
+   "nombre": "IBEX 35"
+  },
+  "sp500": {
+   "tipo": "bolsa",
+   "id": "^GSPC",
+   "nombre": "S&P 500"
+  },
+  "nasdaq": {
+   "tipo": "bolsa",
+   "id": "^IXIC",
+   "nombre": "NASDAQ"
+  },
+  "dow": {
+   "tipo": "bolsa",
+   "id": "^DJI",
+   "nombre": "Dow Jones"
+  },
+  "dax": {
+   "tipo": "bolsa",
+   "id": "^GDAXI",
+   "nombre": "DAX"
+  },
+  "oro": {
+   "tipo": "commodity",
+   "id": "GC=F",
+   "nombre": "Oro"
+  },
+  "plata": {
+   "tipo": "commodity",
+   "id": "SI=F",
+   "nombre": "Plata"
+  },
+  "eurusd": {
+   "tipo": "divisa",
+   "id": "EURUSD=X",
+   "nombre": "EUR/USD"
+  },
+  "eurgbp": {
+   "tipo": "divisa",
+   "id": "EURGBP=X",
+   "nombre": "EUR/GBP"
+  },
+  "apple": {
+   "tipo": "bolsa",
+   "id": "AAPL",
+   "nombre": "Apple"
+  },
+  "aapl": {
+   "tipo": "bolsa",
+   "id": "AAPL",
+   "nombre": "Apple"
+  },
+  "microsoft": {
+   "tipo": "bolsa",
+   "id": "MSFT",
+   "nombre": "Microsoft"
+  },
+  "msft": {
+   "tipo": "bolsa",
+   "id": "MSFT",
+   "nombre": "Microsoft"
+  },
+  "nvidia": {
+   "tipo": "bolsa",
+   "id": "NVDA",
+   "nombre": "NVIDIA"
+  },
+  "nvda": {
+   "tipo": "bolsa",
+   "id": "NVDA",
+   "nombre": "NVIDIA"
+  },
+  "google": {
+   "tipo": "bolsa",
+   "id": "GOOG",
+   "nombre": "Alphabet/Google"
+  },
+  "alphabet": {
+   "tipo": "bolsa",
+   "id": "GOOG",
+   "nombre": "Alphabet/Google"
+  },
+  "amazon": {
+   "tipo": "bolsa",
+   "id": "AMZN",
+   "nombre": "Amazon"
+  },
+  "amzn": {
+   "tipo": "bolsa",
+   "id": "AMZN",
+   "nombre": "Amazon"
+  },
+  "meta": {
+   "tipo": "bolsa",
+   "id": "META",
+   "nombre": "Meta"
+  },
+  "tesla": {
+   "tipo": "bolsa",
+   "id": "TSLA",
+   "nombre": "Tesla"
+  },
+  "tsla": {
+   "tipo": "bolsa",
+   "id": "TSLA",
+   "nombre": "Tesla"
+  },
+  "netflix": {
+   "tipo": "bolsa",
+   "id": "NFLX",
+   "nombre": "Netflix"
+  },
+  "nflx": {
+   "tipo": "bolsa",
+   "id": "NFLX",
+   "nombre": "Netflix"
+  },
+  "amd": {
+   "tipo": "bolsa",
+   "id": "AMD",
+   "nombre": "AMD"
+  },
+  "intel": {
+   "tipo": "bolsa",
+   "id": "INTC",
+   "nombre": "Intel"
+  },
+  "intc": {
+   "tipo": "bolsa",
+   "id": "INTC",
+   "nombre": "Intel"
+  },
+  "pepsi": {
+   "tipo": "bolsa",
+   "id": "PEP",
+   "nombre": "PepsiCo"
+  },
+  "pep": {
+   "tipo": "bolsa",
+   "id": "PEP",
+   "nombre": "PepsiCo"
+  },
+  "coca": {
+   "tipo": "bolsa",
+   "id": "KO",
+   "nombre": "Coca-Cola"
+  },
+  "ko": {
+   "tipo": "bolsa",
+   "id": "KO",
+   "nombre": "Coca-Cola"
+  },
+  "mcdonalds": {
+   "tipo": "bolsa",
+   "id": "MCD",
+   "nombre": "McDonald's"
+  },
+  "mcd": {
+   "tipo": "bolsa",
+   "id": "MCD",
+   "nombre": "McDonald's"
+  },
+  "disney": {
+   "tipo": "bolsa",
+   "id": "DIS",
+   "nombre": "Disney"
+  },
+  "dis": {
+   "tipo": "bolsa",
+   "id": "DIS",
+   "nombre": "Disney"
+  },
+  "visa": {
+   "tipo": "bolsa",
+   "id": "V",
+   "nombre": "Visa"
+  },
+  "v": {
+   "tipo": "bolsa",
+   "id": "V",
+   "nombre": "Visa"
+  },
+  "msci world": {
+   "tipo": "etf",
+   "id": "IWDA.AS",
+   "nombre": "iShares Core MSCI World UCITS ETF (acumulación)"
+  }
+ }
+}

@@ -71,6 +71,17 @@ def iniciar() -> None:
                 user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
                 fecha TEXT NOT NULL, datos TEXT NOT NULL, saludado INTEGER NOT NULL DEFAULT 0,
                 creado REAL NOT NULL, PRIMARY KEY (user_id, fecha));
+            CREATE TABLE IF NOT EXISTS info_temas (
+                user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                tema TEXT NOT NULL CHECK (length(tema) BETWEEN 1 AND 40),
+                orden INTEGER NOT NULL, PRIMARY KEY (user_id, tema));
+            CREATE TABLE IF NOT EXISTS info_seguimiento (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                simbolo TEXT NOT NULL, nombre TEXT NOT NULL, tipo TEXT NOT NULL,
+                cantidad REAL, precio_medio REAL,
+                UNIQUE(user_id, simbolo));
+            CREATE INDEX IF NOT EXISTS idx_info_seg_user ON info_seguimiento(user_id, id);
         """)
         # Migración: etiqueta del cerebro que respondió (p. ej. "Ollama Cloud · gpt-oss:120b").
         if "cerebro" not in {r["name"] for r in con.execute("PRAGMA table_info(mensajes)")}:

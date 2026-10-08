@@ -16,7 +16,7 @@ from pathlib import Path
 
 import httpx
 
-from . import config, db, memoria, shield, sistema, tiempo, vpn
+from . import config, db, informacion, memoria, shield, sistema, tiempo, vpn
 
 log = logging.getLogger("aria.briefing")
 
@@ -234,7 +234,8 @@ async def construir(usuario: dict, ref: datetime | None = None) -> dict:
     uid, admin = usuario["id"], usuario["rol"] == "admin"
     hoy = tiempo.hoy(ref)
     ayer = hoy - timedelta(days=1)
-    anuncios, tmp, vpn_d = await asyncio.gather(_anuncios(ayer), _tiempo(), _vpn() if admin else asyncio.sleep(0))
+    anuncios, tmp, vpn_d, mercados = await asyncio.gather(_anuncios(ayer), _tiempo(), _vpn() if admin else asyncio.sleep(0),
+                                                           informacion.mercados(uid))
     d_ayer = await asyncio.to_thread(memoria.dia, uid, ayer.isoformat())
     casa = {"anuncios": anuncios, "sistema": await asyncio.to_thread(_sistema)}
     if admin:
@@ -246,7 +247,7 @@ async def construir(usuario: dict, ref: datetime | None = None) -> dict:
             "saludo": f"{saludo}, {nombre}" if nombre else saludo,
             "ayer": {"fecha": d_ayer["fecha"], "resumen": d_ayer["resumen"]} if d_ayer else None,
             "casa": casa, "recuerdos": await asyncio.to_thread(recuerdos_de_hoy, uid, hoy),
-            "tiempo": tmp, "generado": time.time()}
+            "tiempo": tmp, "mercados": mercados, "generado": time.time()}
 
 
 def para_rol(datos: dict, rol: str) -> dict:
@@ -350,4 +351,8 @@ def texto_hablado(d: dict) -> str:
         partes.append("En casa: " + "; ".join(c) + ".")
     if d.get("recuerdos"):
         partes.append("Por cierto, recuerdo que " + d["recuerdos"][0].rstrip(".") + ".")
+    valores = (d.get("mercados") or {}).get("valores", [])
+    if valores:
+        partes.append("Mercados: " + "; ".join(f"{v.get('nombre', v.get('simbolo'))} {v.get('precio', 'sin datos')}"
+                                                for v in valores[:3]))
     return " ".join(partes)

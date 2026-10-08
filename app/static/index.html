@@ -17,6 +17,7 @@
   <button type="button" class="nav-btn" data-vista="inicio"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z"/></svg></span><span>Inicio</span></button>
   <button type="button" class="nav-btn" data-vista="chat"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span><span>Chat</span></button>
   <button type="button" class="nav-btn" data-vista="finanzas"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M3 7h18v12H3z"/><path d="M3 11h18"/><path d="M7 15h4"/></svg></span><span>Finanzas</span></button>
+  <button type="button" class="nav-btn" data-vista="informacion"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 9h10M7 13h7"/></svg></span><span>Información</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="red"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v5M12 12 6.5 17.5M12 12l5.5 5.5"/></svg></span><span>Red</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="seguridad"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span>Seguridad</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="control"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span>Control</span></button>
@@ -106,6 +107,14 @@
     <div class="rejilla inicio-sistema">
       <article class="tarjeta" id="inicio-sistema"><h2>Sistema</h2><div class="cuerpo muted">Cargando…</div></article>
     </div>
+  </section>
+
+  <section id="v-informacion" class="vista" hidden>
+    <header class="vista-cab"><div><h1>Información</h1><p class="muted">Noticias y mercados, reunidos en un mismo lugar.</p></div>
+      <button type="button" class="fantasma" id="info-editar">Editar temas y seguimiento</button></header>
+    <article class="tarjeta info-cartera"><h2>Mis inversiones</h2><div id="info-mercados" class="rejilla"><p class="muted">Cargando mercados…</p></div></article>
+    <div class="info-layout"><article class="tarjeta"><div id="info-temas" class="pestanas"></div><div id="info-resumen" class="resumen-cuerpo"></div><ul id="info-noticias" class="lista-info"></ul></article>
+      <aside class="tarjeta"><h2>Temas</h2><p class="muted pequeno-txt">Personaliza las noticias que quieres ver.</p><ul id="info-temas-lista"></ul></aside></div>
   </section>
 
   <!-- CHAT -->
@@ -533,6 +542,14 @@
   </div>
 </dialog>
 
+<dialog id="dlg-info" class="modal" aria-labelledby="info-dlg-titulo">
+  <h2 id="info-dlg-titulo">Personalizar Información</h2>
+  <p class="muted">Un tema por línea. Se guardan solo tus preferencias.</p>
+  <form id="info-form"><textarea id="info-temas-editar" rows="7" maxlength="420" aria-label="Temas"></textarea>
+    <div class="botones"><button type="button" class="fantasma" data-cerrar>Cancelar</button><button type="submit" class="primario">Guardar temas</button></div>
+  </form>
+</dialog>
+
 <script src="/static/util.js"></script>
 <script src="/static/md.js"></script>
 <script src="/static/voz.js"></script>
@@ -549,6 +566,7 @@
 <script src="/static/usuarios.js"></script>
 <script src="/static/avisos.js"></script>
 <script src="/static/rutinas.js"></script>
+<script src="/static/informacion.js"></script>
 <script src="/static/paleta.js"></script>
 <script src="/static/compartir.js"></script>
 <script src="/static/app.js"></script>

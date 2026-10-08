@@ -397,6 +397,14 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 
 /* Spotify aparcado (ARIA_SPOTIFY=0) */
 .sin-spotify #tile-spotify, .sin-spotify #card-spotify, .sin-spotify #ajustes-spotify { display: none !important; }
+.info-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(14rem, 1fr); gap: 1rem; }
+.info-cartera { margin-bottom: 1rem; }
+.mercado { display: grid; gap: .3rem; min-width: 9rem; }
+.mercado span { font-size: 1.25rem; }
+.sube { color: var(--ok); }.baja { color: var(--mal); }
+.lista-info { list-style: none; padding: 0; display: grid; gap: .7rem; }.lista-info li { display: grid; gap: .15rem; }
+.pestanas { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+@media (max-width: 700px) { .info-layout { grid-template-columns: 1fr; } }
 
 /* Rutinas (Ajustes) */
 .rut-cuando { border: 1px solid var(--borde); border-radius: 10px; padding: .4rem .8rem .6rem; margin: .4rem 0; }

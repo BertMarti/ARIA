@@ -76,6 +76,9 @@ RUTAS_USUARIO_AVISOS = {
     ("POST", "/api/push/suscripciones"), ("DELETE", "/api/push/suscripciones/{sid}"), ("POST", "/api/push/prueba"),
 }
 
+# Visión: confirmar o descartar el ticket propio leído de una foto (la propuesta está ligada al usuario).
+RUTAS_USUARIO_VISION = {("POST", "/api/vision/tickets/{token}"), ("DELETE", "/api/vision/tickets/{token}")}
+
 
 def test_toda_ruta_registrada_esta_cubierta():
     """Si alguien añade un endpoint, debe salir en la lista blanca de `usuario` o devolverle 403."""
@@ -86,7 +89,8 @@ def test_toda_ruta_registrada_esta_cubierta():
             continue
         ruta = r.path.replace("{cid}", "abc").replace("{uid}", "1").replace("{app_id}", "x") \
                      .replace("{accion}", "x").replace("{mid}", "1").replace("{rid}", "1").replace("{fecha}", "2026-10-06") \
-                     .replace("{aid}", "1").replace("{chat_id}", "1").replace("{sid}", "1")
+                     .replace("{aid}", "1").replace("{chat_id}", "1").replace("{sid}", "1") \
+                     .replace("{token}", "a" * 24)
         for m in r.methods - {"HEAD", "OPTIONS"}:
             if permisos.permitido("usuario", m, ruta):
                 assert (m, r.path) in {
@@ -99,7 +103,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("GET", "/api/memoria"), ("POST", "/api/memoria"), ("POST", "/api/memoria/ajustes"),
                     ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
                     ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),
-                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS, (m, r.path)
+                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_VISION, (m, r.path)
     assert not permisos.permitido("desconocido", "GET", "/")
 
 

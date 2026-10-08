@@ -29,4 +29,5 @@ def test_info_expone_funciones():
     from aria import auth, main, usuarios
     c = TestClient(main.app, base_url="https://192.168.1.50")
     c.cookies.set(auth.COOKIE, auth.crear_sesion(usuarios.por_identificador("admin")))
-    assert c.get("/api/info").json()["funciones"] == {"spotify": True, "netflix": True}
+    f = c.get("/api/info").json()["funciones"]
+    assert f["spotify"] is True and f["netflix"] is True and isinstance(f["vision"], bool)

@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agentes, api_avisos, api_finanzas, api_red, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, cve, db, diario, finanzas, memoria, modelos, permisos, push, recordatorios, red, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, voz, vpn
+from . import agentes, api_avisos, api_finanzas, api_red, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, cve, db, diario, finanzas, memoria, modelos, permisos, push, recordatorios, red, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -275,7 +275,7 @@ async def api_info(request: Request):
             "email": u["email"], "rol": u["rol"], "tiene_password": u["tiene_password"],
             "cerebro": {"id": primero.id, "etiqueta": primero.etiqueta()},
             "puertos": {"shield_web": config.SHIELD_WEB_PORT, "vpn": config.HEIMDALL_PORT},
-            "funciones": {"spotify": config.SPOTIFY, "netflix": config.NETFLIX}}
+            "funciones": {"spotify": config.SPOTIFY, "netflix": config.NETFLIX, "vision": vision.disponible()}}
 
 
 @app.get("/api/certificado")
@@ -301,12 +301,57 @@ async def api_secreto(app_id: str):
 
 
 # --- Conversaciones ---
+# Cuerpo máximo de /api/chat: una imagen de 5 MB en base64 (~6,7 MB) más el texto.
+MAX_CUERPO_CHAT = 7_200_000
+
+
+async def _json_limitado(request: Request, maximo: int) -> dict | None:
+    """Como `_json`, pero sin leer más de `maximo` bytes (None = demasiado grande)."""
+    largo = request.headers.get("content-length", "")
+    if largo.isdigit() and int(largo) > maximo:
+        return None
+    cuerpo = bytearray()
+    async for parte in request.stream():
+        cuerpo += parte
+        if len(cuerpo) > maximo:
+            return None
+    try:
+        d = json.loads(bytes(cuerpo))
+    except ValueError:
+        return {}
+    finally:
+        cuerpo.clear()
+    return d if isinstance(d, dict) else {}
+
+
 @app.post("/api/chat")
 async def api_chat(request: Request):
+    """Mensaje del chat (NDJSON). Con `imagen` (data URL JPEG/PNG/WebP, ≤ 5 MB) responde un cerebro con visión;
+    la imagen solo vive en memoria durante la petición."""
     u = request.state.usuario
-    d = await _json(request)
+    d = await _json_limitado(request, MAX_CUERPO_CHAT)
+    if d is None:
+        return JSONResponse({"error": "La imagen es demasiado grande (máximo 5 MB)."}, status_code=413)
     texto = d.get("message")
     cid = d.get("conversation_id")
+    imagen = d.pop("imagen", None)
+    if imagen is not None:
+        if texto is not None and not isinstance(texto, str):
+            return JSONResponse({"error": "Mensaje no válido"}, status_code=400)
+        if cid is not None and (not isinstance(cid, str) or not db.existe(cid, u["id"])):
+            cid = None
+        try:
+            datos, mime = vision.desde_data_url(imagen)
+        except vision.VisionError as e:
+            return JSONResponse({"error": e.mensaje}, status_code=e.estado)
+        finally:
+            imagen = None
+        if not vision.disponible():
+            return JSONResponse({"error": vision.NO_DISPONIBLE}, status_code=503)
+        if (resto := vision.limitar(u["id"])):
+            return JSONResponse({"error": f"Demasiadas imágenes seguidas. Espera {resto} s."},
+                                status_code=429, headers={"Retry-After": str(resto)})
+        return _ndjson(chat.conversar_imagen(u, cid, texto or "", datos, mime))
     if not isinstance(texto, str) or not texto.strip():
         return JSONResponse({"error": "Falta el mensaje"}, status_code=400)
     if cid is not None and (not isinstance(cid, str) or not db.existe(cid, u["id"])):
@@ -317,6 +362,30 @@ async def api_chat(request: Request):
     if agente and not agentes.permitido(agente, u["rol"]):
         return JSONResponse({"error": "Ese agente es solo para administradores."}, status_code=403)
     return _ndjson(chat.conversar(u, cid, texto, agente))
+
+
+# --- Tickets leídos de una imagen: el usuario confirma (o descarta) apuntarlos en sus finanzas ---
+TOKEN_TICKET = r"[A-Za-z0-9_-]{16,64}"
+
+
+@app.post("/api/vision/tickets/{token}")
+async def api_ticket_registrar(token: str, request: Request):
+    u = request.state.usuario
+    p = vision.tomar(u["id"], token) if re.fullmatch(TOKEN_TICKET, token) else None
+    if not p:
+        return JSONResponse({"error": "Esta propuesta ya no existe o ha caducado."}, status_code=404)
+    ok, texto = await vision.registrar_ticket(u, p["ticket"], p["cid"])
+    if not ok:
+        return JSONResponse({"error": texto}, status_code=400)
+    return {"ok": True, "texto": texto}
+
+
+@app.delete("/api/vision/tickets/{token}")
+async def api_ticket_descartar(token: str, request: Request):
+    p = vision.tomar(request.state.usuario["id"], token) if re.fullmatch(TOKEN_TICKET, token) else None
+    if not p:
+        return JSONResponse({"error": "Esta propuesta ya no existe o ha caducado."}, status_code=404)
+    return {"ok": True}
 
 
 @app.get("/api/agentes")

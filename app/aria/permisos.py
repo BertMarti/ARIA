@@ -14,7 +14,10 @@ _USUARIO = [
     ("GET", r"/api/spotify/status"),
     ("GET", r"/api/certificado"),
     ("POST", r"/api/password"),
-    ("POST", r"/api/chat"),
+    ("POST", r"/api/chat"),  # también con imagen (visión); límite por usuario en el propio endpoint
+    # Tickets leídos de una foto: confirmar o descartar la propuesta propia (ligada al usuario en el servidor).
+    ("POST", r"/api/vision/tickets/[A-Za-z0-9_-]{16,64}"),
+    ("DELETE", r"/api/vision/tickets/[A-Za-z0-9_-]{16,64}"),
     ("GET", r"/api/conversations"),
     ("GET", r"/api/conversations/[^/]+"),
     ("PATCH", r"/api/conversations/[^/]+"),

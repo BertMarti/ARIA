@@ -639,12 +639,19 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
             await enviar("Eso solo lo puede hacer un administrador.")
             return
         from . import vpn
-        if not vpn.nombre_valido(arg):
-            await enviar("Uso: /nuevovpn <nombre> (letras sin tilde, números, espacios y - _ ., máximo 32).")
+        partes = arg.rsplit(None, 1)
+        caduca = partes[1] if len(partes) == 2 and (re.fullmatch(r"(?:24h|7d|\d{4}-\d{2}-\d{2})", partes[1], re.I) or partes[1].lower() in ("nunca", "mañana", "manana")) else None
+        nombre = partes[0] if caduca else arg
+        if not vpn.nombre_valido(nombre):
+            await enviar("Uso: /nuevovpn <nombre> [24h|7d|AAAA-MM-DD].")
             return
-        f_ok = await asyncio.to_thread(ficha, chat_id, u["id"], "confirmar", {"op": "nuevovpn", "nombre": arg.strip()})
+        try:
+            vpn.caducidad(caduca)
+        except vpn.VpnError as e:
+            await enviar(str(e)); return
+        f_ok = await asyncio.to_thread(ficha, chat_id, u["id"], "confirmar", {"op": "nuevovpn", "nombre": nombre.strip(), "caduca": caduca})
         f_no = await asyncio.to_thread(ficha, chat_id, u["id"], "cancelar")
-        await enviar(f"¿Crear el dispositivo VPN «{arg.strip()}»? Te enviaré su QR y el archivo .conf. Ojo: el .conf "
+        await enviar(f"¿Crear el dispositivo VPN «{nombre.strip()}»" + (f" (caduca: {caduca})" if caduca else "") + "? Te enviaré su QR y el archivo .conf. Ojo: el .conf "
                      "contiene la clave privada del dispositivo; bórralo del chat cuando lo hayas importado.",
                      teclado([boton("Confirmar", f_ok), boton("Cancelar", f_no)]))
     elif cmd == "reiniciar":
@@ -744,7 +751,7 @@ async def _texto_vpn() -> str:
     if not cl:
         return "No hay dispositivos en la VPN."
     return "**Dispositivos de la VPN**\n" + "\n".join(
-        f"- {c['nombre']}: {'conectado' if c['conectado'] else 'desconectado'}{'' if c['activo'] else ' (desactivado)'}"
+        f"- {c['nombre']}: {'conectado' if c['conectado'] else 'desconectado'}{'' if c['activo'] else ' (desactivado)'}{(' (caduca ' + c['caduca'] + ')' if c.get('caduca') else '')}"
         for c in cl)
 
 
@@ -922,7 +929,7 @@ async def _accion(b, cq: dict, chat_id: int, u: dict, accion: str, d: dict) -> s
             await enviar_texto(b, chat_id, f"Bloqueador de anuncios en pausa durante {int(d.get('min', 5))} minutos.")
             return "En pausa."
         if op == "nuevovpn":
-            return await _crear_vpn(b, chat_id, str(d.get("nombre", "")))
+            return await _crear_vpn(b, chat_id, str(d.get("nombre", "")), d.get("caduca"))
         if op == "reiniciar":
             try:
                 resultado = await asyncio.to_thread(telemetria.solicitar_reinicio)
@@ -946,7 +953,7 @@ def qr_png(texto: str) -> bytes:
     return buf.getvalue()
 
 
-async def _crear_vpn(b, chat_id: int, nombre: str) -> str:
+async def _crear_vpn(b, chat_id: int, nombre: str, caduca: str | None = None) -> str:
     from . import vpn
     if not vpn.nombre_valido(nombre):
         return "Nombre no válido."
@@ -954,7 +961,7 @@ async def _crear_vpn(b, chat_id: int, nombre: str) -> str:
         if any(c["nombre"].lower() == nombre.lower() for c in await vpn.listar()):
             await enviar_texto(b, chat_id, f"Ya existe un dispositivo llamado «{nombre}».")
             return "Ya existe."
-        cid = await vpn.crear(nombre)
+        cid = await vpn.crear(nombre, caduca)
         conf = await vpn.configuracion(cid)
     except vpn.VpnError as e:
         await enviar_texto(b, chat_id, str(e))
@@ -965,7 +972,7 @@ async def _crear_vpn(b, chat_id: int, nombre: str) -> str:
     await b.subir("sendDocument", "document", f"{seguro}.conf", conf, "application/octet-stream", chat_id=chat_id,
                   caption="Archivo .conf de WireGuard. Contiene la CLAVE PRIVADA del dispositivo: impórtalo y borra "
                           "este mensaje.")
-    return "Dispositivo creado."
+    return "Dispositivo creado" + (f" (caduca: {caduca})." if caduca else ".")
 
 
 # --- Canal del motor de avisos ------------------------------------------------------------------------------------------

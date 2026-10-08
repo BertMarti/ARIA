@@ -10,7 +10,8 @@
 | `spotify_buscar_y_reproducir` | Busca una canción y la reproduce |
 | `estado_bloqueador` / `pausar_bloqueador(minutos 1-120)` / `reanudar_bloqueador` | Pi-hole (SHIELD-DNS) |
 | `dispositivos_vpn` | Lista dispositivos VPN y cuáles están conectados |
-| `crear_dispositivo_vpn(nombre)` / `activar_dispositivo_vpn(nombre)` / `desactivar_dispositivo_vpn(nombre)` | Gestión de la VPN por nombre (borrar solo en la interfaz) |
+| `ubicaciones_vpn(dispositivo?)` | Consulta las últimas ubicaciones conocidas de la VPN (solo administradores) |
+| `crear_dispositivo_vpn(nombre, caduca?)` / `activar_dispositivo_vpn(nombre)` / `desactivar_dispositivo_vpn(nombre)` | Gestión de la VPN por nombre (borrar solo en la interfaz); la caducidad admite 24h, 7d, fecha o lenguaje natural |
 | `estado_sistema` | Temperatura, RAM, disco, carga y uptime de la Pi |
 | `buscar_en_internet(consulta)` / `noticias(tema)` | Busca en internet (SearXNG) y devuelve títulos, extractos y enlaces; citar las fuentes. Disponible para ambos roles |
 | `buscar_en_netflix` | Devuelve un enlace de búsqueda. ARIA **no** puede controlar Netflix |

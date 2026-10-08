@@ -86,10 +86,16 @@ const Control = (() => {
     if (!data.clientes.length) lista.append(el("li", { class: "muted" }, "Aún no hay dispositivos."));
     for (const d of data.clientes) {
       const clase = !d.activo ? "mal" : d.conectado ? "ok" : "";
-      lista.append(el("li", { class: "dispositivo" + (d.activo ? "" : " apagado") },
+      const caduca = d.caduca ? new Date(d.caduca) : null;
+      const caducado = caduca && caduca <= new Date();
+      const estadoCaduca = !caduca ? "Nunca caduca" : caducado ? "Caducado" : "Caduca en " +
+        Math.max(1, Math.ceil((caduca - Date.now()) / 3600000)) + " h";
+      lista.append(el("li", { class: "dispositivo" + (d.activo && !caducado ? "" : " apagado") },
         el("span", { class: "punto " + clase, title: !d.activo ? "Desactivado" : d.conectado ? "Conectado" : "Sin conexión" }),
         el("div", { class: "disp-info" },
-          el("strong", null, d.nombre), el("span", { class: "muted" }, (d.ip || "") + " · ↓ " + fmtBytes(d.recibido) + " ↑ " + fmtBytes(d.enviado))),
+          el("strong", null, d.nombre), el("span", { class: "muted" }, estadoCaduca + " · " + (d.ip || "") + " · ↓ " + fmtBytes(d.recibido) + " ↑ " + fmtBytes(d.enviado)),
+          d.ubicaciones && d.ubicaciones.length ? el("span", { class: "muted" }, "Última conexión desde: " + d.ubicaciones[0].ciudad + ", " + d.ubicaciones[0].pais + " (" + d.ubicaciones[0].operador + ")",
+            d.ubicaciones.length > 1 ? " · Historial: " + d.ubicaciones.map((x) => x.ciudad + ", " + x.pais + " (" + x.operador + ")").join(" · ") : "") : null),
         el("div", { class: "disp-acc" },
           el("button", { type: "button", class: "fantasma pequeno", onclick: () => verQr(d) }, "QR"),
           el("button", { type: "button", class: "fantasma pequeno", onclick: () => alternar(d) }, d.activo ? "Desactivar" : "Activar"),
@@ -122,20 +128,25 @@ const Control = (() => {
   function anadir() {
     $("vpn-titulo").textContent = "Añadir dispositivo";
     $("form-vpn").hidden = false; $("vpn-resultado").hidden = true; $("vpn-nombre").value = "";
+    $("vpn-caduca").value = ""; $("vpn-fecha-wrap").hidden = true; $("vpn-fecha").value = "";
     $("dlg-vpn").showModal(); $("vpn-nombre").focus();
   }
   function iniciarVpn() {
     $("form-vpn").addEventListener("submit", async (e) => {
       e.preventDefault();
       const nombre = $("vpn-nombre").value.trim();
+      const opcion = $("vpn-caduca").value;
+      const caduca = opcion === "fecha" ? $("vpn-fecha").value : opcion;
+      if (opcion === "fecha" && !caduca) { toast("Elige una fecha de caducidad.", "mal"); return; }
       const btn = e.submitter; if (btn) btn.disabled = true;
-      const r = await api("/api/vpn/clients", { method: "POST", json: { nombre } });
+      const r = await api("/api/vpn/clients", { method: "POST", json: { nombre, caduca } });
       if (btn) btn.disabled = false;
       if (!r.ok) { toast(r.data.error || "No se pudo crear el dispositivo.", "mal"); return; }
       mostrarQr(r.data.id, nombre); vpn();
     });
     $("dlg-vpn").addEventListener("click", (e) => { if (e.target.closest("[data-cerrar]")) $("dlg-vpn").close(); });
     $("dlg-vpn").addEventListener("close", () => { $("vpn-qr").removeAttribute("src"); });
+    $("vpn-caduca").addEventListener("change", () => { $("vpn-fecha-wrap").hidden = $("vpn-caduca").value !== "fecha"; });
   }
 
   // --- Sistema ---

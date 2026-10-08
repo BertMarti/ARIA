@@ -18,6 +18,7 @@
   <button type="button" class="nav-btn" data-vista="inicio"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z"/></svg></span><span>Inicio</span></button>
   <button type="button" class="nav-btn" data-vista="chat"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span><span>Chat</span></button>
   <button type="button" class="nav-btn" data-vista="finanzas"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M3 7h18v12H3z"/><path d="M3 11h18"/><path d="M7 15h4"/></svg></span><span>Finanzas</span></button>
+  <button type="button" class="nav-btn" data-vista="agenda"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M7 14h3M14 14h3M7 18h3"/></svg></span><span>Agenda</span></button>
   <button type="button" class="nav-btn" data-vista="mapa"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="m4 6 6-3 6 3 4-2v14l-6 3-6-3-4 2z"/><path d="M10 3v15M16 6v15"/></svg></span><span>Mapa</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="red"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v5M12 12 6.5 17.5M12 12l5.5 5.5"/></svg></span><span>Red</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="seguridad"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span>Seguridad</span></button>
@@ -125,6 +126,10 @@
     </div>
   </section>
 
+  <section id="v-agenda" class="vista" hidden>
+    <header class="vista-cab"><h1>Agenda</h1><div class="fila-form"><button type="button" class="fantasma pequeno" id="agenda-hoy">Hoy</button><button type="button" class="fantasma pequeno" id="agenda-prev">Anterior</button><button type="button" class="fantasma pequeno" id="agenda-next">Siguiente</button><button type="button" class="primario pequeno" id="agenda-nuevo">Nuevo evento</button></div></header>
+    <p id="agenda-rango" class="muted"></p>
+    <div class="rejilla"><article class="tarjeta ancha"><div class="fila-form"><button type="button" class="fantasma pequeno agenda-tab" data-modo="dia">Día</button><button type="button" class="fantasma pequeno agenda-tab" data-modo="semana">Semana</button><button type="button" class="fantasma pequeno agenda-tab" data-modo="mes">Mes</button></div><ul id="agenda-eventos" class="filas"></ul></article><article class="tarjeta"><h2>Próximos cumpleaños</h2><ul id="agenda-cumples" class="filas"></ul></article></div>
   <!-- MAPA -->
   <section id="v-mapa" class="vista vista-mapa" hidden>
     <header class="vista-cab"><div><h1>Mapa</h1><p class="muted">OpenStreetMap, sin claves ni seguimiento.</p></div></header>
@@ -490,6 +495,8 @@
   <form id="form-vpn" class="formulario">
     <label>Nombre del dispositivo <input id="vpn-nombre" maxlength="32" placeholder="móvil-de-ana" pattern="[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ ._\-]{1,32}" required></label>
     <p class="muted">Letras (también con tilde y ñ), números, espacios y - _ . (máximo 32).</p>
+    <label>Caducidad <select id="vpn-caduca"><option value="">Nunca</option><option value="24h">24 horas</option><option value="7d">7 días</option><option value="fecha">Fecha concreta</option></select></label>
+    <label id="vpn-fecha-wrap" hidden>Fecha de caducidad <input id="vpn-fecha" type="date"></label>
     <div class="botones">
       <button type="button" class="fantasma" data-cerrar>Cancelar</button>
       <button type="submit" class="primario">Crear</button>
@@ -537,6 +544,7 @@
     </div>
   </form>
 </dialog>
+<dialog id="dlg-agenda" class="modal"><h2>Evento</h2><form id="form-agenda" class="formulario"><label>Título <input id="agenda-titulo" maxlength="160" required></label><label>Inicio <input id="agenda-inicio" type="datetime-local" required></label><label>Duración (minutos) <input id="agenda-duracion" type="number" min="1"></label><label>Lugar <input id="agenda-lugar" maxlength="160"></label><label>Repetición <select id="agenda-repeticion"><option value="ninguna">No repetir</option><option value="semanal">Cada semana</option><option value="mensual">Cada mes</option><option value="anual">Cada año</option></select></label><label>Avisar (minutos antes) <input id="agenda-aviso" type="number" min="0" placeholder="Sin aviso"></label><div class="botones"><button type="button" class="fantasma" data-cerrar>Cancelar</button><button type="submit" class="primario">Guardar</button></div></form></dialog>
 
 <dialog id="dlg-confirmar" class="modal">
   <h2 id="confirmar-titulo">¿Seguro?</h2>
@@ -581,6 +589,7 @@
 <script src="/static/usuarios.js"></script>
 <script src="/static/avisos.js"></script>
 <script src="/static/rutinas.js"></script>
+<script src="/static/agenda.js"></script>
 <script src="/static/paleta.js"></script>
 <script src="/static/compartir.js"></script>
 <script src="/static/vendor/leaflet/leaflet.js"></script>

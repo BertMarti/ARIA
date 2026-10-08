@@ -280,6 +280,21 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 #voz-nivel-zona { margin: .4rem 0; }
 @media (prefers-reduced-motion: reduce) { .mic.grabando, .ml-punto { animation: none; } }
 
+/* Modo HUD */
+body.modo-hud { grid-template-columns: 1fr; }
+body.modo-hud > .nav, body.modo-hud > .manos-libres, body.modo-hud .campana-zona { display: none; }
+.hud.vista { padding: clamp(1rem, 3vw, 2.5rem); overflow: hidden; background: radial-gradient(circle at 50% 48%, rgba(56,214,255,.08), transparent 28%), rgba(3,7,14,.6); }
+.hud-cab { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2; }
+.hud-marca { color: var(--acento); letter-spacing: .28em; font-weight: 700; }.hud-marca span { color: var(--muted); font-size: .72em; }
+.hud-acciones { display: flex; gap: .5rem; }.hud-rejilla { height: calc(100% - 7rem); position: relative; max-width: 1100px; margin: auto; }
+.hud-widget { position: absolute; z-index: 1; width: min(220px, 28vw); padding: .9rem 1rem; border: 1px solid rgba(56,214,255,.25); border-radius: 12px; background: rgba(10,20,34,.55); backdrop-filter: blur(8px); box-shadow: 0 0 24px rgba(0,0,0,.2); }
+.hud-widget h2 { margin: 0 0 .25rem; font-size: .68rem; }.hud-valor { margin: 0; color: var(--txt); font-size: .92rem; }.hud-hora { top: 3%; left: 0; display: grid; gap: .1rem; }.hud-hora time { color: var(--txt); font-size: clamp(2rem, 6vw, 4rem); line-height: 1; font-variant-numeric: tabular-nums; }.hud-hora span { color: var(--muted); text-transform: capitalize; }
+#hud-tiempo { top: 28%; left: 0; }#hud-avisos { top: 55%; left: 0; }#hud-recordatorio { top: 78%; left: 0; }#hud-sistema { top: 3%; right: 0; }#hud-vpn { top: 28%; right: 0; }#hud-shield { top: 55%; right: 0; }
+.hud-orbe-zona { position: absolute; inset: 4% 24% 5%; display: grid; place-items: center; }.hud-orbe-zona canvas { width: min(52vw, 520px); height: min(52vw, 520px); }.hud-subtitulo { max-width: min(80%, 560px); margin: -1rem 0 0; text-align: center; color: var(--txt); opacity: .9; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.hud-entrada { position: absolute; z-index: 2; bottom: 1.5rem; left: 50%; transform: translateX(-50%); display: flex; width: min(680px, calc(100% - 2rem)); gap: .5rem; }.hud-entrada input { flex: 1; background: rgba(5,9,16,.85); }.hud-entrada .mic { min-width: 3rem; }
+@media (max-width: 700px) { .hud-widget { width: auto; max-width: 130px; padding: .55rem; font-size: .8rem; }.hud-widget h2 { font-size: .58rem; }.hud-hora { left: 0; top: 0; }.hud-orbe-zona { inset: 15% 0 22%; }.hud-widget:nth-of-type(2) { top: 72%; left: 0; }.hud-widget:nth-of-type(3) { top: 72%; right: 0; left: auto; }.hud-widget:nth-of-type(4) { display: none; }.hud-admin { display: none !important; }.hud-entrada { bottom: .8rem; }.hud-entrada > button[type="submit"] { display: none; } }
+@media (prefers-reduced-motion: reduce) { .hud-orbe-zona canvas { opacity: .85; } }
+
 /* Resumen de buenos días y Memoria */
 .resumen { margin-bottom: 1.2rem; }
 .resumen-cab { display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap; }

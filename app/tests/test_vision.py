@@ -134,7 +134,7 @@ def test_jpeg_sin_exif_ni_comentarios_conserva_jfif_icc_y_datos():
 
 def test_png_y_webp_sin_metadatos():
     p = vision.sin_metadatos(PNG, "image/png")
-    assert b"tEXt" not in p and b"eXIf" not in p and b"Lucía" not in p and b"IDAT" in p and p.endswith(b"IEND" + b"CRC!")
+    assert b"tEXt" not in p and b"eXIf" not in p and b"Lucia" not in p and b"IDAT" in p and p.endswith(b"IEND" + b"CRC!")
     w = vision.sin_metadatos(WEBP, "image/webp")
     assert b"GPS" not in w and b"XMP " not in w and b"fotograma" in w
     assert int.from_bytes(w[4:8], "little") == len(w) - 8

@@ -43,7 +43,7 @@ En una Raspberry recién instalada (o para actualizar las tres apps):
 curl -fsSL https://raw.githubusercontent.com/BertMarti/ARIA/main/instalar-todo.sh | bash
 ```
 
-Clona los tres repositorios en `~/homelab` y los instala en el orden correcto (SHIELD-DNS, HEIMDALL y ARIA, que detecta a los otros dos y se conecta a ellos). Con `COPIAS_AUTOMATICAS=1` delante programa además una copia de seguridad diaria de las tres apps a las 04:30. La guía completa de las tres apps está en [docs/GUIA.md](docs/GUIA.md).
+Clona los tres repositorios en `~/homelab` y los instala en el orden correcto (SHIELD-DNS, HEIMDALL y ARIA, que detecta a los otros dos y se conecta a ellos). Con `COPIAS_AUTOMATICAS=1` delante programa además una copia de seguridad diaria de las tres apps a las 04:30. El uso de ARIA está explicado más abajo en este README.
 
 ### Qué hace `install.sh`
 
@@ -85,7 +85,7 @@ ARIA no depende de un solo modelo: tiene una **cadena de cerebros gratuitos** qu
 - **Herramientas:** los cerebros de la nube reciben todas las herramientas y deciden cuándo usarlas; el modelo local pequeño solo recibe las relacionadas con las palabras de tu mensaje (así no las usa sin motivo). El borrado de dispositivos VPN sigue siendo solo de la interfaz.
 - **Razonamiento:** los modelos `gpt-oss` envían su «pensamiento» aparte; ARIA nunca lo muestra como respuesta (solo un «pensando…» mientras llega).
 - **Privacidad:** con el cerebro local nada sale de casa. Con Ollama Cloud, Groq o Gemini, **tus mensajes y los resultados de las herramientas (estado de la Pi, número de anuncios bloqueados, nombres de dispositivos VPN…) se envían a esas empresas** para generar la respuesta. En el plan gratuito de Google, además, **Google puede usar los mensajes para mejorar sus productos**. Si prefieres que todo se quede en casa, desactiva los tres primeros en Ajustes → Cerebros.
-- Tratamiento: ARIA te llama por tu nombre (`ARIA_NOMBRE_USUARIO`, por defecto «Lucía»).
+- Tratamiento: ARIA te llama por tu nombre (`ARIA_NOMBRE_USUARIO`; si está vacío, usa el nombre de tu usuario).
 
 ## Modelo local
 

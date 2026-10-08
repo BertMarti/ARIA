@@ -391,10 +391,11 @@ def test_herramientas_servicios(herramientas, ph, ipad):
     assert ph.clientes == []
 
 
-def test_herramientas_rechazan_router_pi_y_minutos_raros(herramientas, ph):
+def test_herramientas_rechazan_router_pi_y_minutos_raros(herramientas, ph, monkeypatch):
+    monkeypatch.setattr(config, "LAN_IP", "192.168.0.50")  # la Pi se protege por ARIA_LAN_IP
     inventario("AA:00:00:00:00:01", config.ROUTER_IP, "Router")
-    inventario("AA:00:00:00:00:02", "192.168.1.50", "Pi")
-    for d in ("Router", "192.168.1.50", "Pi"):
+    inventario("AA:00:00:00:00:02", "192.168.0.50", "Pi")
+    for d in ("Router", "192.168.0.50", "Pi"):
         assert "infraestructura" in correr(tools.ejecutar("pausar_internet", {"dispositivo": d, "minutos": 5}))
     assert ph.escrituras == []
     inventario("AA:00:00:00:00:03", "192.168.0.53", "Tablet")

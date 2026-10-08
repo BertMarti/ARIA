@@ -429,7 +429,7 @@ def cadena() -> list:
     orden, apagados = configuracion()
     out = [PROVEEDORES[i] for i in orden
            if i != "local" and i not in apagados and PROVEEDORES[i].tiene_clave() and not en_espera(i)]
-    # El local respeta su posición en el orden (puede ir primero si Lucía lo prefiere).
+    # El local respeta su posición en el orden (puede ir primero si el usuario lo prefiere).
     pos = orden.index("local")
     antes = sum(1 for i in orden[:pos] if PROVEEDORES[i] in out)
     out.insert(antes, PROVEEDORES["local"])

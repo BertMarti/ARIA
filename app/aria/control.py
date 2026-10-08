@@ -45,7 +45,6 @@ TICK_S = 30
 REFRESCO_IP_S = 120
 MAX_PAUSA_MIN = 7 * 24 * 60
 MAX_HORARIOS_POR_DISPOSITIVO = 12
-PI_IP = "192.168.1.50"
 
 LIMITACION = ("Solo bloquea por DNS (SHIELD-DNS). No frena a un dispositivo con DNS fijo, con DNS cifrado (DoH/DoT, "
               "«DNS privado» de Android, iCloud Relay) o con VPN, ni a los que usan el DNS secundario que reparte el "
@@ -153,7 +152,7 @@ def iniciar() -> None:
 # --- Dispositivos: validación y resolución ----------------------------------------------------------------------
 def protegidas() -> set:
     """IP que no se pueden pausar ni bloquear jamás: router, Raspberry y las de ARIA_CONTROL_PROTEGIDOS."""
-    return {i for i in (config.ROUTER_IP, config.LAN_IP, PI_IP, "127.0.0.1") if i} | set(config.CONTROL_PROTEGIDOS)
+    return {i for i in (config.ROUTER_IP, config.LAN_IP, "127.0.0.1") if i} | set(config.CONTROL_PROTEGIDOS)
 
 
 def _ip_valida(ip: str) -> bool:

@@ -116,7 +116,7 @@ COPIAS_REPO = os.environ.get("ARIA_COPIAS_REPO", "/home/usuario/homelab/.copias-
 
 NOMBRE_USUARIO = os.environ.get("ARIA_NOMBRE_USUARIO", "").strip()[:40]
 
-# Funciones aparcadas hasta más adelante (petición de Lucía, 8/10/2026): el código sigue, pero sin herramientas
+# Funciones aparcadas hasta más adelante (8/10/2026): el código sigue, pero sin herramientas
 # ni interfaz salvo que se activen en .env con ARIA_SPOTIFY=1 / ARIA_NETFLIX=1.
 SPOTIFY = os.environ.get("ARIA_SPOTIFY", "0") == "1"
 NETFLIX = os.environ.get("ARIA_NETFLIX", "0") == "1"

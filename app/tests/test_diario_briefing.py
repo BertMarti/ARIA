@@ -249,11 +249,11 @@ def test_tiempo_con_coordenadas_fijas(admin, monkeypatch):
     assert visto["p"]["latitude"] == 36.7423 and "geocoding" not in visto["url"]
 
 
-def test_geocodificacion_elige_jaen(monkeypatch, tmp_path):
+def test_geocodificacion_elige_provincia(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "CIUDAD", "Ronda, Málaga"); monkeypatch.setattr(config, "LAT", None); monkeypatch.setattr(config, "LON", None)
     res = [{"name": "Ronda", "country_code": "ES", "admin1": "Andalucía", "admin2": "Provincia de Cádiz", "latitude": 1, "longitude": 1},
-           {"name": "Ronda", "country_code": "ES", "admin1": "Andalucía", "admin2": "Provincia de Jaén", "latitude": 37.97, "longitude": -4.1},
-           {"name": "Ronda", "country_code": "MX", "admin2": "Jaén", "latitude": 2, "longitude": 2}]
+           {"name": "Ronda", "country_code": "ES", "admin1": "Andalucía", "admin2": "Provincia de Málaga", "latitude": 37.97, "longitude": -4.1},
+           {"name": "Ronda", "country_code": "MX", "admin2": "Málaga", "latitude": 2, "longitude": 2}]
 
     class C:
         async def get(s, url, params=None):

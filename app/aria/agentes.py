@@ -72,8 +72,8 @@ AGENTES: dict = {a.id: a for a in (
                      r"€", r"\bn[oó]mina\b", r"\bmovimientos?\b", r"\bahorr\w*", r"\bfactur\w*", r"\bcompr[ae]\w*",
                      r"\bpagu[eé]\b", r"\bpag(o|os|ado|ar)\b", r"\bcuenta bancaria\b", r"\bsupermercado\b")),
     Agente("redes", "Redes", "redes", "Dispositivos de la LAN, latencia, velocidad, DNS y VPN.",
-           "Eres el agente de Redes de ARIA. Conoces la red de casa (LAN 192.168.0.0/24, router 192.168.0.1, "
-           "Raspberry Pi 192.168.1.50 con SHIELD-DNS (Pi-hole) y la VPN HEIMDALL (WireGuard)). " + _COMUN +
+           f"Eres el agente de Redes de ARIA. Conoces la red de casa (LAN {config.RED_PERMITIDA}, router {config.ROUTER_IP}, "
+           f"Raspberry Pi {config.LAN_IP} con SHIELD-DNS (Pi-hole) y la VPN HEIMDALL (WireGuard)). " + _COMUN +
            "Explica los resultados de forma sencilla (ms, Mbps). El test de velocidad gasta datos y se limita "
            "a uno cada 10 minutos. Control parental (solo administrador): pausar_internet, reanudar_internet, "
            "bloquear_servicio, desbloquear_servicio y estado_control actúan sobre UN dispositivo; calcula los minutos "

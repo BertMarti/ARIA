@@ -55,6 +55,25 @@ ROUTER_IP = os.environ.get("ARIA_ROUTER_IP", "192.168.0.1").strip()
 ESCANER_DIR = Path(os.environ.get("ARIA_ESCANER_DIR", "/escaner"))
 SPEEDTEST_URL = os.environ.get("ARIA_SPEEDTEST_URL", "https://speed.cloudflare.com").rstrip("/")
 
+def _url_publica() -> str:
+    """URL pública de ARIA (túnel de Cloudflare): ARIA_URL_PUBLICA o el primer dominio de ARIA_HOSTS
+    que no sea una IP ni .local/.lan. Vacía = no hay acceso desde fuera (el chequeo del túnel se omite)."""
+    u = os.environ.get("ARIA_URL_PUBLICA", "").strip().rstrip("/")
+    if u:
+        return u if u.startswith("https://") else ""
+    for h in sorted(HOSTS):
+        if "." in h and not h.replace(".", "").isdigit() and not h.endswith((".local", ".lan", ".localhost")) and ":" not in h:
+            return f"https://{h}"
+    return ""
+
+
+URL_PUBLICA = _url_publica()
+
+# Avisos: Telegram (bot con long polling, sin webhook) y notificaciones push (Web Push con VAPID).
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "").strip()
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "").strip() or "mailto:admin@aria.invalid"
 DATA_DIR = Path(os.environ.get("ARIA_DATA_DIR", "/data"))
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 

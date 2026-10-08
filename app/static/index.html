@@ -130,8 +130,15 @@
         <button id="btn-manos" type="button" class="fantasma pequeno manos-btn" aria-pressed="false" title="Manos libres: di «Aria» para hablar" aria-label="Manos libres: di «Aria» para hablar"><svg class="svg-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M2 8v4M22 8v4"/></svg><span class="manos-txt">Manos libres</span></button>
       </header>
       <div id="mensajes" class="mensajes" aria-live="polite"></div>
+      <div id="adjunto" class="adjunto" hidden>
+        <img id="adjunto-img" alt="Imagen adjunta" width="64" height="64">
+        <span id="adjunto-info" class="muted"></span>
+        <button id="adjunto-quitar" type="button" class="icono-mini" title="Quitar imagen" aria-label="Quitar imagen">✕</button>
+      </div>
       <form id="form" class="entrada">
-        <textarea id="texto" rows="1" placeholder="Escribe un mensaje…" aria-label="Mensaje" required></textarea>
+        <input id="imagen-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+        <button id="adjuntar" type="button" class="fantasma adjuntar" title="Adjuntar imagen (también puedes pegarla o arrastrarla)" aria-label="Adjuntar imagen"><svg class="svg-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg></button>
+        <textarea id="texto" rows="1" placeholder="Escribe un mensaje…" aria-label="Mensaje"></textarea>
         <button id="mic" type="button" class="fantasma mic" aria-label="Mantén pulsado para hablar" aria-pressed="false"><svg class="svg-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="mic-tiempo" aria-hidden="true"></span></button>
         <button id="enviar" type="submit" class="primario">Enviar</button>
         <button id="detener" type="button" class="peligro" hidden>Detener</button>
@@ -209,8 +216,9 @@
       <article class="tarjeta ancha" id="red-dispositivos">
         <h2>Dispositivos de la LAN</h2>
         <p class="muted" id="red-nota"></p>
+        <p class="muted pequeno-txt">Control parental: el botón «Control» de cada dispositivo permite pausar su internet, bloquear servicios (TikTok, YouTube, Fortnite…) y poner horarios. Funciona solo por DNS (SHIELD-DNS): un dispositivo con DNS propio o cifrado, con VPN, o que use el DNS secundario del router (AdGuard) puede saltárselo. El router y la Raspberry están protegidos.</p>
         <div class="botones"><button type="button" class="fantasma pequeno" id="red-conocer-todos">Marcar todos como conocidos</button></div>
-        <div class="tabla-cont"><table class="tabla" id="red-tabla"><thead><tr><th>Nombre</th><th>IP</th><th>Fabricante</th><th>MAC</th><th>Visto</th><th>Puertos</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="tabla-cont"><table class="tabla" id="red-tabla"><thead><tr><th>Nombre</th><th>IP</th><th>Fabricante</th><th>MAC</th><th>Visto</th><th>Puertos</th><th>Control</th><th></th></tr></thead><tbody></tbody></table></div>
       </article>
     </div>
   </section>
@@ -460,6 +468,12 @@
   </div>
 </dialog>
 
+<dialog id="dlg-parental" class="modal modal-ancho" aria-labelledby="par-titulo">
+  <h2 id="par-titulo">Control parental</h2>
+  <div id="par-cuerpo" class="formulario"></div>
+  <div class="botones"><button type="button" class="fantasma" id="par-cerrar">Cerrar</button></div>
+</dialog>
+
 <dialog id="dlg-passuser" class="modal">
   <h2 id="passuser-titulo">Contraseña para casa</h2>
   <form id="form-passuser" class="formulario" autocomplete="off">
@@ -522,6 +536,7 @@
 <script src="/static/inicio.js"></script>
 <script src="/static/ajustes.js"></script>
 <script src="/static/finanzas.js"></script>
+<script src="/static/parental.js"></script>
 <script src="/static/red.js"></script>
 <script src="/static/seguridad.js"></script>
 <script src="/static/memoria.js"></script>

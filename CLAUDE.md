@@ -47,6 +47,11 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 - CSP: el audio se reproduce con WebAudio (`decodeAudioData`), así que no hace falta `media-src blob:`; el WebSocket va a `'self'`.
 - `faster-whisper` 1.2.1 no funciona con PyAV 19 (`metadata_errors`): `av<19`. `libvosk.so` necesita `libatomic1`.
 
+## Visión (2026-10-08)
+- `vision.py`: tipo real por bytes (JPEG/PNG/WebP), ≤ 5 MB, `sin_metadatos` (quita APP1/APP13/COM de JPEG, tEXt/eXIf de PNG, EXIF/XMP de WebP; conserva ICC) sin Pillow; proveedores OpenAI-compatibles Gemini → Groq con esperas en `cerebros._esperas` (claves `vision_*`); nunca el local. Límite por usuario con `voz.Limitador`.
+- `/api/chat` acepta `imagen` (data URL; cuerpo ≤ 7,2 MB) → `chat.conversar_imagen` (sin herramientas ni agentes, sin aprendizaje). Evento `ticket` con ficha en memoria (`vision.proponer`/`tomar`: usuario, un uso, 30 min) → `POST`/`DELETE /api/vision/tickets/{token}`. Telegram usa sus fichas (`ticket` + `cancelar`).
+- CSP sin cambios: las miniaturas son `data:` (ya permitido en `img-src`). Caddy no cambia.
+
 ## Memoria y resumen de buenos días
 - `memoria.py` (recuerdos, diario, ajustes, contexto del prompt; TODO se filtra por `user_id`), `aprender.py` (extracción en segundo plano, solo nube), `diario.py` (resumen diario + planificador 03:30 + recuperación), `briefing.py` (resumen de hoy, caché en `resumen_dia`, versión hablada), `tiempo.py` (fechas locales, límites de día con DST).
 - La identidad de las herramientas de memoria sale de `memoria.uid_actual` (la fija `chat.conversar`), nunca de los argumentos del modelo. `recordar`/`olvidar` las tiene todo rol.

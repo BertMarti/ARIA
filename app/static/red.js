@@ -73,13 +73,14 @@ const Red = (() => {
 
   async function dispositivos() {
     const tb = $("red-tabla").querySelector("tbody");
-    const { ok, data } = await api("/api/red/dispositivos");
-    if (!ok) { tb.replaceChildren(el("tr", null, el("td", { colSpan: 7 }, data.error || "No se pudo cargar."))); return; }
+    const [{ ok, data }] = await Promise.all([api("/api/red/dispositivos"), Parental.cargar()]);
+    const estados = Parental.estados();
+    if (!ok) { tb.replaceChildren(el("tr", null, el("td", { colSpan: 8 }, data.error || "No se pudo cargar."))); return; }
     const ds = data.dispositivos;
     const u = data.ultimo_escaneo;
     $("red-nota").textContent = ds.length + " dispositivos (" + ds.filter((d) => !d.conocido).length + " sin reconocer). Nombres y última consulta DNS de Pi-hole; MAC, fabricante y puertos del último escaneo" +
       (u ? " (" + fmtHora(u.fin) + ")." : " (aún no hay ninguno: lánzalo en Seguridad).");
-    if (!ds.length) { tb.replaceChildren(el("tr", null, el("td", { colSpan: 7, class: "muted" }, "Sin dispositivos."))); return; }
+    if (!ds.length) { tb.replaceChildren(el("tr", null, el("td", { colSpan: 8, class: "muted" }, "Sin dispositivos."))); return; }
     tb.replaceChildren(...ds.map((d) => {
       const alias = el("input", { value: d.alias || "", placeholder: d.nombre || d.fabricante || "sin nombre", maxLength: 40, class: "alias", "aria-label": "Alias" });
       alias.addEventListener("change", () => marcar(d.clave, d.conocido, alias.value));
@@ -90,6 +91,7 @@ const Red = (() => {
         el("td", { class: "mono" }, d.mac || "—"),
         el("td", { class: "muted" }, d.ultima_consulta ? fmtHora(d.ultima_consulta) : "—"),
         el("td", { class: "mono" }, d.puertos ? (d.puertos.join(", ") || "ninguno") : "—"),
+        el("td", null, Parental.celda(d, estados)),
         el("td", null, d.conocido
           ? el("button", { type: "button", class: "fantasma pequeno", onclick: () => marcar(d.clave, false) }, "Olvidar")
           : el("button", { type: "button", class: "primario pequeno", onclick: () => marcar(d.clave, true) }, "Marcar como conocido")));
@@ -121,6 +123,7 @@ const Red = (() => {
       const r = await accion($("red-velocidad"), "/api/red/velocidad", "Midiendo (unos segundos)…");
       if (r.ok) toast("Velocidad: " + fmtNumero(r.data.bajada_mbps) + " Mbps ↓, " + fmtNumero(r.data.subida_mbps) + " Mbps ↑");
     });
+    Parental.iniciar();
     $("red-conocer-todos").addEventListener("click", async () => {
       if (!(await confirmar("Marcar todos como conocidos", "Todos los dispositivos actuales dejarán de aparecer como «sin reconocer».", "Marcar"))) return;
       await api("/api/red/dispositivos/conocer-todos", { method: "POST" }); dispositivos();
@@ -128,5 +131,5 @@ const Red = (() => {
   }
 
   function activar(si) { if (si && Sesion.esAdmin) cargar(); }
-  return { iniciar, activar };
+  return { iniciar, activar, recargar: dispositivos };
 })();

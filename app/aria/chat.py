@@ -4,7 +4,7 @@ import json
 import logging
 from typing import AsyncIterator
 
-from . import agentes, aprender, briefing, cerebros, db, memoria, tools
+from . import agentes, aprender, briefing, cerebros, db, memoria, tools, vision
 
 log = logging.getLogger("aria.chat")
 
@@ -197,3 +197,46 @@ async def conversar(usuario: dict, cid: str | None, texto: str, agente: str | No
                 aprender.programar(uid, usuario["nombre"], texto)
             except Exception:  # noqa: BLE001
                 log.exception("No se pudo programar el aprendizaje")
+
+
+PREFIJO_IMAGEN = "[imagen]"
+
+
+async def conversar_imagen(usuario: dict, cid: str | None, texto: str, imagen: bytes, mime: str,
+                           proponer: bool = True) -> AsyncIterator[dict]:
+    """Como `conversar`, pero con una imagen: la mira un proveedor de visión de la nube (nunca el local).
+
+    La imagen no se guarda: el historial lleva «[imagen] texto» y la respuesta del modelo. Sin herramientas ni
+    agentes; si es un ticket se emite un evento «ticket» (con `proponer`, con su ficha para confirmarlo en la web).
+    De las imágenes no se aprende nada en segundo plano."""
+    texto = (texto or "").strip()[:MAX_CHARS]
+    uid = usuario["id"]
+    if not cid or not db.existe(cid, uid):
+        cid = db.crear(uid)
+    if db.es_primer_mensaje(cid):
+        db.renombrar(cid, uid, db.titulo_desde(texto) if texto else "Imagen")
+    previo = db.historial_modelo(cid, 6)
+    db.anadir(cid, "user", f"{PREFIJO_IMAGEN} {texto}".strip())
+    conv = db.obtener(cid, uid)
+    yield {"type": "conv", "id": cid, "titulo": conv["titulo"], "agente": conv.get("agente") or agentes.AUTO}
+    yield {"type": "agente", **agentes.obtener(agentes.AUTO).publico(), "motivo": "imagen"}
+    yield {"type": "pensando"}
+    try:
+        r = await vision.analizar(imagen, mime, texto, usuario, previo)
+    except vision.VisionError as e:
+        yield {"type": "error", "text": e.mensaje}
+        return
+    finally:
+        imagen = None  # noqa: F841 - la imagen no sobrevive a la petición
+    yield {"type": "cerebro", "id": "vision_" + r["proveedor"], "nombre": r["etiqueta"].split(" · ")[0],
+           "modelo": r["modelo"], "etiqueta": r["etiqueta"]}
+    yield {"type": "token", "text": r["texto"]}
+    db.anadir(cid, "assistant", r["texto"], r["etiqueta"], agentes.AUTO)
+    if r["ticket"]:
+        ev = {"type": "ticket", **vision.publico(r["ticket"])}
+        if proponer:
+            ev["token"] = vision.proponer(uid, r["ticket"], cid)
+        else:
+            ev["datos"] = r["ticket"]
+        yield ev
+    yield {"type": "fin"}

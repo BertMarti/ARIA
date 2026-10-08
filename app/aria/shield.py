@@ -4,6 +4,7 @@ Pi-hole limita las sesiones de API simultáneas: se guarda UN solo sid en memori
 se reutiliza y solo se vuelve a autenticar ante un 401. Al apagar la app se cierra.
 """
 import asyncio
+from urllib.parse import quote
 
 import httpx
 
@@ -126,3 +127,58 @@ async def resumen_dia(desde: float, hasta: float) -> dict | None:
         return None
     bloqueadas = int(j.get("sum_blocked") or 0)
     return {"consultas": total, "bloqueadas": bloqueadas, "porcentaje": round(bloqueadas * 100 / total, 1)}
+
+
+# --- Grupos, clientes y dominios (control parental, ver control.py) -----------------------------------------
+# Pi-hole v6: /api/groups, /api/clients y /api/domains/deny/regex. Los clientes se identifican por IP y un
+# cliente listado solo pertenece a los grupos que se le indiquen (hay que incluir el 0 = Default para que
+# conserve las listas de anuncios). Los identificadores van codificados en la ruta (`.*` -> `.%2A`).
+def _ruta(x: str) -> str:
+    return quote(x, safe="")
+
+
+async def grupos() -> list:
+    return (await _llamar("GET", "/api/groups")).get("groups") or []
+
+
+async def crear_grupo(nombre: str, comentario: str = "") -> dict:
+    j = await _llamar("POST", "/api/groups", json={"name": nombre, "comment": comentario, "enabled": True})
+    return (j.get("groups") or [{}])[0]
+
+
+async def clientes() -> list:
+    return (await _llamar("GET", "/api/clients")).get("clients") or []
+
+
+async def crear_cliente(ip: str, grupos_: list, comentario: str) -> dict:
+    j = await _llamar("POST", "/api/clients", json={"client": ip, "comment": comentario, "groups": grupos_})
+    return (j.get("clients") or [{}])[0]
+
+
+async def actualizar_cliente(ip: str, grupos_: list, comentario: str) -> dict:
+    j = await _llamar("PUT", f"/api/clients/{_ruta(ip)}", json={"comment": comentario, "groups": grupos_})
+    return (j.get("clients") or [{}])[0]
+
+
+async def borrar_cliente(ip: str) -> None:
+    await _llamar("DELETE", f"/api/clients/{_ruta(ip)}")
+
+
+async def dominios_regex_deny() -> list:
+    return (await _llamar("GET", "/api/domains/deny/regex")).get("domains") or []
+
+
+async def crear_dominio_regex_deny(regex: str, grupos_: list, comentario: str, activo: bool) -> dict:
+    j = await _llamar("POST", "/api/domains/deny/regex",
+                      json={"domain": regex, "comment": comentario, "groups": grupos_, "enabled": activo})
+    return (j.get("domains") or [{}])[0]
+
+
+async def actualizar_dominio_regex_deny(regex: str, grupos_: list, comentario: str, activo: bool) -> dict:
+    j = await _llamar("PUT", f"/api/domains/deny/regex/{_ruta(regex)}",
+                      json={"comment": comentario, "groups": grupos_, "enabled": activo})
+    return (j.get("domains") or [{}])[0]
+
+
+async def borrar_dominio_regex_deny(regex: str) -> None:
+    await _llamar("DELETE", f"/api/domains/deny/regex/{_ruta(regex)}")

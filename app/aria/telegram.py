@@ -43,6 +43,7 @@ COMANDOS = [
     ("recordatorios", "Tus recordatorios"), ("rutinas", "Tus rutinas programadas"), ("gastos", "Gastos de este mes"),
     ("red", "Salud de la red y dispositivos nuevos"), ("vpn", "Dispositivos de la VPN"),
     ("bloqueo", "Bloqueador de anuncios (SHIELD)"), ("nuevovpn", "Nuevo dispositivo VPN (admin)"),
+    ("control", "Control parental: dispositivos pausados o bloqueados (admin)"),
     ("nuevo", "Empezar otra conversación"), ("desvincular", "Desvincular este chat"), ("ayuda", "Ayuda"),
 ]
 OPS_ADMIN = {"pausar", "reanudar", "nuevovpn"}
@@ -393,10 +394,14 @@ async def procesar(update: dict, b=None) -> None:
                        reply_markup=teclado([boton("Resumir", f)]))
     elif texto.strip():
         await _charlar(b, chat_id, u, texto.strip()[:MAX_TEXTO])
+    elif isinstance(m.get("photo"), list) and m["photo"]:
+        await _foto(b, chat_id, u, m["photo"], m.get("caption"))
+    elif isinstance(m.get("document"), dict) and str(m["document"].get("mime_type", "")) in TIPOS_IMAGEN:
+        await _foto(b, chat_id, u, [m["document"]], m.get("caption"))
     elif isinstance(m.get("voice"), dict):
         await _nota_de_voz(b, chat_id, u, m["voice"])
     else:
-        await b.llamar("sendMessage", chat_id=chat_id, text="Por ahora solo entiendo texto y notas de voz.")
+        await b.llamar("sendMessage", chat_id=chat_id, text="Por ahora solo entiendo texto, fotos y notas de voz.")
 
 
 async def _vincular(b, chat_id: int, codigo: str, de: dict) -> None:
@@ -426,14 +431,14 @@ async def _escribiendo(b, chat_id: int, accion: str = "typing") -> None:
         pass
 
 
-async def responder_chat(u: dict, chat_id: int, texto: str) -> str:
-    """Pasa el mensaje por el mismo chat que la web y devuelve la respuesta final en Markdown."""
-    from . import chat
+async def _responder(u: dict, chat_id: int, fabrica) -> tuple[str, dict | None, str | None]:
+    """Recorre el generador del chat (`fabrica(cid)`) con la conversación de este chat de Telegram.
+    Devuelve (respuesta en Markdown, ticket leído de una imagen o None, id de la conversación)."""
     v = await asyncio.to_thread(chat_vinculado, chat_id)
     cid = v.get("conv_id") if v else None
     nueva = not cid or not await asyncio.to_thread(db.existe, cid, u["id"])
-    acumulado, error = "", None
-    gen = chat.conversar(u, None if nueva else cid, texto)
+    acumulado, error, ticket = "", None, None
+    gen = fabrica(None if nueva else cid)
     try:
         async for ev in gen:
             t = ev.get("type")
@@ -446,13 +451,21 @@ async def responder_chat(u: dict, chat_id: int, texto: str) -> str:
                 acumulado = ""  # lo dicho antes de usar una herramienta no es la respuesta final
             elif t == "error":
                 error = ev.get("text")
+            elif t == "ticket":
+                ticket = ev.get("datos")
     finally:
         await gen.aclose()
     if nueva and cid:
         conv = await asyncio.to_thread(db.obtener, cid, u["id"])
         if conv and not conv["titulo"].startswith("Telegram"):
             await asyncio.to_thread(db.renombrar, cid, u["id"], "Telegram · " + conv["titulo"])
-    return acumulado.strip() or error or "No tengo respuesta ahora mismo."
+    return acumulado.strip() or error or "No tengo respuesta ahora mismo.", ticket, cid
+
+
+async def responder_chat(u: dict, chat_id: int, texto: str) -> str:
+    """Pasa el mensaje por el mismo chat que la web y devuelve la respuesta final en Markdown."""
+    from . import chat
+    return (await _responder(u, chat_id, lambda cid: chat.conversar(u, cid, texto)))[0]
 
 
 async def _charlar(b, chat_id: int, u: dict, texto: str, con_voz: bool = False) -> None:
@@ -494,11 +507,64 @@ async def _nota_de_voz(b, chat_id: int, u: dict, voz: dict) -> None:
     await _charlar(b, chat_id, u, texto, con_voz=True)
 
 
+TIPOS_IMAGEN = ("image/jpeg", "image/png", "image/webp")
+
+
+def _elegir_foto(fotos: list, maximo: int) -> dict | None:
+    """La versión más grande de la foto que quepa en `maximo` bytes (Telegram manda varias, de menor a mayor)."""
+    validas = [f for f in fotos if isinstance(f, dict) and f.get("file_id") and (f.get("file_size") or 0) <= maximo]
+    return max(validas, key=lambda f: (f.get("width") or 0) * (f.get("height") or 0), default=None)
+
+
+async def _foto(b, chat_id: int, u: dict, fotos: list, pie) -> None:
+    """Foto (con o sin pie): la mira un cerebro con visión y responde en este chat. Si es un ticket, ofrece
+    «Registrar» / «Cancelar» con fichas del servidor. La imagen solo vive en memoria."""
+    from . import chat, vision
+    if not vision.disponible():
+        await b.llamar("sendMessage", chat_id=chat_id, text=vision.NO_DISPONIBLE)
+        return
+    if (resto := vision.limitar(u["id"])):
+        await b.llamar("sendMessage", chat_id=chat_id, text=f"Demasiadas imágenes seguidas. Espera {resto} s.")
+        return
+    f = _elegir_foto(fotos, vision.MAX_BYTES)
+    if not f:
+        await b.llamar("sendMessage", chat_id=chat_id, text="La imagen es demasiado grande (máximo 5 MB).")
+        return
+    try:
+        info = await b.llamar("getFile", file_id=str(f.get("file_id", ""))[:200])
+        datos = await b.descargar(info.get("file_path", ""), vision.MAX_BYTES)
+        mime = vision.validar(datos)
+    except TelegramError:
+        await b.llamar("sendMessage", chat_id=chat_id, text="No pude descargar la imagen.")
+        return
+    except vision.VisionError as e:
+        await b.llamar("sendMessage", chat_id=chat_id, text=e.mensaje)
+        return
+    texto = " ".join(str(pie or "").split())[:MAX_TEXTO] if isinstance(pie, str) else ""
+    tarea = asyncio.create_task(_escribiendo(b, chat_id))
+    try:
+        respuesta, ticket, cid = await _responder(
+            u, chat_id, lambda c: chat.conversar_imagen(u, c, texto, datos, mime, proponer=False))
+    finally:
+        tarea.cancel()
+        datos = None  # noqa: F841
+    kb = None
+    if ticket:
+        t = vision.publico(ticket)
+        respuesta += (f"\n\n¿Lo apunto en tus finanzas? {t['comercio']}, {t['importe']}, {t['fecha']} "
+                      f"(categoría: {t['categoria']}).")
+        f_ok = await asyncio.to_thread(ficha, chat_id, u["id"], "ticket", {"ticket": ticket, "cid": cid}, 86400)
+        f_no = await asyncio.to_thread(ficha, chat_id, u["id"], "cancelar", None, 86400)
+        kb = teclado([boton("Registrar", f_ok), boton("Cancelar", f_no)])
+    await enviar_texto(b, chat_id, respuesta, kb)
+
+
 # --- Comandos ---------------------------------------------------------------------------------------------------------
 def _ayuda(admin: bool) -> str:
-    lineas = ["Escríbeme o mándame una nota de voz y te respondo como en la web. Comandos:"]
+    lineas = ["Escríbeme, mándame una nota de voz o una foto (por ejemplo, de un ticket) y te respondo como en la web. "
+              "Comandos:"]
     for c, d in COMANDOS:
-        if c == "nuevovpn" and not admin:
+        if c in ("nuevovpn", "control") and not admin:
             continue
         lineas.append(f"/{c} — {d}")
     return "\n".join(lineas)
@@ -562,6 +628,11 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
         await enviar(await texto_red(u))
     elif cmd == "rutinas":
         await _rutinas(b, chat_id, u)
+    elif cmd == "control":
+        if not admin:
+            await enviar("Eso solo lo puede hacer un administrador.")
+            return
+        await _control(b, chat_id, u)
     elif cmd == "nuevovpn":
         if not admin:
             await enviar("Eso solo lo puede hacer un administrador.")
@@ -689,6 +760,26 @@ async def _anuncios(b, chat_id: int, u: dict) -> None:
                                               [boton("Reanudar", f_r)]))
 
 
+async def _control(b, chat_id: int, u: dict) -> None:
+    """Lista los dispositivos con internet pausado o servicios bloqueados, con botones para quitar la pausa."""
+    from . import control
+    es = [e for e in await asyncio.to_thread(control.estado) if e["pausado"] or e["servicios_bloqueados"]]
+    if not es:
+        await enviar_texto(b, chat_id, "Ningún dispositivo tiene internet pausado ni servicios bloqueados ahora mismo. "
+                                       "Para pausar uno, escríbeme, por ejemplo: «pausa el iPad una hora».")
+        return
+    filas = []
+    for e in es[:20]:
+        if e["pausa_manual"]:
+            f = await asyncio.to_thread(ficha, chat_id, u["id"], "reanudar_control", {"clave": e["clave"]})
+            filas.append([boton(f"Reanudar {e['nombre']}"[:60], f)])
+        if e["servicios_manuales"]:
+            f = await asyncio.to_thread(ficha, chat_id, u["id"], "desbloquear_control", {"clave": e["clave"]})
+            filas.append([boton(f"Desbloquear servicios de {e['nombre']}"[:60], f)])
+    await enviar_texto(b, chat_id, "**Control parental**\n" + "\n".join("- " + control.texto_estado(e) for e in es[:20])
+                       + "\n\n" + control.LIMITACION_CORTA, teclado(*filas) if filas else None)
+
+
 # --- Botones --------------------------------------------------------------------------------------------------------
 async def _quitar_botones(b, cq: dict) -> None:
     m = cq.get("message") or {}
@@ -765,6 +856,31 @@ async def _accion(b, cq: dict, chat_id: int, u: dict, accion: str, d: dict) -> s
         await _quitar_botones(b, cq)
         await enviar_texto(b, chat_id, f"Rutina «{r['nombre']}» {'reanudada' if r['activa'] else 'en pausa'}.")
         return "Reanudada." if r["activa"] else "En pausa."
+    if accion in ("reanudar_control", "desbloquear_control"):
+        if not admin:
+            return "Eso solo lo puede hacer un administrador."
+        from . import control
+        clave = str(d.get("clave", ""))
+        if accion == "reanudar_control":
+            await asyncio.to_thread(control.reanudar, clave)
+        else:
+            await asyncio.to_thread(control.quitar_servicios, clave)
+        r = await control.reconciliar()
+        await _quitar_botones(b, cq)
+        fila = await asyncio.to_thread(control._fila, clave)
+        await enviar_texto(b, chat_id, ("Internet reanudado en " if accion == "reanudar_control" else
+                                        "Servicios desbloqueados en ") + control.nombre_de(fila) + "."
+                           + ("" if r.get("ok") else f" Aún no se ha podido aplicar en SHIELD-DNS ({r.get('error')}); se reintenta solo."))
+        return "Hecho."
+    if accion == "ticket":  # gasto leído de una foto: se apunta en las finanzas del usuario del chat
+        from . import vision
+        await _quitar_botones(b, cq)
+        t = d.get("ticket") if isinstance(d.get("ticket"), dict) else None
+        if not t:
+            return "Ese ticket ya no es válido."
+        ok, texto = await vision.registrar_ticket(u, t, d.get("cid"))
+        await enviar_texto(b, chat_id, texto)
+        return "Apuntado." if ok else "No se pudo apuntar."
     if accion == "pedir":  # paso previo: se pide «Confirmar»
         if d.get("op") in OPS_ADMIN and not admin:
             return "Eso solo lo puede hacer un administrador."

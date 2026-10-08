@@ -108,10 +108,16 @@ const Chat = (() => {
   }
 
   // Mensaje de usuario o de ARIA. Devuelve { nodo, actualizar(texto) }.
-  function addMsg(rol, texto, cerebro, agente) {
+  // `imagen`: miniatura (data URL) del mensaje del usuario. En el historial la imagen no existe: «[imagen]».
+  function addMsg(rol, texto, cerebro, agente, imagen) {
     const cont = el("div", { class: "md" });
     const nodo = el("div", { class: "msg " + rol }, cont);
     let actual = texto || "";
+    if (rol === "user" && actual.startsWith("[imagen]")) {
+      actual = actual.slice(8).trim();
+      if (!imagen) nodo.prepend(el("span", { class: "msg-img-ph", title: "Las imágenes no se guardan" }, "Imagen"));
+    }
+    if (imagen) nodo.prepend(el("img", { class: "msg-img", src: imagen, alt: "Imagen enviada" }));
     if (actual) renderMd(actual, cont);
     const badge = el("span", { class: "cerebro-badge", title: "Cerebro que respondió" });
     const agBadge = el("span", { class: "agente-badge", title: "Agente que respondió" });
@@ -165,24 +171,92 @@ const Chat = (() => {
     $("texto").disabled = false;
   }
 
+  // --- Imagen adjunta: se reduce en el navegador (máx. 1600 px, JPEG) y viaja con el mensaje ---
+  const MAX_LADO = 1600, MAX_BYTES = 5 * 1024 * 1024, TIPOS_IMG = ["image/jpeg", "image/png", "image/webp"];
+  let adjunto = null;   // { datos: data URL JPEG, miniatura: data URL pequeña }
+  function lienzo(bmp, lado) {
+    const k = Math.min(1, lado / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);   // PNG con transparencia -> fondo blanco
+    g.drawImage(bmp, 0, 0, c.width, c.height);
+    return c;
+  }
+  function aDataUrl(blob) {
+    return new Promise((ok, mal) => { const f = new FileReader(); f.onload = () => ok(f.result); f.onerror = mal; f.readAsDataURL(blob); });
+  }
+  async function prepararImagen(file) {
+    if (!file || !TIPOS_IMG.includes(file.type)) { toast("Solo puedo ver imágenes JPEG, PNG o WebP.", "mal"); return; }
+    if (file.size > 40 * 1024 * 1024) { toast("La imagen es demasiado grande.", "mal"); return; }
+    let bmp;
+    try { bmp = await createImageBitmap(file); } catch (_) { toast("No pude leer esa imagen.", "mal"); return; }
+    try {
+      const c = lienzo(bmp, MAX_LADO);
+      let blob = null;
+      for (const q of [0.85, 0.7, 0.5]) {
+        blob = await new Promise((ok) => c.toBlob(ok, "image/jpeg", q));   // recodificar quita EXIF/GPS
+        if (blob && blob.size <= MAX_BYTES) break;
+      }
+      if (!blob || blob.size > MAX_BYTES) { toast("La imagen es demasiado grande (máximo 5 MB).", "mal"); return; }
+      adjunto = { datos: await aDataUrl(blob), miniatura: lienzo(bmp, 240).toDataURL("image/jpeg", 0.7) };
+      $("adjunto-img").src = adjunto.miniatura;
+      $("adjunto-info").textContent = c.width + "×" + c.height + " · " + fmtBytes(blob.size);
+      $("adjunto").hidden = false;
+      $("texto").focus();
+    } finally { if (bmp.close) bmp.close(); }
+  }
+  function quitarAdjunto() { adjunto = null; $("adjunto").hidden = true; $("adjunto-img").removeAttribute("src"); $("imagen-input").value = ""; }
+
+  // Propuesta de apuntar un gasto leído de un ticket. Se apunta solo si el usuario pulsa «Registrar gasto».
+  function tarjetaTicket(ev) {
+    const fila = (k, v) => [el("dt", null, k), el("dd", null, String(v ?? ""))];
+    const estado = el("p", { class: "muted" });
+    const si = el("button", { type: "button", class: "primario pequeno" }, "Registrar gasto");
+    const no = el("button", { type: "button", class: "fantasma pequeno" }, "Descartar");
+    const botones = el("div", { class: "botones" }, si, no);
+    const t = el("div", { class: "ticket" }, el("strong", null, "¿Apunto este gasto en tus finanzas?"),
+      el("dl", null, ...fila("Comercio", ev.comercio), ...fila("Fecha", ev.fecha), ...fila("Total", ev.importe), ...fila("Categoría", ev.categoria)),
+      botones, estado);
+    const ruta = "/api/vision/tickets/" + encodeURIComponent(ev.token || "");
+    const fin = (texto) => { botones.remove(); estado.textContent = texto; };
+    si.addEventListener("click", async () => {
+      si.disabled = no.disabled = true;
+      const r = await api(ruta, { method: "POST" });
+      if (r.ok) { fin(r.data.texto || "Apuntado."); toast("Gasto apuntado en Finanzas."); }
+      else { fin(r.data.error || "No se pudo apuntar."); }
+    });
+    no.addEventListener("click", async () => { si.disabled = no.disabled = true; await api(ruta, { method: "DELETE" }); fin("Descartado."); });
+    return t;
+  }
+
+  async function errorHttp(r) {
+    try { const j = await r.json(); if (j && j.error) return j.error; } catch (_) { /* sin JSON */ }
+    return "Error de conexión con ARIA.";
+  }
+
   // Envía un mensaje. Devuelve el texto de la respuesta (para leerlo en voz alta).
   async function enviar(texto, opciones = {}) {
     texto = (texto || "").trim();
-    if (!texto || enCurso) return "";
+    const img = adjunto;
+    if ((!texto && !img) || enCurso) return "";
     Voz.parar();
     if (!caja().querySelector(".msg")) caja().replaceChildren();
-    addMsg("user", texto); abajo();
+    addMsg("user", texto, null, null, img ? img.miniatura : null); abajo();
+    if (img) quitarAdjunto();
     ponerEstado(true);
     abort = new AbortController();
     let burbuja = null, acumulado = "", ultimoChip = null, ultimoArgs = {}, todo = "", etiqueta = "", agente = "";
     try {
+      const cuerpo = convId ? { conversation_id: convId, message: texto }
+        : { conversation_id: null, message: texto, agente: agentePendiente };
+      if (img) cuerpo.imagen = img.datos;
       const r = await fetch("/api/chat", {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: abort.signal,
-        body: JSON.stringify(convId ? { conversation_id: convId, message: texto }
-          : { conversation_id: null, message: texto, agente: agentePendiente }),
+        body: JSON.stringify(cuerpo),
       });
       if (r.status === 401) { location.href = "/login"; return ""; }
-      if (!r.ok) throw new Error("HTTP " + r.status);
+      if (!r.ok) { addAviso(await errorHttp(r)); return ""; }
       for await (const ev of lineasNdjson(r)) {
         if (ev.type === "conv") {
           convId = ev.id; $("chat-titulo").textContent = ev.titulo; cargarLista();
@@ -203,6 +277,8 @@ const Chat = (() => {
           ultimoArgs = ev.args; ultimoChip = chip(ev.name, ev.args); if (BUSQUEDA.has(ev.name)) ultimoChip.classList.add("buscando"); caja().append(ultimoChip); abajo();
         } else if (ev.type === "resultado") {
           if (ultimoChip) { ultimoChip.title = ev.text; ultimoChip.classList.remove("buscando"); ultimoChip.classList.add("hecho"); botonQr(ultimoChip, ev.name, ultimoArgs, ev.text); ponerFuentes(ultimoChip, ev.name, ev.text); abajo(); }
+        } else if (ev.type === "ticket") {
+          if (ev.token) { caja().append(tarjetaTicket(ev)); abajo(); }
         } else if (ev.type === "aviso" || ev.type === "error") { pensando(false); addAviso(ev.text); }
       }
       if (!opciones.sinLeer && Prefs.get("tts", "0") === "1") Voz.hablar(todo);
@@ -296,7 +372,25 @@ const Chat = (() => {
   function cerrarLista() { $("convs").classList.remove("abierto"); $("convs-fondo").hidden = true; }
 
   function iniciar() {
-    $("form").addEventListener("submit", (e) => { e.preventDefault(); const t = $("texto").value; if (t.trim() && !enCurso) { $("texto").value = ""; autoajustar(); enviar(t); } });
+    $("form").addEventListener("submit", (e) => { e.preventDefault(); const t = $("texto").value; if ((t.trim() || adjunto) && !enCurso) { $("texto").value = ""; autoajustar(); enviar(t); } });
+    // Imagen: botón, pegar (Ctrl+V) y arrastrar y soltar.
+    if (Sesion.funciones && Sesion.funciones.vision === false) $("adjuntar").hidden = true;
+    $("adjuntar").addEventListener("click", () => $("imagen-input").click());
+    $("imagen-input").addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (f) prepararImagen(f); });
+    $("adjunto-quitar").addEventListener("click", quitarAdjunto);
+    $("texto").addEventListener("paste", (e) => {
+      const it = [...((e.clipboardData && e.clipboardData.items) || [])].find((i) => i.kind === "file" && i.type.startsWith("image/"));
+      if (it) { e.preventDefault(); prepararImagen(it.getAsFile()); }
+    });
+    for (const zona of [caja(), $("form")]) {
+      zona.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { e.preventDefault(); zona.classList.add("soltar"); } });
+      zona.addEventListener("dragleave", () => zona.classList.remove("soltar"));
+      zona.addEventListener("drop", (e) => {
+        zona.classList.remove("soltar");
+        const f = [...(e.dataTransfer?.files || [])].find((x) => x.type.startsWith("image/"));
+        if (f) { e.preventDefault(); prepararImagen(f); }
+      });
+    }
     $("texto").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("form").requestSubmit(); } });
     $("texto").addEventListener("input", autoajustar);
     $("detener").addEventListener("click", detener);

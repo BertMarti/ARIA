@@ -43,6 +43,12 @@ ADMIN = [
     ("POST", "/api/spotify/next", None), ("POST", "/api/spotify/previous", None),
     ("GET", "/spotify/login", None), ("GET", "/spotify/callback", None),
     ("POST", "/api/models/otro", None), ("GET", "/api/ruta-inventada", None),
+    # Control parental: solo admin
+    ("GET", "/api/red/control", None), ("POST", "/api/red/control/pausa", {"clave": "x", "minutos": 5}),
+    ("POST", "/api/red/control/reanudar", {"clave": "x"}),
+    ("POST", "/api/red/control/servicio", {"clave": "x", "servicio": "tiktok", "bloquear": True}),
+    ("POST", "/api/red/control/horarios", {"clave": "x", "dias": [0], "desde": "23:00", "hasta": "08:00"}),
+    ("DELETE", "/api/red/control/horarios/1", None), ("POST", "/api/red/control/aplicar", None),
 ]
 
 
@@ -81,18 +87,31 @@ RUTAS_USUARIO_RUTINAS = {
     ("GET", "/api/rutinas"), ("POST", "/api/rutinas"), ("PATCH", "/api/rutinas/{rid}"),
     ("DELETE", "/api/rutinas/{rid}"), ("POST", "/api/rutinas/{rid}/ejecutar"),
 }
+# Visión: confirmar o descartar el ticket propio leído de una foto (la propuesta está ligada al usuario).
+RUTAS_USUARIO_VISION = {("POST", "/api/vision/tickets/{token}"), ("DELETE", "/api/vision/tickets/{token}")}
+
+
+def todas_las_rutas() -> list:
+    """Rutas de la app y de los routers incluidos (FastAPI reciente los envuelve en `_IncludedRouter`)."""
+    from fastapi.routing import APIRoute
+    out = []
+    for r in main.app.routes:
+        if isinstance(r, APIRoute):
+            out.append(r)
+        elif hasattr(r, "original_router"):
+            out += [x for x in r.original_router.routes if isinstance(x, APIRoute)]
+    return out
 
 
 def test_toda_ruta_registrada_esta_cubierta():
     """Si alguien añade un endpoint, debe salir en la lista blanca de `usuario` o devolverle 403."""
     from fastapi.routing import APIRoute
     usuario = {"id": 1, "rol": "usuario"}
-    for r in main.app.routes:
-        if not isinstance(r, APIRoute):
-            continue
+    for r in todas_las_rutas():
         ruta = r.path.replace("{cid}", "abc").replace("{uid}", "1").replace("{app_id}", "x") \
                      .replace("{accion}", "x").replace("{mid}", "1").replace("{rid}", "1").replace("{fecha}", "2026-10-06") \
-                     .replace("{aid}", "1").replace("{chat_id}", "1").replace("{sid}", "1")
+                     .replace("{aid}", "1").replace("{chat_id}", "1").replace("{sid}", "1").replace("{hid}", "1") \
+                     .replace("{token}", "a" * 24)
         for m in r.methods - {"HEAD", "OPTIONS"}:
             if permisos.permitido("usuario", m, ruta):
                 assert (m, r.path) in {
@@ -105,7 +124,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("GET", "/api/memoria"), ("POST", "/api/memoria"), ("POST", "/api/memoria/ajustes"),
                     ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
                     ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),
-                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS, (m, r.path)
+                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION, (m, r.path)
     assert not permisos.permitido("desconocido", "GET", "/")
 
 

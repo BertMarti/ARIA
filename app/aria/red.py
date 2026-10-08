@@ -15,6 +15,7 @@ import asyncio
 import ipaddress
 import json
 import socket
+import sqlite3
 import struct
 import time
 from contextlib import closing
@@ -97,6 +98,11 @@ def _sincronizar(dispositivos: list) -> list:
             previa = con.execute("SELECT * FROM red_inventario WHERE clave=?", (f"ip-{d['ip']}",)).fetchone()
             if d["mac"] and previa and not con.execute("SELECT 1 FROM red_inventario WHERE clave=?", (d["mac"],)).fetchone():
                 con.execute("UPDATE red_inventario SET clave=?, mac=? WHERE clave=?", (d["mac"], d["mac"], f"ip-{d['ip']}"))
+                for tabla in ("control_pausas", "control_servicios", "control_horarios"):  # control parental sigue al dispositivo
+                    try:
+                        con.execute(f"UPDATE OR REPLACE {tabla} SET clave=? WHERE clave=?", (d["mac"], f"ip-{d['ip']}"))
+                    except sqlite3.OperationalError:
+                        pass  # tabla aún sin crear
             con.execute("""INSERT INTO red_inventario (clave, mac, ip, nombre, fabricante, primera_vez, ultima_vez)
                            VALUES (?,?,?,?,?,?,?)
                            ON CONFLICT(clave) DO UPDATE SET ip=excluded.ip, ultima_vez=excluded.ultima_vez,

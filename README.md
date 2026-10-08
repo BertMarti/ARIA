@@ -139,6 +139,20 @@ Todo gratis: la transcripción usa la API gratuita de Whisper de Groq (con la mi
 
 **Límites**: subidas de hasta 1 MB (audio WebM/Ogg/WAV/MP4/MP3 comprobado por su cabecera), 12 transcripciones por minuto y 200 por hora por usuario (`ARIA_VOZ_STT_MINUTO`, `ARIA_VOZ_STT_HORA`), una escucha «manos libres» por usuario y dos en total.
 
+## Imágenes (visión)
+
+ARIA puede mirar una foto y responder sobre ella, en el chat web y en Telegram.
+
+- **Web**: botón de imagen junto a la caja de texto, o **pega** una captura (Ctrl+V) o **arrástrala** al chat. Antes de enviarla, el navegador la reduce (1600 px como máximo, JPEG) y la recodifica, lo que también quita los datos EXIF (ubicación GPS, cámara…). En tu mensaje se ve una miniatura. Puedes escribir una pregunta o enviarla sin texto («¿qué ves?»).
+- **Telegram**: manda una foto (o una imagen como archivo), con o sin pie de foto. Se responde en el mismo chat, con los permisos de tu usuario.
+- **Tickets → Finanzas**: si la foto es un ticket, una factura o un recibo (o pides «apúntalo»), ARIA lee comercio, fecha, total y categoría y **propone** apuntar el gasto. En la web sale una tarjeta con «Registrar gasto» / «Descartar»; en Telegram, botones «Registrar» / «Cancelar». Nada se apunta sin pulsar el botón, y siempre en tus finanzas (el usuario lo pone el servidor). La propuesta caduca a los 30 min en la web y a las 24 h en Telegram. Si algo se leyó mal, corrígelo después en Finanzas.
+
+**Cerebros con visión**: Google Gemini (`gemini-3.5-flash-lite`) y, de respaldo, Groq (`qwen/qwen3.8-27b`), con las mismas `GEMINI_API_KEY` y `GROQ_API_KEY` de los cerebros. El modelo local no ve imágenes: si no hay ninguno disponible, ARIA lo dice. Se cambian con `ARIA_VISION` (orden; `no` la apaga), `ARIA_MODELO_VISION_GEMINI` y `ARIA_MODELO_VISION_GROQ`.
+
+**Privacidad**: la imagen se envía a Google o a Groq (en el plan gratuito, Google puede usarla para mejorar sus productos). **La imagen no se guarda nunca** (ni en disco ni en la base de datos): en el historial queda «Imagen» con tu texto y la respuesta. Antes de enviarla, el servidor comprueba que es JPEG, PNG o WebP por sus bytes, que no pasa de 5 MB y le quita los metadatos (EXIF/GPS, XMP, IPTC, comentarios).
+
+**Límites**: 6 imágenes por minuto y 60 por hora por usuario (`ARIA_VISION_MINUTO`, `ARIA_VISION_HORA`). La cuota gratuita de Groq para visión es pequeña: se gasta en pocas fotos seguidas y entonces se espera a que se recupere.
+
 ### Limitación con Netflix
 
 Netflix **no tiene API pública**. ARIA no puede controlar su reproducción: solo genera un enlace `netflix.com/search?q=...` que tú abres.
@@ -236,7 +250,7 @@ Bot propio de ARIA, con *long polling* (sin webhook: no se abre nada nuevo a Int
 3. Comprueba: `docker compose exec app python -m aria.telegram --probar` (muestra el @usuario del bot).
 4. En **Ajustes → Avisos → Telegram**, «Vincular Telegram» da un código de 6 cifras (10 min, un solo uso) y un enlace `https://t.me/<bot>?start=<código>`. Ábrelo y pulsa Iniciar. Puedes vincular varios chats y desvincularlos.
 
-En el chat vinculado puedes escribir o mandar **notas de voz** (se transcriben y, si lo activas, ARIA también responde con voz). Pasa por el mismo chat que la web: agentes, memoria, herramientas y permisos de tu usuario; cada chat tiene su conversación («Telegram · …» en el historial) y `/nuevo` empieza otra. Comandos (salen en el menú de Telegram; se registran solos al arrancar): `/estado`, `/resumen`, `/tiempo [ciudad]`, `/recordatorios`, `/rutinas` (con «Ejecutar ahora» y «Pausar»), `/gastos`, `/red` (salud de la red; los admin además ven cuántos dispositivos hay y los nuevos), `/vpn`, `/bloqueo` (estadísticas de SHIELD; antes `/anuncios`, que sigue valiendo; con botones de pausa, solo admin), `/nuevovpn <nombre>` (admin: crea el dispositivo y manda el QR y el `.conf`, que contiene la clave privada), `/desvincular`, `/ayuda`. Las acciones de administración piden «Confirmar». Los chats no vinculados solo reciben «No te conozco…» y los grupos se ignoran.
+En el chat vinculado puedes escribir, mandar **fotos** (ver «Imágenes»; los tickets se pueden apuntar con un botón) o **notas de voz** (se transcriben y, si lo activas, ARIA también responde con voz). Pasa por el mismo chat que la web: agentes, memoria, herramientas y permisos de tu usuario; cada chat tiene su conversación («Telegram · …» en el historial) y `/nuevo` empieza otra. Comandos: `/estado`, `/resumen`, `/tiempo [ciudad]`, `/recordatorios`, `/gastos`, `/vpn`, `/anuncios` (con botones de pausa, solo admin), `/nuevovpn <nombre>` (admin: crea el dispositivo y manda el QR y el `.conf`, que contiene la clave privada), `/desvincular`, `/ayuda`. Las acciones de administración piden «Confirmar». Los chats no vinculados solo reciben «No te conozco…» y los grupos se ignoran.
 
 ## Notificaciones en el móvil
 
@@ -320,6 +334,20 @@ Las categorías se asignan con reglas (Mercadona → Supermercado, Repsol → Tr
 ### Red
 
 **Red** une la tabla de red de Pi-hole (`/api/network/devices`: nombres e IP y última consulta DNS) con el último escaneo (MAC, fabricante y puertos; Pi-hole corre en Docker y no ve las MAC de la LAN). Lo que no está marcado como conocido aparece resaltado; puedes ponerle un alias. La latencia se mide con ping (ICMP sin privilegios) al router, 1.1.1.1 y 8.8.8.8. El **test de velocidad** descarga ~15 MB y sube ~5 MB contra `speed.cloudflare.com` (sin programas de terceros) y se permite uno cada 10 minutos. Las mediciones se guardan 90 días y se dibujan en una gráfica SVG propia.
+
+### Control parental (por dispositivo)
+
+En **Red**, el botón «Control» de cada dispositivo (los nombres vienen del alias que le pongas) permite:
+
+- **Pausar internet** 30 min, 1 h, 2 h, 4 h o hasta reanudar; la tabla muestra «Pausado hasta 20:30».
+- **Bloquear servicios**: TikTok, YouTube, Instagram, Facebook, WhatsApp, Snapchat, X, Twitch, Discord, Fortnite/Epic, Roblox, Minecraft, Steam, Netflix, Disney+ y Prime Video (listas de dominios curadas en `control.py`).
+- **Horarios**: «sin internet de 23:00 a 08:00 de lunes a viernes» o «sin TikTok de 16:00 a 20:00». Los días son los de inicio del tramo; si «hasta» es menor que «desde» cruza la medianoche. Al empezar o terminar un horario llega un aviso (tipo «Control parental», activo por defecto; se puede desactivar en Ajustes → Avisos).
+
+También desde el agente **@redes** («pausa el iPad una hora», «bloquea TikTok en el móvil», «¿qué dispositivos están pausados?») y desde Telegram con **/control** (lista lo pausado o bloqueado con botones «Reanudar»). Todo es solo de administrador y siempre sobre **un** dispositivo del inventario: no existe una acción «para todos» y el router, la Raspberry (192.168.1.50) y las IP de `ARIA_CONTROL_PROTEGIDOS` no se pueden pausar.
+
+**Cómo funciona.** Usa grupos de SHIELD-DNS (Pi-hole v6): `ARIA-pausa` (regla de denegación regex `.*`) y `ARIA-svc-<servicio>` (regex con los dominios del servicio). ARIA añade la IP del dispositivo como cliente de Pi-hole (siempre también en `Default`, así conserva el bloqueo de anuncios) con el comentario `ARIA-control:<clave>`. Cada 30 s recalcula qué debe estar aplicado (pausas vigentes, horarios activos, servicios) y deja Pi-hole igual; es idempotente, sobrevive a reinicios y, si la IP del dispositivo cambia, mueve el cliente. Solo toca lo que ARIA creó: nunca clientes, grupos ni listas ajenos. Si SHIELD-DNS no responde, lo pedido queda guardado y se aplica en cuanto vuelva.
+
+**Limitación (importante).** Es **solo bloqueo por DNS**. No frena a un dispositivo con DNS fijo (p. ej. 8.8.8.8), con DNS cifrado (DoH/DoT, «DNS privado» de Android, iCloud Relay) o con VPN, ni a los que usan el **DNS secundario del router (AdGuard 94.140.14.14)**. Además, la caché DNS del dispositivo puede tardar unos minutos en notar el cambio. Para un corte total hay que bloquear el dispositivo en el router. La interfaz y el agente lo repiten.
 
 ### Seguridad: qué hace y qué no hace el escaneo
 

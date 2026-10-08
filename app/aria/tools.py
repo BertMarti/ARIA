@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import agenda, busqueda, config, control, enlaces, escaneo, finanzas, mapas, memoria, proyectos, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn, vpn_ubicaciones
+from . import agenda, busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, mapas, memoria, proyectos, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -144,6 +144,7 @@ _INTENCIONES = [
     ((r"\b(temperatura|memoria|ram|cpu|disco|almacenamiento|espacio|sistema)\b",
       r"\b(libre|libres|queda\w*|usad\w+|ocupad\w+|tiene|estado|c[oó]mo|cu[aá]nt\w+|qu[eé])\b", _EXPLICAR),
      {"estado_sistema"}),
+    ((r"\b(en directo|telemetr[ií]a|contenedor(?:es)?|picos? de cpu)\b",), {"sistema_en_directo"}),
     ((r"\b(spotify|m[uú]sica|canci[oó]n|canciones|pon|ponme|reproduce|pausa|para la|siguiente|anterior|suena|sonando|artista|disco|[aá]lbum)\b",
       r"!" + _BLOQUEADOR, r"!\b(raspberry|ram|cpu|espacio|libre|temperatura)\b"),
      {"spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior", "spotify_actual",
@@ -206,6 +207,9 @@ def registrar_errores(*clases) -> None:
     """Otros módulos añaden sus excepciones «legibles» (mensaje en español para el modelo)."""
     global _ERRORES_LEGIBLES
     _ERRORES_LEGIBLES = tuple(dict.fromkeys(_ERRORES_LEGIBLES + clases))
+
+
+registrar_errores(estadisticas.EstadisticasError)
 
 
 async def ejecutar(nombre: str, args: dict | None, rol: str = "admin", uid: int | None = None,
@@ -439,6 +443,15 @@ async def estado_sistema() -> str:
         out.append("Carga media: " + " / ".join(f"{x:.2f}" for x in e["carga"]))
     out.append(f"Encendida desde hace {e['uptime_texto']}")
     return ". ".join(out) + "."
+
+
+@tool("sistema_en_directo", "Consulta la telemetría reciente de la Raspberry y sus contenedores. Solo lectura.")
+async def sistema_en_directo() -> str:
+    from . import telemetria
+    try:
+        return await asyncio.to_thread(telemetria.texto)
+    except RuntimeError as e:
+        return str(e)
 
 
 @tool("crear_dispositivo_vpn",
@@ -836,8 +849,28 @@ async def bloqueos_por_cliente() -> str:
     return " | ".join(f"{c['cliente']}: {c['bloqueadas']} bloqueadas; " + ", ".join(
         f"{d['dominio']} ({d['veces']}, {d['tipo']})" for d in c["dominios"]) for c in b)
 
+
+@tool("estadisticas_dispositivo", "Estadísticas DNS de un dispositivo: consultas, bloqueos, serie temporal y dominios más consultados.",
+      {"dispositivo": ("string", "Alias, IP o MAC del dispositivo (opcional)"),
+       "horas": ("integer", "24 o 168 horas")}, especialista=True)
+async def estadisticas_dispositivo(dispositivo=None, horas=24) -> str:
+    if dispositivo:
+        await red.dispositivos()
+        clave = await asyncio.to_thread(red.buscar_clave, dispositivo)
+        if not clave:
+            return "No encuentro ese dispositivo en el inventario."
+        d = await estadisticas.detalle(clave, horas)
+        top = ", ".join(f"{x['dominio']} ({x['veces']})" for x in d["bloqueados"]) or "ninguno"
+        return f"{d['nombre']} ({d['ip']}): dominios bloqueados: {top}."
+    r = await estadisticas.resumen(horas)
+    return (f"En las últimas {r['horas']} horas: {r['totales']['consultas']} consultas, "
+            f"{r['totales']['bloqueadas']} bloqueadas ({r['totales']['porcentaje']} %). "
+            + "; ".join(f"{x['nombre']}: {x['consultas']} consultas" for x in r["dispositivos"][:10]) + ".")
+
 # Palabras clave para el cerebro local (los de la nube reciben todas las del agente).
 _INTENCIONES += [
+    ((r"\b(estad[ií]stic\w*|qu[eé] consulta|cu[aá]nto navega|qu[eé] bloquea|consultas por dispositivo)\b",),
+     {"estadisticas_dispositivo"}),
     ((r"\b(gast\w*|pagu[eé]|pagado|compr[eé])\b", r"\b(apunta|anota|registra|a[ñn]ade|he gastado|pagu[eé])\b"),
      {"registrar_movimiento"}),
     ((r"\b(ingres\w*|cobr\w*|n[oó]mina)\b", r"\b(apunta|anota|registra|a[ñn]ade)\b"), {"registrar_movimiento"}),
@@ -1072,12 +1105,35 @@ async def borrar_rutina(uid, id_o_nombre) -> str:
     return f"Rutina borrada: «{hallados[0]['nombre']}»."
 
 
+@tool("crear_automatizacion", "Propone una automatización y espera confirmación explícita antes de crearla.",
+      {"nombre": ("string", "Nombre de la regla"), "disparador": ("string", "Evento, hora o umbral en lenguaje natural"),
+       "accion": ("string", "Acción segura que se ejecutará")}, ("nombre", "disparador", "accion"))
+async def crear_automatizacion(nombre, disparador, accion) -> str:
+    return (f"Propongo la automatización «{nombre}»: cuando {disparador}, entonces {accion}. "
+            "Confírmala en Ajustes → Automatizaciones o responde «confirmo» para que ARIA la cree.")
+
+
+@tool("mis_automatizaciones", "Lista las automatizaciones del usuario administrador.", usa_uid=True)
+async def mis_automatizaciones(uid) -> str:
+    rs = await asyncio.to_thread(automatizaciones.listar, uid)
+    return "No tienes automatizaciones." if not rs else "; ".join(f"{r['id']}: {r['nombre']}" for r in rs) + "."
+
+
+@tool("borrar_automatizacion", "Solicita confirmación antes de borrar una automatización.",
+      {"id": ("integer", "Número de la automatización")}, ("id",))
+async def borrar_automatizacion(id) -> str:
+    return f"Confirma en Ajustes → Automatizaciones que quieres borrar la automatización {id}."
+
+
 _INTENCIONES += [
     ((r"https?://",), {"resumir_enlace"}),
     ((r"\brutinas?\b", r"\b(crea\w*|nueva|programa\w*|a[ñn]ade\w*|haz\w*|hazme|pon\w*|configura\w*)\b",
       r"!\b(borra\w*|quita\w*|elimina\w*)\b"), {"crear_rutina"}),
     ((r"\brutinas?\b", r"\b(mis|qu[eé]|cu[aá]les|tengo|lista\w*|ver)\b", r"!\b(crea\w*|nueva)\b"), {"mis_rutinas"}),
     ((r"\brutinas?\b", r"\b(borra\w*|quita\w*|elimina\w*|cancela\w*)\b"), {"borrar_rutina", "mis_rutinas"}),
+    ((r"\b(automatizaci[oó]n|regla)\b", r"\b(crea\w*|programa\w*|cuando|si)\b"), {"crear_automatizacion"}),
+    ((r"\b(automatizaciones?|reglas)\b", r"\b(mis|lista\w*|cu[aá]les|ver)\b"), {"mis_automatizaciones"}),
+    ((r"\b(automatizaci[oó]n|regla)\b", r"\b(borra\w*|elimina\w*|quita\w*)\b"), {"borrar_automatizacion", "mis_automatizaciones"}),
 ]
 
 

@@ -82,6 +82,19 @@ async def api_probar(request: Request):
     return {"canales": r[0]["canales"] if r else []}
 
 
+@router.post("/api/avisos/informe-semanal/probar")
+async def api_informe_semanal(request: Request):
+    u = _u(request)
+    try:
+        from . import estadisticas
+        texto = await estadisticas.construir_informe_semanal()
+    except Exception as e:  # servicios opcionales: el informe sigue siendo enviable
+        texto = f"📊 **Informe semanal de ARIA**\n\nNo hay datos disponibles ahora: {e}"
+    r = await avisos.emitir("informe_semanal", "info", texto, "red", [u["id"]],
+                            ignorar_silencio=True)
+    return {"canales": r[0]["canales"] if r else []}
+
+
 # --- Recordatorios -------------------------------------------------------------------------------------------
 @router.get("/api/recordatorios")
 async def api_recordatorios(request: Request):

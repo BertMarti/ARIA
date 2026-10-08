@@ -26,7 +26,7 @@ from contextlib import closing
 
 import httpx
 
-from . import avisos, config, db, enlaces, recordatorios, rutinas
+from . import avisos, config, db, enlaces, recordatorios, rutinas, telemetria
 
 log = logging.getLogger("aria.telegram")
 
@@ -42,11 +42,13 @@ COMANDOS = [
     ("estado", "Resumen de la casa"), ("resumen", "Resumen de buenos días"), ("tiempo", "Previsión del tiempo"),
     ("recordatorios", "Tus recordatorios"), ("rutinas", "Tus rutinas programadas"), ("gastos", "Gastos de este mes"),
     ("red", "Salud de la red y dispositivos nuevos"), ("vpn", "Dispositivos de la VPN"),
-    ("bloqueo", "Bloqueador de anuncios (SHIELD)"), ("nuevovpn", "Nuevo dispositivo VPN (admin)"),
+    ("bloqueo", "Bloqueador de anuncios (SHIELD)"), ("informe", "Informe semanal (admin)"),
+    ("nuevovpn", "Nuevo dispositivo VPN (admin)"),
+    ("reiniciar", "Reiniciar la Raspberry (admin)"),
     ("control", "Control parental: dispositivos pausados o bloqueados (admin)"),
     ("nuevo", "Empezar otra conversación"), ("desvincular", "Desvincular este chat"), ("ayuda", "Ayuda"),
 ]
-OPS_ADMIN = {"pausar", "reanudar", "nuevovpn"}
+OPS_ADMIN = {"pausar", "reanudar", "nuevovpn", "reiniciar"}
 
 NO_TE_CONOZCO = "No te conozco. Vincula este chat desde ARIA → Ajustes → Avisos."
 
@@ -564,7 +566,7 @@ def _ayuda(admin: bool) -> str:
     lineas = ["Escríbeme, mándame una nota de voz o una foto (por ejemplo, de un ticket) y te respondo como en la web. "
               "Comandos:"]
     for c, d in COMANDOS:
-        if c in ("nuevovpn", "control") and not admin:
+        if c in ("nuevovpn", "control", "informe", "reiniciar") and not admin:
             continue
         lineas.append(f"/{c} — {d}")
     return "\n".join(lineas)
@@ -626,6 +628,15 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
         await _anuncios(b, chat_id, u)
     elif cmd == "red":
         await enviar(await texto_red(u))
+    elif cmd == "informe":
+        if not admin:
+            await enviar("Eso solo lo puede hacer un administrador.")
+            return
+        from . import estadisticas
+        try:
+            await enviar(await estadisticas.construir_informe_semanal())
+        except Exception:
+            await enviar("No he podido preparar el informe semanal ahora mismo.")
     elif cmd == "rutinas":
         await _rutinas(b, chat_id, u)
     elif cmd == "control":
@@ -653,6 +664,14 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
         await enviar(f"¿Crear el dispositivo VPN «{nombre.strip()}»" + (f" (caduca: {caduca})" if caduca else "") + "? Te enviaré su QR y el archivo .conf. Ojo: el .conf "
                      "contiene la clave privada del dispositivo; bórralo del chat cuando lo hayas importado.",
                      teclado([boton("Confirmar", f_ok), boton("Cancelar", f_no)]))
+    elif cmd == "reiniciar":
+        if not admin:
+            await enviar("Eso solo lo puede hacer un administrador.")
+            return
+        f_ok = await asyncio.to_thread(ficha, chat_id, u["id"], "confirmar", {"op": "reiniciar"})
+        f_no = await asyncio.to_thread(ficha, chat_id, u["id"], "cancelar")
+        await enviar("¿Reiniciar la Raspberry? Se apagará en 15 segundos y ARIA volverá cuando termine.",
+                     teclado([boton("✅ Sí, reiniciar", f_ok), boton("Cancelar", f_no)]))
     elif cmd == "desvincular":
         f_ok = await asyncio.to_thread(ficha, chat_id, u["id"], "confirmar", {"op": "desvincular"})
         f_no = await asyncio.to_thread(ficha, chat_id, u["id"], "cancelar")
@@ -921,6 +940,14 @@ async def _accion(b, cq: dict, chat_id: int, u: dict, accion: str, d: dict) -> s
             return "En pausa."
         if op == "nuevovpn":
             return await _crear_vpn(b, chat_id, str(d.get("nombre", "")), d.get("caduca"))
+        if op == "reiniciar":
+            try:
+                resultado = await asyncio.to_thread(telemetria.solicitar_reinicio)
+            except RuntimeError as e:
+                return str(e)
+            await avisos.emitir("sistema", "aviso", f"🔄 Reiniciando la Raspberry a petición de {u['nombre']}…", "control")
+            await enviar_texto(b, chat_id, "Reinicio programado. ARIA volverá en unos instantes.")
+            return f"Programado en {resultado['segundos']} s."
         if op == "desvincular":
             await asyncio.to_thread(desvincular, u["id"], chat_id)
             await b.llamar("sendMessage", chat_id=chat_id, text="Chat desvinculado. ¡Hasta pronto!")

@@ -123,6 +123,8 @@ _usados: dict = {}
 
 def revisar_peticiones(clave: bytes) -> None:
     for p in PETICIONES.iterdir():
+        if p.suffix == ".tmp" or p.name.startswith("."):
+            continue   # ARIA aún lo está escribiendo (escribe en .tmp y renombra)
         try:
             datos = json.loads(p.read_text(encoding="utf-8")) if p.name == "reinicio.json" else None
         except (OSError, ValueError):

@@ -22,6 +22,7 @@ log = logging.getLogger("uvicorn.error")
 MODELOS = Path(os.environ.get("VOZ_MODELOS", "/modelos"))
 WHISPER = os.environ.get("VOZ_WHISPER", "base")
 VOZ_PIPER = os.environ.get("VOZ_PIPER", "es_ES-sharvard-medium")
+HABLANTE = os.environ.get("VOZ_HABLANTE", "F")  # sharvard trae voz «M» y «F»: ARIA habla con voz femenina
 HILOS = int(os.environ.get("VOZ_HILOS", "4"))
 MAX_FLUJOS = int(os.environ.get("VOZ_MAX_FLUJOS", "2"))     # escuchas «manos libres» simultáneas
 INACTIVO_S = int(os.environ.get("VOZ_INACTIVO_S", "600"))   # libera Whisper tras este tiempo sin uso
@@ -94,7 +95,8 @@ def _voz():
 
 def sintetizar(texto: str, velocidad: float) -> bytes:
     from piper import SynthesisConfig
-    cfg = SynthesisConfig(length_scale=1.0 / velocidad)
+    mapa = _voz().config.speaker_id_map or {}
+    cfg = SynthesisConfig(length_scale=1.0 / velocidad, speaker_id=mapa.get(HABLANTE))
     buf = io.BytesIO()
     with _cerrojo_piper:
         with wave.open(buf, "wb") as w:

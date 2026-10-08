@@ -49,6 +49,20 @@ else
 fi
 mkdir -p data
 
+# Red de casa y router: se detectan si faltan (los usan el escáner, el agente Redes y el control parental).
+if [ -z "$(get_var ARIA_ROUTER_IP)" ]; then
+  GW="$(ip route 2>/dev/null | awk '/^default/{print $3; exit}')"
+  [ -n "$GW" ] && set_var ARIA_ROUTER_IP "$GW" && info "ARIA_ROUTER_IP=$GW (detectado)"
+fi
+if [ -z "$(get_var ARIA_RED_PERMITIDA)" ]; then
+  IP_RED="$(get_var ARIA_LAN_IP)"
+  RED="$(ip -o -f inet addr show 2>/dev/null | awk -v ip="$IP_RED" '{split($4,a,"/"); if (a[1]==ip) {print $4; exit}}')"
+  if [ -n "$RED" ] && command -v python3 >/dev/null 2>&1; then
+    RED="$(python3 -c "import ipaddress,sys; print(ipaddress.ip_interface(sys.argv[1]).network)" "$RED")"
+    set_var ARIA_RED_PERMITIDA "$RED" && info "ARIA_RED_PERMITIDA=$RED (detectada)"
+  fi
+fi
+
 # Clave interna de SearXNG (búsqueda en internet): se genera si falta o está vacía.
 if [ -z "$(get_var SEARXNG_SECRET)" ]; then
   command -v openssl >/dev/null 2>&1 || error "Falta openssl (sudo apt install openssl)."

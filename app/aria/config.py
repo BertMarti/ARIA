@@ -50,8 +50,8 @@ CF_AUD = os.environ.get("ARIA_CF_ACCESS_AUD", "").strip()
 ADMIN_EMAILS = [e.strip().lower() for e in os.environ.get("ARIA_ADMIN_EMAILS", "").split(",") if e.strip()]
 
 # Agentes Redes / Seguridad. La red permitida es la ÚNICA que se puede escanear (guardia en la app y en el escáner).
-RED_PERMITIDA = os.environ.get("ARIA_RED_PERMITIDA", "192.168.0.0/24").strip()
-ROUTER_IP = os.environ.get("ARIA_ROUTER_IP", "192.168.0.1").strip()
+RED_PERMITIDA = (os.environ.get("ARIA_RED_PERMITIDA") or "192.168.0.0/24").strip()
+ROUTER_IP = (os.environ.get("ARIA_ROUTER_IP") or "192.168.0.1").strip()
 # Control parental (control.py): ARIA_CONTROL=0 lo desactiva. IPs que NUNCA se pueden pausar ni bloquear (además
 # del router, la Raspberry y ARIA_LAN_IP), separadas por comas.
 CONTROL = os.environ.get("ARIA_CONTROL", "1").strip().lower() not in ("0", "false", "no", "off")
@@ -112,7 +112,7 @@ def _float(name: str):
 
 LAT, LON = _float("ARIA_LAT"), _float("ARIA_LON")
 # Repositorio de copias fuera de la Pi (solo se lee si está montado en el contenedor).
-COPIAS_REPO = os.environ.get("ARIA_COPIAS_REPO", "/home/usuario/homelab/.copias-repo")
+COPIAS_REPO = os.environ.get("ARIA_COPIAS_REPO", "/copias-repo")
 
 NOMBRE_USUARIO = os.environ.get("ARIA_NOMBRE_USUARIO", "").strip()[:40]
 

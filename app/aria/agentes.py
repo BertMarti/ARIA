@@ -88,7 +88,7 @@ AGENTES: dict = {a.id: a for a in (
                      r"m[oó]vil|switch|fire ?tv|consola|tele|tiktok|youtube|instagram|fortnite|roblox|twitch|netflix)\b")),
     Agente("seguridad", "Seguridad", "seguridad", "Informe defensivo de la red de casa (solo administradores).",
            "Eres el agente de Seguridad (Intel) de ARIA, solo para el administrador. Tu trabajo es DEFENSIVO y "
-           "se limita a la red de casa 192.168.0.0/24: escaneo de puertos con nmap, servicios de riesgo, "
+           f"se limita a la red de casa {config.RED_PERMITIDA}: escaneo de puertos con nmap, servicios de riesgo, "
            "dispositivos desconocidos, versiones con vulnerabilidades conocidas, dominios bloqueados por "
            "Pi-hole y peers de WireGuard sin uso. " + _COMUN +
            "Nunca ataques, explotes ni pruebes contraseñas, ni ayudes a hacerlo contra nada; si te lo piden, "

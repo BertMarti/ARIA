@@ -69,7 +69,7 @@ Cómo leer las tablas:
 |---|---|---|---|---|
 | **Bancos (PSD2: GoCardless Bank Account Data)** | Importar movimientos automáticamente, sin subir CSV | Módulo | L | — |
 | **Precios y ofertas** | Vigilar el precio de un producto y avisar cuando baje | Módulo (usa Rutinas) | S | — |
-| **Gasolineras** | Gasolinera más barata cerca de Ronda (datos abiertos del Ministerio) | Módulo | S | — |
+| **Gasolineras** | Gasolinera más barata cerca de casa (datos abiertos del Ministerio) | Módulo | S | — |
 | **Tráfico y transporte** | Incidencias de la DGT en tu ruta; horarios de autobús | Módulo | M | — |
 | **Salud** | Recordatorios de medicación con confirmación por Telegram | Módulo | S | — |
 

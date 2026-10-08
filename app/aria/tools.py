@@ -605,7 +605,7 @@ async def informe_seguridad() -> str:
     return seguridad.texto_informe(await seguridad.informe())
 
 
-@tool("escanear_red", "Pide un escaneo de puertos (nmap) de la red de casa 192.168.0.0/24. Como mucho uno cada 10 minutos.",
+@tool("escanear_red", f"Pide un escaneo de puertos (nmap) de la red de casa {config.RED_PERMITIDA}. Como mucho uno cada 10 minutos.",
       {"perfil": ("string", "'rapido' (100 puertos, por defecto) o 'completo' (1000 puertos)")}, especialista=True)
 async def escanear_red(perfil="rapido") -> str:
     perfil = "completo" if str(perfil or "").lower().startswith("compl") else "rapido"

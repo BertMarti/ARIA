@@ -17,7 +17,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
-  # Mantiene vpn.<dominio> apuntando a tu IP pública (la operadora puede cambiarla).
+  # Mantiene vpn.<dominio> apuntando a tu IP pública (muchas operadoras la cambian de vez en cuando).
   # Sin proxy de Cloudflare: la VPN (WireGuard, UDP) va directa a tu router.
   ddns:
     image: favonia/cloudflare-ddns:latest

@@ -44,8 +44,8 @@ class _Cliente:
 
 def test_prevision_formatea_dias(monkeypatch):
     monkeypatch.setattr(config, "CIUDAD", "Ronda, Málaga")
-    monkeypatch.setattr(config, "LAT", 37.97)
-    monkeypatch.setattr(config, "LON", -4.1)
+    monkeypatch.setattr(config, "LAT", 36.74)
+    monkeypatch.setattr(config, "LON", -5.17)
     monkeypatch.setattr(briefing.httpx, "AsyncClient", _Cliente)
     texto = asyncio.run(tools.ejecutar("tiempo", {"dias": 2}))  # el rango pedido se ignora: siempre 7
     assert "Previsión para Ronda" in texto

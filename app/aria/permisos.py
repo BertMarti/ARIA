@@ -68,6 +68,8 @@ _USUARIO = [
     ("POST", r"/api/rutinas/\d+/ejecutar"),
     # Módulos: la lista se filtra por rol en el servidor (un usuario solo ve los suyos y sin detalles).
     ("GET", r"/api/modulos"),
+    # Mapas: intermediario de solo lectura para los dos roles.
+    ("GET", r"/api/mapa/(buscar|ruta|cerca)"),
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 

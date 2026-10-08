@@ -9,6 +9,7 @@
 <link rel="manifest" href="/static/manifest.webmanifest">
 <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
 <meta name="aria-worklet" content="/static/pcm-worklet.js"><!-- AudioWorklet de «manos libres» (así también lleva ?v=) -->
 </head>
 <body class="app">
@@ -17,6 +18,7 @@
   <button type="button" class="nav-btn" data-vista="inicio"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z"/></svg></span><span>Inicio</span></button>
   <button type="button" class="nav-btn" data-vista="chat"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span><span>Chat</span></button>
   <button type="button" class="nav-btn" data-vista="finanzas"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M3 7h18v12H3z"/><path d="M3 11h18"/><path d="M7 15h4"/></svg></span><span>Finanzas</span></button>
+  <button type="button" class="nav-btn" data-vista="mapa"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="m4 6 6-3 6 3 4-2v14l-6 3-6-3-4 2z"/><path d="M10 3v15M16 6v15"/></svg></span><span>Mapa</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="red"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v5M12 12 6.5 17.5M12 12l5.5 5.5"/></svg></span><span>Red</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="seguridad"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span>Seguridad</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="control"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span>Control</span></button>
@@ -106,6 +108,20 @@
     <div class="rejilla inicio-sistema">
       <article class="tarjeta" id="inicio-sistema"><h2>Sistema</h2><div class="cuerpo muted">Cargando…</div></article>
     </div>
+  </section>
+
+  <!-- MAPA -->
+  <section id="v-mapa" class="vista vista-mapa" hidden>
+    <header class="vista-cab"><div><h1>Mapa</h1><p class="muted">OpenStreetMap, sin claves ni seguimiento.</p></div></header>
+    <div class="mapa-controles">
+      <form id="mapa-buscar" class="mapa-form"><label class="sr" for="mapa-consulta">Buscar lugar</label><input id="mapa-consulta" maxlength="200" placeholder="Buscar dirección o lugar…" required><button type="submit" class="primario">Buscar</button></form>
+      <button type="button" class="fantasma" id="mapa-ubicacion">Mi ubicación</button>
+      <button type="button" class="fantasma" id="mapa-ruta-btn">Capa de ruta</button>
+      <label class="mapa-tipo">Cerca de <select id="mapa-tipo"><option value="farmacia">farmacias</option><option value="gasolinera">gasolineras</option><option value="supermercado">supermercados</option><option value="restaurante">restaurantes</option><option value="cajero">cajeros</option></select></label>
+    </div>
+    <p id="mapa-estado" class="muted mapa-estado" role="status"></p>
+    <div id="mapa" class="mapa" aria-label="Mapa interactivo"></div>
+    <div id="mapa-resultados" class="mapa-resultados" aria-live="polite"></div>
   </section>
 
   <!-- CHAT -->
@@ -551,6 +567,8 @@
 <script src="/static/rutinas.js"></script>
 <script src="/static/paleta.js"></script>
 <script src="/static/compartir.js"></script>
+<script src="/static/vendor/leaflet/leaflet.js"></script>
+<script src="/static/mapa.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

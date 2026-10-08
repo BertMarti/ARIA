@@ -14,6 +14,7 @@ const Paleta = (() => {
       { t: "Ir a Inicio", g: "Ir a", a: ir("inicio") },
       { t: "Ir al Chat", g: "Ir a", a: ir("chat") },
       { t: "Ir a Finanzas", g: "Ir a", a: ir("finanzas") },
+      { t: "Ir al Mapa", g: "Ir a", a: ir("mapa") },
       { t: "Ir a Red", g: "Ir a", a: ir("red"), admin: true },
       { t: "Ir a Seguridad", g: "Ir a", a: ir("seguridad"), admin: true },
       { t: "Ir al Centro de control", g: "Ir a", a: ir("control"), admin: true },

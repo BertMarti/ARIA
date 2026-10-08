@@ -21,7 +21,7 @@ const Chat = (() => {
     medir_latencia: "Midiendo latencia", test_velocidad: "Test de velocidad", informe_seguridad: "Informe de seguridad",
     escanear_red: "Pidiendo escaneo", estado_escaneo: "Estado del escáner", bloqueos_por_cliente: "Bloqueos por dispositivo",
     resumir_enlace: "Leyendo el enlace…", crear_rutina: "Creando rutina", mis_rutinas: "Consultando rutinas",
-    borrar_rutina: "Borrando rutina",
+    borrar_rutina: "Borrando rutina", mapa_ir: "Abriendo el mapa", ruta: "Calculando ruta", sitios_cerca: "Buscando sitios cercanos",
   };
   let agentes = {};             // id -> {nombre, icono, descripcion}
   let agentePendiente = "aria"; // agente elegido antes de crear la conversación
@@ -48,6 +48,7 @@ const Chat = (() => {
     const etiqueta = NOMBRES_HERRAMIENTA[nombre] || nombre;
     const c = el("div", { class: "chip", title: texto || "" }, el("span", { class: "chip-ico", "aria-hidden": "true" }, "⚙"), etiqueta);
     botonQr(c, nombre, args, texto);
+    botonMapa(c, nombre, texto);
     return c;
   }
   // Si la herramienta creó un dispositivo VPN, se ofrece abrir su QR (nunca se muestran claves en el chat).
@@ -56,6 +57,13 @@ const Chat = (() => {
     if (!m || c.querySelector(".chip-qr")) return;
     const nom = String((args && args.nombre) || "dispositivo").trim();
     c.append(el("button", { type: "button", class: "chip-qr", onclick: () => Control.mostrarQr(m[1], nom) }, "Ver QR"));
+  }
+
+  function botonMapa(c, nombre, texto) {
+    if (!new Set(["mapa_ir", "ruta", "sitios_cerca"]).has(nombre)) return;
+    const m = /(#mapa(?:\?[^\s]+)?)/.exec(texto || "");
+    const b = el("button", { type: "button", class: "chip-qr" }, "Abrir en el mapa");
+    b.addEventListener("click", () => { location.hash = m ? m[1] : "mapa"; }); c.append(b);
   }
 
   // «Leer en voz alta» de un mensaje (Piper; si no está disponible, la voz del navegador).

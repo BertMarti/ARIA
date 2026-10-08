@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agentes, api_avisos, api_control, api_finanzas, api_modulos, api_red, api_rutinas, arranque, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, finanzas, memoria, modelos, modulos, permisos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn
+from . import agentes, api_avisos, api_control, api_finanzas, api_modulos, api_red, api_rutinas, arranque, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, finanzas, mapas, memoria, modelos, modulos, permisos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -25,7 +25,7 @@ app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 LIBRES = {"/health", "/internal/tls-ask", "/static/style.css", "/static/login.js",
           "/static/manifest.webmanifest", "/static/icon.svg", "/sw.js"}
 PUBLICAS = LIBRES | {"/login"}
-CSP = ("default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; worker-src 'self'; "
+CSP = ("default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self'; script-src 'self'; worker-src 'self'; "
        "frame-ancestors 'none'")
 # El micrófono solo para ARIA (ni iframes ni otros orígenes); cámara y ubicación, para nadie.
 PERMISOS_NAVEGADOR = "microphone=(self), camera=(), geolocation=()"
@@ -244,6 +244,7 @@ app.include_router(api_control.router)
 app.include_router(api_avisos.router)
 app.include_router(api_rutinas.router)
 app.include_router(api_modulos.router)
+app.include_router(mapas.router)
 # Módulos de modulos/ (o ARIA_MODULOS_DIR): se cargan al importar para que sus rutas existan antes de servir.
 # Un módulo roto nunca impide arrancar (queda en «error» en Ajustes → Módulos).
 modulos.cargar(app)

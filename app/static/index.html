@@ -9,6 +9,7 @@
 <link rel="manifest" href="/static/manifest.webmanifest">
 <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/style.css">
+<meta name="aria-worklet" content="/static/pcm-worklet.js"><!-- AudioWorklet de «manos libres» (así también lleva ?v=) -->
 </head>
 <body class="app">
 <nav class="nav" aria-label="Navegación principal">
@@ -25,6 +26,11 @@
   </form>
 </nav>
 
+<div id="manos-libres" class="manos-libres" role="status" hidden>
+  <span class="ml-punto" aria-hidden="true"></span><span id="ml-texto"></span>
+  <button type="button" id="ml-parar" class="peligro pequeno">Dejar de escuchar</button>
+</div>
+
 <main class="contenido">
   <!-- INICIO -->
   <section id="v-inicio" class="vista" hidden>
@@ -35,6 +41,7 @@
       </div>
       <form id="form-preguntar" class="preguntar">
         <input id="preguntar-texto" placeholder="Pregúntale a ARIA…" aria-label="Pregúntale a ARIA" maxlength="2000" required>
+        <button id="preguntar-mic" type="button" class="fantasma mic" aria-label="Mantén pulsado para hablar" aria-pressed="false"><svg class="svg-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="mic-tiempo" aria-hidden="true"></span></button>
         <button type="submit" class="primario">Preguntar</button>
       </form>
     </header>
@@ -105,10 +112,12 @@
           <select id="agente-sel" aria-label="Agente"></select>
         </label>
         <span id="modelo-activo" class="pildora"></span>
+        <button id="btn-manos" type="button" class="fantasma pequeno manos-btn" aria-pressed="false" title="Manos libres: di «Aria» para hablar" aria-label="Manos libres: di «Aria» para hablar"><svg class="svg-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M2 8v4M22 8v4"/></svg><span class="manos-txt">Manos libres</span></button>
       </header>
       <div id="mensajes" class="mensajes" aria-live="polite"></div>
       <form id="form" class="entrada">
         <textarea id="texto" rows="1" placeholder="Escribe un mensaje…" aria-label="Mensaje" required></textarea>
+        <button id="mic" type="button" class="fantasma mic" aria-label="Mantén pulsado para hablar" aria-pressed="false"><svg class="svg-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="mic-tiempo" aria-hidden="true"></span></button>
         <button id="enviar" type="submit" class="primario">Enviar</button>
         <button id="detener" type="button" class="peligro" hidden>Detener</button>
       </form>
@@ -270,11 +279,25 @@
       </article>
       <article class="tarjeta" id="ajustes-voz">
         <h2>Voz</h2>
+        <label>Micrófono
+          <select id="voz-mic"><option value="">Predeterminado del sistema</option></select>
+        </label>
+        <div class="botones"><button type="button" class="fantasma pequeno" id="voz-probar-mic">Probar micrófono</button></div>
+        <div id="voz-nivel-zona" hidden><div class="barra"><div id="voz-nivel" class="barra-valor"></div></div><p class="muted" id="voz-nivel-txt">Habla: la barra debe moverse.</p></div>
         <label class="interruptor">
           <input type="checkbox" id="tts-activar">
           <span>Leer las respuestas en voz alta</span>
         </label>
-        <p class="muted" id="tts-nota">Usa la voz en español de tu navegador. Se queda en este dispositivo.</p>
+        <label class="interruptor">
+          <input type="checkbox" id="voz-manos">
+          <span>Manos libres: di «Aria» para hablar</span>
+        </label>
+        <label>Velocidad de la voz: <strong id="voz-vel-txt">1,0×</strong>
+          <input type="range" id="voz-vel" min="0.7" max="1.5" step="0.05" value="1">
+        </label>
+        <div class="botones"><button type="button" class="fantasma pequeno" id="voz-probar">Probar voz</button></div>
+        <p class="muted" id="voz-estado"></p>
+        <p class="muted">Privacidad: al hablar, el audio se envía a Groq para transcribirlo (si hay clave); si Groq falla o no está configurado, se transcribe en la Raspberry. El audio no se guarda nunca. La voz de ARIA se genera en la Raspberry (Piper); si no está disponible, se usa la del navegador. Los ajustes se guardan en este dispositivo.</p>
       </article>
       <article class="tarjeta ancha" id="ajustes-memoria">
         <h2>Memoria</h2>
@@ -386,6 +409,7 @@
 
 <script src="/static/util.js"></script>
 <script src="/static/md.js"></script>
+<script src="/static/voz.js"></script>
 <script src="/static/chat.js"></script>
 <script src="/static/control.js"></script>
 <script src="/static/inicio.js"></script>

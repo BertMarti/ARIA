@@ -20,7 +20,7 @@
   window.addEventListener("hashchange", mostrar);
   (async () => {
     await cargarSesion();
-    Chat.iniciar(); Control.iniciar(); Finanzas.iniciar(); Red.iniciar(); Seguridad.iniciar(); Inicio.iniciar(); Ajustes.iniciar(); Usuarios.iniciar(); Memoria.iniciar();
+    ManosLibres.iniciarUI(); Chat.iniciar(); Control.iniciar(); Finanzas.iniciar(); Red.iniciar(); Seguridad.iniciar(); Inicio.iniciar(); Ajustes.iniciar(); Usuarios.iniciar(); Memoria.iniciar();
     Chat.refrescarCerebro();
     if (new URLSearchParams(location.search).get("spotify")) history.replaceState(null, "", "/#ajustes");
     mostrar();

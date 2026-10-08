@@ -104,7 +104,7 @@ info "Construyendo y arrancando los contenedores"
 docker compose up -d --build
 
 info "Esperando a que los servicios estén sanos"
-for c in aria-ollama aria-searxng aria-app aria-caddy; do
+for c in aria-ollama aria-searxng aria-app aria-voz aria-caddy; do
   for i in $(seq 1 60); do
     estado="$(docker inspect -f '{{.State.Health.Status}}' "$c" 2>/dev/null || echo desconocido)"
     [ "$estado" = "healthy" ] && break

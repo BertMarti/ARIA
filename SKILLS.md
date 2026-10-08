@@ -18,7 +18,7 @@
 | `estado_red`, `dispositivos_red`, `dispositivos_nuevos`, `marcar_dispositivo_conocido`, `medir_latencia`, `test_velocidad` | Agente Redes |
 | `informe_seguridad`, `escanear_red`, `estado_escaneo`, `bloqueos_por_cliente` | Agente Seguridad (solo admin) |
 
-Además: Inicio con lanzador de aplicaciones, chat con conversaciones guardadas, Centro de control (SHIELD-DNS, HEIMDALL, Sistema, Spotify) y Ajustes (modelos, voz, contraseña). Las herramientas dependen de que el modelo admita tool calling; si no, ARIA responde sin ellas.
+Además: Inicio con lanzador de aplicaciones, chat con conversaciones guardadas, Centro de control (SHIELD-DNS, HEIMDALL, Sistema, Spotify) y Ajustes (modelos, voz, contraseña). Voz: micrófono (pulsar para hablar), «Leer» con Piper y «manos libres» diciendo «Aria». Las herramientas dependen de que el modelo admita tool calling; si no, ARIA responde sin ellas.
 
 ## Playbook: añadir una herramienta
 1. En `app/aria/tools.py` añade:
@@ -76,6 +76,13 @@ Nunca cambies `ARIA_RED_PERMITIDA` a una red que no sea tuya.
 3. Para entrar desde casa, pulsa «Poner contraseña para casa» y dásela (mínimo 10 caracteres); entra con su email o usuario.
 4. Para quitarle el acceso: «Desactivar» (cierra sus sesiones al instante) o «Eliminar» (borra también sus conversaciones) y retira su email de la política de Access.
 Los emails de `ARIA_ADMIN_EMAILS` en `.env` son siempre administradores y no se pueden eliminar.
+
+## Playbook: voz
+- Usar: botón del micrófono (mantener y soltar), «Leer» en cada respuesta, «Manos libres» en el chat → di «Aria, …». Ajustes → Voz para micrófono, lectura automática y velocidad.
+- Transcripción: `GROQ_API_KEY` en `.env` (Groq Whisper). Sin clave o si falla, transcribe `aria-voz` en local.
+- Comprobar: Ajustes → Voz muestra «Transcripción: Groq (local de respaldo) · Voz de ARIA: Piper…». Logs: `docker compose logs voz`.
+- Cambiar la voz de Piper o el modelo Whisper: `docker compose build --build-arg VOZ_PIPER=es_ES-davefx-medium --build-arg VOZ_WHISPER=small voz` (small es ~2,5 veces más lento en la Pi).
+- Si «Aria» se activa sola: sube `VOZ_CONFIANZA` en `.env` (por defecto 0.6) y `docker compose up -d`.
 
 ## Playbook: ver y borrar lo que ARIA recuerda
 - **Tú mismo**: Ajustes → Memoria. Lista de recuerdos (editar/borrar), añadir uno, diario de 14 días (borrar por día), interruptor «Aprender automáticamente» y «Borrar toda mi memoria».

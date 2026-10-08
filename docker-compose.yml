@@ -57,6 +57,7 @@ services:
       OLLAMA_URL: http://ollama:11434
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks: [default, voz]
     volumes:
       - ./data:/data
       - escaner:/escaner   # peticiones/resultados del escáner (sin red ni socket entre ambos)
@@ -70,6 +71,25 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # Voz: transcripción local (faster-whisper), voz de ARIA (Piper) y palabra «Aria» (Vosk).
+  # Sin puertos en el host y en una red interna sin salida a Internet: solo la app llega a él.
+  voz:
+    build: ./voz
+    image: aria-voz:local
+    container_name: aria-voz
+    restart: unless-stopped
+    networks: [voz]
+    environment:
+      VOZ_HILOS: ${VOZ_HILOS:-4}
+      VOZ_CONFIANZA: ${VOZ_CONFIANZA:-0.6}
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   # Escáner de seguridad (agente Seguridad). Solo escanea ARIA_RED_PERMITIDA (192.168.0.0/24).
   # Es el ÚNICO contenedor con network_mode: host (nmap necesita ver la LAN y las MAC por ARP).
@@ -118,6 +138,10 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+
+networks:
+  voz:
+    internal: true
 
 volumes:
   escaner:

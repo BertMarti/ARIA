@@ -204,6 +204,7 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
   .msg { max-width: 94%; }
   .numeros { gap: .3rem; }
   .toasts { left: 1rem; right: 1rem; bottom: 4.6rem; }
+  .manos-libres { bottom: 8.6rem; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
 
@@ -234,13 +235,38 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 /* Cerebros */
 .cerebro-badge { margin-right: auto; align-self: center; font-size: .72rem; color: var(--muted); opacity: .85; }
 .cerebro-badge[hidden] { display: none; }
-.msg-pie { align-items: center; }
+.msg-pie { align-items: center; flex-wrap: wrap; row-gap: .2rem; }
+.msg-pie .copiar, .agente-badge { white-space: nowrap; flex: 0 0 auto; }
+.cerebro-badge { min-width: 0; overflow-wrap: anywhere; }
 .cerebro-primero { margin-left: .5rem; font-size: .7rem; }
 .cerebro-res { font-size: .85rem; }
 .fila .interruptor { font-size: .85rem; }
 .msg.pensando { animation: pulso 1.4s ease-in-out infinite; }
 @keyframes pulso { 50% { opacity: .4; } }
 .fila .estado { margin: 0; font-weight: 400; font-size: .9rem; }
+
+/* --- Voz --- */
+.mic { flex: 0 0 auto; display: inline-flex; align-items: center; gap: .3rem; min-width: 2.75rem; min-height: 2.75rem; justify-content: center; padding: .4rem .6rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.mic .svg-ico { width: 1.3rem; height: 1.3rem; }
+.mic .mic-tiempo:empty { display: none; }
+.mic .mic-tiempo { font-size: .8rem; font-variant-numeric: tabular-nums; }
+.mic.grabando, .mic.grabando:hover:not(:disabled) { color: #fff; background: var(--mal); border-color: var(--mal); animation: pulso 1.2s infinite; }
+.mic.ocupado { opacity: .6; cursor: progress; }
+.manos-btn { display: inline-flex; align-items: center; gap: .35rem; flex: 0 0 auto; }
+.manos-btn .svg-ico { width: 1.1rem; height: 1.1rem; }
+.manos-btn.activo { color: var(--acento-txt); background: var(--acento); border-color: var(--acento); }
+.manos-libres { position: fixed; bottom: 4.8rem; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: .6rem;
+  max-width: calc(100vw - 1.5rem); padding: .45rem .55rem .45rem .9rem; border-radius: 99px; background: var(--panel-solido);
+  border: 1px solid var(--mal); box-shadow: var(--sombra); font-size: .9rem; }
+.manos-libres #ml-texto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ml-punto { flex: 0 0 auto; width: .7rem; height: .7rem; border-radius: 50%; background: var(--mal); animation: pulso 1.2s infinite; }
+.manos-libres.oyendo { border-color: var(--acento); }
+.manos-libres.oyendo .ml-punto { background: var(--acento); animation-duration: .5s; }
+.manos-libres.pensando .ml-punto, .manos-libres.hablando .ml-punto { background: var(--warn); }
+#ajustes-voz label:not(.interruptor) { display: grid; gap: .3rem; margin: .4rem 0; }
+#ajustes-voz input[type="range"] { width: 100%; accent-color: var(--acento); }
+#voz-nivel-zona { margin: .4rem 0; }
+@media (prefers-reduced-motion: reduce) { .mic.grabando, .ml-punto { animation: none; } }
 
 /* Resumen de buenos días y Memoria */
 .resumen { margin-bottom: 1.2rem; }
@@ -335,3 +361,4 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
   .agente-sel select { max-width: 8.5rem; }
   .chat-cab #modelo-activo { display: none; }
 }
+@media (max-width: 760px) { .manos-btn .manos-txt { display: none; } .manos-btn { padding: .4rem .5rem; } .chat-cab { gap: .5rem; } }

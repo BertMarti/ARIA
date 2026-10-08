@@ -114,6 +114,7 @@ const Inicio = (() => {
     $("qa-vpn").addEventListener("click", () => Control.anadir());
     }
     $("qa-sistema").addEventListener("click", resumenSistema);
+    Voz.botonMic($("preguntar-mic"), (t) => { $("preguntar-texto").value = t; $("form-preguntar").requestSubmit(); });
     $("resumen-cerrar").addEventListener("click", () => { Prefs.set("resumen_cerrado", $("resumen-hoy").dataset.fecha || ""); $("resumen-hoy").hidden = true; });
     $("resumen-actualizar").addEventListener("click", async () => { await resumen(true); toast("Resumen actualizado."); });
     $("form-preguntar").addEventListener("submit", (e) => {

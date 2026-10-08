@@ -5,9 +5,9 @@ ARIA es tu asistente doméstico local para Raspberry Pi. El modelo de lenguaje s
 Incluye:
 
 - **Inicio**: saludo, lanzador de aplicaciones con su estado en vivo (Chat, SHIELD-DNS, HEIMDALL, Spotify), acciones rápidas y estado de la Pi.
-- **Chat** con conversaciones guardadas, streaming, botón Detener, copiar, Markdown seguro y lectura en voz alta opcional. Herramientas: hora, bloqueador de anuncios, VPN, estado de la Raspberry, Spotify y Netflix (enlaces).
+- **Chat** con conversaciones guardadas, streaming, botón Detener, copiar, Markdown seguro y **voz**: micrófono (pulsar para hablar), «Leer» en cada respuesta con una voz natural generada en la Pi y modo **manos libres** diciendo «Aria». Herramientas: hora, bloqueador de anuncios, VPN, estado de la Raspberry, Spotify y Netflix (enlaces).
 - **Centro de control** para [SHIELD-DNS](https://github.com/BertMarti/SHIELD-DNS) (Pi-hole), [HEIMDALL](https://github.com/BertMarti/HEIMDALL) (VPN WireGuard), el sistema y Spotify.
-- **Ajustes**: modelos, voz, cambio de contraseña, Spotify y versión.
+- **Ajustes**: modelos, voz (micrófono, leer en voz alta, manos libres, velocidad), cambio de contraseña, Spotify y versión.
 - **HTTPS** automático (certificado propio de Caddy), acceso con usuario y contraseña, y se puede añadir a la pantalla de inicio del móvil.
 
 ## Guía rápida de uso
@@ -121,6 +121,21 @@ ARIA busca con **SearXNG**, un metabuscador que corre en el contenedor interno `
 - Configuración en `searxng/settings.yml` (idioma `es-ES`, búsqueda segura moderada, sin proxy de imágenes, limitador desactivado por ser interno). Motores sin clave: DuckDuckGo, Brave, Bing, Google, Wikipedia y de noticias DuckDuckGo/Bing/Google/Brave/Wikinoticias; si uno es bloqueado, responden los demás.
 - `SEARXNG_SECRET` lo genera `install.sh` (o `update.sh` en instalaciones antiguas). `SEARXNG_MEM_LIMIT` limita su memoria (384 m por defecto; consume unos 150 MB).
 - Privacidad: las consultas salen de tu casa hacia los buscadores desde la IP de la Pi, y el texto de los resultados llega al cerebro que uses (incluida la nube).
+
+## Voz
+
+Todo gratis: la transcripción usa la API gratuita de Whisper de Groq (con la misma `GROQ_API_KEY` de los cerebros) y, si falla, la Pi; la voz de ARIA y la palabra «Aria» funcionan en la propia Pi, en el contenedor `aria-voz`.
+
+- **Pulsar para hablar**: el botón del micrófono (en el chat y en «Pregúntale a ARIA» de Inicio). Mantenlo pulsado mientras hablas y suéltalo, o tócalo una vez para empezar y otra para terminar. El texto aparece en la caja y se envía solo. Máximo 30 s.
+- **Leer en voz alta**: botón «Leer» en cada respuesta, o Ajustes → Voz → «Leer las respuestas en voz alta». La voz (Piper, `es_ES-sharvard-medium`) se genera en la Pi; si `aria-voz` no responde se usa la voz del navegador. Se leen como mucho 1500 caracteres, sin Markdown, código ni enlaces.
+- **Manos libres**: botón «Manos libres» del chat (o Ajustes → Voz). Aparece un aviso fijo «Manos libres: escuchando "Aria"» con el botón **Dejar de escuchar**. Di «Aria» seguido de tu pregunta («Aria, ¿qué hora es?») o «Aria», una pausa corta y la pregunta. Suena un pitido, ARIA transcribe lo que dices hasta que haces una pausa, lo envía al chat y lee la respuesta. «Aria» solo cuenta al principio de una frase: «la habitación es amplia», «María» o «esta aria de ópera» no la activan. El micrófono se apaga al cambiar de pestaña o bloquear el móvil, y mientras ARIA responde no se envía audio.
+- **Ajustes → Voz**: elegir micrófono y probarlo (barra de nivel), leer en voz alta, manos libres y velocidad de la voz. Se guardan en cada dispositivo.
+
+**Requisitos**: el navegador solo deja usar el micrófono por HTTPS. Funciona en `https://aria.<tu dominio>` y en `https://<IP>`; en la LAN conviene instalar el certificado (Ajustes → Certificado) para no tener que aceptar el aviso. La primera vez el navegador pide permiso para el micrófono.
+
+**Privacidad**: al hablar, el audio se envía a **Groq** para transcribirlo (si hay `GROQ_API_KEY`); si Groq falla, está en su límite gratuito o no hay clave, se transcribe en la Pi (Whisper `base`, más lento y menos preciso). En «manos libres» el sonido del micrófono va continuamente a la Pi (nunca fuera) para detectar «Aria»; solo lo que dices después de «Aria» se transcribe. **El audio no se guarda nunca** (ni en disco ni en la base de datos): se procesa en memoria y se descarta. Solo se guarda el texto, como cualquier mensaje del chat.
+
+**Límites**: subidas de hasta 1 MB (audio WebM/Ogg/WAV/MP4/MP3 comprobado por su cabecera), 12 transcripciones por minuto y 200 por hora por usuario (`ARIA_VOZ_STT_MINUTO`, `ARIA_VOZ_STT_HORA`), una escucha «manos libres» por usuario y dos en total.
 
 ### Limitación con Netflix
 
@@ -330,7 +345,7 @@ node app/tests/md.test.js
 | SHIELD-DNS | 53, 8080, 8443 |
 | HEIMDALL | 51820/udp, 51843 |
 
-Ollama, SearXNG y la app no se publican en el host: solo Caddy es accesible desde la red.
+Ollama, SearXNG, la app y `aria-voz` no se publican en el host: solo Caddy es accesible desde la red. `aria-voz` está además en una red interna de Docker sin salida a Internet a la que solo llega la app.
 
 ## Solución de problemas
 

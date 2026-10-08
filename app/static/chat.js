@@ -1,5 +1,5 @@
 "use strict";
-// Chat: conversaciones persistentes en el servidor, streaming, detener, copiar, voz.
+// Chat: conversaciones persistentes en el servidor, streaming, detener, copiar, leer en voz alta.
 const Chat = (() => {
   const caja = () => $("mensajes");
   let convId = null;
@@ -56,6 +56,19 @@ const Chat = (() => {
     c.append(el("button", { type: "button", class: "chip-qr", onclick: () => Control.mostrarQr(m[1], nom) }, "Ver QR"));
   }
 
+  // «Leer en voz alta» de un mensaje (Piper; si no está disponible, la voz del navegador).
+  let leyendo = null;
+  function botonLeer(obtener) {
+    const b = el("button", { type: "button", class: "copiar", title: "Leer en voz alta", "aria-label": "Leer en voz alta" }, "Leer");
+    b.addEventListener("click", async () => {
+      if (leyendo === b) { Voz.parar(); return; }
+      if (leyendo) leyendo.textContent = "Leer";
+      leyendo = b; b.textContent = "Parar";
+      try { await Voz.hablar(obtener()); } finally { if (leyendo === b) { leyendo = null; b.textContent = "Leer"; } }
+    });
+    return b;
+  }
+
   // Enlaces a las fuentes de una búsqueda. Se construyen con el DOM (textContent) y solo http/https.
   function fuentes(texto) {
     const lista = [], vistos = new Set();
@@ -107,7 +120,7 @@ const Chat = (() => {
       agBadge.className = "agente-badge ag-" + (id || "aria");
     };
     ponerBadge(cerebro); ponerAgente(agente);
-    if (rol === "bot") nodo.append(el("div", { class: "msg-pie" }, agBadge, badge, botonCopiar(() => actual)));
+    if (rol === "bot") nodo.append(el("div", { class: "msg-pie" }, agBadge, badge, botonLeer(() => actual), botonCopiar(() => actual)));
     caja().append(nodo);
     return { nodo, ponerBadge, ponerAgente, actualizar(t) { actual = t; renderMd(t, cont); } };
   }
@@ -150,10 +163,11 @@ const Chat = (() => {
     $("texto").disabled = false;
   }
 
-  async function enviar(texto) {
+  // Envía un mensaje. Devuelve el texto de la respuesta (para leerlo en voz alta).
+  async function enviar(texto, opciones = {}) {
     texto = (texto || "").trim();
-    if (!texto || enCurso) return;
-    if (window.speechSynthesis) speechSynthesis.cancel();
+    if (!texto || enCurso) return "";
+    Voz.parar();
     if (!caja().querySelector(".msg")) caja().replaceChildren();
     addMsg("user", texto); abajo();
     ponerEstado(true);
@@ -165,7 +179,7 @@ const Chat = (() => {
         body: JSON.stringify(convId ? { conversation_id: convId, message: texto }
           : { conversation_id: null, message: texto, agente: agentePendiente }),
       });
-      if (r.status === 401) { location.href = "/login"; return; }
+      if (r.status === 401) { location.href = "/login"; return ""; }
       if (!r.ok) throw new Error("HTTP " + r.status);
       for await (const ev of lineasNdjson(r)) {
         if (ev.type === "conv") {
@@ -189,25 +203,18 @@ const Chat = (() => {
           if (ultimoChip) { ultimoChip.title = ev.text; ultimoChip.classList.remove("buscando"); ultimoChip.classList.add("hecho"); botonQr(ultimoChip, ev.name, ultimoArgs, ev.text); ponerFuentes(ultimoChip, ev.name, ev.text); abajo(); }
         } else if (ev.type === "aviso" || ev.type === "error") { pensando(false); addAviso(ev.text); }
       }
-      hablar(todo);
+      if (!opciones.sinLeer && Prefs.get("tts", "0") === "1") Voz.hablar(todo);
     } catch (e) {
       if (e.name === "AbortError") addAviso("Respuesta detenida.");
       else addAviso("Error de conexión con ARIA.");
     } finally {
-      pensando(false); abort = null; ponerEstado(false); cargarLista(); refrescarCerebro(); $("texto").focus();
+      pensando(false); abort = null; ponerEstado(false); cargarLista(); refrescarCerebro();
+      if (!opciones.sinLeer) $("texto").focus();
     }
+    return todo.trim();
   }
 
   function detener() { if (abort) abort.abort(); }
-
-  function hablar(texto) {
-    if (Prefs.get("tts", "0") !== "1" || !window.speechSynthesis || !texto.trim()) return;
-    const u = new SpeechSynthesisUtterance(mdATexto(texto).slice(0, 1500));
-    const voces = speechSynthesis.getVoices();
-    const voz = voces.find((v) => /^es[-_]ES/i.test(v.lang)) || voces.find((v) => /^es/i.test(v.lang));
-    if (voz) { u.voice = voz; u.lang = voz.lang; } else u.lang = "es-ES";
-    speechSynthesis.speak(u);
-  }
 
   // --- Conversaciones ---
   async function cargarLista() {
@@ -296,6 +303,10 @@ const Chat = (() => {
     cargarAgentes();
     $("btn-convs").addEventListener("click", abrirLista);
     $("convs-fondo").addEventListener("click", cerrarLista);
+    Voz.botonMic($("mic"), (t) => { $("texto").value = t; autoajustar(); $("form").requestSubmit(); });
+    const manos = $("btn-manos");
+    manos.addEventListener("click", () => (ManosLibres.activa() ? ManosLibres.parar() : ManosLibres.iniciar()));
+    ManosLibres.alCambiar((on) => { manos.setAttribute("aria-pressed", on ? "true" : "false"); manos.classList.toggle("activo", on); });
     const ultima = Prefs.get("conv", "");
     if (ultima) abrir(ultima, true); else vacio();
     cargarLista();
@@ -303,5 +314,12 @@ const Chat = (() => {
   function autoajustar() { const t = $("texto"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; }
 
   function preguntar(texto, agente) { nueva(); if (agente) { agentePendiente = agente; ponerSelector(agente); } enviar(texto); }
-  return { iniciar, preguntar, refrescarCerebro };
+  // Desde «manos libres»: se muestra el chat y se envía como un mensaje escrito (mismo agente
+  // elegido en el selector y mismo enrutado), sin el autoleer (lo lee ManosLibres).
+  async function enviarDesdeVoz(texto) {
+    if (location.hash !== "#chat") location.hash = "chat";
+    if (enCurso) { toast("Espera a que termine la respuesta anterior."); return ""; }
+    return enviar(texto, { sinLeer: true });
+  }
+  return { iniciar, preguntar, refrescarCerebro, enviarDesdeVoz };
 })();

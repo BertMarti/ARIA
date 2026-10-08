@@ -5,17 +5,18 @@ import html
 import json
 import logging
 import mimetypes
+import os
 import re
 from datetime import date
 from urllib.parse import parse_qs, urlparse
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agentes, api_finanzas, api_red, auth, briefing, cerebros, chat, config, cve, db, diario, finanzas, memoria, modelos, permisos, red, services, shield, sistema, spotify, sso, tiempo, usuarios, vpn
+from . import agentes, api_finanzas, api_red, auth, briefing, cerebros, chat, config, cve, db, diario, finanzas, memoria, modelos, permisos, red, services, shield, sistema, spotify, sso, tiempo, usuarios, voz, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -25,6 +26,8 @@ LIBRES = {"/health", "/internal/tls-ask", "/static/style.css", "/static/login.js
           "/static/manifest.webmanifest", "/static/icon.svg"}
 PUBLICAS = LIBRES | {"/login"}
 CSP = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'"
+# El micrófono solo para ARIA (ni iframes ni otros orígenes); cámara y ubicación, para nadie.
+PERMISOS_NAVEGADOR = "microphone=(self), camera=(), geolocation=()"
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 
@@ -99,6 +102,7 @@ def _pagina(titulo: str, cuerpo: str, estado: int = 200, refresco: int = 0) -> H
            f'<img class="login-logo" src="/static/icon.svg" alt="" width="72" height="72"><h1>ARIA</h1>{cuerpo}'
            f'</main></body></html>')
     return HTMLResponse(doc, status_code=estado, headers={"Cache-Control": "no-store", "Content-Security-Policy": CSP,
+                                                          "Permissions-Policy": PERMISOS_NAVEGADOR,
                                                           **({"Retry-After": str(refresco)} if refresco else {})})
 
 
@@ -159,6 +163,7 @@ async def seguridad(request: Request, call_next):
         _cookie(resp, nueva)
     resp.headers.setdefault("Cache-Control", "no-store")
     resp.headers.setdefault("Content-Security-Policy", CSP)
+    resp.headers.setdefault("Permissions-Policy", PERMISOS_NAVEGADOR)
     return resp
 
 
@@ -332,6 +337,77 @@ async def api_borrar_conversacion(cid: str, request: Request):
     if not await asyncio.to_thread(db.borrar, cid, request.state.usuario["id"]):
         return JSONResponse({"error": "Conversación no encontrada"}, status_code=404)
     return {"ok": True}
+
+
+# --- Voz ---
+@app.get("/api/voz/estado")
+async def api_voz_estado():
+    return {"groq": bool(os.environ.get("GROQ_API_KEY")), "local": await voz.voz_local_ok()}
+
+
+@app.post("/api/voz/transcribir")
+async def api_voz_transcribir(request: Request):
+    """Audio crudo en el cuerpo (Content-Type audio/webm, ogg, wav, mp4 o mpeg). No se guarda."""
+    u = request.state.usuario
+    largo = request.headers.get("content-length", "")
+    if largo.isdigit() and int(largo) > voz.MAX_BYTES:
+        return JSONResponse({"error": "La grabación es demasiado larga."}, status_code=413)
+    datos = bytearray()
+    async for parte in request.stream():
+        datos += parte
+        if len(datos) > voz.MAX_BYTES:
+            return JSONResponse({"error": "La grabación es demasiado larga."}, status_code=413)
+    mime = request.headers.get("content-type")
+    try:
+        ext = voz.validar_audio(mime, bytes(datos))
+        if (resto := voz.limitar_stt(u["id"])):
+            return JSONResponse({"error": f"Demasiadas transcripciones seguidas. Espera {resto} s."},
+                                status_code=429, headers={"Retry-After": str(resto)})
+        return await voz.transcribir(bytes(datos), ext, voz.tipo_base(mime))
+    except voz.AudioError as e:
+        return JSONResponse({"error": e.mensaje}, status_code=e.estado)
+    finally:
+        datos.clear()  # el audio no se conserva
+
+
+@app.post("/api/voz/hablar")
+async def api_voz_hablar(request: Request):
+    d = await _json(request)
+    texto = d.get("texto")
+    limpio = voz.limpiar_para_voz(texto, voz.MAX_TTS) if isinstance(texto, str) else ""
+    if not limpio:
+        return JSONResponse({"error": "No hay texto que leer."}, status_code=400)
+    if (resto := voz.limite_tts.esperar(request.state.usuario["id"])):
+        return JSONResponse({"error": f"Demasiadas peticiones de voz. Espera {resto} s."},
+                            status_code=429, headers={"Retry-After": str(resto)})
+    try:
+        wav = await voz.sintetizar(limpio, voz.velocidad(d.get("velocidad", 1.0)))
+    except voz.AudioError as e:
+        return JSONResponse({"error": e.mensaje}, status_code=e.estado)
+    return Response(wav, media_type="audio/wav")
+
+
+@app.websocket("/api/voz/despertar")
+async def ws_despertar(ws: WebSocket):
+    """Escucha «manos libres»: el navegador envía PCM 16 kHz mono y aria-voz espera la palabra «Aria».
+
+    El middleware HTTP no se aplica a los WebSocket: aquí se comprueban Origin, sesión y rol."""
+    u = auth.sesion_usuario(ws.cookies.get(auth.COOKIE))
+    if (not voz.origen_ws_permitido(ws.headers.get("origin"), ws.headers.get("host")) or u is None
+            or not permisos.permitido(u["rol"], "GET", ws.url.path)):
+        await ws.close(code=1008)  # antes de aceptar: el navegador recibe un 403
+        return
+    if voz._escuchas.get(u["id"], 0) >= 1:
+        await ws.close(code=1013)
+        return
+    await ws.accept()
+    voz._escuchas[u["id"]] = voz._escuchas.get(u["id"], 0) + 1
+    try:
+        await voz.retransmitir(ws, u["id"])
+    finally:
+        voz._escuchas[u["id"]] -= 1
+        if not voz._escuchas[u["id"]]:
+            voz._escuchas.pop(u["id"], None)
 
 
 # --- Memoria (cada usuario, solo la suya; la identidad sale de la sesión, nunca de la petición) ---

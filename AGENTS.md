@@ -7,7 +7,7 @@ ARIA 2.0: centro de control del laboratorio doméstico en Raspberry Pi (FastAPI 
 
 ## Comandos
 - Validar: `docker compose config`; pruebas: ver README (sección Pruebas); `node --check app/static/*.js`
-- Levantar: `docker compose up -d --build` y `docker compose ps` (ollama, app y caddy healthy; escaner en marcha)
+- Levantar: `docker compose up -d --build` y `docker compose ps` (ollama, searxng, app, voz y caddy healthy; escaner en marcha)
 - Comprobar: `curl -k https://<IP>/health`
 - Logs: `docker compose logs -f app`
 
@@ -19,6 +19,9 @@ Cadena de IA en `app/aria/cerebros.py` (Ollama Cloud → Groq → Gemini → loc
 
 ## Usuarios y SSO
 Varios usuarios con rol `admin` o `usuario` (`app/aria/usuarios.py`, `permisos.py`) y SSO con Cloudflare Access (`sso.py`, `ARIA_CF_ACCESS_TEAM`, `ARIA_CF_ACCESS_AUD`, `ARIA_ADMIN_EMAILS`). Los permisos se imponen en el servidor con lista blanca; un endpoint nuevo es de admin salvo que se añada a `permisos.py`. Nunca confíes en la cabecera de email de Cloudflare: solo en el JWT verificado. No añadas tokens de la API de Cloudflare a ARIA. Pruebas: `test_sso.py`, `test_permisos.py`, `test_auth.py`.
+
+## Voz
+Contenedor `aria-voz` (`voz/`): faster-whisper (respaldo local), Piper (voz de ARIA) y Vosk (palabra «Aria»). La app (`app/aria/voz.py`) transcribe con Groq Whisper y, si falla, con `aria-voz`; el WebSocket `/api/voz/despertar` valida Origin, sesión y rol él mismo. Frontend en `app/static/voz.js` y `pcm-worklet.js`. Pruebas en `app/tests/test_voz.py` (sin red). El audio no se guarda nunca; la palabra de activación es «Aria».
 
 ## Memoria
 Recuerdos y diario por usuario (`memoria.py`, `aprender.py`, `diario.py`, `briefing.py`). Aprender y resumir van en segundo plano y solo con cerebros de la nube. Todo acceso filtra por el usuario de la sesión; añade pruebas de IDOR si tocas esos endpoints. Un endpoint nuevo para `usuario` debe entrar en `permisos.py` y en `test_toda_ruta_registrada_esta_cubierta`.

@@ -86,6 +86,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("GET", "/api/spotify/status"), ("GET", "/api/certificado"), ("POST", "/api/password"),
                     ("POST", "/api/chat"), ("GET", "/api/conversations"), ("GET", "/api/conversations/{cid}"),
                     ("PATCH", "/api/conversations/{cid}"), ("DELETE", "/api/conversations/{cid}"),
+                    ("GET", "/api/voz/estado"), ("POST", "/api/voz/transcribir"), ("POST", "/api/voz/hablar"),
                     ("GET", "/api/memoria"), ("POST", "/api/memoria"), ("POST", "/api/memoria/ajustes"),
                     ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
                     ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),

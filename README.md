@@ -185,6 +185,44 @@ ARIA recuerda cosas tuyas entre días y las usa para darte contexto.
 - La copia fuera de la Pi se lee con `git log` del repositorio `ARIA_COPIAS_REPO` (por defecto `/home/usuario/homelab/.copias-repo`) solo si está montado en el contenedor; si no, pone «no disponible».
 - **Tiempo (opcional)**: rellena `ARIA_CIUDAD` (p. ej. `"Ronda, Málaga"`; con «, Provincia» elige el resultado de España de esa provincia) y se usa Open-Meteo (gratis, sin clave) para temperatura actual, máxima/mínima y probabilidad de lluvia. `ARIA_LAT` y `ARIA_LON` fijan las coordenadas y evitan geocodificar; si no, se geocodifica una vez y se guarda en `data/ciudad.json`. Vacío por defecto = sin tiempo.
 
+## Avisos y recordatorios
+
+ARIA vigila la casa en segundo plano (un planificador dentro de la app, sin contenedor nuevo) y te avisa por la **campana** de la cabecera y, si los activas, por **Telegram** y por **notificaciones en el móvil o el navegador**.
+
+| Aviso | Cada | Gravedad |
+|---|---|---|
+| SHIELD-DNS caído o sin responder al DNS; HEIMDALL caído | 1 min (2 seguidos) | grave |
+| No se puede entrar desde fuera (`ARIA_URL_PUBLICA` no da 200/302: túnel de Cloudflare) | 5 min (2 seguidos) | aviso |
+| Dispositivo desconocido nuevo en la LAN (inventario de Red) | 10 min | aviso |
+| Hallazgo de gravedad alta en el último escaneo de seguridad | 15 min | grave |
+| Copia fuera de casa de hace más de 36 h (`data/ultima-copia.json`) | 30 min | aviso |
+| Raspberry a más de 75 °C, disco por encima del 85 %, menos del 5 % de RAM disponible | 1–10 min | grave / aviso |
+| Un dispositivo se conecta a la VPN (apagado por defecto) | 1 min | info |
+| Solo responde el cerebro local durante más de 30 min | 1 min | aviso |
+
+- Cada aviso tiene una clave para no repetirse, un tiempo mínimo entre avisos iguales y un mensaje de «todo en orden» cuando se arregla. Lo que ya existía al instalar (dispositivos, hallazgos, conexiones VPN) no se avisa.
+- Los avisos de la casa solo llegan a los administradores. En **Ajustes → Avisos** cada usuario elige qué tipos quiere, por qué canales, sus **horas de silencio** (por defecto 23:00–08:00; los graves y los recordatorios llegan igual) y el **resumen de buenos días** por Telegram o notificación (por defecto a las 08:00). «Probar avisos» manda uno de prueba.
+- **Recordatorios**: pídeselos a ARIA en el chat o por Telegram («recuérdame mañana a las 9 llamar al taller», «avísame en 20 minutos», «todos los lunes a las 8 sacar la basura»; repetición diaria, semanal o de lunes a viernes). «¿Qué recordatorios tengo?» y «borra el recordatorio 3» también funcionan. Se ven y se añaden en Ajustes → Recordatorios. Cada usuario solo ve los suyos.
+
+## Telegram
+
+Bot propio de ARIA, con *long polling* (sin webhook: no se abre nada nuevo a Internet).
+
+1. En Telegram, habla con **@BotFather** → `/newbot` → ponle nombre (ARIA) y un usuario acabado en `bot`. Copia el token.
+2. Ponlo en `.env`: `TELEGRAM_BOT_TOKEN=…` y aplica con `docker compose up -d`.
+3. Comprueba: `docker compose exec app python -m aria.telegram --probar` (muestra el @usuario del bot).
+4. En **Ajustes → Avisos → Telegram**, «Vincular Telegram» da un código de 6 cifras (10 min, un solo uso) y un enlace `https://t.me/<bot>?start=<código>`. Ábrelo y pulsa Iniciar. Puedes vincular varios chats y desvincularlos.
+
+En el chat vinculado puedes escribir o mandar **notas de voz** (se transcriben y, si lo activas, ARIA también responde con voz). Pasa por el mismo chat que la web: agentes, memoria, herramientas y permisos de tu usuario; cada chat tiene su conversación («Telegram · …» en el historial) y `/nuevo` empieza otra. Comandos: `/estado`, `/resumen`, `/tiempo [ciudad]`, `/recordatorios`, `/gastos`, `/vpn`, `/anuncios` (con botones de pausa, solo admin), `/nuevovpn <nombre>` (admin: crea el dispositivo y manda el QR y el `.conf`, que contiene la clave privada), `/desvincular`, `/ayuda`. Las acciones de administración piden «Confirmar». Los chats no vinculados solo reciben «No te conozco…» y los grupos se ignoran.
+
+## Notificaciones en el móvil
+
+Notificaciones push estándar (Web Push con VAPID; `install.sh` genera `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` si faltan).
+
+- Entra por **https://aria.tu-dominio.com** (certificado válido; por la IP de casa no funcionan) y en **Ajustes → Avisos** pulsa «Activar notificaciones en este dispositivo». Se listan tus dispositivos (puedes quitarlos) y «Enviar notificación de prueba».
+- **iPhone/iPad**: iOS 16.4 o posterior y ARIA añadida a la pantalla de inicio (Safari → Compartir → Añadir a pantalla de inicio); actívalas abriendo ARIA desde ese icono.
+- El mensaje viaja cifrado por el servicio push del navegador (Google, Mozilla, Apple o Microsoft; no se admite ningún otro destino). Las suscripciones caducadas se borran solas. El service worker (`/sw.js`) solo muestra notificaciones y abre ARIA en la página del aviso: no guarda páginas en caché.
+
 ## Acceso desde cualquier lugar (dominio propio + Cloudflare)
 
 Con un dominio en Cloudflare, ARIA, Pi-hole y el panel de la VPN quedan en `https://aria.TUDOMINIO`, `https://shield.TUDOMINIO` y `https://heimdall.TUDOMINIO`, con certificado válido, **sin abrir puertos** y protegidos por **Cloudflare Access**: primero un código que llega a tu email y luego la contraseña de cada app. La sesión de Access dura 30 días por dispositivo.

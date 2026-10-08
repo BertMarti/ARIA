@@ -29,6 +29,9 @@ Recuerdos y diario por usuario (`memoria.py`, `aprender.py`, `diario.py`, `brief
 ## Agentes especializados
 `app/aria/agentes.py` define ARIA, Finanzas, Redes y Seguridad (solo admin). Finanzas es por usuario (`uid` siempre del servidor). Seguridad usa el contenedor `aria-escaner` (`app/escaner/`), que solo escanea `ARIA_RED_PERMITIDA` (192.168.0.0/24): uso defensivo, sin ataques ni fuerza bruta. Pruebas: `test_agentes.py`, `test_finanzas.py`, `test_seguridad.py`.
 
+## Avisos, Telegram y push
+Motor de avisos y planificador en `app/aria/avisos.py` (+ `avisos_chequeos.py`), recordatorios en `recordatorios.py`, bot de Telegram con long polling en `telegram.py` (sin webhook; fichas de botón en servidor ligadas a chat y usuario), Web Push en `push.py` y `static/sw.js`. Todo se filtra por el usuario de la sesión. Pruebas sin red: `test_avisos.py`, `test_recordatorios.py`, `test_telegram.py` (Bot API falsa), `test_push.py`. Autoprueba del bot: `docker compose exec app python -m aria.telegram --probar`.
+
 ## Reglas
 - Español (España) en UI, documentación, comentarios y commits.
 - Sin secretos en el repo (`.env`, `data/` ignorados).

@@ -62,6 +62,14 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 - **Nunca** ampliar `ARIA_RED_PERMITIDA` fuera de la LAN ni añadir argumentos de nmap que vengan del usuario/modelo; nada de NSE, fuerza bruta ni exploits. `aria-escaner` es el único contenedor con `network_mode: host`.
 - Probar en paralelo sin tocar los contenedores en vivo: proyecto `-p aria-agentes` con contenedores `agt-*` y volúmenes propios.
 
+## Avisos, Telegram y push (2026-10-08)
+- `avisos.py`: motor genérico (tablas `avisos`, `avisos_estado`, `avisos_ajustes`; `Chequeo`/`Problema`; `emitir`, `procesar`, `tick`, `bucle`, `Limitador`). Los chequeos están en `avisos_chequeos.py` (devuelven lista de `Problema` o None si no se puede saber). Canales registrados en el arranque (`registrar_canal`): `push.canal` y `telegram.canal`. Un aviso con `TIPOS[tipo][1]` (solo admin) nunca se entrega a un `usuario`.
+- `recordatorios.py`: tabla `recordatorios`, `interpretar()` (español → fecha local), `siguiente()` (repeticiones a la misma hora local, DST incluido), `disparar_vencidos()` lo llama el planificador. Herramientas `recordatorio`/`mis_recordatorios`/`borrar_recordatorio` con `usa_uid=True` para todos los roles.
+- `telegram.py`: long polling (sin webhook). Solo chats privados vinculados; `callback_data` = fichas aleatorias en `telegram_acciones` (chat + usuario + caducidad, un uso) y las operaciones de `OPS_ADMIN` vuelven a comprobar el rol al confirmar. Nunca registrar URL de la Bot API (llevan el token). Pruebas con `FalsoBot` en `test_telegram.py`.
+- `voz_puente.py`: `transcribir(bytes, mime)` y `sintetizar(texto) -> (bytes, mime)` sobre `voz.py`; `aria-voz` devuelve OGG/Opus si se pide `formato: "ogg"` (notas de voz de Telegram).
+- `push.py`: Web Push propio (aes128gcm + VAPID ES256 con `cryptography`/PyJWT). Solo endpoints de servicios push conocidos (`HOSTS_PUSH`, anti-SSRF); 404/410 borran la suscripción. `/sw.js` (en `LIBRES`) se sirve con `Service-Worker-Allowed: /` y la versión de los estáticos; no cachea nada. La CSP incluye `worker-src 'self'`.
+- API en `api_avisos.py`, abierta a los dos roles en `permisos.py` (todo filtra por el usuario de la sesión). Frontend: `static/avisos.js` (campana + Ajustes → Avisos + Recordatorios); clases CSS `av-item*` (no `.aviso`, que es del chat).
+
 ## Añadir una herramienta
 Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`, se añaden sus palabras clave a `_INTENCIONES` (si no, el modelo no la recibe) y una prueba en `app/tests/test_tools.py`. Las herramientas destructivas (borrar) no se exponen al modelo.
 

@@ -17,8 +17,9 @@
 | `registrar_movimiento`, `resumen_mes`, `gastos_por_categoria`, `comparar_meses`, `presupuesto`, `estado_presupuestos`, `buscar_movimientos` | Agente Finanzas (datos del usuario) |
 | `estado_red`, `dispositivos_red`, `dispositivos_nuevos`, `marcar_dispositivo_conocido`, `medir_latencia`, `test_velocidad` | Agente Redes |
 | `informe_seguridad`, `escanear_red`, `estado_escaneo`, `bloqueos_por_cliente` | Agente Seguridad (solo admin) |
+| `recordatorio(texto, cuando, repetir)` / `mis_recordatorios` / `borrar_recordatorio` | Recordatorios del usuario (todos los roles); `cuando` en ISO local o frase («mañana a las 9») |
 
-Además: Inicio con lanzador de aplicaciones, chat con conversaciones guardadas, Centro de control (SHIELD-DNS, HEIMDALL, Sistema, Spotify) y Ajustes (modelos, voz, contraseña). Voz: micrófono (pulsar para hablar), «Leer» con Piper y «manos libres» diciendo «Aria». Las herramientas dependen de que el modelo admita tool calling; si no, ARIA responde sin ellas.
+Además: avisos (campana, Telegram y notificaciones push), Inicio con lanzador de aplicaciones, chat con conversaciones guardadas, Centro de control (SHIELD-DNS, HEIMDALL, Sistema, Spotify) y Ajustes (modelos, voz, contraseña). Voz: micrófono (pulsar para hablar), «Leer» con Piper y «manos libres» diciendo «Aria». Las herramientas dependen de que el modelo admita tool calling; si no, ARIA responde sin ellas.
 
 ## Playbook: añadir una herramienta
 1. En `app/aria/tools.py` añade:
@@ -83,6 +84,23 @@ Los emails de `ARIA_ADMIN_EMAILS` en `.env` son siempre administradores y no se 
 - Comprobar: Ajustes → Voz muestra «Transcripción: Groq (local de respaldo) · Voz de ARIA: Piper…». Logs: `docker compose logs voz`.
 - Cambiar la voz de Piper o el modelo Whisper: `docker compose build --build-arg VOZ_PIPER=es_ES-davefx-medium --build-arg VOZ_WHISPER=small voz` (small es ~2,5 veces más lento en la Pi).
 - Si «Aria» se activa sola: sube `VOZ_CONFIANZA` en `.env` (por defecto 0.6) y `docker compose up -d`.
+
+## Playbook: crear el bot de Telegram y vincularlo
+1. Telegram → @BotFather → `/newbot` → nombre «ARIA» y usuario acabado en `bot`. Copia el token (no lo pegues en ningún chat).
+2. `.env`: `TELEGRAM_BOT_TOKEN=<token>`; `docker compose up -d` (recrea `aria-app`).
+3. `docker compose exec app python -m aria.telegram --probar` → «Token válido. Bot: @…». Si dice 401, el token está mal copiado.
+4. ARIA → Ajustes → Avisos → «Vincular Telegram» → abrir el enlace `t.me/<bot>?start=<código>` → Iniciar. Debe contestar «Este chat queda vinculado…». Prueba `/estado` y «Probar avisos».
+5. Para quitarlo: «Desvincular» en Ajustes o `/desvincular` en el chat. Si alguien desconocido escribe al bot, solo recibe «No te conozco…».
+
+## Playbook: activar las notificaciones en el móvil
+1. Abre **https://aria.tu-dominio.com** (no la IP: hace falta certificado válido). En iPhone (iOS 16.4+): Compartir → Añadir a pantalla de inicio y abre ARIA desde ese icono.
+2. Ajustes → Avisos → «Activar notificaciones en este dispositivo» → Permitir.
+3. «Enviar notificación de prueba». Si no llega: revisa que el navegador/sistema no tenga las notificaciones de ARIA bloqueadas y que el dispositivo esté en la lista.
+4. Si se regeneran las claves VAPID, hay que volver a activarlas en cada dispositivo.
+
+## Playbook: avisos y recordatorios
+- «Recuérdame mañana a las 9 llamar al taller», «avísame en 20 minutos», «todos los lunes a las 8…»; lista: «¿qué recordatorios tengo?»; borrar: «borra el recordatorio 3» (o en Ajustes → Recordatorios).
+- Ajustes → Avisos: tipos, horas de silencio, resumen de buenos días (hora y canal), «Probar avisos». La campana de la cabecera muestra los no leídos.
 
 ## Playbook: ver y borrar lo que ARIA recuerda
 - **Tú mismo**: Ajustes → Memoria. Lista de recuerdos (editar/borrar), añadir uno, diario de 14 días (borrar por día), interruptor «Aprender automáticamente» y «Borrar toda mi memoria».

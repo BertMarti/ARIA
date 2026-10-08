@@ -274,7 +274,8 @@ async def api_info(request: Request):
     return {"version": config.VERSION, "modelo": config.modelo_activo(), "usuario": u["nombre"],
             "email": u["email"], "rol": u["rol"], "tiene_password": u["tiene_password"],
             "cerebro": {"id": primero.id, "etiqueta": primero.etiqueta()},
-            "puertos": {"shield_web": config.SHIELD_WEB_PORT, "vpn": config.HEIMDALL_PORT}}
+            "puertos": {"shield_web": config.SHIELD_WEB_PORT, "vpn": config.HEIMDALL_PORT},
+            "funciones": {"spotify": config.SPOTIFY, "netflix": config.NETFLIX}}
 
 
 @app.get("/api/certificado")

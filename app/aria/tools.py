@@ -692,3 +692,9 @@ async def borrar_recordatorio(uid, id_o_texto) -> str:
         return "Encajan varios: " + "; ".join(f"{r['id']}: {r['texto']}" for r in hallados[:5]) + ". Dime el número."
     await asyncio.to_thread(recordatorios.borrar, uid, hallados[0]["id"])
     return f"Recordatorio borrado: «{hallados[0]['texto']}»."
+
+
+# Spotify y Netflix quedan aparcados salvo ARIA_SPOTIFY=1 / ARIA_NETFLIX=1 (ver config.py).
+for _n in [n for n in _REGISTRO if (n.startswith("spotify_") and not config.SPOTIFY)
+           or (n == "buscar_en_netflix" and not config.NETFLIX)]:
+    del _REGISTRO[_n]

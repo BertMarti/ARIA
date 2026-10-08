@@ -216,7 +216,7 @@ const Ajustes = (() => {
 
   function activar() {
     estadoVoz(); listarMics().catch(() => {});
-    if (Sesion.esAdmin) { cerebros(); modelos(); spotify(); acerca(); }
+    if (Sesion.esAdmin) { cerebros(); modelos(); if (Sesion.funciones.spotify) spotify(); acerca(); }
     if (!Sesion.tienePassword) { $("pass-actual").required = false; $("pass-actual-et").hidden = true; }
   }
   function iniciar() { voz(); contrasena(); }

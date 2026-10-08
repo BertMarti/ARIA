@@ -394,3 +394,6 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
   .vista-cab, .chat-cab, .inicio-cab { padding-right: 3rem; }
   .campana { width: 2.2rem; height: 2.2rem; }
 }
+
+/* Spotify aparcado (ARIA_SPOTIFY=0) */
+.sin-spotify #tile-spotify, .sin-spotify #card-spotify, .sin-spotify #ajustes-spotify { display: none !important; }

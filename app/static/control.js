@@ -172,7 +172,7 @@ const Control = (() => {
 
   function actualizar() {
     const h = $("control-hora"); if (h) h.textContent = "Actualizado " + new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    return Promise.allSettled([shield(), vpn(), sistema(), spotify()]);
+    return Promise.allSettled([shield(), vpn(), sistema(), ...(Sesion.funciones.spotify ? [spotify()] : [])]);
   }
   // Se refresca cada ~15 s solo mientras la vista está abierta y la pestaña visible.
   function activar(si) {

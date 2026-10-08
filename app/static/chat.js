@@ -37,7 +37,7 @@ const Chat = (() => {
     c.replaceChildren(el("div", { class: "bienvenida" },
       el("img", { src: "/static/icon.svg", alt: "", width: 64, height: 64 }),
       el("h2", null, "¿En qué puedo ayudarte?"),
-      el("p", { class: "muted" }, "Pregúntame por el bloqueador, la VPN, la Raspberry o la música."),
+      el("p", { class: "muted" }, Sesion.funciones.spotify ? "Pregúntame por el bloqueador, la VPN, la Raspberry o la música." : "Pregúntame por el bloqueador, la VPN, la Raspberry o lo que quieras."),
       el("div", { class: "sugerencias" }, ...SUGERENCIAS.map((s) =>
         el("button", { type: "button", class: "fantasma", onclick: () => enviar(s) }, s)))));
   }

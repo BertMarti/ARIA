@@ -33,7 +33,7 @@ def respuesta_gemini(datos: bytes, mime: str = "audio/wav") -> dict:
 def entorno(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "clave-gemini")
     monkeypatch.delenv("ARIA_TTS", raising=False)
-    monkeypatch.setattr(voz, "_espera_gemini", 0.0)
+    monkeypatch.setattr(voz, "_espera_gemini", {})
     monkeypatch.setattr(voz, "_cache_tts", voz.OrderedDict())
 
 
@@ -54,6 +54,31 @@ def montar(monkeypatch, gemini):
     original = httpx.AsyncClient
     monkeypatch.setattr(voz_puente.httpx, "AsyncClient", lambda **k: original(transport=transporte))
     return llamadas
+
+
+def test_rota_modelos_si_uno_agota_la_cuota(monkeypatch):
+    bueno = wav_de(3.0)
+    vistos = []
+
+    def gemini(r):
+        vistos.append(r.url.path.split("/")[-1].split(":")[0])
+        if len(vistos) == 1:
+            return httpx.Response(429, text='{"error": {"details": [{"retryDelay": "4s"}]}}')
+        return httpx.Response(200, json=respuesta_gemini(bueno))
+    llamadas = montar(monkeypatch, gemini)
+    assert asyncio.run(voz.sintetizar(TEXTO, 1.0)) == bueno
+    assert vistos == ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"]
+    assert voz._espera_gemini["gemini-3.1-flash-tts-preview"] - voz._ahora() == pytest.approx(5, abs=1)
+    assert "Say warmly" in llamadas[-1].read().decode()
+
+
+def test_modelo_plano_no_recibe_estilo(monkeypatch):
+    ahora = voz._ahora()
+    monkeypatch.setattr(voz, "_espera_gemini", {"gemini-3.1-flash-tts-preview": ahora + 99,
+                                                "gemini-2.5-flash-preview-tts": ahora + 99})
+    llamadas = montar(monkeypatch, lambda r: httpx.Response(200, json=respuesta_gemini(wav_de(3.0))))
+    asyncio.run(voz.sintetizar(TEXTO, 1.0))
+    assert "gemini-3.8-flash-tts" in str(llamadas[0].url) and "Say" not in llamadas[0].read().decode()
 
 
 def test_usa_gemini_con_voz_leda(monkeypatch):

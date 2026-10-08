@@ -223,25 +223,31 @@ def velocidad(v) -> float:
 
 
 # --- Síntesis: Gemini (voz femenina natural «Leda») y, si falla, Piper en aria-voz -----------------
+# La capa gratuita da 3 peticiones/minuto POR MODELO: se rota entre varios modelos TTS con la misma voz.
+# «:plano» = ese modelo lee en voz alta las indicaciones de estilo, así que solo recibe el texto.
 GEMINI_TTS_URL = "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent"
-TTS_MODELO = os.environ.get("ARIA_TTS_MODELO", "gemini-3.8-flash-tts")
+TTS_MODELOS = [m.strip() for m in os.environ.get(
+    "ARIA_TTS_MODELOS", "gemini-3.1-flash-tts-preview,gemini-2.5-flash-preview-tts,gemini-3.8-flash-tts:plano"
+).split(",") if m.strip()]
 TTS_VOZ = os.environ.get("ARIA_TTS_VOZ", "Leda")
-TTS_ESTILO = os.environ.get("ARIA_TTS_ESTILO", "Di con voz femenina cálida, dulce, cercana y natural, "
-                            "en español de España")
-_espera_gemini = 0.0
+_espera_gemini: dict = {}  # modelo -> instante hasta el que no se usa (cuota, error)
 _cache_tts: OrderedDict = OrderedDict()  # (texto, velocidad) -> WAV; ahorra cuota al releer
 CACHE_TTS = 64
 
 
+def _modelos_libres() -> list:
+    ahora = _ahora()
+    return [m for m in TTS_MODELOS if _espera_gemini.get(m.split(":")[0], 0) <= ahora]
+
+
 def gemini_tts_disponible() -> bool:
     return (os.environ.get("ARIA_TTS", "gemini").lower() == "gemini" and bool(os.environ.get("GEMINI_API_KEY"))
-            and _ahora() >= _espera_gemini)
+            and bool(_modelos_libres()))
 
 
-def _anotar_fallo_gemini(espera: float, motivo: str) -> None:
-    global _espera_gemini
-    _espera_gemini = _ahora() + min(max(espera, 5), 3600)
-    log.warning("Gemini TTS falló (%s); se usa la voz local %d s", motivo, espera)
+def _anotar_fallo_gemini(modelo: str, espera: float, motivo: str) -> None:
+    _espera_gemini[modelo] = _ahora() + min(max(espera, 5), 3600)
+    log.warning("Gemini TTS %s falló (%s); en espera %d s", modelo, motivo, espera)
 
 
 def _pcm_a_wav(pcm: bytes, frecuencia: int = 24000) -> bytes:
@@ -256,41 +262,59 @@ def _pcm_a_wav(pcm: bytes, frecuencia: int = 24000) -> bytes:
     return buf.getvalue()
 
 
-def _ritmo(vel: float) -> str:
-    return " y a ritmo algo rápido" if vel >= 1.15 else " y despacio" if vel <= 0.85 else " y a ritmo tranquilo"
+def _estilo(vel: float) -> str:
+    ritmo = " and a bit faster" if vel >= 1.15 else " and slowly" if vel <= 0.85 else ""
+    return f"Say warmly and sweetly{ritmo}: "
 
 
-async def _gemini(texto: str, vel: float) -> bytes:
+def _espera_429(r: httpx.Response) -> float:
+    if (ra := r.headers.get("retry-after", "")).isdigit():
+        return float(ra)
+    m = re.search(r'"retryDelay":\s*"(\d+)', r.text)
+    return float(m.group(1)) + 1 if m else 60
+
+
+async def _gemini_modelo(modelo: str, plano: bool, texto: str, vel: float) -> bytes:
     import base64
-    cuerpo = {"contents": [{"parts": [{"text": f"{TTS_ESTILO}{_ritmo(vel)}: {texto}"}]}],
+    cuerpo = {"contents": [{"parts": [{"text": texto if plano else _estilo(vel) + texto}]}],
               "generationConfig": {"responseModalities": ["AUDIO"],
                                    "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": TTS_VOZ}}}}}
     try:
         async with _cliente(30) as c:
-            r = await c.post(GEMINI_TTS_URL.format(TTS_MODELO), json=cuerpo,
+            r = await c.post(GEMINI_TTS_URL.format(modelo), json=cuerpo,
                              headers={"x-goog-api-key": os.environ.get("GEMINI_API_KEY", "")})
     except httpx.HTTPError as e:
-        _anotar_fallo_gemini(30, "red")
+        _anotar_fallo_gemini(modelo, 30, "red")
         raise AudioError(503, "Gemini no responde.") from e
     if r.status_code != 200:
-        espera = {429: float(r.headers.get("retry-after") or 120), 400: 1800, 401: 1800, 403: 1800, 404: 1800}
-        _anotar_fallo_gemini(espera.get(r.status_code, 30), f"HTTP {r.status_code}")
+        espera = _espera_429(r) if r.status_code == 429 else 1800 if r.status_code in (400, 401, 403, 404) else 30
+        _anotar_fallo_gemini(modelo, espera, f"HTTP {r.status_code}")
         raise AudioError(503, "Gemini falló.")
     try:
         parte = r.json()["candidates"][0]["content"]["parts"][0]["inlineData"]
         datos = base64.b64decode(parte["data"])
     except (KeyError, IndexError, TypeError, ValueError) as e:
-        _anotar_fallo_gemini(30, "respuesta sin audio")
+        _anotar_fallo_gemini(modelo, 30, "respuesta sin audio")
         raise AudioError(503, "Gemini no devolvió audio.") from e
     if datos[:4] != b"RIFF":  # PCM 16 bits mono, p. ej. «audio/L16;codec=pcm;rate=24000»
         m = re.search(r"rate=(\d+)", parte.get("mimeType", ""))
         datos = _pcm_a_wav(datos, int(m.group(1)) if m else 24000)
     dur = duracion_wav(datos) or 0
-    # Si el modelo lee también las instrucciones o se repite, el audio sale demasiado largo: mejor Piper
+    # Si el modelo lee también las indicaciones o se repite, el audio sale demasiado largo
     if not (0.02 * len(texto) <= dur <= 0.1 * len(texto) / vel + 2):
-        log.warning("Gemini TTS devolvió %.1f s para %d caracteres; se usa la voz local", dur, len(texto))
+        _anotar_fallo_gemini(modelo, 600, f"{dur:.1f} s para {len(texto)} caracteres")
         raise AudioError(503, "Audio de Gemini dudoso.")
     return datos
+
+
+async def _gemini(texto: str, vel: float) -> bytes:
+    for m in _modelos_libres():
+        modelo, _, opcion = m.partition(":")
+        try:
+            return await _gemini_modelo(modelo, opcion == "plano", texto, vel)
+        except AudioError:
+            continue
+    raise AudioError(503, "Ningún modelo de voz de Gemini disponible.")
 
 
 async def sintetizar(texto: str, vel: float) -> bytes:

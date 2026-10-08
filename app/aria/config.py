@@ -112,14 +112,21 @@ COPIAS_REPO = os.environ.get("ARIA_COPIAS_REPO", "/home/usuario/homelab/.copias-
 
 NOMBRE_USUARIO = os.environ.get("ARIA_NOMBRE_USUARIO", "").strip()[:40]
 
+# Funciones aparcadas hasta más adelante (petición de Lucía, 8/10/2026): el código sigue, pero sin herramientas
+# ni interfaz salvo que se activen en .env con ARIA_SPOTIFY=1 / ARIA_NETFLIX=1.
+SPOTIFY = os.environ.get("ARIA_SPOTIFY", "0") == "1"
+NETFLIX = os.environ.get("ARIA_NETFLIX", "0") == "1"
+_EXTRAS = "".join(", " + x for x, si in (("controlar Spotify", SPOTIFY), ("buscar algo en Netflix", NETFLIX)) if si)
+_NOTA_NETFLIX = " Recuerda que no puedes reproducir contenido de Netflix: solo puedes dar un enlace de búsqueda." if NETFLIX else ""
+
 _PROMPT_BASE = (
     "Eres ARIA, un asistente doméstico útil que corre en local en una Raspberry Pi. "
     "Responde siempre en español de España, de forma breve y clara. "
     "Usa las herramientas disponibles solo cuando el usuario pida datos en vivo: la hora, el estado "
-    "de los servicios, el bloqueador de anuncios, los dispositivos VPN, el estado de la Raspberry Pi, "
-    "controlar Spotify, buscar algo en Netflix o buscar información y noticias en internet; no inventes sus resultados. "
-    "Si te piden explicar un concepto o charlar, responde sin herramientas. "
-    "Recuerda que no puedes reproducir contenido de Netflix: solo puedes dar un enlace de búsqueda."
+    "de los servicios, el bloqueador de anuncios, los dispositivos VPN, el estado de la Raspberry Pi"
+    f"{_EXTRAS} o buscar información y noticias en internet; no inventes sus resultados. "
+    "Si te piden explicar un concepto o charlar, responde sin herramientas."
+    + _NOTA_NETFLIX
 )
 
 
@@ -127,12 +134,13 @@ _PROMPT_LECTURA = (
     "Eres ARIA, un asistente doméstico útil que corre en local en una Raspberry Pi. "
     "Responde siempre en español de España, de forma breve y clara. "
     "Usa las herramientas disponibles solo cuando el usuario pida datos en vivo: la hora, el estado "
-    "de los servicios, el bloqueador de anuncios, los dispositivos VPN, el estado de la Raspberry Pi, "
-    "buscar algo en Netflix o buscar información y noticias en internet; no inventes sus resultados. Solo puedes consultar datos: no puedes "
-    "pausar el bloqueador, cambiar la VPN ni controlar Spotify; si te lo piden, explica que eso "
-    "lo hace el administrador. "
-    "Si te piden explicar un concepto o charlar, responde sin herramientas. "
-    "Recuerda que no puedes reproducir contenido de Netflix: solo puedes dar un enlace de búsqueda."
+    "de los servicios, el bloqueador de anuncios, los dispositivos VPN, el estado de la Raspberry Pi"
+    + (", buscar algo en Netflix" if NETFLIX else "")
+    + " o buscar información y noticias en internet; no inventes sus resultados. Solo puedes consultar datos: no puedes "
+    + ("pausar el bloqueador, cambiar la VPN ni controlar Spotify; " if SPOTIFY else "pausar el bloqueador ni cambiar la VPN; ")
+    + "si te lo piden, explica que eso lo hace el administrador. "
+    "Si te piden explicar un concepto o charlar, responde sin herramientas."
+    + _NOTA_NETFLIX
 )
 
 

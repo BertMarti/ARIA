@@ -20,7 +20,7 @@ const Inicio = (() => {
   }
 
   async function estados() {
-    const [sh, vp, sp, sis] = await Promise.all([api("/api/shield"), api("/api/vpn/clients"), api("/api/spotify/status"), api("/api/system")]);
+    const [sh, vp, sp, sis] = await Promise.all([api("/api/shield"), api("/api/vpn/clients"), (Sesion.funciones.spotify ? api("/api/spotify/status") : Promise.resolve({ data: {} })), api("/api/system")]);
     const s = sh.data, v = vp.data, p = sp.data;
     if (s.conectado) tile("tile-shield", "ok", fmtNum(s.bloqueadas) + " anuncios bloqueados (24 h)", s.bloqueo_activo ? "Activo" : "En pausa");
     else if (s.error) tile("tile-shield", "mal", "Sin respuesta", "Caído");
@@ -28,7 +28,8 @@ const Inicio = (() => {
     if (v.conectado) tile("tile-vpn", "ok", v.clientes.filter((c) => c.conectado).length + " de " + v.clientes.length + " dispositivos conectados", "Activo");
     else if (v.error) tile("tile-vpn", "mal", "Sin respuesta", "Caído");
     else tile("tile-vpn", "", "No instalado / sin conectar", "No instalado");
-    if (!p.configurado) tile("tile-spotify", "", "Abrir Spotify en una pestaña nueva", "Control desde ARIA sin configurar");
+    if (!Sesion.funciones.spotify) { /* aparcado: la tarjeta está oculta */ }
+    else if (!p.configurado) tile("tile-spotify", "", "Abrir Spotify en una pestaña nueva", "Control desde ARIA sin configurar");
     else tile("tile-spotify", p.conectado ? "ok" : "aviso", p.conectado ? "Control desde ARIA activo" : "Pendiente de conectar", "");
     Control.pintarSistema($("inicio-sistema").querySelector(".cuerpo"), sis);
   }

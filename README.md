@@ -4,10 +4,10 @@ ARIA es tu asistente doméstico local para Raspberry Pi. El modelo de lenguaje s
 
 Incluye:
 
-- **Inicio**: saludo, lanzador de aplicaciones con su estado en vivo (Chat, SHIELD-DNS, HEIMDALL, Spotify), acciones rápidas y estado de la Pi.
-- **Chat** con conversaciones guardadas, streaming, botón Detener, copiar, Markdown seguro y **voz**: micrófono (pulsar para hablar), «Leer» en cada respuesta con una voz natural generada en la Pi y modo **manos libres** diciendo «Aria». Herramientas: hora, bloqueador de anuncios, VPN, estado de la Raspberry, Spotify y Netflix (enlaces).
-- **Centro de control** para [SHIELD-DNS](https://github.com/BertMarti/SHIELD-DNS) (Pi-hole), [HEIMDALL](https://github.com/BertMarti/HEIMDALL) (VPN WireGuard), el sistema y Spotify.
-- **Ajustes**: modelos, voz (micrófono, leer en voz alta, manos libres, velocidad), cambio de contraseña, Spotify y versión.
+- **Inicio**: saludo, lanzador de aplicaciones con su estado en vivo (Chat, SHIELD-DNS, HEIMDALL), acciones rápidas y estado de la Pi.
+- **Chat** con conversaciones guardadas, streaming, botón Detener, copiar, Markdown seguro y **voz**: micrófono (pulsar para hablar), «Leer» en cada respuesta con una voz femenina natural (Gemini «Leda», con respaldo en la Pi) y modo **manos libres** diciendo «Aria». Herramientas: hora, bloqueador de anuncios, VPN, estado de la Raspberry, búsqueda en internet, tiempo, recordatorios y memoria. Spotify y Netflix están aparcados para más adelante (`ARIA_SPOTIFY=1` / `ARIA_NETFLIX=1` los reactivan).
+- **Centro de control** para [SHIELD-DNS](https://github.com/BertMarti/SHIELD-DNS) (Pi-hole), [HEIMDALL](https://github.com/BertMarti/HEIMDALL) (VPN WireGuard) y el sistema.
+- **Ajustes**: modelos, voz (micrófono, leer en voz alta, manos libres, velocidad), cambio de contraseña, avisos y versión.
 - **HTTPS** automático (certificado propio de Caddy), acceso con usuario y contraseña, y se puede añadir a la pantalla de inicio del móvil.
 
 ## Guía rápida de uso
@@ -15,7 +15,7 @@ Incluye:
 1. **Entrar.** Abre `https://<IP-de-la-Pi>`, acepta el aviso del certificado (es lo esperado) e inicia sesión. Para tenerla como app, en el móvil usa «Añadir a pantalla de inicio».
 2. **Inicio.** Es la página por defecto. Arriba escribe en «Pregúntale a ARIA» para abrir un chat con esa pregunta. Las cuatro fichas abren cada aplicación en una pestaña nueva (el punto indica si está activa, caída o sin instalar); en SHIELD-DNS y HEIMDALL, «Copiar contraseña» te evita teclearla en su panel. Debajo tienes las acciones rápidas y el estado de la Pi.
 3. **Chat.** Escribe en la parte inferior; «Detener» corta la respuesta, «Copiar» copia un mensaje. A la izquierda (☰ en el móvil) están tus conversaciones: «+ Nueva», ✎ renombrar y ✕ borrar. Prueba: «¿Cuántos anuncios has bloqueado hoy?» o «¿Qué temperatura tiene la Raspberry?».
-4. **Centro de control.** Tarjetas de SHIELD-DNS, HEIMDALL, Sistema y Spotify; se actualizan solas cada 15 s.
+4. **Centro de control.** Tarjetas de SHIELD-DNS, HEIMDALL y Sistema; se actualizan solas cada 15 s.
 5. **Añadir un móvil a la VPN.** Centro de control → HEIMDALL → «Añadir dispositivo» (o la acción rápida de Inicio, o pídeselo al chat: «añade un dispositivo a la VPN llamado movil-ana»). Escribe un nombre, pulsa Crear y escanea el QR con la app WireGuard del móvil (o «Descargar .conf»). Con «QR» en la lista lo vuelves a ver; «Eliminar» pide confirmación.
 6. **Pausar el bloqueador.** Centro de control → SHIELD-DNS → «Pausar 5/30/60 min» (o en Inicio, o en el chat: «pausa el bloqueador 10 minutos»). «Reanudar» lo reactiva antes de tiempo.
 7. **Cambiar la contraseña.** Ajustes → Contraseña: actual, nueva (mínimo 10 caracteres) dos veces. Se guarda cifrada en `data/` y tiene prioridad sobre `ARIA_PASSWORD`; las sesiones de otros dispositivos se cierran.

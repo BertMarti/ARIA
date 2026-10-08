@@ -1,7 +1,11 @@
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+# Las pruebas cubren también Spotify y Netflix, aunque en producción estén aparcados.
+os.environ.setdefault("ARIA_SPOTIFY", "1")
+os.environ.setdefault("ARIA_NETFLIX", "1")
 import pytest
 
 from aria import auth, avisos, cerebros, config, cve, db, finanzas, push, recordatorios, red, sso, telegram, usuarios

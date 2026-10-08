@@ -32,6 +32,9 @@ Recuerdos y diario por usuario (`memoria.py`, `aprender.py`, `diario.py`, `brief
 ## Avisos, Telegram y push
 Motor de avisos y planificador en `app/aria/avisos.py` (+ `avisos_chequeos.py`), recordatorios en `recordatorios.py`, bot de Telegram con long polling en `telegram.py` (sin webhook; fichas de botón en servidor ligadas a chat y usuario), Web Push en `push.py` y `static/sw.js`. Todo se filtra por el usuario de la sesión. Pruebas sin red: `test_avisos.py`, `test_recordatorios.py`, `test_telegram.py` (Bot API falsa), `test_push.py`. Autoprueba del bot: `docker compose exec app python -m aria.telegram --probar`.
 
+## Control parental
+`app/aria/control.py` (estado en SQLite `control_*`, reconciliación con Pi-hole v6 por grupos `ARIA-pausa` y `ARIA-svc-*`, horarios, bucle de 30 s), `api_control.py` (`/api/red/control/...`, solo admin: no están en la lista blanca de `permisos.py`), cliente de grupos/clientes/dominios en `shield.py`, herramientas del agente Redes (`pausar_internet`, `reanudar_internet`, `bloquear_servicio`, `desbloquear_servicio`, `estado_control`), `/control` en `telegram.py`, aviso tipo `control` y `static/parental.js`. Reglas: solo dispositivos del inventario y nunca el router ni la Raspberry; ninguna acción «para todos»; ARIA solo modifica lo marcado con `ARIA-control:`; el cliente va siempre en `Default` además de sus grupos; es bloqueo por DNS y la interfaz debe decirlo. Las pruebas usan un Pi-hole falso (`httpx.MockTransport`, `test_control.py`); nunca escribas en el Pi-hole real (si hace falta, un grupo de prueba `aria-prueba-control` sin clientes reales y bórralo).
+
 ## Reglas
 - Español (España) en UI, documentación, comentarios y commits.
 - Sin secretos en el repo (`.env`, `data/` ignorados).

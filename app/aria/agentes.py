@@ -52,7 +52,8 @@ _COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet",
 FINANZAS_TOOLS = frozenset({"registrar_movimiento", "resumen_mes", "gastos_por_categoria", "comparar_meses",
                             "presupuesto", "estado_presupuestos", "buscar_movimientos"})
 REDES_TOOLS = frozenset({"estado_red", "dispositivos_red", "dispositivos_nuevos", "marcar_dispositivo_conocido",
-                         "medir_latencia", "test_velocidad"})
+                         "medir_latencia", "test_velocidad", "pausar_internet", "reanudar_internet",
+                         "bloquear_servicio", "desbloquear_servicio", "estado_control"})
 SEGURIDAD_TOOLS = frozenset({"informe_seguridad", "escanear_red", "estado_escaneo", "bloqueos_por_cliente"})
 
 AGENTES: dict = {a.id: a for a in (
@@ -73,11 +74,17 @@ AGENTES: dict = {a.id: a for a in (
            "Eres el agente de Redes de ARIA. Conoces la red de casa (LAN 192.168.0.0/24, router 192.168.0.1, "
            "Raspberry Pi 192.168.1.50 con SHIELD-DNS (Pi-hole) y la VPN HEIMDALL (WireGuard)). " + _COMUN +
            "Explica los resultados de forma sencilla (ms, Mbps). El test de velocidad gasta datos y se limita "
-           "a uno cada 10 minutos.",
+           "a uno cada 10 minutos. Control parental (solo administrador): pausar_internet, reanudar_internet, "
+           "bloquear_servicio, desbloquear_servicio y estado_control actúan sobre UN dispositivo; calcula los minutos "
+           "(«una hora» = 60). Es un bloqueo por DNS: dilo si preguntan, porque un dispositivo con DNS propio, DNS "
+           "cifrado o VPN puede seguir con conexión. Nunca hay una acción para todos los dispositivos, ni se puede "
+           "pausar el router ni la Raspberry.",
            REDES_TOOLS | _COMUNES | {"estado_servicios", "estado_bloqueador", "dispositivos_vpn"},
            palabras=(r"\bred(es)?\b", r"\blan\b", r"\bwi-?fi\b", r"\blatencia\b", r"\bping\b", r"\bvelocidad\b",
                      r"\bmbps\b", r"\binternet\b", r"\brouter\b", r"\bdispositivos? (de|en) (la )?(casa|red)\b",
-                     r"\bconectad\w+ a la red\b", r"\bdispositivos? nuevos?\b", r"\bfibra\b", r"\bip\b")),
+                     r"\bconectad\w+ a la red\b", r"\bdispositivos? nuevos?\b", r"\bfibra\b", r"\bip\b", r"\bcontrol parental\b", r"\bsin internet\b",
+                     r"\b(paus\w+|cort\w+|bloque\w+|desbloque\w+|reanud\w+)\b.{0,40}\b(internet|wi-?fi|ipad|tablet|"
+                     r"m[oó]vil|switch|fire ?tv|consola|tele|tiktok|youtube|instagram|fortnite|roblox|twitch|netflix)\b")),
     Agente("seguridad", "Seguridad", "seguridad", "Informe defensivo de la red de casa (solo administradores).",
            "Eres el agente de Seguridad (Intel) de ARIA, solo para el administrador. Tu trabajo es DEFENSIVO y "
            "se limita a la red de casa 192.168.0.0/24: escaneo de puertos con nmap, servicios de riesgo, "

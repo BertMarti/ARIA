@@ -209,8 +209,9 @@
       <article class="tarjeta ancha" id="red-dispositivos">
         <h2>Dispositivos de la LAN</h2>
         <p class="muted" id="red-nota"></p>
+        <p class="muted pequeno-txt">Control parental: el botón «Control» de cada dispositivo permite pausar su internet, bloquear servicios (TikTok, YouTube, Fortnite…) y poner horarios. Funciona solo por DNS (SHIELD-DNS): un dispositivo con DNS propio o cifrado, con VPN, o que use el DNS secundario del router (AdGuard) puede saltárselo. El router y la Raspberry están protegidos.</p>
         <div class="botones"><button type="button" class="fantasma pequeno" id="red-conocer-todos">Marcar todos como conocidos</button></div>
-        <div class="tabla-cont"><table class="tabla" id="red-tabla"><thead><tr><th>Nombre</th><th>IP</th><th>Fabricante</th><th>MAC</th><th>Visto</th><th>Puertos</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="tabla-cont"><table class="tabla" id="red-tabla"><thead><tr><th>Nombre</th><th>IP</th><th>Fabricante</th><th>MAC</th><th>Visto</th><th>Puertos</th><th>Control</th><th></th></tr></thead><tbody></tbody></table></div>
       </article>
     </div>
   </section>
@@ -430,6 +431,12 @@
   </div>
 </dialog>
 
+<dialog id="dlg-parental" class="modal modal-ancho" aria-labelledby="par-titulo">
+  <h2 id="par-titulo">Control parental</h2>
+  <div id="par-cuerpo" class="formulario"></div>
+  <div class="botones"><button type="button" class="fantasma" id="par-cerrar">Cerrar</button></div>
+</dialog>
+
 <dialog id="dlg-passuser" class="modal">
   <h2 id="passuser-titulo">Contraseña para casa</h2>
   <form id="form-passuser" class="formulario" autocomplete="off">
@@ -474,6 +481,7 @@
 <script src="/static/inicio.js"></script>
 <script src="/static/ajustes.js"></script>
 <script src="/static/finanzas.js"></script>
+<script src="/static/parental.js"></script>
 <script src="/static/red.js"></script>
 <script src="/static/seguridad.js"></script>
 <script src="/static/memoria.js"></script>

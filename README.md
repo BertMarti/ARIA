@@ -213,7 +213,7 @@ Bot propio de ARIA, con *long polling* (sin webhook: no se abre nada nuevo a Int
 3. Comprueba: `docker compose exec app python -m aria.telegram --probar` (muestra el @usuario del bot).
 4. En **Ajustes → Avisos → Telegram**, «Vincular Telegram» da un código de 6 cifras (10 min, un solo uso) y un enlace `https://t.me/<bot>?start=<código>`. Ábrelo y pulsa Iniciar. Puedes vincular varios chats y desvincularlos.
 
-En el chat vinculado puedes escribir o mandar **notas de voz** (se transcriben y, si lo activas, ARIA también responde con voz). Pasa por el mismo chat que la web: agentes, memoria, herramientas y permisos de tu usuario; cada chat tiene su conversación («Telegram · …» en el historial) y `/nuevo` empieza otra. Comandos: `/estado`, `/resumen`, `/tiempo [ciudad]`, `/recordatorios`, `/gastos`, `/vpn`, `/anuncios` (con botones de pausa, solo admin), `/nuevovpn <nombre>` (admin: crea el dispositivo y manda el QR y el `.conf`, que contiene la clave privada), `/desvincular`, `/ayuda`. Las acciones de administración piden «Confirmar». Los chats no vinculados solo reciben «No te conozco…» y los grupos se ignoran.
+En el chat vinculado puedes escribir o mandar **notas de voz** (se transcriben y, si lo activas, ARIA también responde con voz). Pasa por el mismo chat que la web: agentes, memoria, herramientas y permisos de tu usuario; cada chat tiene su conversación («Telegram · …» en el historial) y `/nuevo` empieza otra. Comandos: `/estado`, `/resumen`, `/tiempo [ciudad]`, `/recordatorios`, `/gastos`, `/vpn`, `/anuncios` (con botones de pausa, solo admin), `/control` (admin: dispositivos pausados o con servicios bloqueados y botones «Reanudar»), `/nuevovpn <nombre>` (admin: crea el dispositivo y manda el QR y el `.conf`, que contiene la clave privada), `/desvincular`, `/ayuda`. Las acciones de administración piden «Confirmar». Los chats no vinculados solo reciben «No te conozco…» y los grupos se ignoran.
 
 ## Notificaciones en el móvil
 
@@ -297,6 +297,20 @@ Las categorías se asignan con reglas (Mercadona → Supermercado, Repsol → Tr
 ### Red
 
 **Red** une la tabla de red de Pi-hole (`/api/network/devices`: nombres e IP y última consulta DNS) con el último escaneo (MAC, fabricante y puertos; Pi-hole corre en Docker y no ve las MAC de la LAN). Lo que no está marcado como conocido aparece resaltado; puedes ponerle un alias. La latencia se mide con ping (ICMP sin privilegios) al router, 1.1.1.1 y 8.8.8.8. El **test de velocidad** descarga ~15 MB y sube ~5 MB contra `speed.cloudflare.com` (sin programas de terceros) y se permite uno cada 10 minutos. Las mediciones se guardan 90 días y se dibujan en una gráfica SVG propia.
+
+### Control parental (por dispositivo)
+
+En **Red**, el botón «Control» de cada dispositivo (los nombres vienen del alias que le pongas) permite:
+
+- **Pausar internet** 30 min, 1 h, 2 h, 4 h o hasta reanudar; la tabla muestra «Pausado hasta 20:30».
+- **Bloquear servicios**: TikTok, YouTube, Instagram, Facebook, WhatsApp, Snapchat, X, Twitch, Discord, Fortnite/Epic, Roblox, Minecraft, Steam, Netflix, Disney+ y Prime Video (listas de dominios curadas en `control.py`).
+- **Horarios**: «sin internet de 23:00 a 08:00 de lunes a viernes» o «sin TikTok de 16:00 a 20:00». Los días son los de inicio del tramo; si «hasta» es menor que «desde» cruza la medianoche. Al empezar o terminar un horario llega un aviso (tipo «Control parental», activo por defecto; se puede desactivar en Ajustes → Avisos).
+
+También desde el agente **@redes** («pausa el iPad una hora», «bloquea TikTok en el móvil», «¿qué dispositivos están pausados?») y desde Telegram con **/control** (lista lo pausado o bloqueado con botones «Reanudar»). Todo es solo de administrador y siempre sobre **un** dispositivo del inventario: no existe una acción «para todos» y el router, la Raspberry (192.168.1.50) y las IP de `ARIA_CONTROL_PROTEGIDOS` no se pueden pausar.
+
+**Cómo funciona.** Usa grupos de SHIELD-DNS (Pi-hole v6): `ARIA-pausa` (regla de denegación regex `.*`) y `ARIA-svc-<servicio>` (regex con los dominios del servicio). ARIA añade la IP del dispositivo como cliente de Pi-hole (siempre también en `Default`, así conserva el bloqueo de anuncios) con el comentario `ARIA-control:<clave>`. Cada 30 s recalcula qué debe estar aplicado (pausas vigentes, horarios activos, servicios) y deja Pi-hole igual; es idempotente, sobrevive a reinicios y, si la IP del dispositivo cambia, mueve el cliente. Solo toca lo que ARIA creó: nunca clientes, grupos ni listas ajenos. Si SHIELD-DNS no responde, lo pedido queda guardado y se aplica en cuanto vuelva.
+
+**Limitación (importante).** Es **solo bloqueo por DNS**. No frena a un dispositivo con DNS fijo (p. ej. 8.8.8.8), con DNS cifrado (DoH/DoT, «DNS privado» de Android, iCloud Relay) o con VPN, ni a los que usan el **DNS secundario del router (AdGuard 94.140.14.14)**. Además, la caché DNS del dispositivo puede tardar unos minutos en notar el cambio. Para un corte total hay que bloquear el dispositivo en el router. La interfaz y el agente lo repiten.
 
 ### Seguridad: qué hace y qué no hace el escaneo
 

@@ -397,3 +397,18 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 
 /* Spotify aparcado (ARIA_SPOTIFY=0) */
 .sin-spotify #tile-spotify, .sin-spotify #card-spotify, .sin-spotify #ajustes-spotify { display: none !important; }
+
+/* Control parental (Red) */
+.modal-ancho { width: min(94vw, 560px); max-height: 90vh; overflow-y: auto; }
+.par-seccion { display: grid; gap: .5rem; padding-top: .6rem; border-top: 1px solid var(--borde); }
+.par-seccion h3 { font-size: .95rem; }
+.par-servicios { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: .3rem .8rem; }
+.par-servicios label, .par-dias label { display: flex; align-items: center; gap: .4rem; font-size: .88rem; }
+.par-servicios input, .par-dias input { width: auto; }
+.par-dias { display: flex; flex-wrap: wrap; gap: .3rem .7rem; }
+.par-horario { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-size: .88rem; }
+.par-horario.activo { color: var(--aviso, #f5b84b); }
+.par-hora { display: flex; gap: .5rem; align-items: center; }
+.par-hora input { width: auto; }
+.par-aviso { font-size: .8rem; }
+.pildora.par-pausa { color: var(--aviso, #f5b84b); border-color: rgba(245, 184, 75, .5); background: rgba(245, 184, 75, .08); }

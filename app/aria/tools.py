@@ -78,7 +78,8 @@ def permitidas(rol: str) -> set:
     if rol == "admin":
         return set(_REGISTRO)
     if rol == "usuario":
-        return set(SOLO_LECTURA | MEMORIA | RECORDATORIOS | GESTION_RUTINAS | DE_USUARIO) & set(_REGISTRO)
+        de_modulos = {n for n, i in _DE_MODULOS.items() if i["usuario"]}
+        return set(SOLO_LECTURA | MEMORIA | RECORDATORIOS | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
     return set()
 
 
@@ -876,6 +877,44 @@ _INTENCIONES += [
     ((r"\brutinas?\b", r"\b(mis|qu[eé]|cu[aá]les|tengo|lista\w*|ver)\b", r"!\b(crea\w*|nueva)\b"), {"mis_rutinas"}),
     ((r"\brutinas?\b", r"\b(borra\w*|quita\w*|elimina\w*|cancela\w*)\b"), {"borrar_rutina", "mis_rutinas"}),
 ]
+
+
+# --- Herramientas de módulos (modulos.py / sdk.py) ---------------------------------------------------------------
+# Nombres del núcleo (incluidas las aparcadas): ningún módulo puede usarlos.
+NUCLEO = frozenset(_REGISTRO)
+_DE_MODULOS: dict = {}   # nombre -> {"modulo", "usuario", "solo_lectura", "agentes", "entradas"}
+
+
+def registrar_externa(nombre: str, fn, descripcion: str, params: dict, requeridos: tuple, *, modulo: str,
+                      solo_lectura: bool, usuario: bool, intenciones: list, agentes: tuple) -> None:
+    """Herramienta de un módulo. Ya viene validada por el SDK; aquí solo se comprueba el choque de nombres.
+    `solo_lectura` la deja usar en las rutinas; `usuario` la abre al rol `usuario`; `agentes` dice qué agentes
+    la ofrecen (sin «aria» es de especialista); `intenciones` son las entradas del filtro de `relevantes`."""
+    global RUTINAS
+    if nombre in NUCLEO or nombre in _REGISTRO:
+        raise ValueError(f"la herramienta «{nombre}» ya existe")
+    tool(nombre, descripcion, params, tuple(requeridos), especialista="aria" not in agentes)(fn)
+    entradas = [(tuple(p), {nombre}) for p in intenciones]
+    _INTENCIONES.extend(entradas)
+    _DE_MODULOS[nombre] = {"modulo": modulo, "usuario": usuario, "solo_lectura": solo_lectura,
+                           "agentes": frozenset(agentes), "entradas": entradas}
+    if solo_lectura:
+        RUTINAS = RUTINAS | {nombre}
+
+
+def retirar_externa(nombre: str) -> None:
+    global RUTINAS
+    info = _DE_MODULOS.pop(nombre, None)
+    if info is None:
+        return
+    _REGISTRO.pop(nombre, None)
+    _INTENCIONES[:] = [e for e in _INTENCIONES if not any(e is x for x in info["entradas"])]
+    RUTINAS = RUTINAS - {nombre}
+
+
+def de_modulos(agente: str) -> set:
+    """Herramientas de módulos que ofrece ese agente."""
+    return {n for n, i in _DE_MODULOS.items() if agente in i["agentes"]}
 
 
 # Spotify y Netflix quedan aparcados salvo ARIA_SPOTIFY=1 / ARIA_NETFLIX=1 (ver config.py).

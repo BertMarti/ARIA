@@ -438,6 +438,11 @@
         </ul>
         <p class="muted">Sirve solo para ARIA; los paneles de Pi-hole y de la VPN tienen su propio certificado.</p>
       </article>
+      <article class="tarjeta ancha solo-admin" id="ajustes-modulos">
+        <h2>Módulos</h2>
+        <p class="muted">Aplicaciones y funciones enchufadas a ARIA desde la carpeta <code>modulos/</code> (y las integradas). Se activan con <code>ARIA_MODULOS</code> en .env y se cargan al reiniciar ARIA. Un módulo es código que corre dentro de ARIA: instala solo los que sean de confianza. Guía: docs/MODULOS.md.</p>
+        <ul id="modulos-lista" class="filas"><li class="muted">Cargando…</li></ul>
+      </article>
       <article class="tarjeta solo-admin" id="ajustes-acerca">
         <h2>Acerca de</h2>
         <div id="acerca-cuerpo" class="muted">Cargando…</div>
@@ -533,6 +538,7 @@
 <script src="/static/voz.js"></script>
 <script src="/static/chat.js"></script>
 <script src="/static/control.js"></script>
+<script src="/static/modulos.js"></script>
 <script src="/static/inicio.js"></script>
 <script src="/static/ajustes.js"></script>
 <script src="/static/finanzas.js"></script>

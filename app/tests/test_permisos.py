@@ -91,6 +91,10 @@ RUTAS_USUARIO_RUTINAS = {
 RUTAS_USUARIO_VISION = {("POST", "/api/vision/tickets/{token}"), ("DELETE", "/api/vision/tickets/{token}")}
 
 
+# Módulos: la lista (filtrada por rol en el servidor). Las rutas de cada módulo las abre su registro (permisos.py).
+RUTAS_USUARIO_MODULOS = {("GET", "/api/modulos")}
+
+
 def todas_las_rutas() -> list:
     """Rutas de la app y de los routers incluidos (FastAPI reciente los envuelve en `_IncludedRouter`)."""
     from fastapi.routing import APIRoute
@@ -111,7 +115,7 @@ def test_toda_ruta_registrada_esta_cubierta():
         ruta = r.path.replace("{cid}", "abc").replace("{uid}", "1").replace("{app_id}", "x") \
                      .replace("{accion}", "x").replace("{mid}", "1").replace("{rid}", "1").replace("{fecha}", "2026-10-06") \
                      .replace("{aid}", "1").replace("{chat_id}", "1").replace("{sid}", "1").replace("{hid}", "1") \
-                     .replace("{token}", "a" * 24)
+                     .replace("{token}", "a" * 24).replace("{n}", "1")
         for m in r.methods - {"HEAD", "OPTIONS"}:
             if permisos.permitido("usuario", m, ruta):
                 assert (m, r.path) in {
@@ -124,7 +128,15 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("GET", "/api/memoria"), ("POST", "/api/memoria"), ("POST", "/api/memoria/ajustes"),
                     ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
                     ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),
-                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION, (m, r.path)
+                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION \
+                  | RUTAS_USUARIO_MODULOS | permisos.rutas_modulos_usuario(), (m, r.path)
+                if r.path.startswith("/api/modulos/"):
+                    # Las de módulos solo se abren si su registro las declara (siempre bajo /api/modulos/<id>/).
+                    assert (m, r.path) in permisos.rutas_modulos_usuario(), (m, r.path)
+    # Los módulos de prueba (tests/modulos_prueba/demo) aportan rutas de usuario y de admin: ambas se recorren.
+    rutas = {(m, r.path) for r in todas_las_rutas() for m in r.methods}
+    assert ("GET", "/api/modulos/demo/hola") in rutas and ("GET", "/api/modulos/demo/privado") in rutas
+    assert not permisos.permitido("usuario", "GET", "/api/modulos/demo/privado")
     assert not permisos.permitido("desconocido", "GET", "/")
 
 
@@ -222,8 +234,11 @@ LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_
 
 
 def test_herramientas_de_solo_lectura():
-    assert tools.permitidas("usuario") == LECTURA | tools.DE_USUARIO
-    assert tools.permitidas("usuario") & tools.generales() == LECTURA
+    # Las de módulos (tests/modulos_prueba) solo entran si su registro las abre a `usuario` (test_modulos.py).
+    de_modulos = set(tools._DE_MODULOS)
+    assert tools.permitidas("usuario") - de_modulos == LECTURA | tools.DE_USUARIO
+    assert tools.permitidas("usuario") & de_modulos == {n for n, i in tools._DE_MODULOS.items() if i["usuario"]}
+    assert (tools.permitidas("usuario") & tools.generales()) - de_modulos == LECTURA
     assert tools.permitidas("admin") == set(tools._REGISTRO) > LECTURA
 
 
@@ -263,7 +278,7 @@ def test_proveedores_solo_ofrecen_lectura_y_usan_el_nombre(monkeypatch):
             [{"role": "user", "content": "hola"}], rol="usuario", nombre="Marta")]
     asyncio.run(correr())
     cuerpo = cap.cuerpos[0]
-    assert {t["function"]["name"] for t in cuerpo["tools"]} == LECTURA
+    assert {t["function"]["name"] for t in cuerpo["tools"]} - set(tools._DE_MODULOS) == LECTURA
     prompt = cuerpo["messages"][0]["content"]
     assert "Marta" in prompt and "no puedes pausar el bloqueador" in prompt
 

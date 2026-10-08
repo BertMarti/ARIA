@@ -1,0 +1,1 @@
+{"id": "roto", "nombre": "Roto", "version": "1", "roles": ["admin", "usuario"], "url": "https://{host}:9998/"}

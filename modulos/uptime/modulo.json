@@ -1,0 +1,9 @@
+{
+  "id": "uptime",
+  "nombre": "Uptime web",
+  "descripcion": "Comprueba si una web pública responde y cuánto tarda. Con UPTIME_URLS, avisa si alguna se cae.",
+  "version": "1.0.0",
+  "icono": "web",
+  "env_opcional": ["UPTIME_URLS", "UPTIME_INTERVALO_MIN"],
+  "roles": ["admin", "usuario"]
+}

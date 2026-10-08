@@ -66,8 +66,40 @@ _USUARIO = [
     ("PATCH", r"/api/rutinas/\d+"),
     ("DELETE", r"/api/rutinas/\d+"),
     ("POST", r"/api/rutinas/\d+/ejecutar"),
+    # Módulos: la lista se filtra por rol en el servidor (un usuario solo ve los suyos y sin detalles).
+    ("GET", r"/api/modulos"),
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
+
+
+# Rutas de módulos que su manifiesto abre a `usuario` (las añade modulos.py al cargar). Solo pueden estar bajo
+# /api/modulos/<id>/: un módulo nunca puede abrir rutas del núcleo.
+_MODULOS: list = []   # (método, patrón compilado, plantilla de ruta)
+_PREFIJO_MODULOS = re.compile(r"/api/modulos/[a-z0-9-]{2,32}/")
+_PARAM = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def patron_de_plantilla(plantilla: str) -> str:
+    """'/api/modulos/x/item/{n}' -> regex con cada {param} = un segmento ([^/]+). Rechaza {x:path} y similares."""
+    if "{" in _PARAM.sub("", plantilla) or "}" in _PARAM.sub("", plantilla):
+        raise ValueError(f"ruta no admitida para usuario: {plantilla}")
+    partes = _PARAM.split(plantilla)
+    return "".join(re.escape(p) if i % 2 == 0 else r"[^/]+" for i, p in enumerate(partes))
+
+
+def permitir_modulo(metodo: str, plantilla: str) -> None:
+    metodo = metodo.upper()
+    if metodo not in ("GET", "POST", "PUT", "PATCH", "DELETE") or not _PREFIJO_MODULOS.match(plantilla):
+        raise ValueError(f"ruta no admitida para usuario: {metodo} {plantilla}")
+    _MODULOS.append((metodo, re.compile(patron_de_plantilla(plantilla)), plantilla))
+
+
+def retirar_modulo(prefijo: str) -> None:
+    _MODULOS[:] = [x for x in _MODULOS if not x[2].startswith(prefijo)]
+
+
+def rutas_modulos_usuario() -> set:
+    return {(m, plantilla) for m, _, plantilla in _MODULOS}
 
 
 def permitido(rol: str, metodo: str, ruta: str) -> bool:
@@ -76,7 +108,8 @@ def permitido(rol: str, metodo: str, ruta: str) -> bool:
     if rol != "usuario":
         return False
     metodo = "GET" if metodo == "HEAD" else metodo
-    return any(m == metodo and p.fullmatch(ruta) for m, p in _PATRONES)
+    return (any(m == metodo and p.fullmatch(ruta) for m, p in _PATRONES)
+            or any(m == metodo and p.fullmatch(ruta) for m, p, _ in _MODULOS))
 
 # Control parental (api_control.py): TODAS sus rutas /api/red/control/... son solo de admin. No están en la lista
 # blanca de `usuario` y `test_permisos.py` comprueba una a una que un `usuario` recibe 403.

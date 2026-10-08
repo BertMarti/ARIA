@@ -453,3 +453,9 @@ kbd { font-family: var(--mono); font-size: .8em; border: 1px solid var(--borde-f
 .par-hora input { width: auto; }
 .par-aviso { font-size: .8rem; }
 .pildora.par-pausa { color: var(--aviso, #f5b84b); border-color: rgba(245, 184, 75, .5); background: rgba(245, 184, 75, .08); }
+
+/* Módulos (Ajustes → Módulos) */
+.mod-ico .svg-ico { width: 1.6rem; height: 1.6rem; }
+.pildora.mod-error { color: var(--mal); border-color: rgba(251, 93, 106, .5); background: rgba(251, 93, 106, .08); }
+#modulos-lista .fila-info { gap: .15rem; flex: 1; }
+#modulos-lista code { font-size: .8rem; }

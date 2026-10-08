@@ -16,6 +16,7 @@ import html
 import ipaddress
 import re
 import socket
+import time
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import httpx
@@ -105,8 +106,9 @@ def _charset(ctype: str, cuerpo: bytes) -> str:
         return "utf-8"
 
 
-async def _una(esquema: str, host: str, puerto: int, ruta: str) -> tuple:
-    """Una petición sin redirecciones a la IP comprobada. (estado, cabeceras, cuerpo)."""
+async def _una(esquema: str, host: str, puerto: int, ruta: str, leer: bool = True) -> tuple:
+    """Una petición sin redirecciones a la IP comprobada. (estado, cabeceras, cuerpo).
+    Con `leer=False` solo interesa la respuesta (estado y cabeceras): el cuerpo no se lee."""
     ip = (await _resolver(host, puerto))[0]
     destino = f"{esquema}://{'[' + ip + ']' if ':' in ip else ip}:{puerto}{ruta}"
     cab = {"Host": host if puerto in (80, 443) else f"{host}:{puerto}", "User-Agent": AGENTE,
@@ -115,6 +117,8 @@ async def _una(esquema: str, host: str, puerto: int, ruta: str) -> tuple:
     async with httpx.AsyncClient(timeout=httpx.Timeout(TIMEOUT_S, connect=4), follow_redirects=False,
                                  trust_env=False, transport=_transporte) as c:
         async with c.stream("GET", destino, headers=cab, extensions=ext) as r:
+            if not leer:
+                return r.status_code, r.headers, b""
             if r.status_code in (301, 302, 303, 307, 308) or r.status_code != 200:
                 return r.status_code, r.headers, b""
             ctype = r.headers.get("content-type", "").split(";")[0].strip().lower()
@@ -154,6 +158,31 @@ async def descargar(url: str) -> tuple:
         raise EnlaceError("La página tarda demasiado en responder.") from None
     except httpx.HTTPError as e:
         raise EnlaceError(f"No he podido abrir la página ({type(e).__name__}).") from None
+
+
+async def _comprobar(url: str) -> dict:
+    inicio = time.monotonic()
+    actual = url
+    for _ in range(MAX_REDIRECCIONES + 1):
+        esquema, host, puerto, ruta = validar_url(actual)
+        estado, cab, _ = await _una(esquema, host, puerto, ruta, leer=False)
+        if estado in (301, 302, 303, 307, 308) and cab.get("location"):
+            actual = urljoin(actual, cab.get("location"))
+            continue
+        return {"url": actual, "estado": estado, "ok": 200 <= estado < 400,
+                "ms": round((time.monotonic() - inicio) * 1000)}
+    raise EnlaceError("Demasiadas redirecciones.")
+
+
+async def comprobar(url: str) -> dict:
+    """¿Responde la web? {url (final), estado (código HTTP), ok (2xx/3xx), ms (latencia total)} con las mismas
+    protecciones anti-SSRF que `descargar`, pero sin leer el cuerpo. Lanza EnlaceError si no se puede conectar."""
+    try:
+        return await asyncio.wait_for(_comprobar(url), TIMEOUT_TOTAL_S)
+    except asyncio.TimeoutError:
+        raise EnlaceError("La web tarda demasiado en responder.") from None
+    except httpx.HTTPError as e:
+        raise EnlaceError(f"No he podido conectar con la web ({type(e).__name__}).") from None
 
 
 # --- Extraer el texto legible ----------------------------------------------------------------------------------

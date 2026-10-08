@@ -13,7 +13,7 @@
     Finanzas.activar(v === "finanzas");
     Red.activar(v === "red");
     Seguridad.activar(v === "seguridad");
-    if (v === "ajustes") { Ajustes.activar(); Usuarios.activar(); Memoria.activar(); Avisos.activar(); Rutinas.activar(); }
+    if (v === "ajustes") { Ajustes.activar(); Usuarios.activar(); Memoria.activar(); Avisos.activar(); Rutinas.activar(); if (Sesion.esAdmin) Modulos.pintarAjustes(); }
     document.title = "ARIA · " + { inicio: "Inicio", chat: "Chat", finanzas: "Finanzas", red: "Red", seguridad: "Seguridad", control: "Centro de control", ajustes: "Ajustes" }[v];
   }
   document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => b.addEventListener("click", () => { location.hash = b.dataset.vista; }));

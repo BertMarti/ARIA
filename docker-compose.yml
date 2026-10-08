@@ -61,6 +61,7 @@ services:
     volumes:
       - ./data:/data
       - escaner:/escaner   # peticiones/resultados del escáner (sin red ni socket entre ambos)
+      - ./modulos:/srv/modulos:ro   # módulos enchufables (docs/MODULOS.md); solo lectura
     depends_on:
       ollama:
         condition: service_healthy

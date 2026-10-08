@@ -98,8 +98,8 @@ const Inicio = (() => {
   function activar(si) {
     clearInterval(temporizador); temporizador = null;
     if (!si) return;
-    saludo(); estados(); resumen(false);
-    temporizador = setInterval(() => { if (!document.hidden && !document.querySelector("dialog[open]")) estados(); }, 15000);
+    saludo(); estados(); resumen(false); Modulos.pintarInicio();
+    temporizador = setInterval(() => { if (!document.hidden && !document.querySelector("dialog[open]")) { estados(); Modulos.pintarInicio(); } }, 15000);
   }
 
   async function iniciar() {

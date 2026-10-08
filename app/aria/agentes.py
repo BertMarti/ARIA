@@ -119,8 +119,8 @@ def disponibles(rol: str) -> list:
 
 
 def herramientas(agente: Agente, rol: str) -> set:
-    """Herramientas del agente que además puede usar ese rol (las dos listas blancas)."""
-    return set(agente.herramientas) & tools.permitidas(rol)
+    """Herramientas del agente (más las de módulos que lo declaren) que además puede usar ese rol."""
+    return (set(agente.herramientas) | tools.de_modulos(agente.id)) & tools.permitidas(rol)
 
 
 def separar_prefijo(texto: str) -> tuple:

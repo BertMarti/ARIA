@@ -1,0 +1,33 @@
+{
+  "_comentario": "Plantilla de módulo de ARIA. Copia la carpeta (p. ej. a modulos/mi-app), cambia «id» por el nombre de la carpeta y rellena. Las claves que empiezan por «_» son comentarios y se ignoran. Guía completa: docs/MODULOS.md",
+
+  "_id": "Obligatorio. Igual que el nombre de la carpeta: 2-32 caracteres, minúsculas, números y guiones.",
+  "id": "plantilla",
+
+  "_nombre": "Obligatorio. Lo que se ve en Inicio y en Ajustes → Módulos (máx. 40 caracteres).",
+  "nombre": "Mi aplicación",
+
+  "_descripcion": "Opcional. Una frase (máx. 300 caracteres).",
+  "descripcion": "Ejemplo de módulo: una herramienta del chat, un chequeo de avisos y un endpoint.",
+
+  "_version": "Obligatorio. La tuya, p. ej. 1.0.0.",
+  "version": "1.0.0",
+
+  "_icono": "Opcional (por defecto «app»): app, web, escudo, candado, servidor, grafica, casa, musica, nube, reloj, herramienta, red, camara, documento.",
+  "icono": "herramienta",
+
+  "_url": "Opcional. Si existe, sale un mosaico en Inicio que abre esta dirección. {host} = el nombre con el que se entra en ARIA (IP de casa o dominio).",
+  "url": "http://{host}:8099/",
+
+  "_salud": "Opcional. Cómo saber si la aplicación está viva (punto verde/rojo del mosaico). tipo: http (código < 500), tcp (el puerto acepta conexiones) o dns. Desde el contenedor de ARIA, el host de la Raspberry es host.docker.internal. tls: true para https (se acepta un certificado propio).",
+  "salud": {"tipo": "http", "host": "host.docker.internal", "puerto": 8099, "ruta": "/", "tls": false},
+
+  "_env": "Opcional. Variables de .env OBLIGATORIAS: si falta alguna, el módulo queda «sin configurar» y su modulo.py no se ejecuta.",
+  "env": ["PLANTILLA_TOKEN"],
+
+  "_env_opcional": "Opcional. Variables de .env que el módulo puede leer pero no necesita.",
+  "env_opcional": ["PLANTILLA_SALUDO"],
+
+  "_roles": "Opcional (por defecto solo admin). Quién ve el mosaico en Inicio: [\"admin\"] o [\"admin\", \"usuario\"].",
+  "roles": ["admin", "usuario"]
+}

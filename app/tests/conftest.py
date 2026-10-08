@@ -6,6 +6,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # Las pruebas cubren también Spotify y Netflix, aunque en producción estén aparcados.
 os.environ.setdefault("ARIA_SPOTIFY", "1")
 os.environ.setdefault("ARIA_NETFLIX", "1")
+# Módulos: main.py carga los de prueba (uno bueno y uno roto), no los del repositorio.
+os.environ["ARIA_MODULOS_DIR"] = str(Path(__file__).resolve().parent / "modulos_prueba")
+os.environ.pop("ARIA_MODULOS", None)
 import pytest
 
 from aria import auth, avisos, cerebros, config, control, cve, db, finanzas, push, recordatorios, red, sso, telegram, usuarios

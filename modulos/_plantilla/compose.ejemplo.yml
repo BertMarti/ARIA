@@ -1,0 +1,12 @@
+# Ejemplo (NO se ejecuta solo): si tu módulo necesita su propio contenedor, documenta algo así y que el
+# usuario lo añada a mano (p. ej. en un docker-compose.override.yml junto al de ARIA) y haga
+# `docker compose up -d mi-app`. ARIA nunca lanza contenedores por su cuenta.
+#
+# services:
+#   mi-app:
+#     image: ghcr.io/ejemplo/mi-app:1.0
+#     container_name: aria-mi-app        # los contenedores del proyecto empiezan por aria-
+#     restart: unless-stopped
+#     ports:
+#       - "8099:80"                      # el puerto de «url» y «salud» del modulo.json
+#     mem_limit: 128m

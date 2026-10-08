@@ -1,0 +1,11 @@
+{
+  "_comentario": "Módulo de prueba que carga main.py en las pruebas (ARIA_MODULOS_DIR en conftest.py).",
+  "id": "demo",
+  "nombre": "Demo",
+  "descripcion": "Módulo de prueba",
+  "version": "0.1.0",
+  "icono": "reloj",
+  "url": "https://{host}:9999/",
+  "env_opcional": ["DEMO_SALUDO"],
+  "roles": ["admin", "usuario"]
+}

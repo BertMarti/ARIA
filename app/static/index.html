@@ -32,6 +32,21 @@
 </div>
 
 <main class="contenido">
+  <!-- CAMPANA DE AVISOS -->
+  <div class="campana-zona">
+    <button type="button" id="campana" class="campana" aria-label="Avisos" aria-expanded="false" aria-controls="avisos-panel">
+      <svg class="svg-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+      <span id="campana-num" class="campana-num" hidden>0</span>
+    </button>
+    <div id="avisos-panel" class="avisos-panel" role="dialog" aria-label="Avisos" hidden>
+      <div class="avisos-cab">
+        <strong>Avisos</strong>
+        <button type="button" class="fantasma pequeno" id="avisos-todos">Marcar todo como leído</button>
+      </div>
+      <ul id="avisos-lista" class="avisos-lista"></ul>
+      <a href="#ajustes" class="avisos-pie" id="avisos-ajustes">Ajustes de avisos</a>
+    </div>
+  </div>
   <!-- INICIO -->
   <section id="v-inicio" class="vista" hidden>
     <header class="inicio-cab">
@@ -277,6 +292,50 @@
           <div id="pull-estado" class="muted"></div>
         </div>
       </article>
+      <article class="tarjeta ancha" id="ajustes-avisos">
+        <h2>Avisos</h2>
+        <p class="muted">ARIA te avisa de lo importante (servicios caídos, dispositivos nuevos, copias atrasadas…) y de tus recordatorios. Los avisos siempre quedan en la campana; aquí eliges por dónde más te llegan.</p>
+        <div class="avisos-rejilla">
+          <section>
+            <h3>Telegram</h3>
+            <div id="tg-zona" class="muted">Cargando…</div>
+          </section>
+          <section>
+            <h3>Notificaciones en este dispositivo</h3>
+            <div id="push-zona" class="muted">Cargando…</div>
+            <p class="muted pequeno-txt">En iPhone hay que añadir ARIA a la pantalla de inicio (Compartir → Añadir a pantalla de inicio, iOS 16.4 o posterior) y activarlas desde ahí. Solo funcionan entrando por <strong id="push-url">https://aria.tu-dominio.com</strong> (certificado válido), no por la IP de casa.</p>
+          </section>
+        </div>
+        <h3>Qué avisos quiero</h3>
+        <div id="av-tipos" class="av-tipos"></div>
+        <h3>Horas de silencio</h3>
+        <label class="interruptor"><input type="checkbox" id="av-silencio"><span>No avisar por Telegram ni notificaciones de</span></label>
+        <div class="fila-form">
+          <label>Desde <input type="time" id="av-desde" value="23:00"></label>
+          <label>Hasta <input type="time" id="av-hasta" value="08:00"></label>
+        </div>
+        <p class="muted pequeno-txt">Los avisos graves y tus recordatorios llegan siempre. Lo silenciado queda en la campana.</p>
+        <h3>Resumen de buenos días</h3>
+        <label class="interruptor"><input type="checkbox" id="av-briefing"><span>Enviarme el resumen cada mañana</span></label>
+        <div class="fila-form">
+          <label>A las <input type="time" id="av-briefing-hora" value="08:00"></label>
+          <label>Por <select id="av-briefing-canal"><option value="telegram">Telegram</option><option value="push">Notificación</option><option value="ambos">Los dos</option></select></label>
+        </div>
+        <div class="botones"><button type="button" class="primario" id="av-probar">Probar avisos</button></div>
+        <p id="av-msg" class="muted" role="status"></p>
+      </article>
+      <article class="tarjeta" id="ajustes-recordatorios">
+        <h2>Recordatorios</h2>
+        <p class="muted">También puedes pedírselos a ARIA en el chat o por Telegram: «recuérdame mañana a las 9 llamar al taller».</p>
+        <ul id="rec-lista" class="filas"></ul>
+        <form id="form-rec" class="formulario" autocomplete="off">
+          <label>Qué <input id="rec-texto" maxlength="200" placeholder="Llamar al taller" required></label>
+          <label>Cuándo <input id="rec-cuando" type="datetime-local" required></label>
+          <label>Repetir <select id="rec-repetir"><option value="">No</option><option value="diario">Todos los días</option><option value="laborables">De lunes a viernes</option><option value="semanal">Cada semana</option></select></label>
+          <button type="submit" class="primario">Añadir recordatorio</button>
+        </form>
+        <p id="rec-msg" class="muted" role="status"></p>
+      </article>
       <article class="tarjeta" id="ajustes-voz">
         <h2>Voz</h2>
         <label>Micrófono
@@ -419,6 +478,7 @@
 <script src="/static/seguridad.js"></script>
 <script src="/static/memoria.js"></script>
 <script src="/static/usuarios.js"></script>
+<script src="/static/avisos.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

@@ -56,6 +56,20 @@ if [ -z "$(get_var SEARXNG_SECRET)" ]; then
   info "SEARXNG_SECRET generado"
 fi
 
+# Claves VAPID (notificaciones push): se generan si faltan. P-256 con openssl; la privada son los 32 bytes
+# del escalar y la pública el punto sin comprimir (65 bytes), las dos en base64url.
+if [ -z "$(get_var VAPID_PRIVATE_KEY)" ] || [ -z "$(get_var VAPID_PUBLIC_KEY)" ]; then
+  command -v openssl >/dev/null 2>&1 || error "Falta openssl (sudo apt install openssl)."
+  b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
+  vapid_der="$(mktemp)"
+  openssl ecparam -name prime256v1 -genkey -noout 2>/dev/null | openssl ec -outform DER 2>/dev/null > "$vapid_der"
+  [ "$(wc -c < "$vapid_der")" -eq 121 ] || { rm -f "$vapid_der"; error "No se pudieron generar las claves VAPID."; }
+  set_var VAPID_PRIVATE_KEY "$(head -c 39 "$vapid_der" | tail -c 32 | b64url)"
+  set_var VAPID_PUBLIC_KEY "$(tail -c 65 "$vapid_der" | b64url)"
+  rm -f "$vapid_der"
+  info "Claves VAPID (notificaciones push) generadas"
+fi
+
 # Nombres para entrar sin la IP: https://aria.local (mDNS) y https://aria.lan (DNS de SHIELD-DNS)
 for n in aria.local aria.lan; do
   case ",$(get_var ARIA_HOSTS)," in *",$n,"*) ;; *) set_var ARIA_HOSTS "$(get_var ARIA_HOSTS),$n"; info "Añadido $n a ARIA_HOSTS" ;; esac

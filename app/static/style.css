@@ -362,3 +362,35 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
   .chat-cab #modelo-activo { display: none; }
 }
 @media (max-width: 760px) { .manos-btn .manos-txt { display: none; } .manos-btn { padding: .4rem .5rem; } .chat-cab { gap: .5rem; } }
+
+/* --- Avisos: campana, panel y Ajustes → Avisos --- */
+.campana-zona { position: absolute; top: .7rem; right: 1rem; z-index: 40; }
+.vista-cab, .chat-cab, .inicio-cab { padding-right: 3.4rem; }
+.campana { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; padding: 0; border-radius: 50%; background: var(--panel-solido); color: var(--txt); }
+.campana .svg-ico { width: 1.25rem; height: 1.25rem; }
+.campana-num { position: absolute; top: -.3rem; right: -.35rem; min-width: 1.25rem; height: 1.25rem; padding: 0 .3rem; border-radius: 99px; background: var(--mal); color: #fff; font-size: .7rem; font-weight: 700; line-height: 1.25rem; text-align: center; }
+.avisos-panel { position: absolute; top: 3rem; right: 0; width: min(380px, calc(100vw - 2rem)); max-height: min(70vh, 560px); overflow: auto; background: var(--panel-solido); border: 1px solid var(--borde-fuerte); border-radius: var(--radio); box-shadow: var(--sombra); padding: .7rem; }
+.avisos-cab { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .2rem .2rem .6rem; border-bottom: 1px solid var(--borde); }
+.avisos-lista { list-style: none; margin: .5rem 0; padding: 0; display: grid; gap: .45rem; }
+.av-item { border: 1px solid var(--borde); border-left: 3px solid var(--acento); border-radius: 10px; padding: .5rem .65rem; background: rgba(5, 9, 16, .35); }
+.av-item.sev-grave { border-left-color: var(--mal); }
+.av-item.sev-aviso { border-left-color: var(--warn); }
+.av-item.leido { opacity: .6; }
+.av-item-cab { display: flex; justify-content: space-between; gap: .5rem; }
+.av-item-sev { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.av-item.sev-grave .av-item-sev { color: var(--mal); }
+.av-item.sev-aviso .av-item-sev { color: var(--warn); }
+.av-item-txt { margin: .25rem 0; overflow-wrap: anywhere; }
+.av-item-acc { display: flex; gap: .6rem; align-items: center; justify-content: flex-end; }
+.avisos-vacio { padding: .6rem; text-align: center; }
+.avisos-pie { display: block; text-align: center; font-size: .85rem; padding-top: .4rem; border-top: 1px solid var(--borde); }
+.avisos-rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1.2rem; }
+.av-tipos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: .45rem 1rem; }
+.pasos { padding-left: 1.2rem; display: grid; gap: .3rem; }
+.tg-codigo { margin-top: .6rem; padding: .6rem .8rem; border: 1px dashed var(--borde-fuerte); border-radius: 10px; }
+.codigo-grande { font-family: var(--mono); font-size: 1.4rem; letter-spacing: .2em; color: var(--acento); }
+@media (max-width: 760px) {
+  .campana-zona { top: .5rem; right: .6rem; }
+  .vista-cab, .chat-cab, .inicio-cab { padding-right: 3rem; }
+  .campana { width: 2.2rem; height: 2.2rem; }
+}

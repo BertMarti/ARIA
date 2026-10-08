@@ -49,6 +49,12 @@ CF_TEAM = os.environ.get("ARIA_CF_ACCESS_TEAM", "").strip().lower().removeprefix
 CF_AUD = os.environ.get("ARIA_CF_ACCESS_AUD", "").strip()
 ADMIN_EMAILS = [e.strip().lower() for e in os.environ.get("ARIA_ADMIN_EMAILS", "").split(",") if e.strip()]
 
+# Agentes Redes / Seguridad. La red permitida es la ÚNICA que se puede escanear (guardia en la app y en el escáner).
+RED_PERMITIDA = os.environ.get("ARIA_RED_PERMITIDA", "192.168.0.0/24").strip()
+ROUTER_IP = os.environ.get("ARIA_ROUTER_IP", "192.168.0.1").strip()
+ESCANER_DIR = Path(os.environ.get("ARIA_ESCANER_DIR", "/escaner"))
+SPEEDTEST_URL = os.environ.get("ARIA_SPEEDTEST_URL", "https://speed.cloudflare.com").rstrip("/")
+
 DATA_DIR = Path(os.environ.get("ARIA_DATA_DIR", "/data"))
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 

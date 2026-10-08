@@ -283,7 +283,7 @@ def test_chat_programa_extraccion_y_no_aprende_de_olvidar(admin, monkeypatch):
     llamadas = []
     monkeypatch.setattr(aprender, "programar", lambda uid, nombre, texto: llamadas.append(texto))
 
-    async def responder(msgs, rol="admin", quien=None):
+    async def responder(msgs, rol="admin", quien=None, **_):
         yield {"type": "token", "text": "vale"}
         yield {"type": "fin"}
     monkeypatch.setattr(chat, "responder", responder)

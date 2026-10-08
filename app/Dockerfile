@@ -3,7 +3,8 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
 RUN useradd --uid 1000 --no-create-home --shell /usr/sbin/nologin aria \
-    && mkdir /data && chown aria /data
+    && mkdir /data && chown aria /data \
+    && mkdir /escaner && chown 1000:1000 /escaner && chmod 2770 /escaner
 
 WORKDIR /srv
 COPY requirements.txt .

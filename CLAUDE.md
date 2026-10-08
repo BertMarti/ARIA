@@ -6,7 +6,7 @@ Instrucciones para Claude Code en este repositorio (ARIA).
 Asistente doméstico local para Raspberry Pi: FastAPI + Ollama + Caddy en Docker Compose. Sin APIs de pago.
 
 ## Estructura
-- `docker-compose.yml`: servicios `ollama`, `searxng`, `app`, `voz`, `caddy` (proyecto `aria`, contenedores `aria-*`). `voz` solo está en la red interna `voz` (sin Internet ni puertos).
+- `docker-compose.yml`: servicios `ollama`, `searxng`, `app`, `voz`, `escaner`, `caddy` (proyecto `aria`, contenedores `aria-*`). `voz` solo está en la red interna `voz` (sin Internet ni puertos).
 - `caddy/Caddyfile`: HTTPS con CA interna, certificados bajo demanda autorizados por `/internal/tls-ask`.
 - `app/aria/`: `main.py` (rutas, middleware de sesión/CSRF), `origen.py` (regla CSRF Origin/Sec-Fetch-Site/Referer), `auth.py` (cookie firmada con id de usuario + versión, scrypt, limitador), `usuarios.py` (tabla `usuarios`, roles, migración del admin único), `permisos.py` (lista blanca del rol `usuario`; denegar por defecto), `sso.py` (verificación del JWT de Cloudflare Access con PyJWT), `cerebros.py` (cadena de proveedores: Ollama nativo local/nube + OpenAI-compatible Groq/Gemini, esperas por cuota, `data/cerebros.json`), `chat.py` (bucle de herramientas + relevo entre cerebros + persistencia), `db.py` (SQLite `data/aria.db`), `busqueda.py` (cliente de SearXNG: caché 10 min, dedupe por dominio, texto ≤1500), `tools.py` (herramientas + `_INTENCIONES`), `shield.py` (Pi-hole v6, sid único en caché), `vpn.py` (wg-easy v15, lista blanca de campos), `sistema.py` (/proc y /sys), `voz.py` (validación de audio, Groq Whisper → aria-voz, limitador por usuario, limpieza de texto para TTS, puente WebSocket), `modelos.py` (Ollama), `services.py`, `spotify.py`, `config.py`.
 - `voz/`: contenedor `aria-voz` (`servidor.py`: faster-whisper base int8, Piper `es_ES-sharvard-medium`, Vosk `vosk-model-small-es` con gramática cerrada para «Aria»; modelos descargados en la imagen por `descargar.py`).
@@ -53,6 +53,14 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 - Presupuesto del prompt: nube ≤ ~1 200 (recuerdos) + ~900 (diario); local ≤ 300 y sin diario. No ampliarlo sin medir (el local lee ~11 tokens/s).
 - Nunca guardar secretos (`memoria.parece_secreto`). Los datos solo de admin del resumen (`vpn`, `copia`) se quitan en el servidor (`briefing.para_rol`).
 - Las tablas están en `db.iniciar`; haz copia de `data/aria.db` antes de cambiar el esquema.
+
+## Agentes (2026-10-07)
+- `agentes.py`: `AGENTES` (aria, finanzas, redes, seguridad) con prompt, herramientas, roles y cerebro preferido. Elección en `chat.elegir_agente`: prefijo `@id` → agente de la conversación (`conversaciones.agente`) → `agentes.enrutar` (palabras clave; empate → `clasificar_con_nube`). Siempre se comprueba `agentes.permitido(id, rol)`; `seguridad` es solo admin.
+- Herramientas ofrecidas = `agente.herramientas ∩ tools.permitidas(rol)`; `tools.ejecutar(..., uid=, solo=)` vuelve a comprobarlo. Las de especialista llevan `especialista=True` (ARIA general no las ofrece) y las de datos por usuario `usa_uid=True` (el `uid` lo pone el servidor; el del modelo se descarta).
+- Finanzas: `finanzas.py` (tablas `fin_*`, céntimos, siempre `uid`), `finanzas_csv.py` (parser), `api_finanzas.py`. Prueba IDOR en `test_finanzas.py`.
+- Redes/Seguridad: `red.py`, `seguridad.py`, `cve.py` (OSV/NVD con caché `seg_cve_cache`), `escaneo.py` (volumen `/escaner`), `escaneo_comun.py` (guardia de CIDR y parser de nmap, compartido con `app/escaner/escaner.py`), `api_red.py`.
+- **Nunca** ampliar `ARIA_RED_PERMITIDA` fuera de la LAN ni añadir argumentos de nmap que vengan del usuario/modelo; nada de NSE, fuerza bruta ni exploits. `aria-escaner` es el único contenedor con `network_mode: host`.
+- Probar en paralelo sin tocar los contenedores en vivo: proyecto `-p aria-agentes` con contenedores `agt-*` y volúmenes propios.
 
 ## Añadir una herramienta
 Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`, se añaden sus palabras clave a `_INTENCIONES` (si no, el modelo no la recibe) y una prueba en `app/tests/test_tools.py`. Las herramientas destructivas (borrar) no se exponen al modelo.

@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import auth, briefing, cerebros, chat, config, db, diario, memoria, modelos, permisos, services, shield, sistema, spotify, sso, tiempo, usuarios, voz, vpn
+from . import agentes, api_finanzas, api_red, auth, briefing, cerebros, chat, config, cve, db, diario, finanzas, memoria, modelos, permisos, red, services, shield, sistema, spotify, sso, tiempo, usuarios, voz, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -58,6 +58,9 @@ async def _arranque():
         log.error("Faltan ARIA_USER / ARIA_PASSWORD o ARIA_SECRET (>=16 caracteres): login deshabilitado.")
     db.iniciar()
     usuarios.iniciar()
+    finanzas.iniciar()
+    red.iniciar()
+    cve.iniciar()
     # Diario: planificador interno (03:30 locales + recuperación de días perdidos). Sin contenedor nuevo.
     app.state.diario = asyncio.create_task(diario.bucle())
 
@@ -217,6 +220,8 @@ async def index():
 
 
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
+app.include_router(api_finanzas.router)
+app.include_router(api_red.router)
 
 
 # --- API ---
@@ -282,7 +287,17 @@ async def api_chat(request: Request):
         return JSONResponse({"error": "Falta el mensaje"}, status_code=400)
     if cid is not None and (not isinstance(cid, str) or not db.existe(cid, u["id"])):
         cid = None
-    return _ndjson(chat.conversar(u, cid, texto))
+    agente = d.get("agente")
+    if agente is not None and (not isinstance(agente, str) or agente not in agentes.AGENTES):
+        return JSONResponse({"error": "Agente desconocido"}, status_code=400)
+    if agente and not agentes.permitido(agente, u["rol"]):
+        return JSONResponse({"error": "Ese agente es solo para administradores."}, status_code=403)
+    return _ndjson(chat.conversar(u, cid, texto, agente))
+
+
+@app.get("/api/agentes")
+async def api_agentes(request: Request):
+    return {"agentes": agentes.disponibles(request.state.usuario["rol"]), "defecto": agentes.AUTO}
 
 
 @app.get("/api/conversations")
@@ -301,6 +316,16 @@ async def api_conversacion(cid: str, request: Request):
 @app.patch("/api/conversations/{cid}")
 async def api_renombrar(cid: str, request: Request):
     d = await _json(request)
+    u = request.state.usuario
+    if "agente" in d:  # selector de agente de la conversación
+        a = d.get("agente")
+        if not isinstance(a, str) or a not in agentes.AGENTES:
+            return JSONResponse({"error": "Agente desconocido"}, status_code=400)
+        if not agentes.permitido(a, u["rol"]):
+            return JSONResponse({"error": "Ese agente es solo para administradores."}, status_code=403)
+        if not await asyncio.to_thread(db.fijar_agente, cid, u["id"], a):
+            return JSONResponse({"error": "Conversación no encontrada"}, status_code=404)
+        return {"ok": True}
     t = d.get("titulo")
     if not isinstance(t, str) or not t.strip() or not await asyncio.to_thread(db.renombrar, cid, request.state.usuario["id"], t):
         return JSONResponse({"error": "No se pudo renombrar"}, status_code=400)

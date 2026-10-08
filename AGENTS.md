@@ -7,7 +7,7 @@ ARIA 2.0: centro de control del laboratorio doméstico en Raspberry Pi (FastAPI 
 
 ## Comandos
 - Validar: `docker compose config`; pruebas: ver README (sección Pruebas); `node --check app/static/*.js`
-- Levantar: `docker compose up -d --build` y `docker compose ps` (cuatro contenedores healthy)
+- Levantar: `docker compose up -d --build` y `docker compose ps` (ollama, searxng, app, voz y caddy healthy; escaner en marcha)
 - Comprobar: `curl -k https://<IP>/health`
 - Logs: `docker compose logs -f app`
 
@@ -25,6 +25,9 @@ Contenedor `aria-voz` (`voz/`): faster-whisper (respaldo local), Piper (voz de A
 
 ## Memoria
 Recuerdos y diario por usuario (`memoria.py`, `aprender.py`, `diario.py`, `briefing.py`). Aprender y resumir van en segundo plano y solo con cerebros de la nube. Todo acceso filtra por el usuario de la sesión; añade pruebas de IDOR si tocas esos endpoints. Un endpoint nuevo para `usuario` debe entrar en `permisos.py` y en `test_toda_ruta_registrada_esta_cubierta`.
+
+## Agentes especializados
+`app/aria/agentes.py` define ARIA, Finanzas, Redes y Seguridad (solo admin). Finanzas es por usuario (`uid` siempre del servidor). Seguridad usa el contenedor `aria-escaner` (`app/escaner/`), que solo escanea `ARIA_RED_PERMITIDA` (192.168.0.0/24): uso defensivo, sin ataques ni fuerza bruta. Pruebas: `test_agentes.py`, `test_finanzas.py`, `test_seguridad.py`.
 
 ## Reglas
 - Español (España) en UI, documentación, comentarios y commits.

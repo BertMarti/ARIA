@@ -14,6 +14,9 @@
 | `estado_sistema` | Temperatura, RAM, disco, carga y uptime de la Pi |
 | `buscar_en_internet(consulta)` / `noticias(tema)` | Busca en internet (SearXNG) y devuelve títulos, extractos y enlaces; citar las fuentes. Disponible para ambos roles |
 | `buscar_en_netflix` | Devuelve un enlace de búsqueda. ARIA **no** puede controlar Netflix |
+| `registrar_movimiento`, `resumen_mes`, `gastos_por_categoria`, `comparar_meses`, `presupuesto`, `estado_presupuestos`, `buscar_movimientos` | Agente Finanzas (datos del usuario) |
+| `estado_red`, `dispositivos_red`, `dispositivos_nuevos`, `marcar_dispositivo_conocido`, `medir_latencia`, `test_velocidad` | Agente Redes |
+| `informe_seguridad`, `escanear_red`, `estado_escaneo`, `bloqueos_por_cliente` | Agente Seguridad (solo admin) |
 
 Además: Inicio con lanzador de aplicaciones, chat con conversaciones guardadas, Centro de control (SHIELD-DNS, HEIMDALL, Sistema, Spotify) y Ajustes (modelos, voz, contraseña). Voz: micrófono (pulsar para hablar), «Leer» con Piper y «manos libres» diciendo «Aria». Las herramientas dependen de que el modelo admita tool calling; si no, ARIA responde sin ellas.
 
@@ -39,6 +42,23 @@ Además: Inicio con lanzador de aplicaciones, chat con conversaciones guardadas,
 3. Comprueba con `curl` el modelo, la latencia y una llamada a herramienta real antes de fijar el modelo por defecto (los modelos se retiran: `gemini-2.5-flash` dio 404).
 4. Añade pruebas en `app/tests/test_cerebros.py` (conversión de mensajes, caída ante 429/timeout/clave) y verifica en Ajustes → Cerebros con «Probar».
 5. Nunca registres ni muestres la clave.
+
+## Playbook: añadir un agente
+1. En `app/aria/agentes.py` añade un `Agente(id, nombre, icono, descripción, prompt, herramientas, roles, cerebro, palabras)` a `AGENTES`. `roles=frozenset({"admin"})` si es solo de administrador; `palabras` son las regex del enrutado automático.
+2. Sus herramientas van en `tools.py` con `especialista=True` (y `usa_uid=True` si son datos del usuario) y entrada en `_INTENCIONES`. Si un `usuario` debe usarlas, añádelas a `tools.DE_USUARIO`.
+3. Endpoints nuevos: en un `APIRouter` y, si un `usuario` debe llegar, en `permisos.py` y en `RUTAS_USUARIO_AGENTES` de `test_permisos.py`.
+4. Interfaz: color de la insignia en `style.css` (`.agente-badge.ag-<id>`) y nombres de herramientas en `chat.js`.
+5. Pruebas en `test_agentes.py` (enrutado, roles) y documenta en README y aquí.
+
+## Playbook: importar el extracto del banco
+Finanzas → Importar extracto CSV → revisar el mapeo de columnas y la vista previa → Importar. Si un banco no se detecta, añade sus nombres de columna a `_CLAVES` de `finanzas_csv.py` y un caso a `test_finanzas.py`.
+
+## Playbook: revisar la seguridad de la red
+1. Seguridad → «Escanear ahora» (100 puertos) o completo (1000); tarda 3-10 minutos. O en el chat: «@seguridad lanza un escaneo» y luego «@seguridad dame el informe».
+2. Corrige primero lo de gravedad alta (Telnet, VNC, RDP, firmware con CVE altos), después las medias (UPnP, paneles sin HTTPS, dispositivos sin reconocer).
+3. En Red marca como conocidos tus dispositivos (con alias) para que solo resalten los nuevos.
+4. El escaneo semanal (domingo 04:00) avisa de puertos nuevos respecto al anterior.
+Nunca cambies `ARIA_RED_PERMITIDA` a una red que no sea tuya.
 
 ## Playbook: cambiar de modelo
 1. (Cerebro local) Ajustes → Modelos: «Descargar» y «Usar» (se guarda en `data/model.txt`).

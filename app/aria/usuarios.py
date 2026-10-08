@@ -223,6 +223,9 @@ def borrar(uid: int) -> None:
         if u["rol"] == "admin" and u["activo"] and _admins_activos(con) <= 1:
             raise UsuarioError("No se puede eliminar al último administrador activo.")
         con.execute("DELETE FROM conversaciones WHERE user_id=?", (uid,))
+        for t in ("fin_movimientos", "fin_categorias", "fin_presupuestos", "fin_reglas"):  # sus finanzas
+            if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (t,)).fetchone():
+                con.execute(f"DELETE FROM {t} WHERE user_id=?", (uid,))  # noqa: S608 - nombres fijos
         con.execute("DELETE FROM usuarios WHERE id=?", (uid,))
 
 

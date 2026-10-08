@@ -4,7 +4,7 @@ import json
 import logging
 from typing import AsyncIterator
 
-from . import aprender, briefing, cerebros, db, memoria, tools
+from . import agentes, aprender, briefing, cerebros, db, memoria, tools
 
 log = logging.getLogger("aria.chat")
 
@@ -20,14 +20,17 @@ def limpiar(mensajes) -> list:
     return out
 
 
-async def responder(mensajes: list, rol: str = "admin", quien: str | None = None) -> AsyncIterator[dict]:
+async def responder(mensajes: list, rol: str = "admin", quien: str | None = None,
+                    agente: "agentes.Agente | None" = None, uid: int | None = None) -> AsyncIterator[dict]:
     """Genera eventos: cerebro, pensando, token, herramienta, resultado, aviso, reinicio, error, fin.
 
     En cada ronda se prueba la cadena de cerebros en orden; si uno falla se pasa al siguiente.
+    Con `agente`, se usan su prompt, sus herramientas (cruzadas con las del rol) y su cerebro preferido.
     """
     msgs = limpiar(mensajes)
     ultimo_error = None
-    uid, ctx = memoria.uid_actual.get(), {}
+    permitidas = agentes.herramientas(agente, rol) if agente else None
+    uid, ctx = (uid if uid is not None else memoria.uid_actual.get()), {}
 
     def memoria_para(prov) -> dict:
         """Recuerdos del usuario para el prompt (nube: ~1 200 + ~900 caracteres; local: ≤ 300). Nunca rompe el chat."""
@@ -45,10 +48,18 @@ async def responder(mensajes: list, rol: str = "admin", quien: str | None = None
     for n_ronda in range(MAX_RONDAS):
         ultima = n_ronda == MAX_RONDAS - 1  # la última ronda va sin herramientas: obliga a responder
         llamadas, texto, hecha = [], "", False
-        for prov in cerebros.cadena():
+        cadena = cerebros.cadena()
+        if agente:
+            cadena = cerebros.con_preferido(cadena, agente.cerebro)
+        for prov in cadena:
             enviados, anunciado = False, False
+            de_agente = {}
+            if agente:
+                de_agente = {"herramientas": permitidas,
+                         "sistema": agentes.prompt(agente, prov.nube, quien, rol == "admin")}
             try:
-                async for ev in prov.ronda(msgs, con_tools=not ultima, rol=rol, nombre=quien, **memoria_para(prov)):
+                async for ev in prov.ronda(msgs, con_tools=not ultima, rol=rol, nombre=quien,
+                                           **de_agente, **memoria_para(prov)):
                     if ev["type"] in ("token", "pensando", "llamadas") and not anunciado:
                         anunciado = True
                         yield {"type": "cerebro", "id": prov.id, "nombre": prov.nombre,
@@ -85,25 +96,45 @@ async def responder(mensajes: list, rol: str = "admin", quien: str | None = None
                 except ValueError:
                     args = {}
             yield {"type": "herramienta", "name": nombre, "args": args}
-            res = await tools.ejecutar(nombre, args, rol)
+            res = await tools.ejecutar(nombre, args, rol, uid=uid, solo=permitidas)
             yield {"type": "resultado", "name": nombre, "text": res[:2000]}
             msgs.append({"role": "tool", "tool_name": nombre, "content": res})
     yield {"type": "error", "text": "Demasiadas llamadas a herramientas seguidas."}
 
 
-async def conversar(usuario: dict, cid: str | None, texto: str) -> AsyncIterator[dict]:
+async def elegir_agente(usuario: dict, conv_agente: str | None, texto: str) -> tuple:
+    """(agente, texto_sin_prefijo, motivo, aviso). Aplica el prefijo @agente, el de la conversación
+    o el enrutado automático de ARIA. Nunca devuelve un agente que el rol no pueda usar."""
+    rol = usuario["rol"]
+    pedido, limpio = agentes.separar_prefijo(texto)
+    aviso = None
+    if pedido:
+        if agentes.permitido(pedido, rol):
+            return agentes.obtener(pedido), limpio, "elegido con @", None
+        aviso = f"El agente «{agentes.obtener(pedido).nombre}» es solo para administradores; te responde ARIA."
+        return agentes.obtener(agentes.AUTO), limpio, "sin permiso", aviso
+    if conv_agente and conv_agente != agentes.AUTO and agentes.permitido(conv_agente, rol):
+        return agentes.obtener(conv_agente), texto, "elegido en la conversación", None
+    aid, motivo = await agentes.enrutar(texto, rol)
+    return agentes.obtener(aid), texto, motivo, None
+
+
+async def conversar(usuario: dict, cid: str | None, texto: str, agente: str | None = None) -> AsyncIterator[dict]:
     """Guarda el mensaje, responde en streaming y persiste la respuesta (aunque se aborte).
 
-    La conversación debe ser del usuario; si no lo es (o no existe) se crea una nueva."""
+    La conversación debe ser del usuario; si no lo es (o no existe) se crea una nueva.
+    `agente`: el del selector (se guarda en la conversación si el rol puede usarlo)."""
     texto = texto.strip()[:MAX_CHARS]
     uid = usuario["id"]
     if not cid or not db.existe(cid, uid):
         cid = db.crear(uid)
+    if agente is not None and (agente == agentes.AUTO or agentes.permitido(agente, usuario["rol"])):
+        db.fijar_agente(cid, uid, agente)
     if db.es_primer_mensaje(cid):
         db.renombrar(cid, uid, db.titulo_desde(texto))
     db.anadir(cid, "user", texto)
     conv = db.obtener(cid, uid)
-    yield {"type": "conv", "id": cid, "titulo": conv["titulo"]}
+    yield {"type": "conv", "id": cid, "titulo": conv["titulo"], "agente": conv.get("agente") or agentes.AUTO}
     memoria.uid_actual.set(uid)  # las herramientas de memoria y el contexto actúan sobre este usuario
     # Primer «hola» del día: en lugar de una respuesta normal, el resumen de buenos días (versión hablada).
     if briefing.es_saludo(texto) and not await asyncio.to_thread(briefing.saludado_hoy, uid):
@@ -114,16 +145,23 @@ async def conversar(usuario: dict, cid: str | None, texto: str) -> AsyncIterator
             hablado = None
         if hablado:
             etiqueta = "Resumen de buenos días"
-            db.anadir(cid, "assistant", hablado, etiqueta)
+            db.anadir(cid, "assistant", hablado, etiqueta, agentes.AUTO)
             await asyncio.to_thread(briefing.marcar_saludado, uid)
+            yield {"type": "agente", **agentes.obtener(agentes.AUTO).publico(), "motivo": "resumen"}
             yield {"type": "cerebro", "id": "briefing", "nombre": "ARIA", "modelo": "resumen", "etiqueta": etiqueta}
             yield {"type": "token", "text": hablado}
             yield {"type": "fin"}
             return
+    ag, limpio, motivo, aviso = await elegir_agente(usuario, conv.get("agente"), texto)
+    if aviso:
+        yield {"type": "aviso", "text": aviso}
+    yield {"type": "agente", **ag.publico(), "motivo": motivo}
     contexto = db.historial_modelo(cid, MAX_MENSAJES)
+    if limpio != texto and contexto and contexto[-1]["role"] == "user":
+        contexto[-1] = {"role": "user", "content": limpio}
     acumulado, pendiente, cerebro, toco_memoria = "", None, None, False
     try:
-        async for ev in responder(contexto, usuario["rol"], usuario["nombre"]):
+        async for ev in responder(contexto, usuario["rol"], usuario["nombre"], agente=ag, uid=uid):
             if ev["type"] == "cerebro":
                 cerebro = ev["etiqueta"]
             elif ev["type"] == "token":
@@ -132,7 +170,7 @@ async def conversar(usuario: dict, cid: str | None, texto: str) -> AsyncIterator
                 acumulado = ""
             elif ev["type"] == "herramienta":
                 if acumulado.strip():
-                    db.anadir(cid, "assistant", acumulado, cerebro)
+                    db.anadir(cid, "assistant", acumulado, cerebro, ag.id)
                 acumulado = ""
                 pendiente = (ev["name"], ev["args"])
                 toco_memoria = toco_memoria or ev["name"] in tools.MEMORIA
@@ -142,7 +180,7 @@ async def conversar(usuario: dict, cid: str | None, texto: str) -> AsyncIterator
     finally:
         # También se ejecuta si el cliente aborta (botón Detener): se conserva lo generado.
         if acumulado.strip():
-            db.anadir(cid, "assistant", acumulado, cerebro)
+            db.anadir(cid, "assistant", acumulado, cerebro, ag.id)
         # Aprendizaje automático: en segundo plano y solo con cerebros de la nube. No se aprende de peticiones
         # de recordar/olvidar (ya las atiende la herramienta; «olvida X» no debe volver a aprenderse).
         if not toco_memoria and not (tools.relevantes(texto) & tools.MEMORIA):

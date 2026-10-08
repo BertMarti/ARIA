@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import busqueda, config, control, enlaces, escaneo, finanzas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn
+from . import agenda, busqueda, config, control, enlaces, escaneo, finanzas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -57,6 +57,7 @@ SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador",
 MEMORIA = frozenset({"recordar", "olvidar"})
 # Recordatorios: todo rol, siempre los del usuario que habla.
 RECORDATORIOS = frozenset({"recordatorio", "mis_recordatorios", "borrar_recordatorio"})
+AGENDA = frozenset({"crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos"})
 # Rutinas (gestión desde el chat): todo rol, siempre las del usuario que habla.
 GESTION_RUTINAS = frozenset({"crear_rutina", "mis_rutinas", "borrar_rutina"})
 # Lo que puede usar una rutina programada: SOLO consultas (nada que cambie la casa, los datos ni la memoria,
@@ -79,7 +80,7 @@ def permitidas(rol: str) -> set:
         return set(_REGISTRO)
     if rol == "usuario":
         de_modulos = {n for n, i in _DE_MODULOS.items() if i["usuario"]}
-        return set(SOLO_LECTURA | MEMORIA | RECORDATORIOS | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
+    return set(SOLO_LECTURA | MEMORIA | RECORDATORIOS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
     return set()
 
 
@@ -110,6 +111,7 @@ _CUANDO = (r"\b(en \d+ ?(min\w*|h|horas?|d[ií]as?)|en (media|una) hora|dentro d
            r"esta (tarde|noche)|a las? \d|a mediod[ií]a|el (lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)|"
            r"todos los|cada (d[ií]a|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo))\b")
 _INTENCIONES = [
+    ((r"\b(agenda|calendario|evento|eventos|cita|cumplea[nñ]os|qué tengo|que tengo)\b",), set(AGENDA)),
     ((r"\b(tiempo|llover[aá]?|llueve|lluvia|calor|fr[ií]o|previsi[oó]n|nublado|soleado|tormenta|grados)\b",
       r"!\b(raspberry|cpu|procesador|cu[aá]nto tiempo|encendid[ao])\b"), {"tiempo"}),
     # (patrones que deben cumplirse TODOS, herramientas que se ofrecen)
@@ -444,6 +446,58 @@ async def olvidar(dato_o_id: str) -> str:
         return f"Encajan varios recuerdos ({lista}). Dime cuál olvidar (su número)."
     memoria.borrar(uid, hallados[0]["id"])
     return f"Olvidado: «{hallados[0]['texto']}»."
+
+
+@tool("crear_evento", "Crea un evento personal en la agenda.",
+      {"titulo": ("string", "Título del evento"), "cuando": ("string", "Fecha ISO o frase como mañana a las 10"),
+       "duracion_min": ("integer", "Duración en minutos, opcional"), "lugar": ("string", "Lugar opcional"),
+       "repeticion": ("string", "ninguna, semanal, mensual o anual"), "aviso_min": ("integer", "Minutos antes, opcional")},
+      ("titulo", "cuando"), usa_uid=True)
+async def crear_evento(uid, titulo, cuando, duracion_min=None, lugar="", repeticion="ninguna", aviso_min=None):
+    try:
+        inicio, rep = recordatorios.interpretar(cuando)
+        datos = {"titulo": titulo, "inicio": inicio.isoformat(), "lugar": lugar,
+                 "repeticion": rep or repeticion or "ninguna", "aviso_min": aviso_min}
+        if duracion_min:
+            datos["fin"] = (inicio + __import__("datetime").timedelta(minutes=int(duracion_min))).isoformat()
+        e = agenda.crear_evento(uid, datos)
+        return f"Evento creado: «{e['titulo']}» el {e['inicio']}."
+    except recordatorios.RecordatorioError as e:
+        return str(e)
+    except (agenda.AgendaError, ValueError) as e:
+        return str(e)
+
+
+@tool("mis_eventos", "Lista tus eventos de agenda en un rango.",
+      {"desde": ("string", "Inicio ISO opcional"), "hasta": ("string", "Final ISO opcional")}, usa_uid=True)
+async def mis_eventos(uid, desde=None, hasta=None):
+    hoy = __import__("datetime").date.today()
+    try:
+        eventos = agenda.listar_eventos(uid, desde or hoy.isoformat(), hasta or (hoy + __import__("datetime").timedelta(days=8)).isoformat())
+        return "\n".join(f"{e['id']}: {e['titulo']} ({e['inicio']})" for e in eventos) or "No tienes eventos en ese periodo."
+    except agenda.AgendaError as e: return str(e)
+
+
+@tool("borrar_evento", "Borra un evento propio de la agenda. Pide confirmación al usuario antes de hacerlo.",
+      {"id": ("integer", "Identificador del evento")}, ("id",), usa_uid=True)
+async def borrar_evento(uid, id):
+    return "Evento borrado." if agenda.borrar_evento(uid, int(id)) else "No encuentro ese evento."
+
+
+@tool("anadir_cumpleanos", "Añade un cumpleaños a tu agenda.",
+      {"nombre": ("string", "Nombre"), "dia": ("integer", "Día"), "mes": ("integer", "Mes"), "anio": ("integer", "Año opcional")},
+      ("nombre", "dia", "mes"), usa_uid=True)
+async def anadir_cumpleanos(uid, nombre, dia, mes, anio=None):
+    try: c = agenda.crear_cumple(uid, {"nombre": nombre, "dia": dia, "mes": mes, "anio": anio})
+    except agenda.AgendaError as e: return str(e)
+    return f"Cumpleaños añadido: {c['nombre']} ({c['dia']}/{c['mes']})."
+
+
+@tool("proximos_cumpleanos", "Lista los próximos cumpleaños personales.", {"dias": ("integer", "Días a consultar")}, usa_uid=True)
+async def proximos_cumpleanos(uid, dias=30):
+    try: cs = agenda.listar_cumpleanos(uid, dias)
+    except (agenda.AgendaError, ValueError) as e: return str(e)
+    return "\n".join(f"{c['nombre']}: {c['fecha']}" + (f" (cumple {c['edad']})" if c.get("edad") is not None else "") for c in cs) or "No hay cumpleaños próximos."
 
 
 # --- Finanzas (datos del usuario que chatea) ---------------------------------------------------------

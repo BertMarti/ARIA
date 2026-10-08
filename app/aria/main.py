@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agentes, api_avisos, api_control, api_finanzas, api_modulos, api_red, api_rutinas, arranque, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, finanzas, memoria, modelos, modulos, permisos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn
+from . import agenda, agentes, api_agenda, api_avisos, api_control, api_finanzas, api_modulos, api_red, api_rutinas, arranque, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, finanzas, memoria, modelos, modulos, permisos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -68,6 +68,7 @@ async def _arranque():
     # Avisos: tablas, chequeos, canales y planificador (recordatorios, resumen programado). Telegram con long polling.
     avisos.iniciar()
     recordatorios.iniciar()
+    agenda.iniciar()
     rutinas.iniciar()
     push.iniciar()
     telegram.iniciar()
@@ -243,6 +244,7 @@ app.include_router(api_red.router)
 app.include_router(api_control.router)
 app.include_router(api_avisos.router)
 app.include_router(api_rutinas.router)
+app.include_router(api_agenda.router)
 app.include_router(api_modulos.router)
 # Módulos de modulos/ (o ARIA_MODULOS_DIR): se cargan al importar para que sus rutas existan antes de servir.
 # Un módulo roto nunca impide arrancar (queda en «error» en Ajustes → Módulos).

@@ -88,6 +88,10 @@ RUTAS_USUARIO_RUTINAS = {
     ("DELETE", "/api/rutinas/{rid}"), ("POST", "/api/rutinas/{rid}/ejecutar"),
 }
 # Visión: confirmar o descartar el ticket propio leído de una foto (la propuesta está ligada al usuario).
+RUTAS_USUARIO_AGENDA = {
+    ("GET", "/api/agenda"), ("POST", "/api/agenda"), ("PATCH", "/api/agenda/{eid}"), ("DELETE", "/api/agenda/{eid}"),
+    ("GET", "/api/cumpleanos"), ("POST", "/api/cumpleanos"), ("PATCH", "/api/cumpleanos/{cid}"), ("DELETE", "/api/cumpleanos/{cid}"),
+}
 RUTAS_USUARIO_VISION = {("POST", "/api/vision/tickets/{token}"), ("DELETE", "/api/vision/tickets/{token}")}
 
 
@@ -114,7 +118,7 @@ def test_toda_ruta_registrada_esta_cubierta():
     for r in todas_las_rutas():
         ruta = r.path.replace("{cid}", "abc").replace("{uid}", "1").replace("{app_id}", "x") \
                      .replace("{accion}", "x").replace("{mid}", "1").replace("{rid}", "1").replace("{fecha}", "2026-10-06") \
-                     .replace("{aid}", "1").replace("{chat_id}", "1").replace("{sid}", "1").replace("{hid}", "1") \
+                     .replace("{aid}", "1").replace("{chat_id}", "1").replace("{sid}", "1").replace("{hid}", "1").replace("{eid}", "1") \
                      .replace("{token}", "a" * 24).replace("{n}", "1")
         for m in r.methods - {"HEAD", "OPTIONS"}:
             if permisos.permitido("usuario", m, ruta):
@@ -128,7 +132,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("GET", "/api/memoria"), ("POST", "/api/memoria"), ("POST", "/api/memoria/ajustes"),
                     ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
                     ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),
-                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION \
+                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION | RUTAS_USUARIO_AGENDA \
                   | RUTAS_USUARIO_MODULOS | permisos.rutas_modulos_usuario(), (m, r.path)
                 if r.path.startswith("/api/modulos/"):
                     # Las de módulos solo se abren si su registro las declara (siempre bajo /api/modulos/<id>/).
@@ -230,7 +234,8 @@ LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_
            "recordar", "olvidar",  # las de memoria las tiene todo rol, sobre sus propios datos
            "recordatorio", "mis_recordatorios", "borrar_recordatorio",  # y los recordatorios (los suyos)
            "resumir_enlace",  # leer una web pública (anti-SSRF en enlaces.py)
-           "crear_rutina", "mis_rutinas", "borrar_rutina"}  # y sus rutinas
+           "crear_rutina", "mis_rutinas", "borrar_rutina",  # y sus rutinas
+           "crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos"}  # y su agenda
 
 
 def test_herramientas_de_solo_lectura():

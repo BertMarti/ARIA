@@ -45,9 +45,10 @@ TIPOS = {
     "cerebros": ("Solo responde el cerebro local", True, True),
     "vpn_conexion": ("Un dispositivo se conecta a la VPN", True, False),
     "control": ("Control parental: un horario empieza o termina", True, True),
+    "agenda": ("Eventos y cumpleaños de tu agenda", False, True),
 }
 # Tipos que no se pueden silenciar con los interruptores (los pide el propio usuario).
-SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina"}
+SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina", "agenda"}
 
 
 @dataclass
@@ -435,6 +436,11 @@ async def tick(ahora: float | None = None) -> None:
     except Exception:  # noqa: BLE001
         log.exception("Falló el disparo de recordatorios")
     try:
+        from . import agenda
+        await agenda.disparar_avisos(ahora)
+    except Exception:  # noqa: BLE001
+        log.exception("Falló el disparo de agenda")
+    try:
         from . import rutinas
         await rutinas.disparar_vencidas(ahora)
     except Exception:  # noqa: BLE001
@@ -525,4 +531,3 @@ class Limitador:
             return False
         q.append(ahora)
         return True
-

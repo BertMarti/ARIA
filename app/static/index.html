@@ -32,6 +32,20 @@
 </div>
 
 <main class="contenido">
+  <section id="v-hud" class="vista hud" hidden aria-label="Modo HUD">
+    <header class="hud-cab"><span class="hud-marca">ARIA <span>HUD</span></span><div class="hud-acciones"><button type="button" id="hud-pantalla" class="fantasma pequeno">Pantalla completa</button><button type="button" id="hud-salir" class="fantasma pequeno">Salir</button></div></header>
+    <div class="hud-rejilla">
+      <article class="hud-widget hud-hora"><time id="hud-hora"></time><span id="hud-fecha"></span></article>
+      <article id="hud-tiempo" class="hud-widget"><h2>Tiempo de hoy</h2><p class="hud-valor"></p></article>
+      <article id="hud-avisos" class="hud-widget"><h2>Avisos</h2><p class="hud-valor"></p></article>
+      <article id="hud-recordatorio" class="hud-widget"><h2>Próximo recordatorio</h2><p class="hud-valor"></p></article>
+      <article id="hud-sistema" class="hud-widget hud-admin" hidden><h2>Sistema</h2><p class="hud-valor"></p></article>
+      <article id="hud-vpn" class="hud-widget hud-admin" hidden><h2>VPN conectados</h2><p class="hud-valor"></p></article>
+      <article id="hud-shield" class="hud-widget hud-admin" hidden><h2>Anuncios bloqueados hoy</h2><p class="hud-valor"></p></article>
+      <div class="hud-orbe-zona"><canvas id="hud-orbe" aria-label="Estado visual de ARIA"></canvas><p id="hud-subtitulo" class="hud-subtitulo" aria-live="polite"></p></div>
+    </div>
+    <form id="hud-form" class="hud-entrada"><input id="hud-texto" maxlength="2000" placeholder="Habla con ARIA…" aria-label="Pregunta para ARIA"><button id="hud-mic" type="button" class="primario mic" aria-label="Mantén pulsado para hablar"><svg class="svg-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button type="submit" class="primario">Enviar</button><button type="button" id="hud-manos" class="fantasma" aria-pressed="false">Manos libres</button></form>
+  </section>
   <!-- CAMPANA DE AVISOS -->
   <div class="campana-zona">
     <button type="button" id="campana" class="campana" aria-label="Avisos" aria-expanded="false" aria-controls="avisos-panel">
@@ -74,6 +88,7 @@
 
     <h2>Aplicaciones</h2>
     <div class="lanzador" id="lanzador">
+      <article class="app-tile"><a class="tile-enlace" href="#hud"><span class="tile-ico" aria-hidden="true">H</span><strong>Modo HUD</strong><span class="muted">La presencia visual de ARIA</span></a></article>
       <article class="app-tile" id="tile-chat">
         <a class="tile-enlace" href="#chat"><span class="tile-ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span><strong>Chat con ARIA</strong><span class="muted" id="tile-chat-info">Tu asistente local</span></a>
         <span class="punto ok tile-punto" title="Disponible"></span>
@@ -551,6 +566,7 @@
 <script src="/static/rutinas.js"></script>
 <script src="/static/paleta.js"></script>
 <script src="/static/compartir.js"></script>
+<script src="/static/hud.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

@@ -160,6 +160,7 @@ const Chat = (() => {
   }
   let pensandoNodo = null;
   function pensando(en) {
+    window.dispatchEvent(new CustomEvent("aria:estado", { detail: { estado: en ? "pensando" : "reposo" } }));
     if (en && !pensandoNodo) { pensandoNodo = el("div", { class: "msg aviso pensando" }, "pensando…"); caja().append(pensandoNodo); abajo(); }
     else if (!en && pensandoNodo) { pensandoNodo.remove(); pensandoNodo = null; }
   }
@@ -271,7 +272,8 @@ const Chat = (() => {
         } else if (ev.type === "token") {
           pensando(false);
           if (!burbuja) { burbuja = addMsg("bot", "", etiqueta, agente); }
-          acumulado += ev.text; todo += ev.text; burbuja.actualizar(acumulado); abajo();
+           acumulado += ev.text; todo += ev.text; burbuja.actualizar(acumulado); abajo();
+           window.dispatchEvent(new CustomEvent("aria:hud-texto", { detail: { texto: todo } }));
         } else if (ev.type === "herramienta") {
           pensando(false); burbuja = null; acumulado = ""; todo += "\n";
           ultimoArgs = ev.args; ultimoChip = chip(ev.name, ev.args); if (BUSQUEDA.has(ev.name)) ultimoChip.classList.add("buscando"); caja().append(ultimoChip); abajo();

@@ -126,6 +126,16 @@
 - Pi-hole identifica clientes por IP (no ve las MAC en Docker): ARIA guarda la clave del inventario y resuelve la IP al aplicar; si cambia, mueve el cliente. `red._sincronizar` renombra también las tablas `control_*` cuando una `ip-x` pasa a tener MAC.
 - FastAPI reciente envuelve los routers incluidos en `_IncludedRouter`: `test_toda_ruta_registrada_esta_cubierta` ahora recorre también esas rutas (antes no veía las de los `api_*.py`).
 
+## Decisiones de módulos (2026-10-08)
+- Módulos = carpetas `modulos/<id>/` con `modulo.json` + `modulo.py` opcional (`registrar(aria)` con el SDK de `sdk.py`). Código Python de confianza, sin sandbox: la documentación lo avisa.
+- Se cargan al importar `main.py` (no en el arranque) para que sus rutas existan antes de servir y las vea `test_toda_ruta_registrada_esta_cubierta`. El SDK solo apunta; `modulos._aplicar` registra todo junto y `Modulo.retirar()` lo deshace (fallo a medias o pruebas).
+- `aria.router()` devuelve un `APIRouter(prefix="/api/modulos/<id>")` creado por el SDK: con FastAPI 0.142 un `include_router(prefix=...)` deja las rutas del `_IncludedRouter` sin prefijo y la prueba de rutas no las vería. Sin WebSocket (el middleware no los cubre).
+- Herramientas de módulos: `solo_lectura` → se añaden a `tools.RUTINAS`; `roles` con `usuario` → `tools._DE_MODULOS[...]["usuario"]`; sin agente `aria` → especialista. Intención obligatoria (como en el núcleo).
+- Chequeos: un tipo de aviso `modulo_<id>` por módulo en `avisos.TIPOS` (interruptor en Ajustes → Avisos), claves `modulo:<id>:<nombre>`.
+- Falta una variable de `env` → «sin configurar» y el código no se ejecuta. `ARIA_MODULOS` vacío = todos (para que `uptime`, sin configuración, funcione de serie).
+- `uptime` usa `enlaces.comprobar` (nuevo; mismas protecciones anti-SSRF, sin leer el cuerpo): no sirve para servicios de casa a propósito; para eso está `salud` en el manifiesto.
+- SHIELD-DNS y HEIMDALL: solo una ficha informativa (`modulos.INTEGRADOS`); su código y sus mosaicos no se tocaron.
+
 ## Mapa de puertos
 | Proyecto | Puertos |
 |---|---|
@@ -148,6 +158,7 @@
 - RAM observada (Pi de 8 GB con escritorio y otros contenedores): con el modelo cargado, ~5,8 GiB usados y ~2,1 GiB disponibles (antes de cargar: ~3,5 GiB usados).
 
 ## Registro de cambios
+- **2026-10-08 · módulos**: sistema de módulos enchufables (`modulos/`, SDK `sdk.py`, cargador aislado, `GET /api/modulos`, mosaicos en Inicio con salud, Ajustes → Módulos, integradas SHIELD-DNS/HEIMDALL), ejemplo `uptime` y plantilla. Guía en `docs/MODULOS.md`. Rama `feat/modulos`; sin desplegar.
 - **2026-10-08 · rutinas y «ARIA en todas partes»**: rutinas de IA programadas (Ajustes → Rutinas, chat, `/rutinas`, Ctrl+K), herramienta `resumir_enlace` con descarga anti-SSRF, botón «Resumir» en Telegram, `/red` y `/bloqueo`, paleta de órdenes Ctrl+K y «Compartir con ARIA» (Web Share Target). 731 pruebas sin red.
 - **2026-10-08 · visión**: fotos en el chat web (botón, pegar, arrastrar) y en Telegram; tickets → Finanzas con confirmación; Gemini → Groq, nunca el local; imagen solo en memoria y sin metadatos. 668 pruebas sin red. Pendiente: probar con el bot de Telegram real y un móvil.
 - **2026-10-08 · control parental**: pausar internet, bloquear servicios y horarios por dispositivo (Red, agente Redes, Telegram `/control`), aviso al empezar/terminar un horario. Solo DNS (ver decisiones). 698 pruebas sin red (Pi-hole falso). Rama `feat/control`; sin desplegar.

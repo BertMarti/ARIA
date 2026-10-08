@@ -81,6 +81,9 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 - Telegram: `/rutinas`, `/red`, `/bloqueo` (alias de `/anuncios`), botón «Resumir» si el mensaje es solo un enlace. `COMANDOS` se registra con `setMyCommands` en `preparar`.
 - Web: `static/rutinas.js` (Ajustes → Rutinas), `static/paleta.js` (Ctrl+K, `<dialog>` + combobox/listbox con `aria-activedescendant`), `static/compartir.js` + `share_target` (GET a `/` con title/text/url; se borra la consulta de la barra con `history.replaceState`).
 
+## Módulos (2026-10-08)
+Extensiones en `modulos/<id>/` (montada `:ro` en `/srv/modulos`) con el SDK `app/aria/sdk.py`; cargador `modulos.py` (aislado: un módulo roto queda en «error»). Ver `docs/MODULOS.md` y la sección «Módulos» de AGENTS.md. Las rutas de módulos son de admin salvo las declaradas para `usuario` (`permisos.permitir_modulo`).
+
 ## Añadir una herramienta
 Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`, se añaden sus palabras clave a `_INTENCIONES` (si no, el modelo no la recibe) y una prueba en `app/tests/test_tools.py`. Las herramientas destructivas (borrar) no se exponen al modelo.
 

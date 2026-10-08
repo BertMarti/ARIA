@@ -180,6 +180,8 @@ Se configuran en `.env` (todas opcionales; si faltan, la tarjeta aparece como «
 | `VPN_URL` | wg-easy de HEIMDALL (por defecto `https://<ARIA_LAN_IP>:51843`, certificado autofirmado) |
 | `VPN_USER`, `VPN_PASSWORD` | Credenciales de administración (`WG_ADMIN_USER`, `WG_ADMIN_PASSWORD` en `../HEIMDALL/.env`) |
 
+¿Quieres enchufar tu propia aplicación o función? Mira [docs/MODULOS.md](docs/MODULOS.md) (módulos en `modulos/`).
+
 `install.sh` las rellena solo si están vacías y existen `../SHIELD-DNS/.env` y `../HEIMDALL/.env` (se leen con `grep`, nunca se ejecutan). Tras editar `.env`: `docker compose up -d`.
 
 Seguridad: las claves privadas de WireGuard nunca llegan al navegador salvo el `.conf` que tú descargas expresamente. **Aviso:** los botones «Copiar contraseña» de Inicio entregan la contraseña de Pi-hole y de wg-easy a cualquier persona que haya iniciado sesión en ARIA (solo mediante una petición autenticada y sin caché; no van en el HTML). Protege bien la contraseña de ARIA.

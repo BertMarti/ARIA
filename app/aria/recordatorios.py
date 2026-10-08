@@ -373,7 +373,7 @@ def _avanzar(r: dict, ahora: float) -> None:
 
 async def disparar_vencidos(ahora: float | None = None) -> list:
     """Lo llama el planificador: avisa de los recordatorios vencidos y programa la siguiente repetición."""
-    ahora = ahora or time.time()
+    ahora = time.time() if ahora is None else ahora
     hechos = []
     for r in await asyncio.to_thread(vencidos, ahora):
         await asyncio.to_thread(_avanzar, r, ahora)  # primero: si la entrega falla, no se repite en bucle

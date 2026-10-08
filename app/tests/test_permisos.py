@@ -67,6 +67,14 @@ RUTAS_USUARIO_AGENTES = {
     ("PATCH", "/api/finanzas/movimientos/{mid}"), ("DELETE", "/api/finanzas/movimientos/{mid}"),
     ("DELETE", "/api/finanzas/reglas/{rid}"),
 }
+# Avisos, recordatorios, Telegram y push: los dos roles, cada uno lo suyo.
+RUTAS_USUARIO_AVISOS = {
+    ("GET", "/api/avisos"), ("POST", "/api/avisos/leidos"), ("POST", "/api/avisos/{aid}/leido"),
+    ("GET", "/api/avisos/ajustes"), ("POST", "/api/avisos/ajustes"), ("POST", "/api/avisos/probar"),
+    ("GET", "/api/recordatorios"), ("POST", "/api/recordatorios"), ("DELETE", "/api/recordatorios/{rid}"),
+    ("POST", "/api/telegram/vincular"), ("DELETE", "/api/telegram/chats/{chat_id}"),
+    ("POST", "/api/push/suscripciones"), ("DELETE", "/api/push/suscripciones/{sid}"), ("POST", "/api/push/prueba"),
+}
 
 
 def test_toda_ruta_registrada_esta_cubierta():
@@ -77,7 +85,8 @@ def test_toda_ruta_registrada_esta_cubierta():
         if not isinstance(r, APIRoute):
             continue
         ruta = r.path.replace("{cid}", "abc").replace("{uid}", "1").replace("{app_id}", "x") \
-                     .replace("{accion}", "x").replace("{mid}", "1").replace("{rid}", "1").replace("{fecha}", "2026-10-06")
+                     .replace("{accion}", "x").replace("{mid}", "1").replace("{rid}", "1").replace("{fecha}", "2026-10-06") \
+                     .replace("{aid}", "1").replace("{chat_id}", "1").replace("{sid}", "1")
         for m in r.methods - {"HEAD", "OPTIONS"}:
             if permisos.permitido("usuario", m, ruta):
                 assert (m, r.path) in {
@@ -90,7 +99,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("GET", "/api/memoria"), ("POST", "/api/memoria"), ("POST", "/api/memoria/ajustes"),
                     ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
                     ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),
-                } | RUTAS_USUARIO_AGENTES, (m, r.path)
+                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS, (m, r.path)
     assert not permisos.permitido("desconocido", "GET", "/")
 
 
@@ -181,7 +190,8 @@ def test_migracion_conserva_el_hash_y_la_version(tmp_path, monkeypatch):
 # --- Herramientas del chat ---
 LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "estado_sistema", "buscar_en_netflix",
            "buscar_en_internet", "noticias", "tiempo",
-           "recordar", "olvidar"}  # las de memoria las tiene todo rol, sobre sus propios datos
+           "recordar", "olvidar",  # las de memoria las tiene todo rol, sobre sus propios datos
+           "recordatorio", "mis_recordatorios", "borrar_recordatorio"}  # y los recordatorios (los suyos)
 
 
 def test_herramientas_de_solo_lectura():

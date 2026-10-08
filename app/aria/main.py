@@ -16,16 +16,17 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agentes, api_finanzas, api_red, auth, briefing, cerebros, chat, config, cve, db, diario, finanzas, memoria, modelos, permisos, red, services, shield, sistema, spotify, sso, tiempo, usuarios, voz, vpn
+from . import agentes, api_avisos, api_finanzas, api_red, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, cve, db, diario, finanzas, memoria, modelos, permisos, push, recordatorios, red, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, voz, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
 # Rutas accesibles sin sesion.
 LIBRES = {"/health", "/internal/tls-ask", "/static/style.css", "/static/login.js",
-          "/static/manifest.webmanifest", "/static/icon.svg"}
+          "/static/manifest.webmanifest", "/static/icon.svg", "/sw.js"}
 PUBLICAS = LIBRES | {"/login"}
-CSP = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'"
+CSP = ("default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; worker-src 'self'; "
+       "frame-ancestors 'none'")
 # El micrófono solo para ARIA (ni iframes ni otros orígenes); cámara y ubicación, para nadie.
 PERMISOS_NAVEGADOR = "microphone=(self), camera=(), geolocation=()"
 mimetypes.add_type("application/manifest+json", ".webmanifest")
@@ -63,13 +64,24 @@ async def _arranque():
     cve.iniciar()
     # Diario: planificador interno (03:30 locales + recuperación de días perdidos). Sin contenedor nuevo.
     app.state.diario = asyncio.create_task(diario.bucle())
+    # Avisos: tablas, chequeos, canales y planificador (recordatorios, resumen programado). Telegram con long polling.
+    avisos.iniciar()
+    recordatorios.iniciar()
+    push.iniciar()
+    telegram.iniciar()
+    avisos_chequeos.registrar()
+    avisos.registrar_canal("push", push.canal)
+    avisos.registrar_canal("telegram", telegram.canal)
+    app.state.avisos = asyncio.create_task(avisos.bucle())
+    app.state.telegram = asyncio.create_task(telegram.bucle()) if telegram.configurado() else None
 
 
 @app.on_event("shutdown")
 async def _parada():
-    tarea = getattr(app.state, "diario", None)
-    if tarea:
-        tarea.cancel()
+    for nombre in ("diario", "avisos", "telegram"):
+        tarea = getattr(app.state, nombre, None)
+        if tarea:
+            tarea.cancel()
     await shield.cerrar()  # Pi-hole limita las sesiones de API: se libera la nuestra
 
 
@@ -222,6 +234,17 @@ async def index():
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
 app.include_router(api_finanzas.router)
 app.include_router(api_red.router)
+app.include_router(api_avisos.router)
+
+
+@app.get("/sw.js")
+async def service_worker():
+    """Service worker de las notificaciones push. Se sirve desde la raíz (alcance «/») y lleva la versión
+    de los estáticos para que el navegador lo actualice. No guarda nada en caché."""
+    if "sw" not in _PAGINAS:
+        _PAGINAS["sw"] = (config.STATIC_DIR / "sw.js").read_text(encoding="utf-8").replace("__VERSION__", _VERSION_ESTATICOS)
+    return Response(_PAGINAS["sw"], media_type="text/javascript",
+                    headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
 
 
 # --- API ---

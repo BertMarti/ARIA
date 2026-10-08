@@ -102,6 +102,27 @@ def sintetizar(texto: str, velocidad: float) -> bytes:
     return buf.getvalue()
 
 
+def wav_a_ogg(wav: bytes) -> bytes:
+    """WAV PCM16 mono -> OGG/Opus (nota de voz de Telegram). PyAV ya viene con faster-whisper."""
+    import av
+    import numpy as np
+    with wave.open(io.BytesIO(wav)) as w:
+        sr, canales, pcm = w.getframerate(), w.getnchannels(), w.readframes(w.getnframes())
+    muestras = np.frombuffer(pcm, dtype=np.int16).reshape(1, -1)
+    salida = io.BytesIO()
+    with av.open(salida, "w", format="ogg") as cont:
+        flujo = cont.add_stream("libopus", rate=48000)
+        flujo.bit_rate = 32000
+        flujo.layout = "mono"
+        trama = av.AudioFrame.from_ndarray(muestras, format="s16", layout="mono" if canales == 1 else "stereo")
+        trama.sample_rate = sr
+        for paquete in flujo.encode(trama):
+            cont.mux(paquete)
+        for paquete in flujo.encode(None):
+            cont.mux(paquete)
+    return salida.getvalue()
+
+
 # --- Palabra de activación «Aria» (Vosk con gramática cerrada) ------------------------------
 # Vosk solo puede elegir entre estas palabras. Además de «aria» hay palabras «señuelo» que
 # suenan parecido (María, Ariadna, varias, amplia...) y palabras cortas frecuentes: así lo que
@@ -280,6 +301,11 @@ async def tts(request: Request):
     if not isinstance(vel, (int, float)) or isinstance(vel, bool) or not 0.5 <= vel <= 2.0:
         vel = 1.0
     wav = await asyncio.to_thread(sintetizar, texto.strip(), float(vel))
+    if isinstance(d, dict) and d.get("formato") == "ogg":  # notas de voz de Telegram (OGG/Opus)
+        try:
+            return Response(await asyncio.to_thread(wav_a_ogg, wav), media_type="audio/ogg")
+        except Exception:  # noqa: BLE001 - si falla la conversión, se devuelve el WAV
+            log.exception("No se pudo convertir a OGG/Opus")
     return Response(wav, media_type="audio/wav")
 
 

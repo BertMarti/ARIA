@@ -327,7 +327,7 @@ async def procesar(c: Chequeo, problemas: list | None, ahora: float | None = Non
     """Aplica deduplicación, confirmaciones, cooldown y «todo en orden». Devuelve los textos emitidos."""
     if problemas is None:
         return []
-    ahora = ahora or time.time()
+    ahora = time.time() if ahora is None else ahora
     emitidos: list = []
     destinatarios = None if c.solo_admin else [u["id"] for u in await asyncio.to_thread(_usuarios_activos)]
     activos = {p.clave: p for p in problemas}
@@ -359,7 +359,7 @@ async def procesar(c: Chequeo, problemas: list | None, ahora: float | None = Non
             enviar = fila is None
         elif fila is None or not fila["activo"]:
             enviar = fila is None or fila["ultimo_envio"] is None or ahora - fila["ultimo_envio"] >= c.cooldown_s
-        elif c.repetir_s and fila["ultimo_envio"] and ahora - fila["ultimo_envio"] >= c.repetir_s:
+        elif c.repetir_s and fila["ultimo_envio"] is not None and ahora - fila["ultimo_envio"] >= c.repetir_s:
             enviar = True
 
         def guardar(con, k=clave, p=p, enviar=enviar, fila=fila):
@@ -420,7 +420,7 @@ async def tick(ahora: float | None = None) -> None:
     """Una vuelta del planificador: chequeos que tocan, recordatorios vencidos y resumen de buenos días."""
     global _ultimo_purgado
     from . import recordatorios
-    ahora = ahora or time.time()
+    ahora = time.time() if ahora is None else ahora
     for c in list(_CHEQUEOS.values()):
         if not c.activo or ahora - _ultima_ejecucion.get(c.id, 0) < c.intervalo_s:
             continue

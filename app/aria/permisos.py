@@ -42,6 +42,21 @@ _USUARIO = [
     ("DELETE", r"/api/memoria"),
     ("DELETE", r"/api/diario/\d{4}-\d{2}-\d{2}"),
     ("GET", r"/api/briefing"),
+    # Avisos, recordatorios, Telegram y push: cada usuario solo lo suyo (el id sale de la sesión).
+    ("GET", r"/api/avisos"),
+    ("POST", r"/api/avisos/leidos"),
+    ("POST", r"/api/avisos/\d+/leido"),
+    ("GET", r"/api/avisos/ajustes"),
+    ("POST", r"/api/avisos/ajustes"),
+    ("POST", r"/api/avisos/probar"),
+    ("GET", r"/api/recordatorios"),
+    ("POST", r"/api/recordatorios"),
+    ("DELETE", r"/api/recordatorios/\d+"),
+    ("POST", r"/api/telegram/vincular"),
+    ("DELETE", r"/api/telegram/chats/\d+"),
+    ("POST", r"/api/push/suscripciones"),
+    ("DELETE", r"/api/push/suscripciones/\d+"),
+    ("POST", r"/api/push/prueba"),
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 

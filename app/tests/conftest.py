@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pytest
 
-from aria import auth, cerebros, config, cve, db, finanzas, red, sso, usuarios
+from aria import auth, avisos, cerebros, config, cve, db, finanzas, push, recordatorios, red, sso, telegram, usuarios
 
 
 @pytest.fixture(autouse=True)
@@ -29,3 +29,8 @@ def entorno(tmp_path, monkeypatch):
     finanzas.iniciar()
     red.iniciar()
     cve.iniciar()
+    avisos.iniciar()
+    recordatorios.iniciar()
+    push.iniciar()
+    telegram.iniciar()
+    monkeypatch.setattr(push, "_claves", {})

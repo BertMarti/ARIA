@@ -28,7 +28,7 @@ https:// {
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
 		# «?»: solo si la app no la ha puesto ya (evita duplicarla)
-		?Permissions-Policy "microphone=(self), camera=(), geolocation=()"
+		?Permissions-Policy "microphone=(self), camera=(), geolocation=(self)"
 	}
 	# reverse_proxy también pasa los WebSocket (/api/voz/despertar, «manos libres»).
 	reverse_proxy app:8000 {

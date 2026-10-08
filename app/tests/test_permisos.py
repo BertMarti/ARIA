@@ -97,6 +97,8 @@ RUTAS_USUARIO_VISION = {("POST", "/api/vision/tickets/{token}"), ("DELETE", "/ap
 
 # Módulos: la lista (filtrada por rol en el servidor). Las rutas de cada módulo las abre su registro (permisos.py).
 RUTAS_USUARIO_MODULOS = {("GET", "/api/modulos")}
+# Mapas: consultas de solo lectura, disponibles para los dos roles.
+RUTAS_USUARIO_MAPAS = {("GET", "/api/mapa/buscar"), ("GET", "/api/mapa/ruta"), ("GET", "/api/mapa/cerca")}
 
 
 def todas_las_rutas() -> list:
@@ -132,8 +134,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("GET", "/api/memoria"), ("POST", "/api/memoria"), ("POST", "/api/memoria/ajustes"),
                     ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
                     ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),
-                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION | RUTAS_USUARIO_AGENDA \
-                  | RUTAS_USUARIO_MODULOS | permisos.rutas_modulos_usuario(), (m, r.path)
+                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION | RUTAS_USUARIO_AGENDA | RUTAS_USUARIO_MODULOS | RUTAS_USUARIO_MAPAS | permisos.rutas_modulos_usuario(), (m, r.path)
                 if r.path.startswith("/api/modulos/"):
                     # Las de módulos solo se abren si su registro las declara (siempre bajo /api/modulos/<id>/).
                     assert (m, r.path) in permisos.rutas_modulos_usuario(), (m, r.path)
@@ -235,7 +236,8 @@ LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_
            "recordatorio", "mis_recordatorios", "borrar_recordatorio",  # y los recordatorios (los suyos)
            "resumir_enlace",  # leer una web pública (anti-SSRF en enlaces.py)
            "crear_rutina", "mis_rutinas", "borrar_rutina",  # y sus rutinas
-           "crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos"}  # y su agenda
+           "crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos",  # y su agenda
+           "mapa_ir", "ruta", "sitios_cerca"}  # mapas (servicios públicos de OpenStreetMap)
 
 
 def test_herramientas_de_solo_lectura():

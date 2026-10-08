@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import agenda, busqueda, config, control, enlaces, escaneo, finanzas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn
+from . import agenda, busqueda, config, control, enlaces, escaneo, finanzas, mapas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -51,8 +51,8 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 
 # Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
 SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn",
-                          "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo",
-                          "resumir_enlace"})
+                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo",
+                           "resumir_enlace", "mapa_ir", "ruta", "sitios_cerca"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
 # Recordatorios: todo rol, siempre los del usuario que habla.
@@ -112,6 +112,9 @@ _CUANDO = (r"\b(en \d+ ?(min\w*|h|horas?|d[ií]as?)|en (media|una) hora|dentro d
            r"todos los|cada (d[ií]a|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo))\b")
 _INTENCIONES = [
     ((r"\b(agenda|calendario|evento|eventos|cita|cumplea[nñ]os|qué tengo|que tengo)\b",), set(AGENDA)),
+    ((r"\b(mapa|mapas|ubicaci[oó]n|sitios? cerca|farmacia|gasolinera|supermercado|restaurante|cajero)\b",),
+     {"mapa_ir", "sitios_cerca"}),
+    ((r"\b(ruta|c[oó]mo llego|cu[aá]nto se tarda|indicaciones|ir desde|llevarme)\b",), {"ruta"}),
     ((r"\b(tiempo|llover[aá]?|llueve|lluvia|calor|fr[ií]o|previsi[oó]n|nublado|soleado|tormenta|grados)\b",
       r"!\b(raspberry|cpu|procesador|cu[aá]nto tiempo|encendid[ao])\b"), {"tiempo"}),
     # (patrones que deben cumplirse TODOS, herramientas que se ofrecen)
@@ -356,6 +359,62 @@ async def tiempo(ciudad: str = "", **_ignorado) -> str:
              f"mínima {d['min']} °C, máxima {d['max']} °C, lluvia {d['lluvia']} %" for i, d in enumerate(p["dias"])]
     return (f"Previsión para {p['ciudad']} (usa SOLO estos días; si preguntan por un día que no aparece, dilo):\n"
             + "\n".join(filas))
+
+
+@tool("mapa_ir", "Abre el mapa centrado en un lugar. No realiza ninguna acción externa.",
+      {"lugar": ("string", "Lugar, dirección o coordenadas lat,lon (vacío = casa)")})
+async def mapa_ir(lugar: str = "") -> str:
+    try:
+        lat, lon, nombre = await mapas._resolver(lugar)
+        return f"Mapa centrado en {nombre}: {mapas._enlace(f'{lat},{lon}')}"
+    except mapas.MapasError as e:
+        return str(e)
+
+
+@tool("ruta", "Calcula una ruta y devuelve distancia, duración y un enlace para abrirla en el mapa.",
+      {"desde": ("string", "Origen, dirección o coordenadas"), "hasta": ("string", "Destino, dirección o coordenadas"),
+       "modo": ("string", "driving, foot o bike; por defecto driving")}, ("desde", "hasta"))
+async def ruta(desde: str, hasta: str, modo: str = "driving") -> str:
+    try:
+        if modo not in ("driving", "foot", "bike"):
+            return "El modo debe ser driving, foot o bike."
+        a, b = await asyncio.gather(mapas._resolver(mapas._texto(desde)), mapas._resolver(mapas._texto(hasta)))
+        datos = await mapas._get(f"{mapas.OSRM}/route/v1/{modo}/{a[1]},{a[0]};{b[1]},{b[0]}",
+                                 params={"overview": "false"})
+        r = (datos.get("routes") or [None])[0]
+        if not r:
+            return "No se ha encontrado una ruta entre esos lugares."
+        minutos = round(float(r.get("duration", 0)) / 60)
+        distancia = float(r.get("distance", 0))
+        enlace = f"#mapa?desde={quote(f'{a[0]},{a[1]}')}&hasta={quote(f'{b[0]},{b[1]}')}"
+        return (f"Ruta de {a[2]} a {b[2]}: {distancia / 1000:.1f} km, unos {minutos} minutos. "
+                f"Abrir en el mapa: {enlace}")
+    except mapas.MapasError as e:
+        return str(e)
+
+
+@tool("sitios_cerca", "Busca los cinco sitios más cercanos de una categoría y da su distancia.",
+      {"tipo": ("string", "farmacia, gasolinera, supermercado, restaurante o cajero"),
+       "lugar": ("string", "Centro de búsqueda opcional; por defecto casa")}, ("tipo",))
+async def sitios_cerca(tipo: str, lugar: str = "") -> str:
+    try:
+        if tipo not in mapas._TIPOS:
+            return "Tipo no permitido: farmacia, gasolinera, supermercado, restaurante o cajero."
+        lat, lon, nombre = await mapas._resolver(lugar)
+        filtro, _ = mapas._TIPOS[tipo]
+        datos = await mapas._get(mapas.OVERPASS, params={"data": f"[out:json][timeout:10];nwr[{filtro}](around:5000,{lat},{lon});out center;"})
+        sitios = []
+        for x in datos.get("elements", []) if isinstance(datos, dict) else []:
+            p = x.get("center", x)
+            if p.get("lat") and p.get("lon"):
+                d = round(mapas._distancia(lat, lon, float(p["lat"]), float(p["lon"])))
+                sitios.append(((x.get("tags") or {}).get("name") or "Sin nombre", d))
+        sitios.sort(key=lambda x: x[1])
+        if not sitios:
+            return f"No encuentro {tipo}s cerca de {nombre}."
+        return f"{tipo.capitalize()} cerca de {nombre}: " + "; ".join(f"{n} ({mapas._formato_distancia(d)})" for n, d in sitios[:5]) + "."
+    except mapas.MapasError as e:
+        return str(e)
 
 
 @tool("estado_sistema", "Estado de la Raspberry Pi: temperatura de la CPU, memoria RAM, disco, carga y tiempo encendida.")

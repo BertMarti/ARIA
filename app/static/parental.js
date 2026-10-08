@@ -3,6 +3,7 @@
 // Todo es DNS (SHIELD-DNS): el panel lo dice con claridad. El servidor decide y valida; esto solo pinta.
 const Parental = (() => {
   let datos = { servicios: [], dispositivos: [], protegidas: [], limitacion: "" };
+  const AVISO_DNS_PRIVADO = "Si el dispositivo tiene un servidor de DNS privado puesto a mano, se quedará sin internet hasta que lo cambie a «Automático».";
   let actual = null; // { clave, nombre, ip }
   const DIAS = ["L", "M", "X", "J", "V", "S", "D"];
 
@@ -64,8 +65,10 @@ const Parental = (() => {
       el("div", { class: "par-servicios" }, ...datos.servicios.map((s) => {
         const cb = el("input", { type: "checkbox", checked: manuales.has(s.id) });
         cb.addEventListener("change", () => llamar("/api/red/control/servicio", { clave: actual.clave, servicio: s.id, bloquear: cb.checked }));
-        return el("label", null, cb, s.nombre + (bloqueados.has(s.id) && !manuales.has(s.id) ? " (por horario)" : ""));
-      })));
+        return el("label", s.id === "dns-privado" ? { title: AVISO_DNS_PRIVADO } : null, cb,
+          s.nombre + (bloqueados.has(s.id) && !manuales.has(s.id) ? " (por horario)" : ""));
+      })),
+      el("p", { class: "muted par-aviso" }, "«DNS privado / DoH» obliga al dispositivo a usar el DNS de casa, así no se salta el bloqueador ni el control parental. " + AVISO_DNS_PRIVADO));
 
     const horarios = el("div", { class: "par-seccion" }, el("h3", null, "Horarios"),
       ...((e && e.horarios) || []).map((h) => el("div", { class: "par-horario" + (h.activo ? " activo" : "") },

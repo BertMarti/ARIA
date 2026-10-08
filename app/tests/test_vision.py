@@ -437,3 +437,11 @@ def test_telegram_limite_de_imagenes(monkeypatch, admin):
     asyncio.run(tg.procesar(foto(304, photo=FOTOS), b))
     asyncio.run(tg.procesar(foto(304, photo=FOTOS), b))
     assert b.mensajes()[-1]["text"].startswith("Demasiadas imágenes seguidas")
+
+
+def test_en_espera_por_cuota_avisa_de_la_cuota(monkeypatch, admin):
+    Falsos(monkeypatch, gemini=(429, ""), groq=(429, ""))
+    for _ in range(2):  # la segunda vez ambos están en espera y ni se llama a la red
+        with pytest.raises(vision.VisionError) as e:
+            asyncio.run(vision.analizar(JPEG, "image/jpeg", "", admin))
+        assert e.value.estado == 429

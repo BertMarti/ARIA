@@ -23,6 +23,9 @@ Varios usuarios con rol `admin` o `usuario` (`app/aria/usuarios.py`, `permisos.p
 ## Voz
 Contenedor `aria-voz` (`voz/`): faster-whisper (respaldo local), Piper (voz de ARIA) y Vosk (palabra «Aria»). La app (`app/aria/voz.py`) transcribe con Groq Whisper y, si falla, con `aria-voz`; el WebSocket `/api/voz/despertar` valida Origin, sesión y rol él mismo. Frontend en `app/static/voz.js` y `pcm-worklet.js`. Pruebas en `app/tests/test_voz.py` (sin red). El audio no se guarda nunca; la palabra de activación es «Aria».
 
+## Visión
+Imágenes en el chat (`/api/chat` con `imagen` en data URL) y en Telegram (fotos). Código en `app/aria/vision.py` (validación por bytes, ≤ 5 MB, limpieza de metadatos sin Pillow, Gemini → Groq; nunca el local) y `chat.conversar_imagen`. La imagen no se guarda nunca: el historial lleva «[imagen]». Los tickets se proponen y solo se apuntan al confirmar (`/api/vision/tickets/{token}` en la web, fichas `ticket` en Telegram) con `registrar_movimiento` y el uid de la sesión. Límite 6/min y 60/h por usuario. Pruebas sin red en `test_vision.py` (proveedores falsos, IDOR). No registres imágenes ni su texto.
+
 ## Memoria
 Recuerdos y diario por usuario (`memoria.py`, `aprender.py`, `diario.py`, `briefing.py`). Aprender y resumir van en segundo plano y solo con cerebros de la nube. Todo acceso filtra por el usuario de la sesión; añade pruebas de IDOR si tocas esos endpoints. Un endpoint nuevo para `usuario` debe entrar en `permisos.py` y en `test_toda_ruta_registrada_esta_cubierta`.
 

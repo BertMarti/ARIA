@@ -234,7 +234,8 @@ def _sistema(nombre: str, categorias: list, pide_apuntar: bool) -> str:
         "\"categoria\": \"Supermercado\"}\n```\n"
         "«total» es el importe final pagado en euros (número con punto decimal). «categoria» debe ser una de: "
         + ", ".join(categorias) + ". Si la fecha no se lee, usa null. Si no es un ticket, no añadas el bloque. "
-        "No digas que lo has apuntado: el usuario lo confirmará con un botón.")
+        "Tú NO apuntas nada: nunca digas «hecho», «apuntado» ni «registrado»; el usuario lo confirmará con un "
+        "botón debajo de tu respuesta.")
 
 
 _BLOQUE = re.compile(r"```\s*(?:ticket|json)?\s*(\{[^`]*?\})\s*```", re.S)
@@ -343,7 +344,8 @@ async def analizar(datos: bytes, mime: str, pregunta: str, usuario: dict, histor
         limpio, ticket = extraer_ticket(texto, uid)
         return {"texto": limpio or "No he sabido interpretar la imagen.", "ticket": ticket, "proveedor": p.id,
                 "modelo": p.modelo(), "etiqueta": p.etiqueta()}
-    if ultimo and ultimo.tipo == "cuota":
+    esperas = [cerebros.en_espera(p.espera_id) for p in orden()]
+    if (ultimo and ultimo.tipo == "cuota") or any(e and e[1] == "cuota" for e in esperas):
         raise VisionError(429, "He agotado por ahora el límite gratuito para ver imágenes. Prueba dentro de un rato.")
     raise VisionError(503, NO_DISPONIBLE)
 

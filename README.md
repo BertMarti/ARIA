@@ -137,6 +137,20 @@ Todo gratis: la transcripción usa la API gratuita de Whisper de Groq (con la mi
 
 **Límites**: subidas de hasta 1 MB (audio WebM/Ogg/WAV/MP4/MP3 comprobado por su cabecera), 12 transcripciones por minuto y 200 por hora por usuario (`ARIA_VOZ_STT_MINUTO`, `ARIA_VOZ_STT_HORA`), una escucha «manos libres» por usuario y dos en total.
 
+## Imágenes (visión)
+
+ARIA puede mirar una foto y responder sobre ella, en el chat web y en Telegram.
+
+- **Web**: botón de imagen junto a la caja de texto, o **pega** una captura (Ctrl+V) o **arrástrala** al chat. Antes de enviarla, el navegador la reduce (1600 px como máximo, JPEG) y la recodifica, lo que también quita los datos EXIF (ubicación GPS, cámara…). En tu mensaje se ve una miniatura. Puedes escribir una pregunta o enviarla sin texto («¿qué ves?»).
+- **Telegram**: manda una foto (o una imagen como archivo), con o sin pie de foto. Se responde en el mismo chat, con los permisos de tu usuario.
+- **Tickets → Finanzas**: si la foto es un ticket, una factura o un recibo (o pides «apúntalo»), ARIA lee comercio, fecha, total y categoría y **propone** apuntar el gasto. En la web sale una tarjeta con «Registrar gasto» / «Descartar»; en Telegram, botones «Registrar» / «Cancelar». Nada se apunta sin pulsar el botón, y siempre en tus finanzas (el usuario lo pone el servidor). La propuesta caduca a los 30 min en la web y a las 24 h en Telegram. Si algo se leyó mal, corrígelo después en Finanzas.
+
+**Cerebros con visión**: Google Gemini (`gemini-3.5-flash-lite`) y, de respaldo, Groq (`qwen/qwen3.8-27b`), con las mismas `GEMINI_API_KEY` y `GROQ_API_KEY` de los cerebros. El modelo local no ve imágenes: si no hay ninguno disponible, ARIA lo dice. Se cambian con `ARIA_VISION` (orden; `no` la apaga), `ARIA_MODELO_VISION_GEMINI` y `ARIA_MODELO_VISION_GROQ`.
+
+**Privacidad**: la imagen se envía a Google o a Groq (en el plan gratuito, Google puede usarla para mejorar sus productos). **La imagen no se guarda nunca** (ni en disco ni en la base de datos): en el historial queda «Imagen» con tu texto y la respuesta. Antes de enviarla, el servidor comprueba que es JPEG, PNG o WebP por sus bytes, que no pasa de 5 MB y le quita los metadatos (EXIF/GPS, XMP, IPTC, comentarios).
+
+**Límites**: 6 imágenes por minuto y 60 por hora por usuario (`ARIA_VISION_MINUTO`, `ARIA_VISION_HORA`). La cuota gratuita de Groq para visión es pequeña: se gasta en pocas fotos seguidas y entonces se espera a que se recupere.
+
 ### Limitación con Netflix
 
 Netflix **no tiene API pública**. ARIA no puede controlar su reproducción: solo genera un enlace `netflix.com/search?q=...` que tú abres.
@@ -213,7 +227,7 @@ Bot propio de ARIA, con *long polling* (sin webhook: no se abre nada nuevo a Int
 3. Comprueba: `docker compose exec app python -m aria.telegram --probar` (muestra el @usuario del bot).
 4. En **Ajustes → Avisos → Telegram**, «Vincular Telegram» da un código de 6 cifras (10 min, un solo uso) y un enlace `https://t.me/<bot>?start=<código>`. Ábrelo y pulsa Iniciar. Puedes vincular varios chats y desvincularlos.
 
-En el chat vinculado puedes escribir o mandar **notas de voz** (se transcriben y, si lo activas, ARIA también responde con voz). Pasa por el mismo chat que la web: agentes, memoria, herramientas y permisos de tu usuario; cada chat tiene su conversación («Telegram · …» en el historial) y `/nuevo` empieza otra. Comandos: `/estado`, `/resumen`, `/tiempo [ciudad]`, `/recordatorios`, `/gastos`, `/vpn`, `/anuncios` (con botones de pausa, solo admin), `/nuevovpn <nombre>` (admin: crea el dispositivo y manda el QR y el `.conf`, que contiene la clave privada), `/desvincular`, `/ayuda`. Las acciones de administración piden «Confirmar». Los chats no vinculados solo reciben «No te conozco…» y los grupos se ignoran.
+En el chat vinculado puedes escribir, mandar **fotos** (ver «Imágenes»; los tickets se pueden apuntar con un botón) o **notas de voz** (se transcriben y, si lo activas, ARIA también responde con voz). Pasa por el mismo chat que la web: agentes, memoria, herramientas y permisos de tu usuario; cada chat tiene su conversación («Telegram · …» en el historial) y `/nuevo` empieza otra. Comandos: `/estado`, `/resumen`, `/tiempo [ciudad]`, `/recordatorios`, `/gastos`, `/vpn`, `/anuncios` (con botones de pausa, solo admin), `/nuevovpn <nombre>` (admin: crea el dispositivo y manda el QR y el `.conf`, que contiene la clave privada), `/desvincular`, `/ayuda`. Las acciones de administración piden «Confirmar». Los chats no vinculados solo reciben «No te conozco…» y los grupos se ignoran.
 
 ## Notificaciones en el móvil
 

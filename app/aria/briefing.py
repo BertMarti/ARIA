@@ -16,7 +16,7 @@ from pathlib import Path
 
 import httpx
 
-from . import config, db, memoria, shield, sistema, tiempo, vpn
+from . import agenda, config, db, memoria, shield, sistema, tiempo, vpn
 
 log = logging.getLogger("aria.briefing")
 
@@ -237,6 +237,8 @@ async def construir(usuario: dict, ref: datetime | None = None) -> dict:
     anuncios, tmp, vpn_d = await asyncio.gather(_anuncios(ayer), _tiempo(), _vpn() if admin else asyncio.sleep(0))
     d_ayer = await asyncio.to_thread(memoria.dia, uid, ayer.isoformat())
     casa = {"anuncios": anuncios, "sistema": await asyncio.to_thread(_sistema)}
+    eventos = await asyncio.to_thread(agenda.listar_eventos, uid, hoy.isoformat(), (hoy + timedelta(days=1)).isoformat())
+    cumple = await asyncio.to_thread(agenda.listar_cumpleanos, uid, 7, ref)
     if admin:
         casa["vpn"] = vpn_d
         casa["copia"] = await asyncio.to_thread(ultima_copia)
@@ -245,7 +247,8 @@ async def construir(usuario: dict, ref: datetime | None = None) -> dict:
     return {"fecha": hoy.isoformat(), "fecha_texto": tiempo.texto_fecha(hoy),
             "saludo": f"{saludo}, {nombre}" if nombre else saludo,
             "ayer": {"fecha": d_ayer["fecha"], "resumen": d_ayer["resumen"]} if d_ayer else None,
-            "casa": casa, "recuerdos": await asyncio.to_thread(recuerdos_de_hoy, uid, hoy),
+            "casa": casa, "agenda": {"eventos": eventos, "cumpleanos": cumple},
+            "recuerdos": await asyncio.to_thread(recuerdos_de_hoy, uid, hoy),
             "tiempo": tmp, "generado": time.time()}
 
 
@@ -350,4 +353,9 @@ def texto_hablado(d: dict) -> str:
         partes.append("En casa: " + "; ".join(c) + ".")
     if d.get("recuerdos"):
         partes.append("Por cierto, recuerdo que " + d["recuerdos"][0].rstrip(".") + ".")
+    ag = d.get("agenda", {})
+    if ag.get("eventos"):
+        partes.append("Hoy en tu agenda: " + "; ".join(e["titulo"] for e in ag["eventos"]) + ".")
+    if ag.get("cumpleanos"):
+        partes.append("Próximos cumpleaños: " + "; ".join(c["nombre"] + (f", cumple {c['edad']} años" if c.get("edad") is not None else "") for c in ag["cumpleanos"]) + ".")
     return " ".join(partes)

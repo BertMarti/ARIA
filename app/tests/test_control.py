@@ -578,3 +578,16 @@ def test_telegram_ficha_de_control_revalida_el_rol(ph, ipad, admin, sin_limites)
     usuarios.actualizar(otro["id"], rol="usuario")
     correr(tg.procesar(_pulsar(300, f), bot))
     assert control.calcular_deseado()[ipad]["pausa"] and "administrador" in bot.ultimo("answerCallbackQuery")["text"]
+
+
+def test_dns_privado_bloquea_doh_y_no_el_resto():
+    """El «servicio» dns-privado corta los servidores de DNS cifrado (DoT/DoH) sin tocar dominios normales."""
+    import re
+    rx = re.compile(control.regex_servicio("dns-privado"))
+    for d in ("dns.adguard.com", "dns.google", "chrome.cloudflare-dns.com", "one.one.one.one", "mask.icloud.com",
+              "dns.quad9.net", "use-application-dns.net"):
+        assert rx.search(d), d
+    for d in ("google.com", "www.google.com", "adguard.com", "icloud.com", "cloudflare.com", "quad9.net",
+              "notdns.google.example"):
+        assert not rx.search(d), d
+    assert control.servicio_id("dns privado") == "dns-privado" and control.servicio_id("doh") == "dns-privado"

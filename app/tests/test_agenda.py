@@ -372,7 +372,7 @@ def test_agenda_en_intenciones_y_permisos():
     assert "proximos_cumpleanos" in tools.relevantes("¿qué cumpleaños tengo próximamente?")
 
 
-# --- Bugs conocidos de agenda.py (ver INFORME-PRUEBAS.md) ------------------------------------------------------
+# --- Casos límite de agenda.py ---
 def test_semanal_muy_antiguo_no_rompe_el_listado(ana):
     agenda.crear_evento(ana["id"], {"titulo": "Antigua", "inicio": "2010-01-04T18:00", "repeticion": "semanal"})
     assert len(agenda.listar_eventos(ana["id"], "2026-01-01", "2026-12-31")) == 52

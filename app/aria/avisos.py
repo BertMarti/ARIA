@@ -44,11 +44,14 @@ TIPOS = {
     "sistema": ("Raspberry: temperatura, disco o RAM", True, True),
     "cerebros": ("Solo responde el cerebro local", True, True),
     "vpn_conexion": ("Un dispositivo se conecta a la VPN", True, False),
+    "vpn_ubicacion": ("Conexión VPN desde un sitio nuevo", True, True),
     "control": ("Control parental: un horario empieza o termina", True, True),
     "informe_semanal": ("Informe semanal", True, True),
+    "telemetria": ("Picos de CPU, temperatura o contenedores", True, True),
+    "agenda": ("Eventos y cumpleaños de tu agenda", False, True),
 }
 # Tipos que no se pueden silenciar con los interruptores (los pide el propio usuario).
-SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina"}
+SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina", "agenda"}
 
 
 @dataclass
@@ -247,6 +250,14 @@ async def emitir(tipo: str, severidad: str, texto: str, enlace: str = "", destin
     buenos días). `canales_` limita los canales (por defecto los que el usuario tiene activos)."""
     if severidad not in SEVERIDADES:
         severidad = "aviso"
+    # El hook es deliberadamente después de validar el aviso y fuera de la entrega.
+    # Las acciones pasan `automatizacion=True` para no crear cascadas.
+    if not (extra or {}).get("automatizacion"):
+        try:
+            from . import automatizaciones
+            await automatizaciones.evento(tipo, {"tipo": tipo, "texto": texto, **(extra or {})})
+        except Exception:  # noqa: BLE001 - una regla rota no debe afectar a los avisos
+            log.exception("Falló el hook de automatizaciones")
     texto = " ".join(str(texto).split())[:MAX_TEXTO] if "\n" not in str(texto) else str(texto).strip()[:MAX_TEXTO * 3]
     if destinatarios is None:
         destinatarios = await asyncio.to_thread(admins)
@@ -385,7 +396,9 @@ async def procesar(c: Chequeo, problemas: list | None, ahora: float | None = Non
         await asyncio.to_thread(_sql, guardar)
         if enviar:
             emitidos.append(p.texto)
-            await emitir(c.tipo, p.severidad or c.severidad, p.texto, c.enlace, destinatarios)
+            await emitir(c.tipo, p.severidad or c.severidad, p.texto, c.enlace, destinatarios,
+                         extra={"dispositivo": p.clave if c.tipo in ("dispositivo_nuevo", "vpn_conexion") else None,
+                                "dispositivo_desconocido": c.tipo == "dispositivo_nuevo"})
 
     if not c.evento:
         # Claves que ya no están activas: se resuelven (y se avisa si se había avisado del problema).
@@ -445,10 +458,20 @@ async def tick(ahora: float | None = None) -> None:
     except Exception:  # noqa: BLE001
         log.exception("Falló el disparo de recordatorios")
     try:
+        from . import agenda
+        await agenda.disparar_avisos(ahora)
+    except Exception:  # noqa: BLE001
+        log.exception("Falló el disparo de agenda")
+    try:
         from . import rutinas
         await rutinas.disparar_vencidas(ahora)
     except Exception:  # noqa: BLE001
         log.exception("Falló el disparo de rutinas")
+    try:
+        from . import automatizaciones
+        await automatizaciones.tick(ahora)
+    except Exception:  # noqa: BLE001
+        log.exception("Falló el disparo de automatizaciones")
     try:
         await briefings_programados()
     except Exception:  # noqa: BLE001

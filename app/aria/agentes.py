@@ -40,12 +40,17 @@ _COMUN = ("Responde siempre en español de España, de forma breve y clara. Usa 
 
 _BASE_ARIA = frozenset({
     "fecha_hora", "estado_servicios", "estado_bloqueador", "pausar_bloqueador", "reanudar_bloqueador",
-    "dispositivos_vpn", "crear_dispositivo_vpn", "activar_dispositivo_vpn", "desactivar_dispositivo_vpn",
+    "dispositivos_vpn", "ubicaciones_vpn", "crear_dispositivo_vpn", "activar_dispositivo_vpn", "desactivar_dispositivo_vpn",
     "estado_sistema", "spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior",
     "spotify_actual", "spotify_buscar_y_reproducir", "buscar_en_netflix",
     "recordar", "olvidar", "buscar_en_internet", "noticias", "tiempo",
     "recordatorio", "mis_recordatorios", "borrar_recordatorio", "resumir_enlace",
-    "crear_rutina", "mis_rutinas", "borrar_rutina"})
+    "crear_rutina", "mis_rutinas", "borrar_rutina",
+    "mapa_ir", "ruta", "sitios_cerca",
+    "sistema_en_directo",
+    "crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos",
+    "crear_automatizacion", "mis_automatizaciones", "borrar_automatizacion",
+    "mapa_ir", "ruta", "sitios_cerca"})
 # Memoria personal y búsqueda web también para los especialistas (precios, avisos de seguridad, fabricantes...).
 _COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet", "resumir_enlace",
                       "recordatorio", "mis_recordatorios", "borrar_recordatorio"})
@@ -81,7 +86,7 @@ AGENTES: dict = {a.id: a for a in (
            "(«una hora» = 60). Es un bloqueo por DNS: dilo si preguntan, porque un dispositivo con DNS propio, DNS "
            "cifrado o VPN puede seguir con conexión. Nunca hay una acción para todos los dispositivos, ni se puede "
            "pausar el router ni la Raspberry.",
-           REDES_TOOLS | _COMUNES | {"estado_servicios", "estado_bloqueador", "dispositivos_vpn"},
+           REDES_TOOLS | _COMUNES | {"estado_servicios", "estado_bloqueador", "dispositivos_vpn", "ubicaciones_vpn"},
            palabras=(r"\bred(es)?\b", r"\blan\b", r"\bwi-?fi\b", r"\blatencia\b", r"\bping\b", r"\bvelocidad\b",
                       r"\bmbps\b", r"\binternet\b", r"\brouter\b", r"\b(estad[ií]stic\w*|cu[aá]nto navega|qu[eé] (consulta|bloquea))\b",
                       r"\bdispositivos? (de|en) (la )?(casa|red)\b",

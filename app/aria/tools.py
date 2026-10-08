@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn
+from . import agenda, busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, mapas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -51,12 +51,13 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 
 # Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
 SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn",
-                          "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo",
-                          "resumir_enlace"})
+                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo",
+                           "resumir_enlace", "mapa_ir", "ruta", "sitios_cerca"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
 # Recordatorios: todo rol, siempre los del usuario que habla.
 RECORDATORIOS = frozenset({"recordatorio", "mis_recordatorios", "borrar_recordatorio"})
+AGENDA = frozenset({"crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos"})
 # Rutinas (gestión desde el chat): todo rol, siempre las del usuario que habla.
 GESTION_RUTINAS = frozenset({"crear_rutina", "mis_rutinas", "borrar_rutina"})
 # Lo que puede usar una rutina programada: SOLO consultas (nada que cambie la casa, los datos ni la memoria,
@@ -79,7 +80,7 @@ def permitidas(rol: str) -> set:
         return set(_REGISTRO)
     if rol == "usuario":
         de_modulos = {n for n, i in _DE_MODULOS.items() if i["usuario"]}
-        return set(SOLO_LECTURA | MEMORIA | RECORDATORIOS | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
+    return set(SOLO_LECTURA | MEMORIA | RECORDATORIOS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
     return set()
 
 
@@ -110,6 +111,10 @@ _CUANDO = (r"\b(en \d+ ?(min\w*|h|horas?|d[ií]as?)|en (media|una) hora|dentro d
            r"esta (tarde|noche)|a las? \d|a mediod[ií]a|el (lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)|"
            r"todos los|cada (d[ií]a|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo))\b")
 _INTENCIONES = [
+    ((r"\b(agenda|calendario|evento|eventos|cita|cumplea[nñ]os|qué tengo|que tengo)\b",), set(AGENDA)),
+    ((r"\b(mapa|mapas|ubicaci[oó]n|sitios? cerca|farmacia|gasolinera|supermercado|restaurante|cajero)\b",),
+     {"mapa_ir", "sitios_cerca"}),
+    ((r"\b(ruta|c[oó]mo llego|cu[aá]nto se tarda|indicaciones|ir desde|llevarme)\b",), {"ruta"}),
     ((r"\b(tiempo|llover[aá]?|llueve|lluvia|calor|fr[ií]o|previsi[oó]n|nublado|soleado|tormenta|grados)\b",
       r"!\b(raspberry|cpu|procesador|cu[aá]nto tiempo|encendid[ao])\b"), {"tiempo"}),
     # (patrones que deben cumplirse TODOS, herramientas que se ofrecen)
@@ -125,8 +130,10 @@ _INTENCIONES = [
     ((_BLOQUEADOR, r"\b(reanud\w+|activ[ae]\w*|reactiv\w+|enciend\w+|encend\w+|conect[ae]\w*|vuelve\w*|contin[uú]\w+)\b"),
      {"reanudar_bloqueador"}),
     ((r"\b(vpn|wireguard|heimdall)\b",
-      r"\b(dispositivos?|conectad\w+|clientes?|cu[aá]nt\w+|hay|lista\w*|m[oó]viles?|tel[eé]fonos?|qui[eé]n\w*)\b"),
-     {"dispositivos_vpn"}),
+       r"\b(dispositivos?|conectad\w+|clientes?|cu[aá]nt\w+|hay|lista\w*|m[oó]viles?|tel[eé]fonos?|qui[eé]n\w*)\b"),
+      {"dispositivos_vpn"}),
+    ((r"\b(vpn|wireguard|heimdall)\b", r"\b(ubicaci[oó]n|d[oó]nde|desde qu[eé] sitio|conexiones)\b"),
+      {"ubicaciones_vpn"}),
     ((r"\b(vpn|wireguard|heimdall)\b",
       r"\b(a[ñn]ad\w*|cre[ao]\w*|nuev[oa]s?|agreg\w+|dar de alta|alta)\b", _EXPLICAR), {"crear_dispositivo_vpn"}),
     ((r"\b(vpn|wireguard|heimdall|dispositivos?)\b",
@@ -136,6 +143,7 @@ _INTENCIONES = [
     ((r"\b(temperatura|memoria|ram|cpu|disco|almacenamiento|espacio|sistema)\b",
       r"\b(libre|libres|queda\w*|usad\w+|ocupad\w+|tiene|estado|c[oó]mo|cu[aá]nt\w+|qu[eé])\b", _EXPLICAR),
      {"estado_sistema"}),
+    ((r"\b(en directo|telemetr[ií]a|contenedor(?:es)?|picos? de cpu)\b",), {"sistema_en_directo"}),
     ((r"\b(spotify|m[uú]sica|canci[oó]n|canciones|pon|ponme|reproduce|pausa|para la|siguiente|anterior|suena|sonando|artista|disco|[aá]lbum)\b",
       r"!" + _BLOQUEADOR, r"!\b(raspberry|ram|cpu|espacio|libre|temperatura)\b"),
      {"spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior", "spotify_actual",
@@ -359,6 +367,62 @@ async def tiempo(ciudad: str = "", **_ignorado) -> str:
             + "\n".join(filas))
 
 
+@tool("mapa_ir", "Abre el mapa centrado en un lugar. No realiza ninguna acción externa.",
+      {"lugar": ("string", "Lugar, dirección o coordenadas lat,lon (vacío = casa)")})
+async def mapa_ir(lugar: str = "") -> str:
+    try:
+        lat, lon, nombre = await mapas._resolver(lugar)
+        return f"Mapa centrado en {nombre}: {mapas._enlace(f'{lat},{lon}')}"
+    except mapas.MapasError as e:
+        return str(e)
+
+
+@tool("ruta", "Calcula una ruta y devuelve distancia, duración y un enlace para abrirla en el mapa.",
+      {"desde": ("string", "Origen, dirección o coordenadas"), "hasta": ("string", "Destino, dirección o coordenadas"),
+       "modo": ("string", "driving, foot o bike; por defecto driving")}, ("desde", "hasta"))
+async def ruta(desde: str, hasta: str, modo: str = "driving") -> str:
+    try:
+        if modo not in ("driving", "foot", "bike"):
+            return "El modo debe ser driving, foot o bike."
+        a, b = await asyncio.gather(mapas._resolver(mapas._texto(desde)), mapas._resolver(mapas._texto(hasta)))
+        datos = await mapas._get(f"{mapas.OSRM}/route/v1/{modo}/{a[1]},{a[0]};{b[1]},{b[0]}",
+                                 params={"overview": "false"})
+        r = (datos.get("routes") or [None])[0]
+        if not r:
+            return "No se ha encontrado una ruta entre esos lugares."
+        minutos = round(float(r.get("duration", 0)) / 60)
+        distancia = float(r.get("distance", 0))
+        enlace = f"#mapa?desde={quote(f'{a[0]},{a[1]}')}&hasta={quote(f'{b[0]},{b[1]}')}"
+        return (f"Ruta de {a[2]} a {b[2]}: {distancia / 1000:.1f} km, unos {minutos} minutos. "
+                f"Abrir en el mapa: {enlace}")
+    except mapas.MapasError as e:
+        return str(e)
+
+
+@tool("sitios_cerca", "Busca los cinco sitios más cercanos de una categoría y da su distancia.",
+      {"tipo": ("string", "farmacia, gasolinera, supermercado, restaurante o cajero"),
+       "lugar": ("string", "Centro de búsqueda opcional; por defecto casa")}, ("tipo",))
+async def sitios_cerca(tipo: str, lugar: str = "") -> str:
+    try:
+        if tipo not in mapas._TIPOS:
+            return "Tipo no permitido: farmacia, gasolinera, supermercado, restaurante o cajero."
+        lat, lon, nombre = await mapas._resolver(lugar)
+        filtro, _ = mapas._TIPOS[tipo]
+        datos = await mapas._get(mapas.OVERPASS, params={"data": f"[out:json][timeout:10];nwr[{filtro}](around:5000,{lat},{lon});out center;"})
+        sitios = []
+        for x in datos.get("elements", []) if isinstance(datos, dict) else []:
+            p = x.get("center", x)
+            if p.get("lat") and p.get("lon"):
+                d = round(mapas._distancia(lat, lon, float(p["lat"]), float(p["lon"])))
+                sitios.append(((x.get("tags") or {}).get("name") or "Sin nombre", d))
+        sitios.sort(key=lambda x: x[1])
+        if not sitios:
+            return f"No encuentro {tipo}s cerca de {nombre}."
+        return f"{tipo.capitalize()} cerca de {nombre}: " + "; ".join(f"{n} ({mapas._formato_distancia(d)})" for n, d in sitios[:5]) + "."
+    except mapas.MapasError as e:
+        return str(e)
+
+
 @tool("estado_sistema", "Estado de la Raspberry Pi: temperatura de la CPU, memoria RAM, disco, carga y tiempo encendida.")
 async def estado_sistema() -> str:
     e = sistema.estado()
@@ -378,18 +442,41 @@ async def estado_sistema() -> str:
     return ". ".join(out) + "."
 
 
+@tool("sistema_en_directo", "Consulta la telemetría reciente de la Raspberry y sus contenedores. Solo lectura.")
+async def sistema_en_directo() -> str:
+    from . import telemetria
+    try:
+        return await asyncio.to_thread(telemetria.texto)
+    except RuntimeError as e:
+        return str(e)
+
+
 @tool("crear_dispositivo_vpn",
       "Crea un dispositivo nuevo (móvil, portátil...) en la VPN HEIMDALL. No devuelve claves: el usuario escanea el QR en la web.",
-      {"nombre": ("string", "Nombre del dispositivo (letras sin tilde, números, espacios y - _ .; máximo 32)")}, ("nombre",))
-async def crear_dispositivo_vpn(nombre: str) -> str:
+     {"nombre": ("string", "Nombre del dispositivo (letras sin tilde, números, espacios y - _ .; máximo 32)")}, ("nombre",))
+async def crear_dispositivo_vpn(nombre: str, caduca: str = "") -> str:
     nombre = str(nombre).strip()
     if not vpn.nombre_valido(nombre):
         return "Nombre no válido: usa letras sin tilde, números, espacios y - _ . (máximo 32 caracteres)."
     if any(c["nombre"].lower() == nombre.lower() for c in await vpn.listar()):
         return f"Ya existe un dispositivo llamado «{nombre}» en la VPN."
-    cid = await vpn.crear(nombre)
+    cid = await vpn.crear(nombre, caduca or None)
     return (f"Dispositivo «{nombre}» creado (id {cid}). Para conectarlo, abre Centro de control → HEIMDALL "
             "y pulsa «QR» en ese dispositivo para escanearlo con la app WireGuard.")
+
+
+@tool("ubicaciones_vpn", "Consulta las últimas ubicaciones conocidas de los dispositivos VPN (solo lectura).",
+      {"dispositivo": ("string", "Nombre o id del dispositivo; vacío = todos")})
+async def ubicaciones_vpn(dispositivo: str = "") -> str:
+    clientes = await vpn.listar()
+    texto = str(dispositivo).strip().lower()
+    if texto:
+        clientes = [c for c in clientes if str(c["id"]) == texto or c["nombre"].lower() == texto]
+    filas = []
+    for c in clientes:
+        hs = vpn_ubicaciones.historial(c["id"], 10)
+        filas.append(c["nombre"] + ": " + ("; ".join(f"{x['ciudad']}, {x['pais']} ({x['operador']})" for x in hs) or "sin ubicaciones aprendidas"))
+    return "\n".join(filas) or "No encuentro ese dispositivo VPN."
 
 
 async def _cambiar_dispositivo(nombre: str, activo: bool) -> str:
@@ -447,6 +534,58 @@ async def olvidar(dato_o_id: str) -> str:
         return f"Encajan varios recuerdos ({lista}). Dime cuál olvidar (su número)."
     memoria.borrar(uid, hallados[0]["id"])
     return f"Olvidado: «{hallados[0]['texto']}»."
+
+
+@tool("crear_evento", "Crea un evento personal en la agenda.",
+      {"titulo": ("string", "Título del evento"), "cuando": ("string", "Fecha ISO o frase como mañana a las 10"),
+       "duracion_min": ("integer", "Duración en minutos, opcional"), "lugar": ("string", "Lugar opcional"),
+       "repeticion": ("string", "ninguna, semanal, mensual o anual"), "aviso_min": ("integer", "Minutos antes, opcional")},
+      ("titulo", "cuando"), usa_uid=True)
+async def crear_evento(uid, titulo, cuando, duracion_min=None, lugar="", repeticion="ninguna", aviso_min=None):
+    try:
+        inicio, rep = recordatorios.interpretar(cuando)
+        datos = {"titulo": titulo, "inicio": inicio.isoformat(), "lugar": lugar,
+                 "repeticion": rep or repeticion or "ninguna", "aviso_min": aviso_min}
+        if duracion_min:
+            datos["fin"] = (inicio + __import__("datetime").timedelta(minutes=int(duracion_min))).isoformat()
+        e = agenda.crear_evento(uid, datos)
+        return f"Evento creado: «{e['titulo']}» el {e['inicio']}."
+    except recordatorios.RecordatorioError as e:
+        return str(e)
+    except (agenda.AgendaError, ValueError) as e:
+        return str(e)
+
+
+@tool("mis_eventos", "Lista tus eventos de agenda en un rango.",
+      {"desde": ("string", "Inicio ISO opcional"), "hasta": ("string", "Final ISO opcional")}, usa_uid=True)
+async def mis_eventos(uid, desde=None, hasta=None):
+    hoy = __import__("datetime").date.today()
+    try:
+        eventos = agenda.listar_eventos(uid, desde or hoy.isoformat(), hasta or (hoy + __import__("datetime").timedelta(days=8)).isoformat())
+        return "\n".join(f"{e['id']}: {e['titulo']} ({e['inicio']})" for e in eventos) or "No tienes eventos en ese periodo."
+    except agenda.AgendaError as e: return str(e)
+
+
+@tool("borrar_evento", "Borra un evento propio de la agenda. Pide confirmación al usuario antes de hacerlo.",
+      {"id": ("integer", "Identificador del evento")}, ("id",), usa_uid=True)
+async def borrar_evento(uid, id):
+    return "Evento borrado." if agenda.borrar_evento(uid, int(id)) else "No encuentro ese evento."
+
+
+@tool("anadir_cumpleanos", "Añade un cumpleaños a tu agenda.",
+      {"nombre": ("string", "Nombre"), "dia": ("integer", "Día"), "mes": ("integer", "Mes"), "anio": ("integer", "Año opcional")},
+      ("nombre", "dia", "mes"), usa_uid=True)
+async def anadir_cumpleanos(uid, nombre, dia, mes, anio=None):
+    try: c = agenda.crear_cumple(uid, {"nombre": nombre, "dia": dia, "mes": mes, "anio": anio})
+    except agenda.AgendaError as e: return str(e)
+    return f"Cumpleaños añadido: {c['nombre']} ({c['dia']}/{c['mes']})."
+
+
+@tool("proximos_cumpleanos", "Lista los próximos cumpleaños personales.", {"dias": ("integer", "Días a consultar")}, usa_uid=True)
+async def proximos_cumpleanos(uid, dias=30):
+    try: cs = agenda.listar_cumpleanos(uid, dias)
+    except (agenda.AgendaError, ValueError) as e: return str(e)
+    return "\n".join(f"{c['nombre']}: {c['fecha']}" + (f" (cumple {c['edad']})" if c.get("edad") is not None else "") for c in cs) or "No hay cumpleaños próximos."
 
 
 # --- Finanzas (datos del usuario que chatea) ---------------------------------------------------------
@@ -893,12 +1032,35 @@ async def borrar_rutina(uid, id_o_nombre) -> str:
     return f"Rutina borrada: «{hallados[0]['nombre']}»."
 
 
+@tool("crear_automatizacion", "Propone una automatización y espera confirmación explícita antes de crearla.",
+      {"nombre": ("string", "Nombre de la regla"), "disparador": ("string", "Evento, hora o umbral en lenguaje natural"),
+       "accion": ("string", "Acción segura que se ejecutará")}, ("nombre", "disparador", "accion"))
+async def crear_automatizacion(nombre, disparador, accion) -> str:
+    return (f"Propongo la automatización «{nombre}»: cuando {disparador}, entonces {accion}. "
+            "Confírmala en Ajustes → Automatizaciones o responde «confirmo» para que ARIA la cree.")
+
+
+@tool("mis_automatizaciones", "Lista las automatizaciones del usuario administrador.", usa_uid=True)
+async def mis_automatizaciones(uid) -> str:
+    rs = await asyncio.to_thread(automatizaciones.listar, uid)
+    return "No tienes automatizaciones." if not rs else "; ".join(f"{r['id']}: {r['nombre']}" for r in rs) + "."
+
+
+@tool("borrar_automatizacion", "Solicita confirmación antes de borrar una automatización.",
+      {"id": ("integer", "Número de la automatización")}, ("id",))
+async def borrar_automatizacion(id) -> str:
+    return f"Confirma en Ajustes → Automatizaciones que quieres borrar la automatización {id}."
+
+
 _INTENCIONES += [
     ((r"https?://",), {"resumir_enlace"}),
     ((r"\brutinas?\b", r"\b(crea\w*|nueva|programa\w*|a[ñn]ade\w*|haz\w*|hazme|pon\w*|configura\w*)\b",
       r"!\b(borra\w*|quita\w*|elimina\w*)\b"), {"crear_rutina"}),
     ((r"\brutinas?\b", r"\b(mis|qu[eé]|cu[aá]les|tengo|lista\w*|ver)\b", r"!\b(crea\w*|nueva)\b"), {"mis_rutinas"}),
     ((r"\brutinas?\b", r"\b(borra\w*|quita\w*|elimina\w*|cancela\w*)\b"), {"borrar_rutina", "mis_rutinas"}),
+    ((r"\b(automatizaci[oó]n|regla)\b", r"\b(crea\w*|programa\w*|cuando|si)\b"), {"crear_automatizacion"}),
+    ((r"\b(automatizaciones?|reglas)\b", r"\b(mis|lista\w*|cu[aá]les|ver)\b"), {"mis_automatizaciones"}),
+    ((r"\b(automatizaci[oó]n|regla)\b", r"\b(borra\w*|elimina\w*|quita\w*)\b"), {"borrar_automatizacion", "mis_automatizaciones"}),
 ]
 
 

@@ -60,14 +60,26 @@ _USUARIO = [
     ("POST", r"/api/push/suscripciones"),
     ("DELETE", r"/api/push/suscripciones/\d+"),
     ("POST", r"/api/push/prueba"),
+    ("GET", r"/api/agenda"),
+    ("POST", r"/api/agenda"),
+    ("PATCH", r"/api/agenda/\d+"),
+    ("DELETE", r"/api/agenda/\d+"),
+    ("GET", r"/api/cumpleanos"),
+    ("POST", r"/api/cumpleanos"),
+    ("PATCH", r"/api/cumpleanos/\d+"),
+    ("DELETE", r"/api/cumpleanos/\d+"),
     # Rutinas: cada usuario solo las suyas (el id sale de la sesión; las ajenas dan 404).
     ("GET", r"/api/rutinas"),
     ("POST", r"/api/rutinas"),
     ("PATCH", r"/api/rutinas/\d+"),
     ("DELETE", r"/api/rutinas/\d+"),
     ("POST", r"/api/rutinas/\d+/ejecutar"),
+    # Automatizaciones: siempre de administrador; se comprueban además en el servidor.
     # Módulos: la lista se filtra por rol en el servidor (un usuario solo ve los suyos y sin detalles).
     ("GET", r"/api/modulos"),
+    # Mapas: intermediario de solo lectura para los dos roles.
+    ("GET", r"/api/mapa/(buscar|ruta|cerca)"),
+    # Sistema en directo y reinicio: nunca se abren al rol usuario.
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 

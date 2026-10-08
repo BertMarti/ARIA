@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import busqueda, config, control, enlaces, escaneo, finanzas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn
+from . import busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, memoria, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -196,6 +196,9 @@ def registrar_errores(*clases) -> None:
     """Otros módulos añaden sus excepciones «legibles» (mensaje en español para el modelo)."""
     global _ERRORES_LEGIBLES
     _ERRORES_LEGIBLES = tuple(dict.fromkeys(_ERRORES_LEGIBLES + clases))
+
+
+registrar_errores(estadisticas.EstadisticasError)
 
 
 async def ejecutar(nombre: str, args: dict | None, rol: str = "admin", uid: int | None = None,
@@ -634,8 +637,28 @@ async def bloqueos_por_cliente() -> str:
     return " | ".join(f"{c['cliente']}: {c['bloqueadas']} bloqueadas; " + ", ".join(
         f"{d['dominio']} ({d['veces']}, {d['tipo']})" for d in c["dominios"]) for c in b)
 
+
+@tool("estadisticas_dispositivo", "Estadísticas DNS de un dispositivo: consultas, bloqueos, serie temporal y dominios más consultados.",
+      {"dispositivo": ("string", "Alias, IP o MAC del dispositivo (opcional)"),
+       "horas": ("integer", "24 o 168 horas")}, especialista=True)
+async def estadisticas_dispositivo(dispositivo=None, horas=24) -> str:
+    if dispositivo:
+        await red.dispositivos()
+        clave = await asyncio.to_thread(red.buscar_clave, dispositivo)
+        if not clave:
+            return "No encuentro ese dispositivo en el inventario."
+        d = await estadisticas.detalle(clave, horas)
+        top = ", ".join(f"{x['dominio']} ({x['veces']})" for x in d["bloqueados"]) or "ninguno"
+        return f"{d['nombre']} ({d['ip']}): dominios bloqueados: {top}."
+    r = await estadisticas.resumen(horas)
+    return (f"En las últimas {r['horas']} horas: {r['totales']['consultas']} consultas, "
+            f"{r['totales']['bloqueadas']} bloqueadas ({r['totales']['porcentaje']} %). "
+            + "; ".join(f"{x['nombre']}: {x['consultas']} consultas" for x in r["dispositivos"][:10]) + ".")
+
 # Palabras clave para el cerebro local (los de la nube reciben todas las del agente).
 _INTENCIONES += [
+    ((r"\b(estad[ií]stic\w*|qu[eé] consulta|cu[aá]nto navega|qu[eé] bloquea|consultas por dispositivo)\b",),
+     {"estadisticas_dispositivo"}),
     ((r"\b(gast\w*|pagu[eé]|pagado|compr[eé])\b", r"\b(apunta|anota|registra|a[ñn]ade|he gastado|pagu[eé])\b"),
      {"registrar_movimiento"}),
     ((r"\b(ingres\w*|cobr\w*|n[oó]mina)\b", r"\b(apunta|anota|registra|a[ñn]ade)\b"), {"registrar_movimiento"}),

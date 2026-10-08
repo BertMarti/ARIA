@@ -45,6 +45,7 @@ TIPOS = {
     "cerebros": ("Solo responde el cerebro local", True, True),
     "vpn_conexion": ("Un dispositivo se conecta a la VPN", True, False),
     "control": ("Control parental: un horario empieza o termina", True, True),
+    "informe_semanal": ("Informe semanal", True, True),
 }
 # Tipos que no se pueden silenciar con los interruptores (los pide el propio usuario).
 SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina"}
@@ -125,6 +126,7 @@ def ajustes_defecto() -> dict:
             "silencio": {"activo": True, "desde": "23:00", "hasta": "08:00"},
             "canales": {"telegram": True, "push": True},
             "briefing": {"activo": True, "hora": "08:00", "canal": "telegram"},
+            "informe": {"activo": True, "dia": 6, "hora": "20:00", "canal": "telegram"},
             "voz_telegram": False}
 
 
@@ -158,6 +160,14 @@ def normalizar_ajustes(d) -> dict:
     base["briefing"]["hora"] = _hhmm(b.get("hora"), base["briefing"]["hora"])
     if b.get("canal") in ("telegram", "push", "ambos"):
         base["briefing"]["canal"] = b["canal"]
+    i = d.get("informe") if isinstance(d.get("informe"), dict) else {}
+    if isinstance(i.get("activo"), bool):
+        base["informe"]["activo"] = i["activo"]
+    if isinstance(i.get("dia"), int) and not isinstance(i["dia"], bool) and 0 <= i["dia"] <= 6:
+        base["informe"]["dia"] = i["dia"]
+    base["informe"]["hora"] = _hhmm(i.get("hora"), base["informe"]["hora"])
+    if i.get("canal") in ("telegram", "push", "ambos"):
+        base["informe"]["canal"] = i["canal"]
     if isinstance(d.get("voz_telegram"), bool):
         base["voz_telegram"] = d["voz_telegram"]
     return base
@@ -443,6 +453,10 @@ async def tick(ahora: float | None = None) -> None:
         await briefings_programados()
     except Exception:  # noqa: BLE001
         log.exception("Falló el resumen de buenos días programado")
+    try:
+        await informes_semanales_programados()
+    except Exception:  # noqa: BLE001
+        log.exception("Falló el informe semanal programado")
     if ahora - _ultimo_purgado > 86400:
         _ultimo_purgado = ahora
         await asyncio.to_thread(purgar)
@@ -510,6 +524,39 @@ async def briefings_programados(ref: datetime | None = None) -> list:
     return enviados
 
 
+async def informes_semanales_programados(ref: datetime | None = None) -> list:
+    """Envía una vez por semana el informe configurado por cada administrador."""
+    from . import estadisticas
+    ref = (ref.astimezone(tiempo.zona()) if ref else tiempo.ahora())
+    enviados = []
+    iso = ref.isocalendar()
+    semana = f"{iso.year}-W{iso.week:02d}"
+    for u in await asyncio.to_thread(_usuarios_activos):
+        if u["rol"] != "admin":
+            continue
+        a = await asyncio.to_thread(ajustes, u["id"])
+        i = a["informe"]
+        hh, mm = map(int, i["hora"].split(":"))
+        if not i["activo"] or ref.weekday() != i["dia"] or (ref.hour, ref.minute) < (hh, mm):
+            continue
+        clave = f"informe_semanal:{u['id']}:{semana}"
+        if await asyncio.to_thread(_ya_enviado, clave):
+            continue
+        canales_ = ["telegram", "push"] if i["canal"] == "ambos" else [i["canal"]]
+        canales_ = [c for c in canales_ if c in _CANALES]
+        if not canales_:
+            continue
+        await asyncio.to_thread(_anotar_enviado, clave)
+        try:
+            texto = await estadisticas.construir_informe_semanal(ref.timestamp())
+            await emitir("informe_semanal", "info", texto, "red", [u["id"]], ignorar_silencio=True,
+                          canales_=canales_)
+            enviados.append(u["id"])
+        except Exception:  # noqa: BLE001
+            log.exception("No se pudo preparar el informe semanal")
+    return enviados
+
+
 # --- Limitador sencillo (ventana deslizante en memoria) --------------------------------------------------------
 class Limitador:
     def __init__(self, n: int, ventana: float, reloj=time.monotonic):
@@ -525,4 +572,3 @@ class Limitador:
             return False
         q.append(ahora)
         return True
-

@@ -53,6 +53,7 @@ _COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet",
 FINANZAS_TOOLS = frozenset({"registrar_movimiento", "resumen_mes", "gastos_por_categoria", "comparar_meses",
                             "presupuesto", "estado_presupuestos", "buscar_movimientos"})
 REDES_TOOLS = frozenset({"estado_red", "dispositivos_red", "dispositivos_nuevos", "marcar_dispositivo_conocido",
+                         "estadisticas_dispositivo",
                          "medir_latencia", "test_velocidad", "pausar_internet", "reanudar_internet",
                          "bloquear_servicio", "desbloquear_servicio", "estado_control"})
 SEGURIDAD_TOOLS = frozenset({"informe_seguridad", "escanear_red", "estado_escaneo", "bloqueos_por_cliente"})
@@ -82,7 +83,8 @@ AGENTES: dict = {a.id: a for a in (
            "pausar el router ni la Raspberry.",
            REDES_TOOLS | _COMUNES | {"estado_servicios", "estado_bloqueador", "dispositivos_vpn"},
            palabras=(r"\bred(es)?\b", r"\blan\b", r"\bwi-?fi\b", r"\blatencia\b", r"\bping\b", r"\bvelocidad\b",
-                     r"\bmbps\b", r"\binternet\b", r"\brouter\b", r"\bdispositivos? (de|en) (la )?(casa|red)\b",
+                      r"\bmbps\b", r"\binternet\b", r"\brouter\b", r"\b(estad[ií]stic\w*|cu[aá]nto navega|qu[eé] (consulta|bloquea))\b",
+                      r"\bdispositivos? (de|en) (la )?(casa|red)\b",
                      r"\bconectad\w+ a la red\b", r"\bdispositivos? nuevos?\b", r"\bfibra\b", r"\bip\b", r"\bcontrol parental\b", r"\bsin internet\b",
                      r"\b(paus\w+|cort\w+|bloque\w+|desbloque\w+|reanud\w+)\b.{0,40}\b(internet|wi-?fi|ipad|tablet|"
                      r"m[oó]vil|switch|fire ?tv|consola|tele|tiktok|youtube|instagram|fortnite|roblox|twitch|netflix)\b")),

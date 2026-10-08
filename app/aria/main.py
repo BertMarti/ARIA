@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agentes, api_avisos, api_control, api_finanzas, api_modulos, api_red, api_rutinas, arranque, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, finanzas, memoria, modelos, modulos, permisos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn
+from . import agentes, api_avisos, api_control, api_finanzas, api_modulos, api_red, api_rutinas, arranque, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, estadisticas, finanzas, memoria, modelos, modulos, permisos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)

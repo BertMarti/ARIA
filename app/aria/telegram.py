@@ -42,7 +42,8 @@ COMANDOS = [
     ("estado", "Resumen de la casa"), ("resumen", "Resumen de buenos días"), ("tiempo", "Previsión del tiempo"),
     ("recordatorios", "Tus recordatorios"), ("rutinas", "Tus rutinas programadas"), ("gastos", "Gastos de este mes"),
     ("red", "Salud de la red y dispositivos nuevos"), ("vpn", "Dispositivos de la VPN"),
-    ("bloqueo", "Bloqueador de anuncios (SHIELD)"), ("nuevovpn", "Nuevo dispositivo VPN (admin)"),
+    ("bloqueo", "Bloqueador de anuncios (SHIELD)"), ("informe", "Informe semanal (admin)"),
+    ("nuevovpn", "Nuevo dispositivo VPN (admin)"),
     ("control", "Control parental: dispositivos pausados o bloqueados (admin)"),
     ("nuevo", "Empezar otra conversación"), ("desvincular", "Desvincular este chat"), ("ayuda", "Ayuda"),
 ]
@@ -564,7 +565,7 @@ def _ayuda(admin: bool) -> str:
     lineas = ["Escríbeme, mándame una nota de voz o una foto (por ejemplo, de un ticket) y te respondo como en la web. "
               "Comandos:"]
     for c, d in COMANDOS:
-        if c in ("nuevovpn", "control") and not admin:
+        if c in ("nuevovpn", "control", "informe") and not admin:
             continue
         lineas.append(f"/{c} — {d}")
     return "\n".join(lineas)
@@ -626,6 +627,15 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
         await _anuncios(b, chat_id, u)
     elif cmd == "red":
         await enviar(await texto_red(u))
+    elif cmd == "informe":
+        if not admin:
+            await enviar("Eso solo lo puede hacer un administrador.")
+            return
+        from . import estadisticas
+        try:
+            await enviar(await estadisticas.construir_informe_semanal())
+        except Exception:
+            await enviar("No he podido preparar el informe semanal ahora mismo.")
     elif cmd == "rutinas":
         await _rutinas(b, chat_id, u)
     elif cmd == "control":

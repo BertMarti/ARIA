@@ -87,6 +87,13 @@ body.app { display: grid; grid-template-columns: var(--nav-w) 1fr; height: 100dv
 .barra-valor { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--acento-2), var(--acento)); transition: width .4s; }
 .barra-valor.aviso { background: linear-gradient(90deg, #f59e0b, var(--warn)); }
 .barra-valor.mal { background: linear-gradient(90deg, #ef4444, var(--mal)); }
+.tarjeta-cab { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.tarjeta-cab h2 { margin: 0; }
+.clicable { cursor: pointer; }
+.barra-mini { height: 5px; min-width: 70px; margin-top: .35rem; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+.barra-mini span { display: block; height: 100%; background: var(--warn); }
+.g-barra { fill: var(--acento); }
+.red-detalle { border-top: 1px solid var(--borde); margin-top: 1rem; padding-top: 1rem; }
 .top-lista { list-style: none; margin: 0 0 .5rem; padding: 0; display: grid; gap: .25rem; }
 .top-lista li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .8rem; font-size: .9rem; }
 .dominio { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-family: var(--mono); font-size: .82rem; }

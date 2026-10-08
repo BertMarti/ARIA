@@ -6,6 +6,7 @@ const Voz = (() => {
   const MIN_GRAB_MS = 400;
   const MANTENER_MS = 350;   // pulsación más larga que esto = «mantener para hablar»
   let ctx = null;            // AudioContext para reproducir (se desbloquea con el primer gesto)
+  const emitir = (estado, nivel) => window.dispatchEvent(new CustomEvent("aria:estado", { detail: { estado, ...(nivel == null ? {} : { nivel }) } }));
 
   function audioCtx() {
     if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -100,6 +101,12 @@ const Voz = (() => {
       const rec = new MediaRecorder(stream, tipo ? { mimeType: tipo, audioBitsPerSecond: 32000 } : {});
       const trozos = [];
       g = { rec, stream, inicio: Date.now(), trozos };
+      emitir("escuchando", 0);
+      try {
+        const c = audioCtx(), analizador = c.createAnalyser(); analizador.fftSize = 256;
+        const fuenteMic = c.createMediaStreamSource(stream), datos = new Uint8Array(analizador.fftSize); fuenteMic.connect(analizador);
+        g.fuenteMic = fuenteMic; g.nivel = setInterval(() => { analizador.getByteTimeDomainData(datos); let s = 0; for (const v of datos) s += (v - 128) ** 2; emitir("escuchando", Math.min(1, Math.sqrt(s / datos.length) / 48)); }, 80);
+      } catch (_) { /* sin medidor */ }
       rec.ondataavailable = (e) => { if (e.data && e.data.size) trozos.push(e.data); };
       rec.start(250);
       const tic = () => { if (!g) return; const s = Math.floor((Date.now() - g.inicio) / 1000); reloj = "0:" + String(s).padStart(2, "0"); poner("grabando", "Grabando 0:" + String(s).padStart(2, "0") + " · suelta o pulsa para enviar"); };
@@ -110,22 +117,22 @@ const Voz = (() => {
       if (!g) return;
       const { rec, stream, inicio, trozos } = g;
       const nombreMic = (stream.getAudioTracks()[0] || {}).label || "";
-      clearInterval(g.reloj); clearTimeout(g.limite); g = null;
+      clearInterval(g.reloj); clearInterval(g.nivel); if (g.fuenteMic) g.fuenteMic.disconnect(); clearTimeout(g.limite); g = null;
       const fin = new Promise((res) => { rec.onstop = res; });
       try { rec.stop(); } catch (_) { /* ya parado */ }
       await fin;
       stream.getTracks().forEach((t) => t.stop());
       const blob = new Blob(trozos, { type: (rec.mimeType || "audio/webm") });
       trozos.length = 0;
-      if (!enviar) { poner("libre"); return; }
-      if (Date.now() - inicio < MIN_GRAB_MS || !blob.size) { poner("libre"); toast("Mantén pulsado el micrófono mientras hablas."); return; }
-      poner("ocupado", "Transcribiendo…"); ocupado = true;
+      if (!enviar) { poner("libre"); emitir("reposo"); return; }
+      if (Date.now() - inicio < MIN_GRAB_MS || !blob.size) { poner("libre"); emitir("reposo"); toast("Mantén pulsado el micrófono mientras hablas."); return; }
+      poner("ocupado", "Transcribiendo…"); emitir("pensando"); ocupado = true;
       try {
         if ((await picoAudio(blob).catch(() => 1)) < SILENCIO) { toast(avisoSilencio(nombreMic), "mal"); return; }
         const d = await transcribir(blob);
         if (d.texto) alTexto(d.texto); else toast("No te he entendido. Prueba otra vez.");
       } catch (e) { toast(e.message, "mal"); }
-      finally { ocupado = false; poner("libre"); }
+      finally { ocupado = false; poner("libre"); emitir("reposo"); }
     }
     let pulsado = 0, ignorarSoltar = false;
     boton.addEventListener("pointerdown", (e) => {
@@ -179,8 +186,8 @@ const Voz = (() => {
         const c = audioCtx();
         const audio = await c.decodeAudioData(buf);
         if (mio !== turno) { res(); return; }
-        const s = c.createBufferSource(); s.buffer = audio; s.connect(c.destination);
-        s.onended = () => { if (fuente === s) fuente = null; res(); };
+        const s = c.createBufferSource(); s.buffer = audio; const a = c.createAnalyser(); a.fftSize = 256; s.connect(a); a.connect(c.destination); emitir("hablando", 0.2);
+        s.onended = () => { if (fuente === s) fuente = null; emitir("reposo"); res(); };
         fuente = s; s.start();
       } catch (_) { res(); }
     });
@@ -189,11 +196,12 @@ const Voz = (() => {
   function hablarNavegador(texto, mio) {
     return new Promise((res) => {
       if (!window.speechSynthesis || mio !== turno) { res(); return; }
+      emitir("hablando", 0.2);
       const u = new SpeechSynthesisUtterance(texto);
       const voces = speechSynthesis.getVoices();
       const v = voces.find((x) => /^es[-_]ES/i.test(x.lang)) || voces.find((x) => /^es/i.test(x.lang));
       if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "es-ES";
-      u.rate = velocidad(); u.onend = u.onerror = () => res();
+      u.rate = velocidad(); u.onend = u.onerror = () => { emitir("reposo"); res(); };
       speechSynthesis.speak(u);
     });
   }
@@ -220,6 +228,7 @@ const Voz = (() => {
     turno++;
     if (fuente) { try { fuente.stop(); } catch (_) { /* ya parada */ } fuente = null; }
     if (window.speechSynthesis) speechSynthesis.cancel();
+    emitir("reposo");
   }
 
   function pitido() {
@@ -287,13 +296,14 @@ const ManosLibres = (() => {
     if (ws && ws.readyState === 1) ws.send('{"type":"reiniciar"}');
     enviando = true;
     estado("Manos libres: escuchando «Aria»", "escuchando");
+    window.dispatchEvent(new CustomEvent("aria:estado", { detail: { estado: "escuchando" } }));
   }
 
   async function manejar(ev) {
     if (!activa) return;
     if (ev.type === "listo" || ev.type === "nada") escuchar();
-    else if (ev.type === "despierta") { Voz.parar(); Voz.pitido(); estado("Te escucho…", "oyendo"); }
-    else if (ev.type === "procesando") { enviando = false; estado("Transcribiendo…", "pensando"); }
+    else if (ev.type === "despierta") { Voz.parar(); Voz.pitido(); estado("Te escucho…", "oyendo"); window.dispatchEvent(new CustomEvent("aria:estado", { detail: { estado: "escuchando" } })); }
+    else if (ev.type === "procesando") { enviando = false; estado("Transcribiendo…", "pensando"); window.dispatchEvent(new CustomEvent("aria:estado", { detail: { estado: "pensando" } })); }
     else if (ev.type === "error") { toast(ev.text, "mal"); avisoCierre = false; escuchar(); }
     else if (ev.type === "texto") {
       enviando = false;
@@ -301,7 +311,7 @@ const ManosLibres = (() => {
       estado("«" + ev.text + "»", "pensando");
       const respuesta = await Chat.enviarDesdeVoz(ev.text);
       if (!activa) return;
-      if (respuesta) { estado("Respondiendo… (di «Aria» al terminar)", "hablando"); await Voz.hablar(respuesta); }
+      if (respuesta) { estado("Respondiendo… (di «Aria» al terminar)", "hablando"); window.dispatchEvent(new CustomEvent("aria:estado", { detail: { estado: "hablando" } })); await Voz.hablar(respuesta); }
       escuchar();
     }
   }

@@ -18,6 +18,7 @@ const Paleta = (() => {
       { t: "Ir a Seguridad", g: "Ir a", a: ir("seguridad"), admin: true },
       { t: "Ir al Centro de control", g: "Ir a", a: ir("control"), admin: true },
       { t: "Ir a Ajustes", g: "Ir a", a: ir("ajustes") },
+      { t: "Abrir modo HUD", g: "Ir a", a: ir("hud") },
       { t: "Ir a Rutinas (Ajustes)", g: "Ir a", a: () => irA("ajustes-rutinas") },
       { t: "Ir a Recordatorios (Ajustes)", g: "Ir a", a: () => irA("ajustes-recordatorios") },
       { t: "Ir a Avisos (Ajustes)", g: "Ir a", a: () => irA("ajustes-avisos") },

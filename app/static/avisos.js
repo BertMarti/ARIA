@@ -3,7 +3,7 @@
 // horas de silencio, resumen de buenos días) y Recordatorios. Todo el texto entra con textContent.
 const Avisos = (() => {
   const SEV = { grave: "Importante", aviso: "Aviso", info: "Info" };
-  const VISTAS_OK = ["inicio", "chat", "finanzas", "red", "seguridad", "control", "ajustes"];
+  const VISTAS_OK = ["inicio", "chat", "finanzas", "red", "seguridad", "control", "ajustes", "hud"];
   let estado = null; // respuesta de /api/avisos/ajustes
 
   const hace = (ts) => {

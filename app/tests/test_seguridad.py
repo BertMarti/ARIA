@@ -227,3 +227,16 @@ def test_vecinos_viejos_se_ignoran(tmp_path, monkeypatch):
     assert escaneo.vecinos() == {}
     (tmp_path / "vecinos.json").write_text(json.dumps({"ts": time.time(), "vecinos": {"192.168.0.5": "aa:bb:cc:dd:ee:ff"}}))
     assert escaneo.vecinos() == {"192.168.0.5": "AA:BB:CC:DD:EE:FF"}
+
+
+def test_lastseen_de_pihole_no_cuenta_como_actividad():
+    """Pi-hole refresca lastSeen de todas sus IP: solo lastQuery (consulta real) indica actividad."""
+    mac = "62:00:00:00:00:09"
+    hosts = [{"ip": "192.168.0.60", "mac": mac, "fabricante": None, "puertos": []}]
+    red._sincronizar(red.combinar([_ph("192.168.0.60", 100)], hosts))
+    assert red.marcar_conocido(mac, True, "Móvil")
+    red._sincronizar(red.combinar([_ph("192.168.0.60", 100)], hosts, {"192.168.0.58": mac}))
+    vieja = {"hwaddr": "ip-192.168.0.60", "lastQuery": 100, "numQueries": 3,
+             "ips": [{"ip": "192.168.0.60", "lastSeen": time.time() + 3600}]}
+    ds = red._sincronizar(red.combinar([vieja], hosts, {"192.168.0.58": mac}))
+    assert [(d["ip"], d["conocido"]) for d in ds] == [("192.168.0.58", True)]

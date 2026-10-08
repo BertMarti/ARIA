@@ -74,7 +74,9 @@ def combinar(pihole: list, escaneo_hosts: list, vecinos: dict | None = None) -> 
             x["mac"] = x["mac"] or mac
             x["nombre"] = x["nombre"] or a.get("name") or None
             x["fabricante"] = x["fabricante"] or d.get("macVendor") or None
-            vista = max(a.get("lastSeen") or 0, d.get("lastQuery") or 0)
+            # Solo cuenta la última consulta DNS real: Pi-hole refresca «lastSeen» de toda su tabla aunque
+            # nadie use esa IP, y eso hacía reaparecer como «nuevas» las IP viejas de dispositivos conocidos.
+            vista = d.get("lastQuery") or 0
             x["ultima_consulta"] = max(x["ultima_consulta"] or 0, vista) or None
             x["consultas"] += d.get("numQueries") or 0
     for h in escaneo_hosts or []:

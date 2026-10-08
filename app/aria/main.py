@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agentes, api_avisos, api_finanzas, api_red, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, cve, db, diario, finanzas, memoria, modelos, permisos, push, recordatorios, red, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn
+from . import agentes, api_avisos, api_control, api_finanzas, api_red, auth, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, finanzas, memoria, modelos, permisos, push, recordatorios, red, services, shield, sistema, spotify, sso, telegram, tiempo, usuarios, vision, voz, vpn
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -61,6 +61,7 @@ async def _arranque():
     usuarios.iniciar()
     finanzas.iniciar()
     red.iniciar()
+    control.iniciar()
     cve.iniciar()
     # Diario: planificador interno (03:30 locales + recuperación de días perdidos). Sin contenedor nuevo.
     app.state.diario = asyncio.create_task(diario.bucle())
@@ -73,12 +74,14 @@ async def _arranque():
     avisos.registrar_canal("push", push.canal)
     avisos.registrar_canal("telegram", telegram.canal)
     app.state.avisos = asyncio.create_task(avisos.bucle())
+    # Control parental: reconcilia SHIELD-DNS con pausas, servicios y horarios cada 30 s (idempotente).
+    app.state.control = asyncio.create_task(control.bucle()) if config.CONTROL else None
     app.state.telegram = asyncio.create_task(telegram.bucle()) if telegram.configurado() else None
 
 
 @app.on_event("shutdown")
 async def _parada():
-    for nombre in ("diario", "avisos", "telegram"):
+    for nombre in ("diario", "avisos", "telegram", "control"):
         tarea = getattr(app.state, nombre, None)
         if tarea:
             tarea.cancel()
@@ -234,6 +237,7 @@ async def index():
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
 app.include_router(api_finanzas.router)
 app.include_router(api_red.router)
+app.include_router(api_control.router)
 app.include_router(api_avisos.router)
 
 

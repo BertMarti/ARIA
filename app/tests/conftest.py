@@ -8,7 +8,7 @@ os.environ.setdefault("ARIA_SPOTIFY", "1")
 os.environ.setdefault("ARIA_NETFLIX", "1")
 import pytest
 
-from aria import auth, avisos, cerebros, config, cve, db, finanzas, push, recordatorios, red, sso, telegram, usuarios
+from aria import auth, avisos, cerebros, config, control, cve, db, finanzas, push, recordatorios, red, sso, telegram, usuarios
 
 
 @pytest.fixture(autouse=True)
@@ -32,6 +32,8 @@ def entorno(tmp_path, monkeypatch):
     usuarios.iniciar()
     finanzas.iniciar()
     red.iniciar()
+    control.iniciar()
+    monkeypatch.setattr(control, "_ult_refresco", 0.0)
     cve.iniciar()
     avisos.iniciar()
     recordatorios.iniciar()

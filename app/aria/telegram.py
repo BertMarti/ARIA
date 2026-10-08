@@ -42,6 +42,7 @@ COMANDOS = [
     ("estado", "Resumen de la casa"), ("resumen", "Resumen de buenos días"), ("tiempo", "Previsión del tiempo"),
     ("recordatorios", "Tus recordatorios"), ("gastos", "Gastos de este mes"), ("vpn", "Dispositivos de la VPN"),
     ("anuncios", "Bloqueador de anuncios"), ("nuevovpn", "Nuevo dispositivo VPN (admin)"),
+    ("control", "Control parental: dispositivos pausados o bloqueados (admin)"),
     ("nuevo", "Empezar otra conversación"), ("desvincular", "Desvincular este chat"), ("ayuda", "Ayuda"),
 ]
 OPS_ADMIN = {"pausar", "reanudar", "nuevovpn"}
@@ -557,7 +558,7 @@ def _ayuda(admin: bool) -> str:
     lineas = ["Escríbeme, mándame una nota de voz o una foto (por ejemplo, de un ticket) y te respondo como en la web. "
               "Comandos:"]
     for c, d in COMANDOS:
-        if c == "nuevovpn" and not admin:
+        if c in ("nuevovpn", "control") and not admin:
             continue
         lineas.append(f"/{c} — {d}")
     return "\n".join(lineas)
@@ -617,6 +618,11 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
         await enviar(await _texto_vpn())
     elif cmd == "anuncios":
         await _anuncios(b, chat_id, u)
+    elif cmd == "control":
+        if not admin:
+            await enviar("Eso solo lo puede hacer un administrador.")
+            return
+        await _control(b, chat_id, u)
     elif cmd == "nuevovpn":
         if not admin:
             await enviar("Eso solo lo puede hacer un administrador.")
@@ -696,6 +702,26 @@ async def _anuncios(b, chat_id: int, u: dict) -> None:
                                               [boton("Reanudar", f_r)]))
 
 
+async def _control(b, chat_id: int, u: dict) -> None:
+    """Lista los dispositivos con internet pausado o servicios bloqueados, con botones para quitar la pausa."""
+    from . import control
+    es = [e for e in await asyncio.to_thread(control.estado) if e["pausado"] or e["servicios_bloqueados"]]
+    if not es:
+        await enviar_texto(b, chat_id, "Ningún dispositivo tiene internet pausado ni servicios bloqueados ahora mismo. "
+                                       "Para pausar uno, escríbeme, por ejemplo: «pausa el iPad una hora».")
+        return
+    filas = []
+    for e in es[:20]:
+        if e["pausa_manual"]:
+            f = await asyncio.to_thread(ficha, chat_id, u["id"], "reanudar_control", {"clave": e["clave"]})
+            filas.append([boton(f"Reanudar {e['nombre']}"[:60], f)])
+        if e["servicios_manuales"]:
+            f = await asyncio.to_thread(ficha, chat_id, u["id"], "desbloquear_control", {"clave": e["clave"]})
+            filas.append([boton(f"Desbloquear servicios de {e['nombre']}"[:60], f)])
+    await enviar_texto(b, chat_id, "**Control parental**\n" + "\n".join("- " + control.texto_estado(e) for e in es[:20])
+                       + "\n\n" + control.LIMITACION_CORTA, teclado(*filas) if filas else None)
+
+
 # --- Botones --------------------------------------------------------------------------------------------------------
 async def _quitar_botones(b, cq: dict) -> None:
     m = cq.get("message") or {}
@@ -750,6 +776,22 @@ async def _accion(b, cq: dict, chat_id: int, u: dict, accion: str, d: dict) -> s
     if accion == "cancelar":
         await _quitar_botones(b, cq)
         return "Cancelado."
+    if accion in ("reanudar_control", "desbloquear_control"):
+        if not admin:
+            return "Eso solo lo puede hacer un administrador."
+        from . import control
+        clave = str(d.get("clave", ""))
+        if accion == "reanudar_control":
+            await asyncio.to_thread(control.reanudar, clave)
+        else:
+            await asyncio.to_thread(control.quitar_servicios, clave)
+        r = await control.reconciliar()
+        await _quitar_botones(b, cq)
+        fila = await asyncio.to_thread(control._fila, clave)
+        await enviar_texto(b, chat_id, ("Internet reanudado en " if accion == "reanudar_control" else
+                                        "Servicios desbloqueados en ") + control.nombre_de(fila) + "."
+                           + ("" if r.get("ok") else f" Aún no se ha podido aplicar en SHIELD-DNS ({r.get('error')}); se reintenta solo."))
+        return "Hecho."
     if accion == "ticket":  # gasto leído de una foto: se apunta en las finanzas del usuario del chat
         from . import vision
         await _quitar_botones(b, cq)

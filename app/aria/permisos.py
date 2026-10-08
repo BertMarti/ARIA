@@ -71,3 +71,6 @@ def permitido(rol: str, metodo: str, ruta: str) -> bool:
         return False
     metodo = "GET" if metodo == "HEAD" else metodo
     return any(m == metodo and p.fullmatch(ruta) for m, p in _PATRONES)
+
+# Control parental (api_control.py): TODAS sus rutas /api/red/control/... son solo de admin. No están en la lista
+# blanca de `usuario` y `test_permisos.py` comprueba una a una que un `usuario` recibe 403.

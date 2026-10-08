@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import busqueda, config, recordatorios, escaneo, finanzas, memoria, red, seguridad, services, shield, sistema, spotify, vpn
+from . import busqueda, config, control, recordatorios, escaneo, finanzas, memoria, red, seguridad, services, shield, sistema, spotify, vpn
 
 _REGISTRO: dict = {}
 
@@ -178,7 +178,7 @@ def rescatar_llamada(texto: str, permitidas: set) -> dict | None:
 
 
 _ERRORES_LEGIBLES = (spotify.SpotifyError, shield.ShieldError, vpn.VpnError, finanzas.FinanzasError,
-                     red.RedError, escaneo.EscaneoError)
+                     red.RedError, escaneo.EscaneoError, control.ControlError)
 
 
 def registrar_errores(*clases) -> None:
@@ -653,6 +653,110 @@ _INTENCIONES += [
     ((r"\b(escaneo|esc[aá]ner)\b", r"\b(estado|c[oó]mo va|termin\w*|en curso|[uú]ltimo)\b"), {"estado_escaneo"}),
     ((r"\b(bloquead\w*|bloqueos?|rastreadores?|trackers?|malware)\b", r"\b(dispositivos?|clientes?|cada|qui[eé]n|por)\b"),
      {"bloqueos_por_cliente"}),
+]
+
+
+
+# --- Control parental (solo admin; ver control.py) ---------------------------------------------------------
+# Siempre sobre UN dispositivo del inventario (alias, nombre, IP o MAC); nunca «todos», nunca el router ni la Pi.
+async def _clave_control(dispositivo) -> str:
+    await red.dispositivos()   # refresca el inventario (IP y alias vigentes)
+    return await asyncio.to_thread(control.resolver, str(dispositivo or ""))
+
+
+async def _aplicar_control(texto: str) -> str:
+    r = await control.reconciliar()
+    if r.get("ok"):
+        return f"{texto} {control.LIMITACION_CORTA}"
+    return (f"{texto} Queda guardado, pero aún no se ha podido aplicar en SHIELD-DNS ({r.get('error')}); "
+            "ARIA lo reintenta cada 30 segundos.")
+
+
+def _entero(v, defecto=None):
+    if v is None or v == "":
+        return defecto
+    try:
+        return int(float(str(v).replace(",", ".")))
+    except ValueError:
+        raise control.ControlError("Los minutos deben ser un número.") from None
+
+
+@tool("pausar_internet", "Pausa el internet de UN dispositivo de la red (por DNS): indefinidamente o durante unos minutos. "
+      "Después se reanuda solo.",
+      {"dispositivo": ("string", "Alias, nombre, IP o MAC del dispositivo (p. ej. «iPad»)"),
+       "minutos": ("integer", "Duración en minutos (1 hora = 60). Vacío = hasta que se reanude")},
+      ("dispositivo",), especialista=True)
+async def pausar_internet(dispositivo, minutos=None) -> str:
+    clave = await _clave_control(dispositivo)
+    m = _entero(minutos)
+    await asyncio.to_thread(control.pausar, clave, m)
+    r = await asyncio.to_thread(control._fila, clave)
+    cuando = (f"durante {m} minuto(s)" if m else "hasta que se reanude")
+    return await _aplicar_control(f"Internet de «{control.nombre_de(r)}» pausado {cuando}.")
+
+
+@tool("reanudar_internet", "Reanuda el internet de UN dispositivo que estaba pausado.",
+      {"dispositivo": ("string", "Alias, nombre, IP o MAC del dispositivo")}, ("dispositivo",), especialista=True)
+async def reanudar_internet(dispositivo) -> str:
+    clave = await _clave_control(dispositivo)
+    hubo = await asyncio.to_thread(control.reanudar, clave)
+    r = await asyncio.to_thread(control._fila, clave)
+    e = (await asyncio.to_thread(control.estado, clave))[0]
+    extra = " Sigue activo un horario de sin internet." if e["por_horario"] else ""
+    return await _aplicar_control(f"Internet de «{control.nombre_de(r)}» " + ("reanudado." if hubo else "no estaba pausado.") + extra)
+
+
+@tool("bloquear_servicio", "Bloquea un servicio (TikTok, YouTube, Instagram, Facebook, Fortnite, Roblox, Twitch, Netflix...) "
+      "en UN dispositivo, por DNS.",
+      {"dispositivo": ("string", "Alias, nombre, IP o MAC del dispositivo"),
+       "servicio": ("string", "Servicio: tiktok, youtube, instagram, facebook, whatsapp, snapchat, x, twitch, discord, "
+                              "fortnite, roblox, minecraft, steam, netflix, disneyplus, primevideo")},
+      ("dispositivo", "servicio"), especialista=True)
+async def bloquear_servicio(dispositivo, servicio) -> str:
+    clave = await _clave_control(dispositivo)
+    sid = await asyncio.to_thread(control.bloquear_servicio, clave, str(servicio or ""))
+    r = await asyncio.to_thread(control._fila, clave)
+    return await _aplicar_control(f"{control.nombre_servicio(sid)} bloqueado en «{control.nombre_de(r)}».")
+
+
+@tool("desbloquear_servicio", "Quita el bloqueo de un servicio en UN dispositivo.",
+      {"dispositivo": ("string", "Alias, nombre, IP o MAC del dispositivo"),
+       "servicio": ("string", "Servicio a desbloquear (p. ej. tiktok)")},
+      ("dispositivo", "servicio"), especialista=True)
+async def desbloquear_servicio(dispositivo, servicio) -> str:
+    clave = await _clave_control(dispositivo)
+    sid = await asyncio.to_thread(control.desbloquear_servicio, clave, str(servicio or ""))
+    r = await asyncio.to_thread(control._fila, clave)
+    return await _aplicar_control(f"{control.nombre_servicio(sid)} desbloqueado en «{control.nombre_de(r)}».")
+
+
+@tool("estado_control", "Estado del control parental: qué dispositivos tienen internet pausado, servicios bloqueados u "
+      "horarios. Sin dispositivo, los que tienen algo activo.",
+      {"dispositivo": ("string", "Alias, nombre, IP o MAC (opcional)")}, especialista=True)
+async def estado_control(dispositivo=None) -> str:
+    if dispositivo:
+        clave = await _clave_control(dispositivo)
+        return control.texto_estado((await asyncio.to_thread(control.estado, clave))[0]) + "."
+    es = await asyncio.to_thread(control.estado)
+    if not es:
+        return "Ningún dispositivo tiene internet pausado, servicios bloqueados ni horarios."
+    return f"{len(es)} dispositivo(s) con control: " + " | ".join(control.texto_estado(e) for e in es[:30]) + "."
+
+
+_SERVICIOS_RE = (r"\b(tik ?tok|you ?tube|yt|insta(gram)?|face(book)?|fb|whats ?app|wasap|snap(chat)?|twitter|twitch|discord|"
+                 r"fortnite|epic|roblox|minecraft|steam|netflix|disney\+?|prime( video)?)\b")
+_DISPOSITIVO_RE = (r"\b(internet|wifi|wi-fi|conexi[oó]n|ipad|tablet|m[oó]vil|tel[eé]fono|port[aá]til|ordenador|pc|consola|"
+                   r"switch|play ?station|ps[45]|xbox|fire ?tv|tele|tv|televisi[oó]n|dispositivo|hij[oa]s?)\b")
+_INTENCIONES += [
+    ((r"\b(paus\w+|cort\w+|apag\w+|quit\w+|desconect\w+|bloque\w+|sin)\b", _DISPOSITIVO_RE, r"!" + _BLOQUEADOR,
+      r"!\b(desbloque\w+|reanud\w+)\b"), {"pausar_internet"}),
+    ((r"\b(reanud\w+|restablec\w+|activ[ae]\w*|devuelve\w*|vuelve\w*|conect[ae]\w*|d[eé]ja\w*|quita\w* la pausa)\b",
+      _DISPOSITIVO_RE, r"!" + _BLOQUEADOR), {"reanudar_internet", "estado_control"}),
+    ((r"\b(bloque\w+|proh[ií]be\w*|impide\w*|quita\w*|corta\w*|sin)\b", _SERVICIOS_RE, r"!\b(desbloque\w+)\b"),
+     {"bloquear_servicio"}),
+    ((r"\b(desbloque\w+|permite\w*|deja\w*|vuelve\w*|quita\w* el bloqueo)\b", _SERVICIOS_RE), {"desbloquear_servicio"}),
+    ((r"\b(control parental|pausad\w+|bloquead\w+|restricci\w+|sin internet|horarios?)\b", r"!" + _BLOQUEADOR),
+     {"estado_control"}),
 ]
 
 

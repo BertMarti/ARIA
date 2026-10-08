@@ -111,6 +111,8 @@ ARIA solo ofrece al modelo las herramientas cuyas palabras clave aparecen en tu 
 | `registrar_movimiento`, `resumen_mes`, `gastos_por_categoria`, `comparar_meses`, `presupuesto`, `estado_presupuestos`, `buscar_movimientos` | Agente Finanzas (datos del usuario que chatea) |
 | `estado_red`, `dispositivos_red`, `dispositivos_nuevos`, `marcar_dispositivo_conocido`, `medir_latencia`, `test_velocidad` | Agente Redes (un usuario solo `estado_red`) |
 | `informe_seguridad`, `escanear_red`, `estado_escaneo`, `bloqueos_por_cliente` | Agente Seguridad (solo admin) |
+| `resumir_enlace(url)` | Lee una página web pública y la resume (ver «Compartir con ARIA y resumir enlaces») |
+| `crear_rutina`, `mis_rutinas`, `borrar_rutina` | Rutinas programadas del usuario que chatea («crea una rutina…», «mis rutinas», «borra la rutina del tiempo») |
 
 ### Búsqueda en internet
 
@@ -204,6 +206,27 @@ ARIA vigila la casa en segundo plano (un planificador dentro de la app, sin cont
 - Los avisos de la casa solo llegan a los administradores. En **Ajustes → Avisos** cada usuario elige qué tipos quiere, por qué canales, sus **horas de silencio** (por defecto 23:00–08:00; los graves y los recordatorios llegan igual) y el **resumen de buenos días** por Telegram o notificación (por defecto a las 08:00). «Probar avisos» manda uno de prueba.
 - **Recordatorios**: pídeselos a ARIA en el chat o por Telegram («recuérdame mañana a las 9 llamar al taller», «avísame en 20 minutos», «todos los lunes a las 8 sacar la basura»; repetición diaria, semanal o de lunes a viernes). «¿Qué recordatorios tengo?» y «borra el recordatorio 3» también funcionan. Se ven y se añaden en Ajustes → Recordatorios. Cada usuario solo ve los suyos.
 
+## Rutinas
+
+Tareas que ARIA hace sola a su hora y te manda el resultado: «cada mañana a las 8, dime el tiempo de hoy en Ronda y 3 titulares de tecnología».
+
+- **Dónde**: Ajustes → **Rutinas** (crear, editar, pausar, borrar y «Ejecutar ahora»), en el chat («crea una rutina que de lunes a viernes a las 7:30 me diga…», «¿qué rutinas tengo?», «borra la rutina del tiempo»), en Telegram con `/rutinas` (botones «Ejecutar ahora» y «Pausar») y con **Ctrl+K / ⌘K** («Ejecutar rutina…»).
+- **Cuándo**: todos los días a una hora, ciertos días de la semana («los lunes y jueves a las 9», «de lunes a viernes», «los fines de semana») o cada N horas (mínimo cada hora).
+- **Cómo se ejecuta**: el prompt pasa por el mismo chat que la web, como tú (tu rol, tus agentes y tu memoria), con el agente elegido (ARIA, Finanzas, Redes o Seguridad, este solo admin). **Solo con cerebros en la nube**: si solo responde el local, se salta y te deja una nota en la campana. Máximo 90 s por ejecución y dos a la vez.
+- **Solo consultan**: una rutina solo recibe herramientas de lectura (tiempo, noticias, búsqueda, estado de la casa, de la red, de tus finanzas…). Nunca pausa el bloqueador, toca la VPN, apunta gastos, escanea, mide la velocidad ni crea o borra recordatorios, rutinas o recuerdos.
+- **Entrega**: por Telegram, notificación, los dos o solo la campana; siempre queda en la campana (sin horas de silencio: la pides tú). El resultado completo queda en la conversación «Rutina · nombre» (la de la vez anterior se sustituye salvo que hayas seguido hablando en ella).
+- **Límites**: 10 rutinas por usuario. Nunca se ejecuta dos veces la misma hora programada aunque ARIA se reinicie; si ARIA estuvo apagada más de 3 h, esa ejecución se salta. Cada usuario solo ve, ejecuta y edita las suyas.
+
+## Compartir con ARIA y resumir enlaces
+
+- **Desde el móvil**: con ARIA instalada como aplicación (Chrome en Android: menú → Instalar aplicación / Añadir a pantalla de inicio), aparece **ARIA** en el menú **Compartir** de cualquier app. Al compartir un enlace o un texto se abre el chat con lo compartido y eliges «Resume esto» o «¿Qué opinas?». (Si ya la tenías instalada, desinstálala y vuelve a instalarla para que el móvil vea la opción. Safari en iPhone no admite este menú para webs instaladas.)
+- **En el chat**: pega un enlace y pide «resúmelo». **En Telegram**: si mandas solo un enlace, ARIA ofrece el botón «Resumir».
+- **Seguridad**: la página la descarga el servidor con protección anti-SSRF: solo http/https en los puertos 80/443, sin usuario:contraseña, el nombre debe resolver solo a IP públicas (nada de la LAN, 127.x, 169.254.x, 100.64.x, IPv6 locales…), la conexión va a esa IP ya comprobada (contra el *DNS rebinding*), cada redirección (máx. 3) se vuelve a comprobar, 15 s y 1,5 MB como mucho, solo HTML o texto. El texto llega al modelo marcado como contenido externo que no debe obedecer.
+
+## Atajo de teclado
+
+**Ctrl+K** (⌘K en Mac) abre la paleta de órdenes: ir a cualquier sección, conversación nueva, activar o desactivar manos libres y ejecutar una rutina. ↑/↓ para moverse, Intro para elegir, Esc para cerrar.
+
 ## Telegram
 
 Bot propio de ARIA, con *long polling* (sin webhook: no se abre nada nuevo a Internet).
@@ -213,7 +236,7 @@ Bot propio de ARIA, con *long polling* (sin webhook: no se abre nada nuevo a Int
 3. Comprueba: `docker compose exec app python -m aria.telegram --probar` (muestra el @usuario del bot).
 4. En **Ajustes → Avisos → Telegram**, «Vincular Telegram» da un código de 6 cifras (10 min, un solo uso) y un enlace `https://t.me/<bot>?start=<código>`. Ábrelo y pulsa Iniciar. Puedes vincular varios chats y desvincularlos.
 
-En el chat vinculado puedes escribir o mandar **notas de voz** (se transcriben y, si lo activas, ARIA también responde con voz). Pasa por el mismo chat que la web: agentes, memoria, herramientas y permisos de tu usuario; cada chat tiene su conversación («Telegram · …» en el historial) y `/nuevo` empieza otra. Comandos: `/estado`, `/resumen`, `/tiempo [ciudad]`, `/recordatorios`, `/gastos`, `/vpn`, `/anuncios` (con botones de pausa, solo admin), `/nuevovpn <nombre>` (admin: crea el dispositivo y manda el QR y el `.conf`, que contiene la clave privada), `/desvincular`, `/ayuda`. Las acciones de administración piden «Confirmar». Los chats no vinculados solo reciben «No te conozco…» y los grupos se ignoran.
+En el chat vinculado puedes escribir o mandar **notas de voz** (se transcriben y, si lo activas, ARIA también responde con voz). Pasa por el mismo chat que la web: agentes, memoria, herramientas y permisos de tu usuario; cada chat tiene su conversación («Telegram · …» en el historial) y `/nuevo` empieza otra. Comandos (salen en el menú de Telegram; se registran solos al arrancar): `/estado`, `/resumen`, `/tiempo [ciudad]`, `/recordatorios`, `/rutinas` (con «Ejecutar ahora» y «Pausar»), `/gastos`, `/red` (salud de la red; los admin además ven cuántos dispositivos hay y los nuevos), `/vpn`, `/bloqueo` (estadísticas de SHIELD; antes `/anuncios`, que sigue valiendo; con botones de pausa, solo admin), `/nuevovpn <nombre>` (admin: crea el dispositivo y manda el QR y el `.conf`, que contiene la clave privada), `/desvincular`, `/ayuda`. Las acciones de administración piden «Confirmar». Los chats no vinculados solo reciben «No te conozco…» y los grupos se ignoran.
 
 ## Notificaciones en el móvil
 

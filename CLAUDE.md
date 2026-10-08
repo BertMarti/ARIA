@@ -70,6 +70,12 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 - `push.py`: Web Push propio (aes128gcm + VAPID ES256 con `cryptography`/PyJWT). Solo endpoints de servicios push conocidos (`HOSTS_PUSH`, anti-SSRF); 404/410 borran la suscripción. `/sw.js` (en `LIBRES`) se sirve con `Service-Worker-Allowed: /` y la versión de los estáticos; no cachea nada. La CSP incluye `worker-src 'self'`.
 - API en `api_avisos.py`, abierta a los dos roles en `permisos.py` (todo filtra por el usuario de la sesión). Frontend: `static/avisos.js` (campana + Ajustes → Avisos + Recordatorios); clases CSS `av-item*` (no `.aviso`, que es del chat).
 
+## Rutinas, enlaces, paleta y Compartir (2026-10-08)
+- `rutinas.py`: tareas de IA programadas por usuario (máx. 10, mínimo cada hora, 90 s, 2 a la vez). Se ejecutan con `chat.responder(solo_nube=True, limite=tools.RUTINAS)`: solo nube y solo consultas (además ∩ rol ∩ agente; `tools.ejecutar(solo=)` lo repite). Sin nube = se salta con nota. Dedupe: `_reservar` anota `rutina:<id>:<proxima>` en `avisos_estado` y guarda la próxima en la misma transacción; atrasadas > 3 h se saltan. Entrega con `avisos.emitir("rutina", ..., ignorar_silencio=True, canales_=...)`.
+- `enlaces.py`: descarga anti-SSRF (IP públicas tras resolver, conexión a la IP comprobada con Host + `sni_hostname`, redirecciones revalidadas, 80/443, 1,5 MB, 15 s). En pruebas: `enlaces._dns` y `enlaces._transporte` (MockTransport).
+- Telegram: `/rutinas`, `/red`, `/bloqueo` (alias de `/anuncios`), botón «Resumir» si el mensaje es solo un enlace. `COMANDOS` se registra con `setMyCommands` en `preparar`.
+- Web: `static/rutinas.js` (Ajustes → Rutinas), `static/paleta.js` (Ctrl+K, `<dialog>` + combobox/listbox con `aria-activedescendant`), `static/compartir.js` + `share_target` (GET a `/` con title/text/url; se borra la consulta de la barra con `history.replaceState`).
+
 ## Añadir una herramienta
 Ver `SKILLS.md`: se decora una función async con `@tool` en `app/aria/tools.py`, se añaden sus palabras clave a `_INTENCIONES` (si no, el modelo no la recibe) y una prueba en `app/tests/test_tools.py`. Las herramientas destructivas (borrar) no se exponen al modelo.
 

@@ -32,6 +32,9 @@ Recuerdos y diario por usuario (`memoria.py`, `aprender.py`, `diario.py`, `brief
 ## Avisos, Telegram y push
 Motor de avisos y planificador en `app/aria/avisos.py` (+ `avisos_chequeos.py`), recordatorios en `recordatorios.py`, bot de Telegram con long polling en `telegram.py` (sin webhook; fichas de botón en servidor ligadas a chat y usuario), Web Push en `push.py` y `static/sw.js`. Todo se filtra por el usuario de la sesión. Pruebas sin red: `test_avisos.py`, `test_recordatorios.py`, `test_telegram.py` (Bot API falsa), `test_push.py`. Autoprueba del bot: `docker compose exec app python -m aria.telegram --probar`.
 
+## Rutinas
+`app/aria/rutinas.py` (tabla `rutinas`, horario en español, `disparar_vencidas` desde `avisos.tick`, ejecución por `chat.responder(..., solo_nube=True, limite=tools.RUTINAS)`), API en `api_rutinas.py`, frontend `static/rutinas.js`. Una rutina solo usa herramientas de `tools.RUTINAS` (consultas): no añadas ahí nada que cambie la casa, los datos o la memoria. Antidisparos dobles: clave `rutina:<id>:<instante>` en `avisos_estado` antes de ejecutar. Lectura de enlaces anti-SSRF en `enlaces.py` (`resumir_enlace`): no relajes la comprobación de IP públicas ni sigas redirecciones sin revalidar. Paleta Ctrl+K en `static/paleta.js` y Web Share Target (`manifest.webmanifest` + `static/compartir.js`). Pruebas: `test_rutinas.py` (IDOR incluido), `test_enlaces.py`, `test_telegram.py`.
+
 ## Reglas
 - Español (España) en UI, documentación, comentarios y commits.
 - Sin secretos en el repo (`.env`, `data/` ignorados).

@@ -442,6 +442,19 @@ Instala dos protecciones (`instalar-todo.sh` ya lo hace por ti):
 - **Autoheal**: cada 2 minutos reinicia los contenedores que Docker marca como «unhealthy» (colgados). Registro: `journalctl -t homelab-autoheal`.
 - **Watchdog**: si el sistema entero se bloquea, la máquina se reinicia sola (si tiene `/dev/watchdog`, como la Raspberry Pi).
 
+### Agente del sistema (sistema en directo y reinicio)
+
+```bash
+~/homelab/ARIA/sistema/instalar-host-agente.sh
+```
+
+ARIA vive aislada en un contenedor, sin acceso a Docker ni a la máquina. Este pequeño servicio (`aria-host-agente`, solo biblioteca estándar de Python) le da exactamente dos cosas a través de `data/host/`:
+
+- **Telemetría** cada 5 s: CPU, memoria y red por contenedor, y temperatura y carga del sistema (Centro de control → **Sistema en directo** y el HUD).
+- **Reinicio bajo petición**: solo si la petición está **firmada** con `ARIA_SECRET` (HMAC-SHA256), tiene menos de 2 minutos y no se ha usado antes. Cualquier otro archivo se borra.
+
+Registro: `journalctl -u aria-host-agente`. Sin el agente, ARIA funciona igual; solo faltan esas dos tarjetas.
+
 ## 15. Actualizar
 
 ```bash

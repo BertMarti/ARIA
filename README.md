@@ -32,7 +32,7 @@
   <a href="docs/PLAN.md">🗺️ Hoja de ruta</a>
 </p>
 
-**ARIA es un asistente de inteligencia artificial autoalojado que gestiona tus aplicaciones de casa.** Se instala con un comando en una Raspberry Pi o en un PC con Linux, se abre desde el navegador o el móvil y entiende español: le hablas o le escribes y ella consulta, enciende, pausa o te avisa. HEIMDALL admite dispositivos temporales y avisa al administrador si una VPN conecta desde un país u operador nuevo. Para ello solo envía la IP pública al servicio HTTPS de geolocalización; las IP privadas y las del rango local se ignoran y la respuesta se guarda en ARIA durante siete días para no repetir consultas.
+**ARIA es un asistente de inteligencia artificial autoalojado que gestiona tus aplicaciones de casa.** Se instala con un comando en una Raspberry Pi o en un PC con Linux, se abre desde el navegador o el móvil y entiende español: le hablas o le escribes y ella consulta, enciende, pausa o te avisa.
 
 ARIA se amplía con **módulos**: cada aplicación que añades aparece en su página de Inicio, gana herramientas en el chat y puede mandarte avisos. Trae dos aplicaciones integradas como ejemplo, [SHIELD-DNS](https://github.com/BertMarti/SHIELD-DNS) (bloqueador de anuncios) y [HEIMDALL](https://github.com/BertMarti/HEIMDALL) (VPN), pero puedes añadir todas las que quieras.
 
@@ -45,9 +45,26 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
 </table>
 
 <p align="center">
-  <img alt="Página de Inicio de ARIA con el resumen del día, las aplicaciones y el estado del sistema" src="docs/img/captura-inicio.png" width="100%">
-  <br><sub>Inicio de ARIA en una instancia de demostración con datos ficticios.</sub>
+  <img alt="Modo HUD de ARIA: orbe animado que reacciona a la voz, reloj, tiempo, avisos, estado de la casa e inversiones" src="docs/img/captura-hud.png" width="100%">
+  <br><sub><b>Modo HUD</b>: la presencia de ARIA a pantalla completa. El orbe cambia de color al escuchar, pensar y hablar, y ondula con su voz.</sub>
 </p>
+
+<p align="center">
+  <img alt="Página de Inicio de ARIA con el resumen del día en tarjetas" src="docs/img/captura-inicio.png" width="100%">
+  <br><sub><b>Inicio</b>: el resumen del día en tarjetas (tiempo, estado de tus aplicaciones, red, finanzas, inversiones y agenda). Instancia de demostración con datos ficticios.</sub>
+</p>
+
+### 🆕 Novedades
+
+| | Qué hay de nuevo |
+|:---:|---|
+| 🌌 | **Modo HUD** (`#hud`): pantalla completa con un orbe que respira, escucha y habla; reloj, tiempo, avisos, estado de la casa e inversiones. Respeta «reducir movimiento». |
+| 📰 | **Resumen diario** bien maquetado en **Inicio**, en el **HUD** y por **Telegram** cada mañana: tiempo, salud de las aplicaciones, red, finanzas, inversiones, agenda y cumpleaños. |
+| 📅 | **Agenda y cumpleaños**: calendario mensual, semanal y en lista, eventos que se repiten, avisos antes de cada cita y de cada cumpleaños. También por chat («apúntame el dentista el jueves a las 17:30»). |
+| 🗺️ | **Mapa libre** con OpenStreetMap: buscar lugares, tu ubicación, rutas y «farmacias cerca», sin claves ni seguimiento. |
+| 📈 | **Información**: noticias por temas con resumen y fuentes, y **Mis inversiones** (acciones, fondos, ETF y cripto en euros con gráfica, variación y tu posición). |
+| 🖥️ | **Sistema en directo**: CPU, memoria y red por contenedor, temperatura y un botón seguro para **reiniciar la Raspberry** desde la web o Telegram. |
+| ⚙️ | **Automatizaciones** «si pasa esto, haz aquello», **estadísticas por dispositivo** de la red, **informe semanal** y **proyectos y decisiones** en la memoria. |
 
 ## 📑 Índice
 
@@ -78,6 +95,9 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
 | 🔔 | **Avisos y canales** | Campana de avisos en la web, **bot de Telegram** propio y **notificaciones push** en el móvil o el navegador.<br>Vigila la casa sola: servicios caídos, dispositivos desconocidos, temperatura, disco, copias atrasadas… |
 | 🏡 | **Tu casa y tu red** | **Finanzas personales**: movimientos, categorías, presupuestos e importación del CSV del banco.<br>**Inventario de red**: dispositivos de la LAN, latencia, test de velocidad e historial.<br>**Seguridad**: escaneo defensivo de puertos de tu red y búsqueda de vulnerabilidades conocidas.<br>**Control parental** por dispositivo (pausar internet, bloquear TikTok, YouTube…, horarios), mediante SHIELD-DNS. |
 | 🧩 | **Aplicaciones (módulos)** | **SHIELD-DNS**: estadísticas, pausar y reanudar el bloqueo de anuncios.<br>**HEIMDALL**: ver, crear, activar y desactivar dispositivos de la VPN con su código QR.<br>**Uptime web** (módulo de ejemplo): «¿responde example.org?» y avisos si una web se cae.<br>**Las tuyas**: un mosaico en Inicio, herramientas en el chat, avisos y endpoints propios. Ver [docs/MODULOS.md](docs/MODULOS.md).<br>Spotify y Netflix existen en el código pero están **aparcados** (desactivados por defecto, `ARIA_SPOTIFY=0` / `ARIA_NETFLIX=0`). |
+| 📅 | **Agenda, mapa e información** | **Agenda** con calendario (mes, semana, lista), eventos repetidos y **cumpleaños** con aviso.<br>**Mapa** OpenStreetMap: búsqueda, ubicación, rutas y lugares cercanos.<br>**Información**: noticias por temas y **Mis inversiones** con gráficas en euros. |
+| 🌌 | **HUD y resumen diario** | **Modo HUD** a pantalla completa con orbe animado y voz.<br>**Resumen diario** en Inicio, HUD y Telegram (HTML bien maquetado). |
+| 🖥️ | **Sistema** | Telemetría en directo por contenedor, **reinicio seguro** firmado (HMAC) y **automatizaciones**. HEIMDALL admite accesos **temporales** y avisa si una VPN conecta desde un país u operador nuevo (solo se consulta la IP pública). |
 | 🔑 | **Acceso y usuarios** | HTTPS automático en tu red (`https://aria.local`, la IP o `https://aria.lan`).<br>Opcional: tu dominio con **Cloudflare Tunnel + Access**, sin abrir puertos y con inicio de sesión único.<br>Varios usuarios con rol **administrador** o **usuario**; permisos comprobados en el servidor.<br>Paleta de órdenes **Ctrl+K**, app instalable (PWA) y menú **Compartir** de Android. |
 
 <p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
@@ -88,6 +108,14 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
 > Todas las capturas salen de una instancia de demostración con **datos ficticios** (Ana, Lucía, red `192.168.1.x`). Las respuestas del chat son de ejemplo.
 
 <table>
+  <tr>
+    <td width="50%"><img alt="Agenda con calendario mensual, eventos y cumpleaños" src="docs/img/captura-agenda.png"><p align="center"><sub><b>Agenda</b>: calendario del mes, el día elegido y los próximos cumpleaños</sub></p></td>
+    <td width="50%"><img alt="Resumen diario de ARIA tal como llega por Telegram" src="docs/img/captura-telegram.png"><p align="center"><sub><b>Telegram</b>: el resumen de cada mañana</sub></p></td>
+  </tr>
+  <tr>
+    <td><img alt="Información: Mis inversiones con gráficas y noticias por temas" src="docs/img/captura-informacion.png"><p align="center"><sub><b>Información</b>: inversiones en euros y noticias por temas</sub></p></td>
+    <td><img alt="Mapa de OpenStreetMap con búsqueda y lugares cercanos" src="docs/img/captura-mapa.png"><p align="center"><sub><b>Mapa</b>: OpenStreetMap, sin claves ni seguimiento</sub></p></td>
+  </tr>
   <tr>
     <td width="50%"><img alt="Chat con ARIA: pregunta por el estado de la casa y pausa del bloqueador" src="docs/img/captura-chat.png"><p align="center"><sub><b>Chat</b>: herramientas en vivo y el cerebro que respondió</sub></p></td>
     <td width="50%"><img alt="Página Red con el inventario de dispositivos de casa" src="docs/img/captura-red.png"><p align="center"><sub><b>Red</b>: inventario, latencia y un dispositivo desconocido</sub></p></td>
@@ -103,16 +131,22 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
 </table>
 
 <details>
-<summary><b>📱 Más capturas: móvil, Centro de control y Finanzas</b></summary>
+<summary><b>📱 Más capturas: móvil, Centro de control, semana y Finanzas</b></summary>
 <br>
 
 <p align="center">
-  <img alt="Inicio de ARIA en el móvil" src="docs/img/captura-movil-inicio.png" width="300">
-  &nbsp;&nbsp;
-  <img alt="Chat del agente Redes en el móvil" src="docs/img/captura-movil-chat.png" width="300">
+  <img alt="Inicio de ARIA en el móvil" src="docs/img/captura-movil-inicio.png" width="230">
+  &nbsp;
+  <img alt="Modo HUD en el móvil" src="docs/img/captura-movil-hud.png" width="230">
+  &nbsp;
+  <img alt="Agenda en lista en el móvil" src="docs/img/captura-movil-agenda.png" width="230">
+  &nbsp;
+  <img alt="Chat del agente Redes en el móvil" src="docs/img/captura-movil-chat.png" width="230">
 </p>
 
-<p align="center"><img alt="Centro de control con SHIELD-DNS, HEIMDALL y el sistema" src="docs/img/captura-centro-control.png" width="100%"><br><sub><b>Centro de control</b>: SHIELD-DNS, HEIMDALL y la máquina</sub></p>
+<p align="center"><img alt="Centro de control con SHIELD-DNS, HEIMDALL y el sistema en directo por contenedor" src="docs/img/captura-centro-control.png" width="100%"><br><sub><b>Centro de control</b>: SHIELD-DNS, HEIMDALL, el sistema en directo y el reinicio seguro</sub></p>
+
+<p align="center"><img alt="Agenda en vista semanal" src="docs/img/captura-agenda-semana.png" width="100%"><br><sub><b>Agenda → Semana</b></sub></p>
 
 <p align="center"><img alt="Finanzas: resumen del mes, gastos por categoría y presupuestos" src="docs/img/captura-finanzas.png" width="100%"><br><sub><b>Finanzas</b>: resumen del mes, categorías y presupuestos</sub></p>
 

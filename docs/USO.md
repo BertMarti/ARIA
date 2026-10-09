@@ -17,7 +17,7 @@ Esta guía explica qué hay en cada parte de ARIA y cómo sacarle partido en el 
 5. [Voz](#voz)
 6. [Imágenes y tickets](#imágenes-y-tickets)
 7. [Memoria y diario](#memoria-y-diario)
-8. [Resumen de buenos días](#resumen-de-buenos-días)
+8. [Resumen diario](#resumen-diario)
 9. [Recordatorios](#recordatorios)
 10. [Rutinas](#rutinas)
 11. [Finanzas](#finanzas)
@@ -25,13 +25,17 @@ Esta guía explica qué hay en cada parte de ARIA y cómo sacarle partido en el 
 13. [Control parental](#control-parental)
 14. [Seguridad](#seguridad)
 15. [Centro de control](#centro-de-control)
-16. [Ajustes](#ajustes)
-17. [Avisos](#avisos)
-18. [Telegram](#telegram)
-19. [Notificaciones push](#notificaciones-push)
-20. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
-21. [Usuarios y roles](#usuarios-y-roles)
-22. [Cuando algo falla](#cuando-algo-falla)
+16. [Modo HUD](#modo-hud)
+17. [Agenda y cumpleaños](#agenda-y-cumpleaños)
+18. [Mapa](#mapa)
+19. [Información e inversiones](#información-e-inversiones)
+20. [Ajustes](#ajustes)
+21. [Avisos](#avisos)
+22. [Telegram](#telegram)
+23. [Notificaciones push](#notificaciones-push)
+24. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
+25. [Usuarios y roles](#usuarios-y-roles)
+26. [Cuando algo falla](#cuando-algo-falla)
 
 ## Un vistazo rápido
 
@@ -42,6 +46,9 @@ La barra de navegación tiene estas secciones:
 | **Inicio** | Resumen del día, tus aplicaciones y acciones rápidas | Todos |
 | **Chat** | Hablar con ARIA | Todos |
 | **Finanzas** | Tus gastos, ingresos y presupuestos | Todos (cada uno los suyos) |
+| **Información** | Noticias por temas y tus inversiones | Todos |
+| **Agenda** | Calendario, eventos y cumpleaños | Todos (cada uno los suyos) |
+| **Mapa** | Buscar lugares, rutas y sitios cercanos | Todos |
 | **Red** | Dispositivos de casa, velocidad y control parental | Administradores |
 | **Seguridad** | Escaneo defensivo de la red | Administradores |
 | **Control** | Centro de control de SHIELD-DNS, HEIMDALL y el sistema | Administradores |
@@ -54,7 +61,8 @@ Arriba a la derecha está la **campana** de avisos.
 Es la página que ves al entrar.
 
 - **«Pregúntale a ARIA»**: escribe (o pulsa el micrófono) y se abre un chat con tu pregunta.
-- **Tu resumen de hoy**: el [resumen de buenos días](#resumen-de-buenos-días). Puedes cerrarlo por hoy o actualizarlo.
+- **Resumen del día**: tarjetas con el tiempo, tus aplicaciones, la red, tus finanzas, tus inversiones y tu agenda de hoy (ver [Resumen diario](#resumen-diario)). Puedes cerrarlo por hoy o actualizarlo.
+- **Modo HUD**: el primer mosaico abre la [pantalla HUD](#modo-hud).
 - **Aplicaciones**: un mosaico por aplicación (Chat, SHIELD-DNS, HEIMDALL y los [módulos](MODULOS.md) que tengas). El punto de color dice si está **activa**, **caída** o **sin instalar**. Al pulsar, se abre en una pestaña nueva. En SHIELD-DNS y HEIMDALL, **Copiar contraseña** te ahorra teclearla en su panel (solo administradores).
 - **Acciones rápidas** (administradores): *Pausar anuncios 5 min*, *Reanudar anuncios*, *Añadir dispositivo a la VPN* y *Estado del sistema*.
 - **Sistema**: temperatura, memoria, disco y carga de la máquina.
@@ -133,12 +141,21 @@ Privacidad: para detectar «Aria», el sonido va a tu máquina (nunca fuera). Lo
 
 La memoria se envía a los cerebros de la nube junto con tus preguntas para darte contexto. Al cerebro local solo le llega un trozo pequeño.
 
-## Resumen de buenos días
+## Resumen diario
 
-En **Inicio**, la tarjeta «Tu resumen de hoy» reúne: saludo y fecha, tu resumen de ayer, anuncios bloqueados ayer, el tiempo (si pusiste `ARIA_CIUDAD`), el estado de la máquina, algún recuerdo que venga al caso y, para administradores, la VPN y la última copia de seguridad.
+Un único resumen que verás igual en tres sitios: la tarjeta **Resumen del día** de Inicio, el panel del **HUD** y un mensaje de **Telegram** bien maquetado (negritas, secciones y emojis).
 
-- En el **chat**, el primer «hola» o «buenos días» del día se responde con una versión hablada del resumen.
-- Por **Telegram** o **notificación** a la hora que elijas (por defecto, las 08:00): actívalo en Ajustes → Avisos.
+| Sección | Qué cuenta | Quién la ve |
+|---|---|---|
+| 🌤️ El tiempo | Cielo, temperatura ahora, mínima, máxima y lluvia; avisa si mañana cambia mucho | Todos (si pusiste `ARIA_CIUDAD`) |
+| 📊 Tus aplicaciones | «Todo en orden» o la lista de cosas que revisar: SHIELD-DNS, HEIMDALL, cerebros de IA, Raspberry (temperatura, RAM, disco) y copia | Administradores |
+| 🛜 Red | Dispositivos nuevos en 24 h y los que siguen sin identificar | Administradores |
+| 💶 Finanzas | Lo gastado este mes frente al mes pasado **a estas alturas**, ingresos y presupuestos | Cada uno los suyos |
+| 📈 Mis inversiones | Precio en euros y variación del día de tu lista de seguimiento | Cada uno la suya |
+| 📅 Hoy | Eventos, recordatorios y cumpleaños de la semana | Cada uno los suyos |
+
+- Por **Telegram** o **notificación** a la hora que elijas (por defecto, las 08:00): actívalo en **Ajustes → Avisos**. También puedes pedirlo cuando quieras con `/resumen` o diciéndole «resúmeme el día».
+- El resumen se prepara una vez cada 10 minutos como mucho; **Actualizar** lo rehace al momento.
 
 ## Recordatorios
 
@@ -226,8 +243,36 @@ Solo para administradores. Tarjetas que se actualizan solas cada 15 segundos:
   - **Añadir dispositivo**: escribe un nombre, pulsa **Crear** y escanea el QR con la app WireGuard del móvil (o **Descargar .conf** para un ordenador).
   - **QR** vuelve a mostrar el código; **Activar/Desactivar** corta o devuelve el acceso; **Eliminar** pide confirmación.
 - **Sistema**: temperatura, memoria, disco, carga y tiempo encendida.
+- **Sistema en directo**: CPU, memoria y red de cada contenedor, actualizado cada pocos segundos (necesita el pequeño agente del sistema, ver [INSTALACION.md](INSTALACION.md)).
+- **Reiniciar la Raspberry**: pide confirmación y deja una petición firmada que el agente del sistema comprueba antes de reiniciar. También desde Telegram.
 
 Si una aplicación sale «no conectado», revisa su contraseña en `.env` (ver [Problemas frecuentes](INSTALACION.md#17-problemas-frecuentes)).
+
+## Modo HUD
+
+Abre `https://aria.local/#hud` (o el mosaico **Modo HUD** de Inicio). Es una pantalla pensada para una tableta o una tele:
+
+- En el centro, un **orbe** que respira en reposo y cambia de color cuando ARIA **escucha** (verde), **piensa** (violeta) y **habla** (azul, ondulando al ritmo de su voz). Debajo aparecen los subtítulos de lo que dice.
+- Alrededor: **reloj**, **tiempo**, **avisos sin leer**, **próximo recordatorio**, **estado de la casa** e **inversiones** del día (los de administración solo los ven administradores).
+- Abajo: escribe, mantén el micrófono o activa **Manos libres** y di «Aria».
+- **Pantalla completa** y **Salir** arriba a la derecha. Si tu sistema tiene activado «reducir movimiento», el orbe se queda casi quieto.
+
+## Agenda y cumpleaños
+
+- **Mes**, **Semana** o **Lista** (próximos 60 días). Pulsa un día para ver sus planes en el panel lateral; doble clic para crear un evento ese día.
+- **+ Evento**: título, fecha, hora de inicio y fin (o **todo el día**), lugar, repetición (semanal, mensual o anual), aviso previo y notas. Pulsa un evento para **editarlo** o **borrarlo**; si se repite, el cambio se aplica a toda la serie.
+- **+ Cumpleaños**: nombre, día, mes y, si quieres, el año para saber cuántos cumple. ARIA te avisa el mismo día o con antelación.
+- Por chat: «apúntame el dentista el jueves a las 17:30», «¿qué tengo mañana?», «el cumpleaños de Lucía es el 11 de octubre».
+
+## Mapa
+
+Mapa de **OpenStreetMap**, sin claves ni seguimiento: busca una dirección, pulsa **Mi ubicación** (el navegador te pedirá permiso), traza una **ruta** o busca **farmacias, gasolineras, supermercados, restaurantes o cajeros** cerca.
+
+## Información e inversiones
+
+- **Noticias por temas** (España, Tecnología, Economía… los eliges en **Editar temas y seguimiento**), con un resumen y sus fuentes.
+- **Mis inversiones**: busca un valor por nombre o símbolo (acciones, fondos, ETF, índices o criptomonedas) y añádelo. Si indicas **cantidad** y **precio medio**, verás el valor de tu posición y la ganancia o pérdida. Todo se convierte a **euros**, con una gráfica del último año y la variación del día, la semana, el mes y el año.
+- ARIA informa, **no aconseja**: no es un asesor financiero.
 
 ## Ajustes
 

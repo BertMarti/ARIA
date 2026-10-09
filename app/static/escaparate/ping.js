@@ -1,7 +1,7 @@
 "use strict";
 // Ping: el hada de luz que vigila la red de casa. Componente de lienzo reutilizable (escaparate y HUD).
 //   const p = new Ping(canvas, { sigue: true });  p.estado("aviso");  p.parar();
-//   { global: true, sigueMs: 6000 }: sigue al ratón por toda la ventana solo los primeros 6 s; luego vuela por libre.
+//   { global: true }: sigue al ratón por toda la ventana; { sigueMs: 6000 }: solo los primeros 6 s, luego vuela por libre.
 // Estados: ok (cian), aviso (ámbar), alerta (rosa), pensando (violeta). Respeta «reducir movimiento».
 const Ping = (() => {
   const COLORES = { ok: [56, 214, 255], aviso: [251, 191, 36], alerta: [251, 113, 133], pensando: [124, 140, 255] };
@@ -17,18 +17,16 @@ const Ping = (() => {
       this.p = { x: 0, y: 0, vx: 0, vy: 0 }; this.raton = null; this.estela = []; this.raf = 0; this.t0 = performance.now();
       this._dibujar = this._dibujar.bind(this);
       if (this.opc.sigue) {
-        lienzo.addEventListener("pointermove", (e) => { const r = lienzo.getBoundingClientRect(); this.raton = { x: e.clientX - r.left, y: e.clientY - r.top }; });
+        lienzo.addEventListener("pointermove", (e) => {
+          if (this._caducado()) { this.raton = null; return; }
+          const r = lienzo.getBoundingClientRect(); this.raton = { x: e.clientX - r.left, y: e.clientY - r.top };
+        });
         lienzo.addEventListener("pointerleave", () => { this.raton = null; });
       }
       if (this.opc.global) {   // lienzo de fondo sin eventos propios (pointer-events: none): escucha a toda la ventana
         addEventListener("pointermove", (e) => {
           const r = lienzo.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-          const ahora = performance.now();
-          if (this.opc.sigueMs && this.sigueHasta === undefined) {   // solo al principio
-            this.sigueHasta = ahora + this.opc.sigueMs;
-            setTimeout(() => { this.raton = null; }, this.opc.sigueMs);
-          }
-          const dentro = x >= 0 && y >= 0 && x <= r.width && y <= r.height && !(this.sigueHasta < ahora);
+          const dentro = x >= 0 && y >= 0 && x <= r.width && y <= r.height && !this._caducado();
           this.raton = dentro ? { x, y } : null;
         }, { passive: true });
         document.documentElement.addEventListener("pointerleave", () => { this.raton = null; });
@@ -41,6 +39,11 @@ const Ping = (() => {
       this.iniciar();
     }
     estado(nombre) { this.obj = COLORES[nombre] || COLORES.ok; }
+    _caducado() {   // sigueMs: sigue al ratón solo durante los primeros ms desde que lo ve; luego vuela por libre
+      if (!this.opc.sigueMs) return false;
+      if (this.sigueHasta === undefined) { this.sigueHasta = performance.now() + this.opc.sigueMs; setTimeout(() => { this.raton = null; }, this.opc.sigueMs); }
+      return performance.now() > this.sigueHasta;
+    }
     posicion() { return { x: this.p.x, y: this.p.y }; }
     iniciar() { if (!this.raf) this.raf = requestAnimationFrame(this._dibujar); }
     parar() { cancelAnimationFrame(this.raf); this.raf = 0; }

@@ -108,21 +108,29 @@
   $$(".mini-ping").forEach((l) => new Ping(l, { escala: .9 }));
   // Ping de la portada: al principio sigue al ratón; luego revolotea por libre junto al orbe
   const pingPortada = new Ping($("#ping-portada"), { global: true, sigueMs: 6000, escala: 1.1, zona: { x: .72, y: .3, ax: .12, ay: .09 } });
-  // La voz de Ping: tintineo de tres notas (propio, sintetizado aquí) y su «¡Eh, mira!» grabado
-  let vozPing = null, ctxPing = null;
-  function pingHabla() {
+  // La voz de Ping: tintineo de tres notas (propio, sintetizado aquí) y su «¡Eh, mira!» grabado.
+  // Todo por Web Audio con un contexto creado en un clic: así suena también en Safari/iPhone, que bloquean
+  // los <audio> que no se reproducen dentro del propio gesto del usuario.
+  let ctxPing = null, bufPing = null;
+  function prepararPing() {   // llamar SIEMPRE desde un clic
     try {
       ctxPing = ctxPing || new (window.AudioContext || window.webkitAudioContext)();
-      [1568, 2093, 2637].forEach((f, i) => {   // sol6, do7, mi7
-        const o = ctxPing.createOscillator(), g = ctxPing.createGain(), t = ctxPing.currentTime + i * .08;
-        o.type = "sine"; o.frequency.value = f;
-        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.08, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .35);
-        o.connect(g); g.connect(ctxPing.destination); o.start(t); o.stop(t + .4);
-      });
-    } catch (_) { /* sin Web Audio: solo la voz */ }
-    vozPing = vozPing || new Audio("/static/escaparate/audio/ping-eh-mira.mp3");
-    vozPing.currentTime = 0;
-    setTimeout(() => vozPing.play().catch(() => {}), 260);
+      if (ctxPing.state === "suspended") ctxPing.resume();
+      if (!bufPing) fetch("/static/escaparate/audio/ping-eh-mira.mp3").then((r) => r.arrayBuffer())
+        .then((a) => new Promise((ok, ko) => ctxPing.decodeAudioData(a, ok, ko))).then((b) => { bufPing = b; }).catch(() => {});
+    } catch (_) { ctxPing = null; }
+  }
+  function pingHabla() {
+    if (!ctxPing) return;
+    if (ctxPing.state === "suspended") ctxPing.resume();
+    const t0 = ctxPing.currentTime;
+    [1568, 2093, 2637].forEach((f, i) => {   // sol6, do7, mi7
+      const o = ctxPing.createOscillator(), g = ctxPing.createGain(), t = t0 + i * .08;
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.08, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .35);
+      o.connect(g); g.connect(ctxPing.destination); o.start(t); o.stop(t + .4);
+    });
+    if (bufPing) { const f = ctxPing.createBufferSource(); f.buffer = bufPing; f.connect(ctxPing.destination); f.start(t0 + .26); }
   }
   const burbuja = $("#ping-burbuja");
   let burbujaT = 0;
@@ -172,6 +180,7 @@
     pingSuelta(); sub.classList.remove("visible"); boton.setAttribute("aria-checked", "false"); document.body.classList.remove("escuchando");
   }
   async function empezar() {
+    prepararPing();
     activo = true; boton.setAttribute("aria-checked", "true"); document.body.classList.add("escuchando");
     try {
       if (!audio) {
@@ -203,12 +212,12 @@
     if (!creados.has(id)) {
       creados.add(id);
       d.querySelectorAll(".demo-orbe").forEach((l) => new Orbe(l));
-      d.querySelectorAll(".demo-ping").forEach((l) => { pingDemo = new Ping(l, { sigue: true, escala: 1.4 }); });
+      d.querySelectorAll(".demo-ping").forEach((l) => { pingDemo = new Ping(l, { sigue: true, sigueMs: 6000, escala: 1.4 }); });
     }
     if (id === "demo-casa") {
       let i = 0, n = 1284;
       const dice = $("#ping-dice"), cont = $("#contador");
-      clearInterval(rotacion); pingHabla();
+      clearInterval(rotacion); prepararPing(); setTimeout(pingHabla, 400);
       rotacion = setInterval(() => {
         if (!d.open) { clearInterval(rotacion); return; }
         i = (i + 1) % FRASES_PING.length; n += 1 + Math.floor(Math.random() * 3);

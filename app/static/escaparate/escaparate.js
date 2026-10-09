@@ -25,7 +25,7 @@
     ["ok", "Récord de la semana. De nada."],
     ["aviso", "Hay un móvil nuevo en la red… Ah, no, es el tuyo."],
     ["ok", "VPN: dos conectados. Todo en orden, jefa."],
-    ["pensando", "Sí, soy pequeño. Pero muy rápido."],
+    ["pensando", "Sí, soy pequeña. Pero muy rápida."],
   ];
 
   // --- Cielo de estrellas con parallax suave -------------------------------------------------------
@@ -106,8 +106,24 @@
   const orbe = new Orbe($("#orbe"));
   $$(".mini-orbe").forEach((l) => new Orbe(l));
   $$(".mini-ping").forEach((l) => new Ping(l, { escala: .9 }));
-  // Ping de la portada: revolotea junto al orbe y sigue al ratón por toda la portada
-  const pingPortada = new Ping($("#ping-portada"), { global: true, escala: 1.1, zona: { x: .72, y: .3, ax: .12, ay: .09 } });
+  // Ping de la portada: al principio sigue al ratón; luego revolotea por libre junto al orbe
+  const pingPortada = new Ping($("#ping-portada"), { global: true, sigueMs: 6000, escala: 1.1, zona: { x: .72, y: .3, ax: .12, ay: .09 } });
+  // La voz de Ping: tintineo de tres notas (propio, sintetizado aquí) y su «¡Eh, mira!» grabado
+  let vozPing = null, ctxPing = null;
+  function pingHabla() {
+    try {
+      ctxPing = ctxPing || new (window.AudioContext || window.webkitAudioContext)();
+      [1568, 2093, 2637].forEach((f, i) => {   // sol6, do7, mi7
+        const o = ctxPing.createOscillator(), g = ctxPing.createGain(), t = ctxPing.currentTime + i * .08;
+        o.type = "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.08, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + .35);
+        o.connect(g); g.connect(ctxPing.destination); o.start(t); o.stop(t + .4);
+      });
+    } catch (_) { /* sin Web Audio: solo la voz */ }
+    vozPing = vozPing || new Audio("/static/escaparate/audio/ping-eh-mira.mp3");
+    vozPing.currentTime = 0;
+    setTimeout(() => vozPing.play().catch(() => {}), 260);
+  }
   const burbuja = $("#ping-burbuja");
   let burbujaT = 0;
   function pingLlama() {   // «Ah, y esa lucecita nerviosa es Ping»: se acerca al subtítulo y avisa
@@ -115,8 +131,8 @@
     pingPortada.destino = { x: Math.min(lienzo.width - 40, s.right - lienzo.left + 10), y: s.top - lienzo.top - 10 };
     pingPortada.estado("aviso");
     clearTimeout(burbujaT);
-    burbujaT = setTimeout(() => { burbuja.hidden = false; seguirBurbuja(); }, 700);
-    temporizadores.push(setTimeout(pingSuelta, 4200));
+    burbujaT = setTimeout(() => { burbuja.hidden = false; seguirBurbuja(); pingHabla(); }, 9100);   // cuando ARIA termina: Ping cierra la bienvenida
+    temporizadores.push(setTimeout(pingSuelta, 12000));
   }
   function seguirBurbuja() {   // el bocadillo acompaña a Ping mientras revolotea
     if (burbuja.hidden) return;
@@ -138,14 +154,17 @@
     } else orbe.nivel = .35 + .25 * Math.sin(performance.now() / 120);
     requestAnimationFrame(nivel);
   }
-  function subtitulos(duracion) {
+  // Inicio de cada frase en audio/bienvenida.mp3 (medido con los silencios de la grabación)
+  const MARCAS = [0, 4.0, 9.9, 16.8, 22.5];
+  function subtitulos(duracion, grabado) {
     const total = BIENVENIDA.reduce((n, f) => n + f.length, 0);
     let t = 0;
-    BIENVENIDA.forEach((f) => {
+    BIENVENIDA.forEach((f, i) => {
+      if (grabado) t = MARCAS[i];
       temporizadores.push(setTimeout(() => { sub.textContent = f; sub.classList.add("visible"); if (f.includes("Ping")) pingLlama(); }, t * 1000));
       t += duracion * f.length / total;
     });
-    temporizadores.push(setTimeout(parar, t * 1000 + 1500));
+    temporizadores.push(setTimeout(parar, (grabado ? Math.max(t, duracion) + 3.5 : t + 1.5) * 1000));
   }
   function parar() {
     activo = false; temporizadores.forEach(clearTimeout); temporizadores = [];
@@ -166,10 +185,10 @@
         } catch (_) { analizador = null; }
       }
       await audio.play();
-      subtitulos(audio.duration || 20);
+      subtitulos(audio.duration || 26, true);
     } catch (_) {
       audio = null; $("#aviso-voz").hidden = false;   // sin grabación todavía: solo subtítulos
-      subtitulos(18);
+      subtitulos(18, false);
     }
     nivel();
   }
@@ -189,11 +208,12 @@
     if (id === "demo-casa") {
       let i = 0, n = 1284;
       const dice = $("#ping-dice"), cont = $("#contador");
-      clearInterval(rotacion);
+      clearInterval(rotacion); pingHabla();
       rotacion = setInterval(() => {
         if (!d.open) { clearInterval(rotacion); return; }
         i = (i + 1) % FRASES_PING.length; n += 1 + Math.floor(Math.random() * 3);
         const [estado, frase] = FRASES_PING[i];
+        if (frase.startsWith("¡Eh, mira!")) pingHabla();
         pingDemo?.estado(estado); dice.textContent = frase.replace("1.284", n.toLocaleString("es-ES", { useGrouping: "always" }));
         cont.textContent = n.toLocaleString("es-ES", { useGrouping: "always" });
       }, 3200);

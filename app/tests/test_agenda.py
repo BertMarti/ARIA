@@ -404,3 +404,11 @@ def test_herramienta_crear_evento_con_repeticion_deducida(ana):
         fila = con.execute("SELECT repeticion FROM agenda_eventos WHERE titulo=? AND user_id=?",
                            ("Natación", ana["id"])).fetchone()
     assert fila["repeticion"] == "semanal"
+
+
+def test_ocurrencias_indican_el_inicio_de_la_serie():
+    from aria import usuarios
+    uid = usuarios.crear("serie@example.invalid", "Serie", "usuario")["id"]
+    agenda.crear_evento(uid, {"titulo": "Inglés", "inicio": "2026-10-08T20:00", "repeticion": "semanal"})
+    occ = agenda.listar_eventos(uid, "2026-10-15", "2026-10-16")
+    assert occ[0]["inicio"].startswith("2026-10-15T20:00") and occ[0]["serie_inicio"].startswith("2026-10-08T20:00")

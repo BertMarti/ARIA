@@ -9,6 +9,7 @@
     for (const n of VISTAS) $("v-" + n).hidden = n !== v;
     document.body.classList.toggle("modo-hud", v === "hud");
     document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => b.classList.toggle("activo", b.dataset.vista === v));
+    document.querySelector(".nav-btn.activo")?.scrollIntoView({ block: "nearest", inline: "nearest" });   // barra inferior en móvil
     Control.activar(v === "control");
     Inicio.activar(v === "inicio");
     Finanzas.activar(v === "finanzas");

@@ -165,6 +165,7 @@ def _ocurrencias(r, desde, hasta):
         if duracion is not None:
             y["fin"] = _iso(x + duracion)
         y["ocurrencia"] = _iso(x)
+        y["serie_inicio"] = r["inicio"]   # para editar una serie desde cualquiera de sus repeticiones
         out.append(_evento(y))
     return out
 

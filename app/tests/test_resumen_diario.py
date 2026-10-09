@@ -135,3 +135,15 @@ async def test_cache_y_refresco(monkeypatch):
     assert len(llamadas) == 1
     await resumen_diario.construir_resumen_diario(user, refrescar=True)
     assert len(llamadas) == 2
+
+
+@pytest.mark.asyncio
+async def test_cerebros_configurados_cuentan_como_listos(monkeypatch):
+    monkeypatch.setattr(resumen_diario.cerebros, "estado", lambda: [
+        {"estado": "configurado", "activo": True}, {"estado": "espera", "activo": True},
+        {"estado": "configurado", "activo": False}])
+    monkeypatch.setattr(resumen_diario.estadisticas, "resumen", lambda horas=24: _async({"totales": {"consultas": 1}}))
+    monkeypatch.setattr(resumen_diario.vpn, "listar", lambda: _async([]))
+    a = await resumen_diario._aplicaciones()
+    assert a["aria"] == {"listos": 1, "total": 2}
+    assert "ningún cerebro de IA está disponible" not in a["problemas"]

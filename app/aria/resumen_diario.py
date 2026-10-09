@@ -83,7 +83,8 @@ async def _aplicaciones() -> dict:
                           "encendida": s.get("uptime_texto")}
     cer = _seguro(cerebros.estado, [])
     if cer:
-        a["aria"] = {"listos": sum(c.get("estado") == "ok" for c in cer), "total": len(cer)}
+        activos = [c for c in cer if c.get("activo", True)]
+        a["aria"] = {"listos": sum(c.get("estado") == "configurado" for c in activos), "total": len(activos)}
     a["copia"] = _seguro(briefing.ultima_copia)
     problemas = []
     r = a.get("raspberry") or {}

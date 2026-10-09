@@ -841,3 +841,19 @@ kbd { font-family: var(--mono); font-size: .8em; border: 1px solid var(--borde-f
   .ajustes-sec.activo { box-shadow: inset 0 -2px 0 var(--acento); }
   .ajustes-buscar, .ajustes-buscar input { width: 100%; }
 }
+
+.rd-luz-graf { width: 100%; height: 60px; margin-top: .3rem; }
+.rd-luz-graf rect { fill: color-mix(in srgb, var(--acento) 55%, transparent); }
+.rd-luz-graf rect.barata { fill: var(--ok); } .rd-luz-graf rect.cara { fill: var(--mal); }
+.rd-luz-graf rect.ahora { stroke: #fff; stroke-width: 1.2; }
+.rd-luz-ejes { display: flex; justify-content: space-between; font-size: .7rem; color: var(--muted); margin-top: -.2rem; }
+.hud-luz-graf { width: 100%; height: 40px; } .hud-luz-graf rect { fill: rgba(var(--hud-c), .55); } .hud-luz-graf rect.barata { fill: #34d399; } .hud-luz-graf rect.cara { fill: #fb7185; } .hud-luz-graf rect.ahora { stroke: #fff; stroke-width: 1.2; }
+
+/* HUD en modo quiosco: los controles se esconden tras unos segundos sin uso */
+.hud.quiosco .hud-acciones, .hud.quiosco .hud-entrada, .hud.quiosco .hud-rapidas { transition: opacity .6s, transform .6s; }
+.hud.quiosco.dormido .hud-acciones, .hud.quiosco.dormido .hud-rapidas { opacity: 0; pointer-events: none; }
+.hud.quiosco.dormido .hud-entrada { opacity: 0; transform: translateY(20px); pointer-events: none; }
+.hud.quiosco.dormido, .hud.quiosco.dormido * { cursor: none; }
+
+.ml-nivel { flex: 0 0 auto; width: 46px; height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+.ml-nivel i { display: block; width: 0; height: 100%; background: linear-gradient(90deg, var(--ok), var(--acento)); transition: width .15s; }

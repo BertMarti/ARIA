@@ -10,7 +10,7 @@ import html
 import time
 from datetime import date, timedelta
 
-from . import (agenda, briefing, cerebros, estadisticas, finanzas, informacion, memoria, proyectos, red,
+from . import (agenda, briefing, cerebros, estadisticas, finanzas, informacion, luz, memoria, proyectos, red,
                recordatorios, sistema, tiempo, vpn)
 
 CACHE_S = 600
@@ -31,6 +31,10 @@ async def _async_seguro(fn, defecto=None):
         return await fn()
     except Exception:  # noqa: BLE001
         return defecto
+
+
+async def _nada():
+    return None
 
 
 def _mes_anterior(hoy: date) -> str:
@@ -137,9 +141,9 @@ async def construir_resumen_diario(usuario: dict, refrescar: bool = False) -> di
     c = _cache.get(uid)
     if c and not refrescar and time.monotonic() - c[0] < CACHE_S and c[1]["fecha"] == hoy.isoformat():
         return c[1]
-    tiempo_d, mercados, prevision = await asyncio.gather(
+    tiempo_d, mercados, prevision, luz_d = await asyncio.gather(
         _async_seguro(briefing._tiempo), _async_seguro(lambda: informacion.mercados(uid)),
-        _async_seguro(lambda: briefing.prevision(2)))
+        _async_seguro(lambda: briefing.prevision(2)), _async_seguro(luz.hoy) if luz.activo() else _nada())
     if tiempo_d and prevision and len(prevision.get("dias", [])) > 1:
         manana = prevision["dias"][1]
         if abs(manana.get("max", 0) - tiempo_d.get("max", 0)) >= 5 or abs(manana.get("min", 0) - tiempo_d.get("min", 0)) >= 5:
@@ -148,6 +152,7 @@ async def construir_resumen_diario(usuario: dict, refrescar: bool = False) -> di
     datos = {"fecha": hoy.isoformat(), "fecha_texto": tiempo.texto_fecha(hoy), "generado": time.time(),
              "saludo": f"{tiempo.saludo_horario()}, {nombre}" if nombre else tiempo.saludo_horario(),
              "tiempo": tiempo_d,
+             "luz": {k: v for k, v in luz_d.items() if k != "serie"} | {"serie": [x["precio"] for x in luz_d["serie"]]} if luz_d else None,
              "finanzas": await asyncio.to_thread(_seguro, lambda: _finanzas(uid, hoy)),
              "inversiones": _inversiones(mercados),
              "agenda": await asyncio.to_thread(_seguro, lambda: _agenda(uid, hoy),
@@ -218,6 +223,17 @@ def secciones(d: dict, e=str) -> list[tuple[str, str, list[str]]]:
         if t.get("aviso_manana"):
             lineas.append("⚠️ " + e(t["aviso_manana"]))
         out.append(("🌤️", f"El tiempo · {e(t['ciudad'])}", lineas))
+    lz = d.get("luz")
+    if lz:
+        kwh = lambda p: f"{p:.3f}".replace(".", ",") + " €/kWh"
+        lineas = [f"Media {kwh(lz['media'])}"]
+        if lz.get("ahora"):
+            lineas[0] += f" · ahora {kwh(lz['ahora']['precio'])} ({lz['nivel']})"
+        lineas.append(f"🟢 Más barata: {lz['barata']['hora']}:00 ({kwh(lz['barata']['precio'])}) · "
+                      f"🔴 más cara: {lz['cara']['hora']}:00")
+        if lz.get("mejores_restantes"):
+            lineas.append("Mejores horas que quedan: " + ", ".join(f"{x['hora']}:00" for x in lz["mejores_restantes"]))
+        out.append(("⚡", "Precio de la luz", lineas))
     a = d.get("aplicaciones")
     if a:
         problemas = a.get("problemas") or []

@@ -51,9 +51,9 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 
 # Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
 SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "resumen_diario",
-                          "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo",
+                          "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
                           "resumir_enlace", "resumen_noticias", "precio", "mis_mercados", "mis_inversiones",
-                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo",
+                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
                            "resumir_enlace", "mapa_ir", "ruta", "sitios_cerca"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
@@ -117,6 +117,7 @@ _INTENCIONES = [
     ((r"\b(agenda|calendario|evento|eventos|cita|cumplea[nñ]os|qué tengo|que tengo)\b",), set(AGENDA)),
     ((r"\b(mapa|mapas|ubicaci[oó]n|sitios? cerca|farmacia|gasolinera|supermercado|restaurante|cajero)\b",),
      {"mapa_ir", "sitios_cerca"}),
+    ((r"\b(luz|electricidad|pvpc|kwh|tarifa el[eé]ctrica|poner la lavadora|hora m[aá]s barata)\b",), {"precio_luz"}),
     ((r"\b(ruta|c[oó]mo llego|cu[aá]nto se tarda|indicaciones|ir desde|llevarme)\b",), {"ruta"}),
     ((r"\b(tiempo|llover[aá]?|llueve|lluvia|calor|fr[ií]o|previsi[oó]n|nublado|soleado|tormenta|grados)\b",
       r"!\b(raspberry|cpu|procesador|cu[aá]nto tiempo|encendid[ao])\b"), {"tiempo"}),
@@ -412,6 +413,18 @@ async def dispositivos_vpn() -> str:
     partes = [f"{c['nombre']} ({'conectado' if c['conectado'] else 'desconectado'}"
               f"{'' if c['activo'] else ', desactivado'})" for c in cl]
     return f"{len(cl)} dispositivo(s): " + ", ".join(partes) + f". Conectados ahora: {sum(c['conectado'] for c in cl)}."
+
+
+@tool("precio_luz", "Precio de la luz de hoy en España (tarifa regulada PVPC, por horas): media, hora más barata y "
+      "más cara, precio actual y mejores horas que quedan. Úsala para «¿cuándo pongo la lavadora?» o «¿está cara la luz?».")
+async def precio_luz(**_ignorado) -> str:
+    from . import luz
+    if not luz.activo():
+        return "El precio de la luz está desactivado (ARIA_LUZ=0)."
+    try:
+        return luz.texto(await luz.hoy())
+    except luz.LuzError as e:
+        return str(e)
 
 
 @tool("tiempo", "Previsión del tiempo por días (cielo, máxima, mínima y probabilidad de lluvia). Úsala para "

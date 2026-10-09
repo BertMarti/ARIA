@@ -275,13 +275,18 @@ const ManosLibres = (() => {
       const mudo = ctxMic.createGain(); mudo.gain.value = 0;
       src.connect(nodo); nodo.connect(mudo); mudo.connect(ctxMic.destination);
       // Si en los primeros 3 s no llega ni el ruido de fondo, el micrófono está silenciado: se avisa una vez.
-      let bloques = 0, pico = 0, avisado = false;
+      let bloques = 0, pico = 0, avisado = false, nBloques = 0;
       const nombreMic = (stream.getAudioTracks()[0] || {}).label || "";
       nodo.port.onmessage = (e) => {
         if (!avisado) {
           for (const v of new Int16Array(e.data)) { const a = v < 0 ? -v : v; if (a > pico) pico = a; }
           if (pico >= 65) avisado = true;  // 65/32768 = SILENCIO
           else if (++bloques >= 38) { avisado = true; toast(Voz.avisoSilencio(nombreMic), "mal"); estado("Manos libres: no llega sonido del micrófono", "abriendo"); }
+        }
+        if (++nBloques % 3 === 0) {   // medidor de nivel (cada ~250 ms): ayuda a ver si el micrófono capta la voz
+          const m = new Int16Array(e.data); let q = 0; for (let i = 0; i < m.length; i += 4) q += m[i] * m[i];
+          const nivel = Math.min(1, Math.sqrt(q / (m.length / 4)) / 6000), barra = $("ml-nivel");
+          if (barra) barra.style.width = Math.round(nivel * 100) + "%";
         }
         if (enviando && ws && ws.readyState === 1) ws.send(e.data);
       };
@@ -309,7 +314,7 @@ const ManosLibres = (() => {
     else if (ev.type === "error") { toast(ev.text, "mal"); avisoCierre = false; escuchar(); }
     else if (ev.type === "texto") {
       enviando = false;
-      if (!ev.text) { escuchar(); return; }
+      if (!ev.text) { if (ev.aviso) toast(ev.aviso, "mal"); escuchar(); return; }
       estado("«" + ev.text + "»", "pensando");
       const respuesta = await Chat.enviarDesdeVoz(ev.text);
       if (!activa) return;

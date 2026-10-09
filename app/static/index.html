@@ -31,7 +31,7 @@
 </nav>
 
 <div id="manos-libres" class="manos-libres" role="status" hidden>
-  <span class="ml-punto" aria-hidden="true"></span><span id="ml-texto"></span>
+  <span class="ml-punto" aria-hidden="true"></span><span class="ml-nivel" aria-hidden="true" title="Nivel del micrófono"><i id="ml-nivel"></i></span><span id="ml-texto"></span>
   <button type="button" id="ml-parar" class="peligro pequeno">Dejar de escuchar</button>
 </div>
 
@@ -65,7 +65,8 @@
       <div class="hud-col hud-der">
         <article class="hud-card hud-admin" data-w="casa" hidden><header><span class="hud-idx">05</span><h2>Estado de la casa</h2><span class="hud-led" aria-hidden="true"></span></header><div class="hud-cuerpo"></div></article>
         <article class="hud-card hud-admin" data-w="red" hidden><header><span class="hud-idx">06</span><h2>Red y seguridad</h2><span class="hud-led" aria-hidden="true"></span></header><div class="hud-cuerpo"></div></article>
-        <article class="hud-card" data-w="inversiones" hidden><header><span class="hud-idx">07</span><h2>Mercados</h2><span class="hud-led" aria-hidden="true"></span></header><div class="hud-cuerpo"></div></article>
+        <article class="hud-card" data-w="luz" hidden><header><span class="hud-idx">07</span><h2>Precio de la luz</h2><span class="hud-led" aria-hidden="true"></span></header><div class="hud-cuerpo"></div></article>
+        <article class="hud-card" data-w="inversiones" hidden><header><span class="hud-idx">08</span><h2>Mercados</h2><span class="hud-led" aria-hidden="true"></span></header><div class="hud-cuerpo"></div></article>
       </div>
     </div>
     <form id="hud-form" class="hud-entrada"><input id="hud-texto" maxlength="2000" placeholder="Habla con ARIA…" aria-label="Pregunta para ARIA"><button id="hud-mic" type="button" class="hud-boton fuerte mic" aria-label="Mantén pulsado para hablar"><svg class="svg-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button type="submit" class="hud-boton fuerte">Enviar</button><button type="button" id="hud-manos" class="hud-boton" aria-pressed="false">Manos libres</button></form>
@@ -79,6 +80,10 @@
         <label class="interruptor"><input type="checkbox" id="hud-op-cursor"><span>Cursor luminoso</span></label>
         <label class="interruptor"><input type="checkbox" id="hud-op-segundos"><span>Reloj con segundos</span></label>
         <label class="interruptor"><input type="checkbox" id="hud-op-voz"><span>Leer en voz alta las respuestas</span></label>
+      </fieldset>
+      <fieldset><legend>Tableta o pantalla fija</legend>
+        <label class="interruptor"><input type="checkbox" id="hud-op-despierta"><span>Mantener la pantalla encendida</span></label>
+        <label class="interruptor"><input type="checkbox" id="hud-op-quiosco"><span>Modo quiosco: pantalla completa al tocar y controles ocultos si no se usan</span></label>
       </fieldset>
       <button type="button" id="hud-op-reset" class="hud-boton">Restablecer</button>
     </aside>

@@ -75,7 +75,7 @@ const Inicio = (() => {
     dinero: "M3 6h18v12H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM6 9v.01M18 15v.01", bolsa: "M3 17l6-6 4 4 8-8M15 7h6v6",
     agenda: "M4 6h16v14H4zM4 10h16M8 3v5M16 3v5", escudo: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", llave: "M7 14a4 4 0 1 1 3.9-5H21v3h-2v3h-3v-3h-5.1A4 4 0 0 1 7 14z",
     cerebro: "M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4.5A3 3 0 0 0 9 4zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1",
-    chip: "M7 7h10v10H7zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4", disco: "M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3v12c0 1.7-3.6 3-8 3s-8-1.3-8-3zM4 6c0 1.7 3.6 3 8 3s8-1.3 8-3",
+    chip: "M7 7h10v10H7zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4", rayo: "M13 3 4 14h7l-1 7 9-11h-7z", disco: "M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3v12c0 1.7-3.6 3-8 3s-8-1.3-8-3zM4 6c0 1.7 3.6 3 8 3s8-1.3 8-3",
   };
   function ico(nombre, clase = "rd-ico") {
     const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg"), path = document.createElementNS(NS, "path");
@@ -99,6 +99,26 @@ const Inicio = (() => {
       el("div", { class: "rd-grande" }, (t.actual ?? t.max) + " °C"), el("p", { class: "rd-sub" }, t.cielo.charAt(0).toUpperCase() + t.cielo.slice(1)),
       el("div", { class: "rd-mini" }, el("span", null, "↓ " + t.min + " °C"), el("span", null, "↑ " + t.max + " °C"), el("span", null, "Lluvia " + (t.lluvia ?? "—") + " %")),
       t.aviso_manana ? el("p", { class: "rd-alerta" }, "⚠ " + t.aviso_manana) : null));
+    const lz = d.luz;
+    if (lz) {
+      const kwh = (p) => p.toLocaleString("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + " €/kWh";
+      const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg"), hAct = new Date().getHours();
+      const max = Math.max(...lz.serie), min = Math.min(...lz.serie);
+      svg.setAttribute("viewBox", "0 0 240 60"); svg.setAttribute("preserveAspectRatio", "none"); svg.setAttribute("class", "rd-luz-graf"); svg.setAttribute("aria-hidden", "true");
+      lz.serie.forEach((p, i) => {
+        const r = document.createElementNS(NS, "rect"), alto = 8 + (p - min) / ((max - min) || 1) * 50;
+        r.setAttribute("x", i * 10 + 1); r.setAttribute("y", 60 - alto); r.setAttribute("width", 8); r.setAttribute("height", alto); r.setAttribute("rx", 1.5);
+        r.setAttribute("class", (p <= lz.media * .9 ? "barata" : p >= lz.media * 1.1 ? "cara" : "media") + (i === hAct ? " ahora" : ""));
+        svg.append(r);
+      });
+      c.append(tarjetaR("rayo", "Precio de la luz", "rd-luz",
+        el("div", { class: "rd-grande" }, lz.ahora ? kwh(lz.ahora.precio) : kwh(lz.media)),
+        el("p", { class: "rd-sub" }, lz.ahora ? "ahora · " + ({ barata: "hora barata", media: "precio medio", cara: "hora cara" }[lz.nivel] || "") : "media de hoy"),
+        svg, el("div", { class: "rd-luz-ejes" }, el("span", null, "0 h"), el("span", null, "12 h"), el("span", null, "23 h")),
+        fila(null, "Más barata", lz.barata.hora + ":00 · " + kwh(lz.barata.precio)),
+        fila(null, "Más cara", lz.cara.hora + ":00 · " + kwh(lz.cara.precio), "aviso"),
+        lz.mejores_restantes?.length ? fila(null, "Mejores horas que quedan", lz.mejores_restantes.map((x) => x.hora + ":00").join(", ")) : null));
+    }
     const a = d.aplicaciones;
     if (a) {
       const filas = [el("p", { class: "rd-veredicto " + (a.ok ? "ok" : "mal") }, a.ok ? "✓ Todo en orden" : "⚠ " + a.problemas.length + (a.problemas.length === 1 ? " cosa que revisar" : " cosas que revisar"))];

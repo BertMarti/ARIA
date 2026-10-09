@@ -184,6 +184,35 @@ def quitar_despertar(texto: str) -> str:
     return _PREFIJO_DESPERTAR.sub("", texto.strip(), count=1).strip()
 
 
+# Frases que Whisper «se inventa» cuando el audio es casi silencio (lo típico en un PC con el micrófono bajo)
+_ALUCINACIONES = {"gracias", "muchas gracias", "gracias por ver", "gracias por ver el video", "gracias por ver el vídeo",
+                  "subtitulos realizados por la comunidad de amaraorg", "subtítulos realizados por la comunidad de amaraorg",
+                  "suscribete", "suscríbete", "música", "musica", "aplausos", "risas", "adiós", "hasta luego", "chao", "you", "thank you"}
+
+
+def _nivel_wav(datos: bytes) -> float:
+    """RMS (0..1) del PCM 16 bits de un WAV con cabecera de 44 bytes."""
+    pcm = memoryview(datos)[44:]
+    n = len(pcm) // 2
+    if not n:
+        return 0.0
+    muestras = pcm[: n * 2].cast("h")
+    paso = max(1, n // 4000)   # basta una muestra de cada pocas para estimar el nivel
+    vals = muestras[::paso]
+    return (sum(v * v for v in vals) / len(vals)) ** .5 / 32768
+
+
+def es_alucinacion(texto: str, datos: bytes | None = None) -> bool:
+    """True si la transcripción es una muletilla típica de Whisper sobre audio casi mudo (o está vacía)."""
+    t = re.sub(r"[^\w\s]", "", (texto or "").lower()).strip()
+    t = " ".join(t.split())
+    if not t:
+        return True
+    if t in _ALUCINACIONES:
+        return True
+    return datos is not None and len(t) < 12 and _nivel_wav(datos) < .004
+
+
 # --- Texto para leer en voz alta ---------------------------------------------------------------
 def limpiar_para_voz(texto: str, maximo: int = MAX_TTS_TOTAL) -> str:
     """Quita Markdown, enlaces, código y emojis; recorta en un final de frase."""
@@ -408,13 +437,18 @@ async def retransmitir(ws, uid) -> None:
                             continue
                         try:
                             r = await transcribir(m, "wav", "audio/wav")
+                            texto = quitar_despertar(r["texto"])
+                            dudoso = es_alucinacion(texto, m)
                         except AudioError as e:
                             await ws.send_json({"type": "error", "text": e.mensaje})
                             continue
                         finally:
                             del m
-                        await ws.send_json({"type": "texto", "text": quitar_despertar(r["texto"]),
-                                            "proveedor": r["proveedor"], "ms": r["ms"]})
+                        if dudoso:
+                            await ws.send_json({"type": "texto", "text": "", "aviso": "No te he oído bien: habla un poco más alto o "
+                                                "más cerca, o revisa el micrófono en Ajustes → Voz."})
+                            continue
+                        await ws.send_json({"type": "texto", "text": texto, "proveedor": r["proveedor"], "ms": r["ms"]})
                     else:
                         try:
                             ev = json.loads(m)

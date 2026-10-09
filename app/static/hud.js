@@ -5,8 +5,8 @@ const Hud = (() => {
   const NS = "http://www.w3.org/2000/svg";
   const TEMAS = { cian: [56, 214, 255], violeta: [167, 139, 250], ambar: [251, 191, 36], verde: [52, 211, 153], rosa: [244, 114, 182] };
   const NOMBRES_TEMA = { cian: "Cian", violeta: "Violeta", ambar: "Ámbar", verde: "Verde", rosa: "Rosa" };
-  const TARJETAS = { tiempo: "Clima", agenda: "Agenda de hoy", pendiente: "Pendiente", finanzas: "Finanzas", casa: "Estado de la casa", red: "Red y seguridad", inversiones: "Mercados" };
-  const DEFECTO = { tarjetas: Object.fromEntries(Object.keys(TARJETAS).map((k) => [k, true])), tema: "cian", raton: true, fondo: true, cursor: true, segundos: false, voz: true };
+  const TARJETAS = { tiempo: "Clima", agenda: "Agenda de hoy", pendiente: "Pendiente", finanzas: "Finanzas", luz: "Precio de la luz", casa: "Estado de la casa", red: "Red y seguridad", inversiones: "Mercados" };
+  const DEFECTO = { tarjetas: Object.fromEntries(Object.keys(TARJETAS).map((k) => [k, true])), tema: "cian", raton: true, fondo: true, cursor: true, segundos: false, voz: true, despierta: false, quiosco: false };
   const ESTADOS = { reposo: "En espera", escuchando: "Te escucho", pensando: "Procesando…", hablando: "Hablando" };
   const reducido = matchMedia("(prefers-reduced-motion: reduce)");
   const tactil = matchMedia("(hover: none)");
@@ -91,6 +91,15 @@ const Hud = (() => {
         dif == null ? null : el("p", { class: "hud-nota" }, el("span", { class: "hud-chip " + (dif > 0 ? "baja" : "sube") }, (dif > 0 ? "▲ " : "▼ ") + Math.abs(dif) + " %"), " frente al mes pasado"),
         top ? el("div", { class: "hud-medidor" }, dato(top.categoria, Math.round(top.porcentaje) + " %"), barra(top.porcentaje, top.superado)) : null);
     } else pintar("finanzas", "ok");
+    const lz = d?.luz;
+    if (lz) {
+      const kwh = (p) => p.toLocaleString("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+      const max = Math.max(...lz.serie), min = Math.min(...lz.serie), hAct = new Date().getHours();
+      const graf = svg("svg", { class: "hud-luz-graf", viewBox: "0 0 240 40", preserveAspectRatio: "none", "aria-hidden": "true" },
+        ...lz.serie.map((p, i) => { const alto = 5 + (p - min) / ((max - min) || 1) * 34; return svg("rect", { x: i * 10 + 1, y: 40 - alto, width: 8, height: alto, rx: 1.5, class: (p <= lz.media * .9 ? "barata" : p >= lz.media * 1.1 ? "cara" : "") + (i === hAct ? " ahora" : "") }); }));
+      pintar("luz", lz.nivel === "cara" ? "aviso" : "ok", grande(kwh(lz.ahora?.precio ?? lz.media) + " €", "kWh " + (lz.ahora ? "ahora · " + lz.nivel : "media")), graf,
+        el("div", { class: "hud-fila2" }, dato("Más barata", lz.barata.hora + ":00"), dato("Más cara", lz.cara.hora + ":00", "aviso")));
+    } else pintar("luz", "ok");
     const inv = d?.inversiones?.valores || [];
     pintar("inversiones", "ok", inv.length ? el("ul", { class: "hud-lista-inv" }, ...inv.slice(0, 5).map((x) =>
       el("li", null, el("span", { class: "n" }, x.nombre || x.simbolo), el("strong", null, eur(x.precio, x.precio >= 1000 ? 0 : 2)), chipCambio(x.variacion_dia)))) : null);
@@ -276,6 +285,26 @@ const Hud = (() => {
     for (let i = 0; i < m; i++) estrellas.push({ x: Math.random(), y: Math.random() * .64, z: .2 + Math.random() * .8, f: Math.random() * Math.PI * 2 });
   }
 
+  // --- Tableta: pantalla encendida (Wake Lock) y modo quiosco ---
+  let bloqueo = null, inactivo = 0;
+  async function pantallaEncendida() {
+    if (!activo || !opts.despierta || document.hidden || bloqueo || !navigator.wakeLock) return;
+    try { bloqueo = await navigator.wakeLock.request("screen"); bloqueo.addEventListener("release", () => { bloqueo = null; }); }
+    catch (_) { bloqueo = null; }   // el navegador puede negarlo (batería baja, sin HTTPS…)
+  }
+  function soltarPantalla() { if (bloqueo) { bloqueo.release().catch(() => {}); bloqueo = null; } }
+  function despertarControles() {
+    const sec = $w("v-hud"); sec.classList.remove("dormido");
+    clearTimeout(inactivo);
+    if (opts.quiosco && activo) inactivo = setTimeout(() => { if ($w("hud-panel").hidden && document.activeElement?.id !== "hud-texto") sec.classList.add("dormido"); }, 6000);
+  }
+  async function quioscoToque() {
+    despertarControles();
+    if (opts.quiosco && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+      try { await document.documentElement.requestFullscreen(); } catch (_) { /* sin pantalla completa */ }
+    }
+  }
+
   // --- Opciones ---
   function aplicarOpciones() {
     const sec = $w("v-hud");
@@ -284,10 +313,12 @@ const Hud = (() => {
     sec.classList.toggle("sin-fondo", !opts.fondo);
     sec.classList.toggle("con-cursor", movimiento() && opts.cursor);
     if (!movimiento()) alSalir();
+    sec.classList.toggle("quiosco", !!opts.quiosco); despertarControles();
+    if (opts.despierta) pantallaEncendida(); else soltarPantalla();
     relojLocal();
     if (activo) { datos(); if (!rafFondo) rafFondo = requestAnimationFrame(dibujarFondo); }
   }
-  const INTERRUPTORES = [["hud-op-raton", "raton"], ["hud-op-fondo", "fondo"], ["hud-op-cursor", "cursor"], ["hud-op-segundos", "segundos"], ["hud-op-voz", "voz"]];
+  const INTERRUPTORES = [["hud-op-raton", "raton"], ["hud-op-fondo", "fondo"], ["hud-op-cursor", "cursor"], ["hud-op-segundos", "segundos"], ["hud-op-voz", "voz"], ["hud-op-despierta", "despierta"], ["hud-op-quiosco", "quiosco"]];
   function pintarOpciones() {
     $w("hud-op-tarjetas").replaceChildren(...Object.entries(TARJETAS).filter(([k]) => Sesion.esAdmin || !["casa", "red"].includes(k)).map(([k, nombre]) => {
       const i = el("input", { type: "checkbox", checked: opts.tarjetas[k] !== false });
@@ -316,7 +347,7 @@ const Hud = (() => {
   function activar(si) {
     activo = si;
     clearInterval(refresco); clearInterval(refrescoDirecto);
-    if (!si) { cancelAnimationFrame(raf); cancelAnimationFrame(rafFondo); raf = rafFondo = 0; panel(false); return; }
+    if (!si) { cancelAnimationFrame(raf); cancelAnimationFrame(rafFondo); raf = rafFondo = 0; panel(false); soltarPantalla(); clearTimeout(inactivo); return; }
     preparar(); aplicarOpciones(); rapidas(); directo();
     refresco = setInterval(() => { if (!document.hidden) datos(); }, 60000);
     refrescoDirecto = setInterval(directo, 5000);
@@ -327,11 +358,12 @@ const Hud = (() => {
     addEventListener("aria:estado", cambiar);
     addEventListener("resize", () => { if (activo) preparar(); });
     addEventListener("aria:hud-texto", (e) => { if (activo) $w("hud-subtitulo").textContent = String(e.detail?.texto || "").slice(-420); });
-    addEventListener("visibilitychange", () => { if (activo && !document.hidden) { if (!raf) raf = requestAnimationFrame(dibujar); if (!rafFondo) rafFondo = requestAnimationFrame(dibujarFondo); } });
+    addEventListener("visibilitychange", () => { if (activo && !document.hidden) { pantallaEncendida(); if (!raf) raf = requestAnimationFrame(dibujar); if (!rafFondo) rafFondo = requestAnimationFrame(dibujarFondo); } });
     reducido.addEventListener?.("change", aplicarOpciones);
     setInterval(() => { if (activo) relojLocal(); }, 1000);
     const sec = $w("v-hud");
-    sec.addEventListener("pointermove", alMover); sec.addEventListener("pointerleave", alSalir);
+    sec.addEventListener("pointermove", (e) => { alMover(e); if (opts.quiosco) despertarControles(); }); sec.addEventListener("pointerleave", alSalir);
+    sec.addEventListener("pointerdown", quioscoToque); sec.addEventListener("keydown", despertarControles);
     $w("hud-salir").addEventListener("click", () => { location.hash = "inicio"; });
     $w("hud-pantalla").addEventListener("click", async () => { try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); } catch (_) { toast("La pantalla completa no está disponible.", "mal"); } });
     $w("hud-opciones").addEventListener("click", () => panel());

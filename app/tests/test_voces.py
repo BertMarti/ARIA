@@ -124,3 +124,8 @@ def test_sin_voz_propia_no_aparece(ana, monkeypatch):
         return None
     monkeypatch.setattr(voz, "voz_propia", no_hay)
     assert all(v["id"] != "propia" for v in cliente(ana).get("/api/voz/voces").json()["voces"])
+
+
+def test_tono_elegante():
+    e = voz._estilo(1.0, {"tono": "elegante"})
+    assert "elegante" in e and "ironía amable" in e and "acento de España" in e

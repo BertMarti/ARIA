@@ -275,6 +275,8 @@ TONOS = {
     "alegre": ("Alegre", "con una voz femenina alegre, cercana y llena de energía"),
     "serena": ("Serena", "con una voz femenina serena y suave, con calma y sin prisa"),
     "tierna": ("Muy tierna", "con una voz femenina muy tierna y delicada, casi susurrando con cariño"),
+    "elegante": ("Elegante", "con una voz femenina serena, segura y elegante, cálida y cercana, con un punto de ironía amable, "
+                             "sin prisa y haciendo pequeñas pausas"),
 }
 ACENTOS = {"es-ES": ("España", "con acento de España (castellano peninsular)"),
            "es-US": ("Latinoamérica", "con acento latinoamericano neutro")}

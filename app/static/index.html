@@ -117,6 +117,11 @@
       </form>
     </header>
 
+    <nav class="menu-inicio" aria-label="Menú principal">
+      <p class="mi-indice"><span>Tu ARIA</span><span class="mi-reloj" id="mi-reloj" aria-hidden="true"></span></p>
+      <div class="mi-rejilla" id="menu-inicio"></div>
+    </nav>
+
     <article class="tarjeta resumen" id="resumen-hoy" hidden>
       <div class="resumen-cab">
         <h2>Resumen del día</h2>
@@ -128,7 +133,7 @@
       <div id="resumen-cuerpo" class="resumen-cuerpo" aria-live="polite"></div>
     </article>
 
-    <h2>Aplicaciones</h2>
+    <h2 class="mi-titulo">Aplicaciones</h2>
     <div class="lanzador" id="lanzador">
       <article class="app-tile"><a class="tile-enlace" href="#hud"><span class="tile-ico" aria-hidden="true">H</span><strong>Modo HUD</strong><span class="muted">La presencia visual de ARIA</span></a></article>
       <article class="app-tile" id="tile-chat">

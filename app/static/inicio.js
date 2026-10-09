@@ -1,5 +1,5 @@
 "use strict";
-// Inicio: saludo, lanzador de aplicaciones con estado en vivo, acciones rápidas y mini-sistema.
+// Inicio: saludo, menú en tarjetas numeradas, lanzador de aplicaciones con estado en vivo, acciones rápidas y mini-sistema.
 const Inicio = (() => {
   let temporizador = null, puertos = { shield_web: 8443, vpn: 51843 };
 
@@ -169,9 +169,90 @@ const Inicio = (() => {
       el("a", { class: "rd-enlace", href: "#agenda" }, "Abrir la agenda →")));
     if (d.cierre) c.append(el("p", { class: "rd-cierre" }, d.cierre));
   }
+  // --- Menú principal en tarjetas numeradas (mismo sistema visual que el escaparate) ---
+  // Cada tarjeta: vista a la que lleva, etiqueta mono, título, un dato vivo del resumen y su estado.
+  const MENU = [
+    { vista: "hud", etq: "Presencia", titulo: "Modo HUD", destacada: true, visual: () => el("span", { class: "mi-v-orbe" }, el("i"), el("i"), el("i")),
+      dato: () => "ARIA a pantalla completa", estado: () => ["Activo", "ok"] },
+    { vista: "resumen", etq: "Hoy", titulo: "Resumen del día", destacada: true, visual: visualResumen, dato: datoResumen,
+      estado: (d) => !d ? ["Cargando", ""] : d.aplicaciones && !d.aplicaciones.ok ? ["Aviso", "aviso"] : ["Al día", "ok"] },
+    { vista: "agenda", etq: "Tiempo", titulo: "Agenda", dato: datoAgenda, estado: () => ["Activo", "ok"],
+      visual: () => el("span", { class: "mi-v-cal" }, ...Array.from({ length: 7 }, (_, i) => el("i", { class: i === (new Date().getDay() + 6) % 7 ? "hoy" : "" }))) },
+    { vista: "red", etq: "Casa", titulo: "Tu casa", admin: true, visual: () => el("span", { class: "mi-v-red" }, el("i"), el("i"), el("i"), el("i"), el("i")),
+      dato: (d) => d?.red ? d.red.total + " dispositivos" + (d.aplicaciones?.shield ? " · " + fmtNum(d.aplicaciones.shield.bloqueadas) + " anuncios fuera" : "") : "Red, VPN y anuncios",
+      estado: (d) => d?.red?.n_desconocidos ? ["Aviso", "aviso"] : ["Activo", "ok"] },
+    { vista: "informacion", etq: "Mundo", titulo: "Información", visual: visualInversiones,
+      dato: (d) => d?.inversiones ? "Tus inversiones y noticias" : "Noticias y mercados", estado: () => ["Activo", "ok"] },
+    { vista: "mapa", etq: "Lugar", titulo: "Mapa", visual: () => el("span", { class: "mi-v-mapa" }, el("i")), dato: () => "Tu zona, el tiempo y rutas", estado: () => ["Activo", "ok"] },
+    { vista: "chat", etq: "Conversación", titulo: "Chat", visual: () => el("span", { class: "mi-v-lineas" }, el("i"), el("i"), el("i")),
+      dato: (d) => d?.aplicaciones?.aria ? d.aplicaciones.aria.listos + " de " + d.aplicaciones.aria.total + " cerebros listos" : "Habla o escribe a ARIA", estado: () => ["Activo", "ok"] },
+    { vista: "finanzas", etq: "Dinero", titulo: "Finanzas", visual: () => el("span", { class: "mi-v-barras" }, el("i"), el("i"), el("i"), el("i")),
+      dato: (d) => d?.finanzas ? eur(d.finanzas.gastos / 100, 0) + " en " + d.finanzas.mes_texto : "Gastos y presupuestos", estado: () => ["Activo", "ok"] },
+    { pronto: true, etq: "En construcción", titulo: "ARIA PRO", visual: () => el("span", { class: "mi-v-lineas pronto" }, el("i"), el("i"), el("i")),
+      dato: () => "Briefing hablado, voz propia y ARIA flotante", estado: () => ["Pronto", "pronto"] },
+  ];
+  function visualResumen(d) {
+    const t = d?.tiempo, lz = d?.luz;
+    return el("span", { class: "mi-v-resumen" },
+      el("strong", null, t ? (t.actual ?? t.max) + "°" : "—"),
+      el("span", null, t ? t.cielo : "Cargando…"),
+      lz ? el("span", { class: "mi-v-luz " + (lz.nivel || "") }, "Luz " + (lz.ahora ? lz.ahora.precio : lz.media).toLocaleString("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + " €/kWh") : null);
+  }
+  function datoResumen(d) {
+    if (!d) return "El tiempo, la luz, tu casa y tu día";
+    const a = d.aplicaciones;
+    return a && !a.ok ? a.problemas.length + (a.problemas.length === 1 ? " cosa que revisar" : " cosas que revisar") : "Todo en orden en casa";
+  }
+  function datoAgenda(d) {
+    if (!d) return "Eventos, recordatorios y cumpleaños";
+    const ag = d.agenda || {}, ahora = new Date().toTimeString().slice(0, 5);
+    const lista = [...(ag.eventos || []).filter((e) => !e.todo_el_dia).map((e) => [hora(e.inicio), e.titulo]),
+      ...(d.recordatorios || []).map((r) => [hora(r.cuando), r.texto])].sort((x, y) => x[0].localeCompare(y[0]));
+    const total = (ag.eventos || []).length + (d.recordatorios || []).length, sig = lista.find((x) => x[0] >= ahora);
+    return sig ? "Próximo: " + sig[0] + " · " + sig[1] : total ? total + " cosas hoy, nada más pendiente" : "Día despejado";
+  }
+  function visualInversiones(d) {
+    const v = (d?.inversiones?.valores || []).slice(0, 3);
+    if (!v.length) return el("span", { class: "mi-v-lineas" }, el("i"), el("i"), el("i"));
+    return el("span", { class: "mi-v-inv" }, ...v.map((x) => el("span", null, el("span", null, x.nombre || x.simbolo), chipCambio(x.variacion_dia))));
+  }
+  function pintarMenu(d) {
+    const cont = $("menu-inicio"); if (!cont) return;
+    const visibles = MENU.filter((m) => !(m.admin && !Sesion.esAdmin));
+    cont.replaceChildren(...visibles.map((m, i) => {
+      const [estado, clase] = m.estado(d), visual = el("span", { class: "mi-visual" }, m.visual(d));
+      visual.setAttribute("aria-hidden", "true");
+      const hijos = [
+        el("span", { class: "mi-cab" }, el("span", { class: "mi-num" }, String(i + 1).padStart(2, "0")), el("span", null, m.etq)),
+        visual, el("span", { class: "mi-nombre" }, m.titulo), el("span", { class: "mi-dato" }, m.dato(d)),
+        el("span", { class: "mi-estado " + clase }, estado),
+      ];
+      if (m.pronto) {   // rellena lo que quede de su fila en la rejilla de 4 columnas
+        const usadas = visibles.slice(0, i).reduce((n, x) => n + (x.destacada ? 2 : 1), 0);
+        return el("div", { class: "mi-carta pronto relleno-" + (4 - usadas % 4) }, ...hijos);
+      }
+      const a = el("a", { class: "mi-carta" + (m.destacada ? " destacada" : ""), href: "#" + m.vista }, ...hijos);
+      if (m.vista === "resumen") a.addEventListener("click", (e) => { e.preventDefault(); abrirResumen(); });
+      return a;
+    }));
+  }
+  async function abrirResumen() {
+    Prefs.set("resumen_cerrado", "");
+    await resumen(false);
+    $("resumen-hoy").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  }
+  function luzRaton(e) {   // brillo que sigue al ratón dentro de cada tarjeta (CSSOM: lo permite la CSP)
+    const c = e.target.closest?.(".mi-carta"); if (!c) return;
+    const r = c.getBoundingClientRect();
+    c.style.setProperty("--mx", ((e.clientX - r.left) / r.width * 100).toFixed(1) + "%");
+    c.style.setProperty("--my", ((e.clientY - r.top) / r.height * 100).toFixed(1) + "%");
+  }
+  function reloj() { const r = $("mi-reloj"); if (r) r.textContent = new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); }
+
   async function resumen(refrescar) {
     const tarjeta = $("resumen-hoy");
     const { ok, data } = await api("/api/resumen-diario" + (refrescar ? "?refrescar=1" : ""));
+    if (ok && data.fecha) pintarMenu(data);
     if (!ok || !data.fecha) { tarjeta.hidden = true; return; }
     if (!refrescar && Prefs.get("resumen_cerrado", "") === data.fecha) { tarjeta.hidden = true; return; }
     pintarResumen(data); tarjeta.hidden = false; tarjeta.dataset.fecha = data.fecha;
@@ -180,9 +261,10 @@ const Inicio = (() => {
   function activar(si) {
     clearInterval(temporizador); temporizador = null;
     if (!si) return;
-    saludo(); estados(); resumen(false); Modulos.pintarInicio();
+    saludo(); reloj(); estados(); resumen(false); Modulos.pintarInicio();
     let vueltas = 0;
     temporizador = setInterval(() => {
+      reloj();
       if (document.hidden || document.querySelector("dialog[open]")) return;
       estados(); Modulos.pintarInicio();
       if (++vueltas % 20 === 0) resumen(false);   // cada 5 min (el servidor lo cachea 10 min)
@@ -203,6 +285,8 @@ const Inicio = (() => {
     }
     $("qa-sistema").addEventListener("click", resumenSistema);
     Voz.botonMic($("preguntar-mic"), (t) => { $("preguntar-texto").value = t; $("form-preguntar").requestSubmit(); });
+    pintarMenu(null);
+    $("menu-inicio").addEventListener("pointermove", luzRaton, { passive: true });
     $("resumen-cerrar").addEventListener("click", () => { Prefs.set("resumen_cerrado", $("resumen-hoy").dataset.fecha || ""); $("resumen-hoy").hidden = true; });
     $("resumen-actualizar").addEventListener("click", async () => { await resumen(true); toast("Resumen actualizado."); });
     $("form-preguntar").addEventListener("submit", (e) => {

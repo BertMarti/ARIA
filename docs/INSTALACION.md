@@ -299,6 +299,15 @@ Y además mantiene `vpn.tu-dominio.com` apuntando a la IP pública de tu casa (�
    ARIA_URL_PUBLICA=https://aria.tu-dominio.com
    ```
 
+### Calendario suscrito desde fuera de casa (opcional)
+
+Si quieres que el calendario del móvil se actualice con tu agenda de ARIA también fuera de casa (Agenda → Sincronizar), Cloudflare Access debe dejar pasar esa ruta, porque las apps de calendario no pueden iniciar sesión:
+
+1. Zero Trust → Access → Applications → tu aplicación de ARIA → **Add an application** de tipo *Self-hosted* para `aria.tu-dominio.com/cal/`.
+2. Política con acción **Bypass** e *Include → Everyone*.
+
+Solo se abre `/cal/<token>.ics`, de solo lectura: el token es largo, aleatorio y revocable desde ARIA.
+
 ### Inicio de sesión único (SSO)
 
 Para que ARIA no te vuelva a pedir contraseña cuando ya has pasado por Cloudflare Access:
@@ -454,6 +463,14 @@ ARIA vive aislada en un contenedor, sin acceso a Docker ni a la máquina. Este p
 - **Reinicio bajo petición**: solo si la petición está **firmada** con `ARIA_SECRET` (HMAC-SHA256), tiene menos de 2 minutos y no se ha usado antes. Cualquier otro archivo se borra.
 
 Registro: `journalctl -u aria-host-agente`. Sin el agente, ARIA funciona igual; solo faltan esas dos tarjetas.
+
+### Verificación en dos pasos: rescate
+
+Si alguien pierde el móvil y sus códigos de recuperación, un administrador puede quitarle la verificación en dos pasos:
+
+```bash
+cd ~/homelab/ARIA && docker compose exec app python -m aria.dos_pasos desactivar ana@ejemplo.com
+```
 
 ## 15. Actualizar
 

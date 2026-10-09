@@ -362,7 +362,7 @@ async def teclado_resumen(chat_id: int, u: dict) -> dict:
     """Botones bajo el resumen diario: abrir ARIA o la agenda y, para administradores, pausar anuncios."""
     filas = []
     if config.URL_PUBLICA:
-        filas.append([{"text": "🏠 Abrir ARIA", "url": f"{config.URL_PUBLICA}/#inicio"},
+        filas.append([{"text": "🌐 Abrir ARIA", "url": f"{config.URL_PUBLICA}/#inicio"},
                       {"text": "📅 Agenda", "url": f"{config.URL_PUBLICA}/#agenda"}])
     fila = [boton("🔄 Actualizar", await asyncio.to_thread(ficha, chat_id, u["id"], "resumen_actualizar", None, 86400))]
     if u.get("rol") == "admin":

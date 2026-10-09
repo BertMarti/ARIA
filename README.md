@@ -45,26 +45,30 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
 </table>
 
 <p align="center">
-  <img alt="Modo HUD de ARIA: orbe animado que reacciona a la voz, reloj, tiempo, avisos, estado de la casa e inversiones" src="docs/img/captura-hud.png" width="100%">
-  <br><sub><b>Modo HUD</b>: la presencia de ARIA a pantalla completa. El orbe cambia de color al escuchar, pensar y hablar, y ondula con su voz.</sub>
+  <img alt="Modo HUD de ARIA: orbe animado sobre una rejilla futurista, con tarjetas de clima, agenda, pendientes, finanzas, estado de la casa, red, precio de la luz y mercados" src="docs/img/captura-hud.png" width="100%">
+  <br><sub><b>Modo HUD</b>: la presencia de ARIA a pantalla completa. Tarjetas de cristal que siguen al ratón, un orbe que cambia de color al escuchar, pensar y hablar (y ondula con su voz), y acciones rápidas.</sub>
 </p>
 
 <p align="center">
   <img alt="Página de Inicio de ARIA con el resumen del día en tarjetas" src="docs/img/captura-inicio.png" width="100%">
-  <br><sub><b>Inicio</b>: el resumen del día en tarjetas (tiempo, estado de tus aplicaciones, red, finanzas, inversiones y agenda). Instancia de demostración con datos ficticios.</sub>
+  <br><sub><b>Inicio</b>: el resumen del día en tarjetas (tiempo, precio de la luz, estado de tus aplicaciones, red, finanzas, inversiones y agenda). Instancia de demostración con datos ficticios.</sub>
 </p>
 
 ### 🆕 Novedades
 
 | | Qué hay de nuevo |
 |:---:|---|
-| 🌌 | **Modo HUD** (`#hud`): pantalla completa con un orbe que respira, escucha y habla; reloj, tiempo, avisos, estado de la casa e inversiones. Respeta «reducir movimiento». |
-| 📰 | **Resumen diario** bien maquetado en **Inicio**, en el **HUD** y por **Telegram** cada mañana: tiempo, salud de las aplicaciones, red, finanzas, inversiones, agenda y cumpleaños. |
+| 🌌 | **Modo HUD** (`#hud`): escena futurista con rejilla animada, orbe que «mira» al ratón y tarjetas que se iluminan y giran en 3D al pasar por encima. **Opciones**: qué tarjetas ver, 5 colores, efectos, reloj con segundos y voz. **Modo quiosco** para una tableta (pantalla siempre encendida, controles que se esconden). |
+| ⚡ | **Precio de la luz** (PVPC de España, sin claves): precio de ahora, horas más baratas y caras, gráfico de las 24 horas en Inicio y el HUD, y en el chat («¿cuándo pongo la lavadora?»). |
+| 📲 | **Agenda en el móvil**: suscríbete desde el calendario del iPhone, Android u Outlook con un enlace privado (se actualiza solo) o descarga un `.ics`. |
+| 🔐 | **Verificación en dos pasos** con cualquier app de autenticación (Google Authenticator, Aegis, 1Password…) y códigos de recuperación. |
+| 📰 | **Resumen diario** bien maquetado en **Inicio**, en el **HUD** y por **Telegram** cada mañana: tiempo, luz, salud de las aplicaciones, red, finanzas, inversiones (también Bitcoin y Ethereum con gráfica), agenda y cumpleaños. En Telegram llega con botones: Abrir ARIA, Agenda, Actualizar y Pausar anuncios. |
 | 📅 | **Agenda y cumpleaños**: calendario mensual, semanal y en lista, eventos que se repiten, avisos antes de cada cita y de cada cumpleaños. También por chat («apúntame el dentista el jueves a las 17:30»). |
 | 🗺️ | **Mapa libre** con OpenStreetMap: buscar lugares, tu ubicación, rutas y «farmacias cerca», sin claves ni seguimiento. |
 | 📈 | **Información**: noticias por temas con resumen y fuentes, y **Mis inversiones** (acciones, fondos, ETF y cripto en euros con gráfica, variación y tu posición). |
 | 🖥️ | **Sistema en directo**: CPU, memoria y red por contenedor, temperatura y un botón seguro para **reiniciar la Raspberry** desde la web o Telegram. |
 | ⚙️ | **Automatizaciones** «si pasa esto, haz aquello», **estadísticas por dispositivo** de la red, **informe semanal** y **proyectos y decisiones** en la memoria. |
+| 🎨 | **Interfaz pulida**: Ajustes por secciones con buscador, la Red en fichas legibles en el móvil, noticias en tarjetas con su fuente y resumen limpio, y manos libres que ya no «oye» un «Gracias.» fantasma en el PC. |
 
 ## 📑 Índice
 
@@ -95,10 +99,10 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
 | 🔔 | **Avisos y canales** | Campana de avisos en la web, **bot de Telegram** propio y **notificaciones push** en el móvil o el navegador.<br>Vigila la casa sola: servicios caídos, dispositivos desconocidos, temperatura, disco, copias atrasadas… |
 | 🏡 | **Tu casa y tu red** | **Finanzas personales**: movimientos, categorías, presupuestos e importación del CSV del banco.<br>**Inventario de red**: dispositivos de la LAN, latencia, test de velocidad e historial.<br>**Seguridad**: escaneo defensivo de puertos de tu red y búsqueda de vulnerabilidades conocidas.<br>**Control parental** por dispositivo (pausar internet, bloquear TikTok, YouTube…, horarios), mediante SHIELD-DNS. |
 | 🧩 | **Aplicaciones (módulos)** | **SHIELD-DNS**: estadísticas, pausar y reanudar el bloqueo de anuncios.<br>**HEIMDALL**: ver, crear, activar y desactivar dispositivos de la VPN con su código QR.<br>**Uptime web** (módulo de ejemplo): «¿responde example.org?» y avisos si una web se cae.<br>**Las tuyas**: un mosaico en Inicio, herramientas en el chat, avisos y endpoints propios. Ver [docs/MODULOS.md](docs/MODULOS.md).<br>Spotify y Netflix existen en el código pero están **aparcados** (desactivados por defecto, `ARIA_SPOTIFY=0` / `ARIA_NETFLIX=0`). |
-| 📅 | **Agenda, mapa e información** | **Agenda** con calendario (mes, semana, lista), eventos repetidos y **cumpleaños** con aviso.<br>**Mapa** OpenStreetMap: búsqueda, ubicación, rutas y lugares cercanos.<br>**Información**: noticias por temas y **Mis inversiones** con gráficas en euros. |
-| 🌌 | **HUD y resumen diario** | **Modo HUD** a pantalla completa con orbe animado y voz.<br>**Resumen diario** en Inicio, HUD y Telegram (HTML bien maquetado). |
+| 📅 | **Agenda, mapa e información** | **Agenda** con calendario (mes, semana, lista), eventos repetidos y **cumpleaños** con aviso; **suscripción** desde el calendario del móvil.<br>**Mapa** OpenStreetMap: búsqueda, ubicación, rutas y lugares cercanos.<br>**Información**: noticias por temas y **Mis inversiones** con gráficas en euros. |
+| 🌌 | **HUD y resumen diario** | **Modo HUD** futurista con tarjetas interactivas, opciones y modo quiosco.<br>**Resumen diario** en Inicio, HUD y Telegram (HTML bien maquetado, con botones).<br>**Precio de la luz** por horas (PVPC). |
 | 🖥️ | **Sistema** | Telemetría en directo por contenedor, **reinicio seguro** firmado (HMAC) y **automatizaciones**. HEIMDALL admite accesos **temporales** y avisa si una VPN conecta desde un país u operador nuevo (solo se consulta la IP pública). |
-| 🔑 | **Acceso y usuarios** | HTTPS automático en tu red (`https://aria.local`, la IP o `https://aria.lan`).<br>Opcional: tu dominio con **Cloudflare Tunnel + Access**, sin abrir puertos y con inicio de sesión único.<br>Varios usuarios con rol **administrador** o **usuario**; permisos comprobados en el servidor.<br>Paleta de órdenes **Ctrl+K**, app instalable (PWA) y menú **Compartir** de Android. |
+| 🔑 | **Acceso y usuarios** | HTTPS automático en tu red (`https://aria.local`, la IP o `https://aria.lan`).<br>Opcional: tu dominio con **Cloudflare Tunnel + Access**, sin abrir puertos y con inicio de sesión único.<br>Varios usuarios con rol **administrador** o **usuario**; permisos comprobados en el servidor; **verificación en dos pasos** opcional.<br>Paleta de órdenes **Ctrl+K**, app instalable (PWA) y menú **Compartir** de Android. |
 
 <p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
 
@@ -108,6 +112,10 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
 > Todas las capturas salen de una instancia de demostración con **datos ficticios** (Ana, Lucía, red `192.168.1.x`). Las respuestas del chat son de ejemplo.
 
 <table>
+  <tr>
+    <td width="50%"><img alt="Panel de opciones del HUD: tarjetas visibles, colores, efectos y modo quiosco" src="docs/img/captura-hud-opciones.png"><p align="center"><sub><b>HUD → Opciones</b>: tarjetas, 5 colores, efectos y modo quiosco</sub></p></td>
+    <td width="50%"><img alt="Ajustes organizados por secciones, con buscador" src="docs/img/captura-ajustes.png"><p align="center"><sub><b>Ajustes</b>: por secciones y con buscador</sub></p></td>
+  </tr>
   <tr>
     <td width="50%"><img alt="Agenda con calendario mensual, eventos y cumpleaños" src="docs/img/captura-agenda.png"><p align="center"><sub><b>Agenda</b>: calendario del mes, el día elegido y los próximos cumpleaños</sub></p></td>
     <td width="50%"><img alt="Resumen diario de ARIA tal como llega por Telegram" src="docs/img/captura-telegram.png"><p align="center"><sub><b>Telegram</b>: el resumen de cada mañana</sub></p></td>
@@ -142,6 +150,12 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
   <img alt="Agenda en lista en el móvil" src="docs/img/captura-movil-agenda.png" width="230">
   &nbsp;
   <img alt="Chat del agente Redes en el móvil" src="docs/img/captura-movil-chat.png" width="230">
+</p>
+
+<p align="center">
+  <img alt="Dispositivos de la red en fichas, en el móvil" src="docs/img/captura-movil-red.png" width="230">
+  &nbsp;
+  <img alt="Ajustes en el móvil, con pestañas de secciones" src="docs/img/captura-movil-ajustes.png" width="230">
 </p>
 
 <p align="center"><img alt="Centro de control con SHIELD-DNS, HEIMDALL y el sistema en directo por contenedor" src="docs/img/captura-centro-control.png" width="100%"><br><sub><b>Centro de control</b>: SHIELD-DNS, HEIMDALL, el sistema en directo y el reinicio seguro</sub></p>
@@ -350,6 +364,7 @@ docker compose up -d
 | Módulos | `ARIA_MODULOS` | vacía (= todos) | Qué módulos se cargan (`-` = ninguno) |
 | | `UPTIME_URLS` | vacía | Webs que vigila el módulo `uptime` |
 | Aparcados | `ARIA_SPOTIFY`, `ARIA_NETFLIX` | `0` | Reactivan Spotify / Netflix |
+| Precio de la luz | `ARIA_LUZ` | `1` | PVPC de España (Red Eléctrica). Ponlo a `0` fuera de España |
 
 </details>
 
@@ -465,7 +480,8 @@ flowchart TB
 
 - **Lo que sale de casa.** Con el cerebro local no sale nada. Con Ollama Cloud, Groq o Gemini, tus mensajes, parte de tu memoria y los resultados de las herramientas (estado de la máquina, anuncios bloqueados, nombres de dispositivos…) se envían a esas empresas. En el plan gratuito de Google, Google puede usarlos para mejorar sus productos. Si no quieres, desactiva esos cerebros en Ajustes → Cerebros.
 - **Voz e imágenes.** El audio y las fotos se procesan en memoria y **no se guardan nunca**; solo queda el texto. Al hablar, el audio va a Groq (o se transcribe en tu máquina si no hay clave). Las fotos van a Gemini o Groq, sin metadatos (GPS, cámara…).
-- **Acceso.** HTTPS siempre, contraseñas cifradas (scrypt), 5 intentos fallidos bloquean la IP 5 minutos, protección CSRF y permisos por rol comprobados en el servidor.
+- **Acceso.** HTTPS siempre, contraseñas cifradas (scrypt), 5 intentos fallidos bloquean la IP 5 minutos, protección CSRF y permisos por rol comprobados en el servidor. **Verificación en dos pasos** opcional (TOTP) por usuario, con el secreto cifrado y códigos de recuperación de un solo uso.
+- **Calendario suscrito.** El enlace `/cal/<token>.ics` no necesita sesión: el token es largo, aleatorio y revocable (ARIA solo guarda su huella). No lo compartas; si se filtra, crea uno nuevo en Agenda → Sincronizar.
 - **Secretos.** `.env` y `data/` no se suben a git. Las claves de las IA nunca se muestran en la web. Las claves privadas de WireGuard solo llegan al navegador cuando descargas un `.conf`.
 - **Escaneo defensivo.** El agente Seguridad solo escanea la red de `ARIA_RED_PERMITIDA`, nunca ataca ni prueba contraseñas.
 - **Módulos.** Son código con los mismos permisos que ARIA: instala solo los de confianza.
@@ -566,6 +582,7 @@ Deja vacía `ARIA_URL_PUBLICA` en `.env` y `docker compose up -d`.
 ## 🛠️ Para desarrolladores
 
 - Código en `app/aria/` (FastAPI), web sin paso de compilación en `app/static/`, pruebas en `app/tests/`.
+- **Demo con datos inventados** para probar la interfaz y regenerar las capturas: [herramientas/demo](herramientas/demo/README.md) (`arrancar.sh --sembrar` y `capturar.py docs/img`).
 - Notas para agentes de programación: [AGENTS.md](AGENTS.md), [CLAUDE.md](CLAUDE.md), [SKILLS.md](SKILLS.md) y decisiones técnicas en [MEMORY.md](MEMORY.md).
 - Pruebas:
   ```bash
@@ -575,7 +592,7 @@ Deja vacía `ARIA_URL_PUBLICA` en `.env` y `docker compose up -d`.
 
 ## 🗺️ Hoja de ruta
 
-Ideas de nuevas aplicaciones (Home Assistant, calendario, Jellyfin, precio de la luz…) y mejoras del núcleo en **[docs/PLAN.md](docs/PLAN.md)**. La mayoría se pueden hacer como módulos.
+Ideas de nuevas aplicaciones (Home Assistant, Jellyfin, gasolineras…) y mejoras del núcleo en **[docs/PLAN.md](docs/PLAN.md)**. La mayoría se pueden hacer como módulos.
 
 ## 🌐 El ecosistema ARIA
 

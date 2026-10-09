@@ -29,13 +29,14 @@ Esta guía explica qué hay en cada parte de ARIA y cómo sacarle partido en el 
 17. [Agenda y cumpleaños](#agenda-y-cumpleaños)
 18. [Mapa](#mapa)
 19. [Información e inversiones](#información-e-inversiones)
-20. [Ajustes](#ajustes)
-21. [Avisos](#avisos)
-22. [Telegram](#telegram)
-23. [Notificaciones push](#notificaciones-push)
-24. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
-25. [Usuarios y roles](#usuarios-y-roles)
-26. [Cuando algo falla](#cuando-algo-falla)
+20. [Precio de la luz](#precio-de-la-luz)
+21. [Ajustes](#ajustes)
+22. [Avisos](#avisos)
+23. [Telegram](#telegram)
+24. [Notificaciones push](#notificaciones-push)
+25. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
+26. [Usuarios y roles](#usuarios-y-roles)
+27. [Cuando algo falla](#cuando-algo-falla)
 
 ## Un vistazo rápido
 
@@ -148,13 +149,14 @@ Un único resumen que verás igual en tres sitios: la tarjeta **Resumen del día
 | Sección | Qué cuenta | Quién la ve |
 |---|---|---|
 | 🌤️ El tiempo | Cielo, temperatura ahora, mínima, máxima y lluvia; avisa si mañana cambia mucho | Todos (si pusiste `ARIA_CIUDAD`) |
+| ⚡ Precio de la luz | Media, precio de ahora, hora más barata y más cara y mejores horas que quedan | Todos (si `ARIA_LUZ=1`) |
 | 📊 Tus aplicaciones | «Todo en orden» o la lista de cosas que revisar: SHIELD-DNS, HEIMDALL, cerebros de IA, Raspberry (temperatura, RAM, disco) y copia | Administradores |
 | 🛜 Red | Dispositivos nuevos en 24 h y los que siguen sin identificar | Administradores |
 | 💶 Finanzas | Lo gastado este mes frente al mes pasado **a estas alturas**, ingresos y presupuestos | Cada uno los suyos |
 | 📈 Mis inversiones | Precio en euros y variación del día de tu lista de seguimiento | Cada uno la suya |
 | 📅 Hoy | Eventos, recordatorios y cumpleaños de la semana | Cada uno los suyos |
 
-- Por **Telegram** o **notificación** a la hora que elijas (por defecto, las 08:00): actívalo en **Ajustes → Avisos**. También puedes pedirlo cuando quieras con `/resumen` o diciéndole «resúmeme el día».
+- Por **Telegram** o **notificación** a la hora que elijas (por defecto, las 08:00): actívalo en **Ajustes → Avisos**. En Telegram llega con botones: **Abrir ARIA**, **Agenda**, **Actualizar** y, para administradores, **Pausar anuncios 30 min**. También puedes pedirlo cuando quieras con `/resumen` o diciéndole «resúmeme el día».
 - El resumen se prepara una vez cada 10 minutos como mucho; **Actualizar** lo rehace al momento.
 
 ## Recordatorios
@@ -201,7 +203,10 @@ Solo para administradores. Necesita SHIELD-DNS para ver los dispositivos.
 - **Salud**: latencia al router y a internet, DNS, VPN y la última velocidad.
 - **Medir latencia** y **Test de velocidad** (descarga ~15 MB y sube ~5 MB; uno cada 10 minutos).
 - **Historial (7 días)**: gráfica de las mediciones.
-- **Dispositivos de la LAN**: nombre, IP, fabricante, MAC, puertos y cuándo se vio. Lo desconocido aparece resaltado. Ponle un alias o márcalo como conocido (o **Marcar todos como conocidos** la primera vez).
+- **Dispositivos de la LAN**: nombre, IP, fabricante, MAC, puertos y cuándo se vio. Lo desconocido aparece resaltado. Ponle un alias o márcalo como conocido (o **Marcar todos como conocidos** la primera vez). En el **móvil**, cada dispositivo se ve como una ficha con sus datos en dos columnas.
+- **Estadísticas por dispositivo**: consultas y porcentaje de bloqueo de cada uno en 24 horas o 7 días; pulsa uno para ver su detalle. Si SHIELD-DNS no responde, lo dice claramente y vuelven solas cuando se recupera.
+
+<p align="center"><img alt="Red en el móvil" src="img/captura-movil-red.png" width="260"></p>
 - Botón **Control** de cada dispositivo: el [control parental](#control-parental).
 
 ## Control parental
@@ -250,19 +255,59 @@ Si una aplicación sale «no conectado», revisa su contraseña en `.env` (ver [
 
 ## Modo HUD
 
-Abre `https://aria.local/#hud` (o el mosaico **Modo HUD** de Inicio). Es una pantalla pensada para una tableta o una tele:
+Abre `https://aria.local/#hud` (o el mosaico **Modo HUD** de Inicio). Es una pantalla pensada para un monitor, una tableta o una tele.
 
-- En el centro, un **orbe** que respira en reposo y cambia de color cuando ARIA **escucha** (verde), **piensa** (violeta) y **habla** (azul, ondulando al ritmo de su voz). Debajo aparecen los subtítulos de lo que dice.
-- Alrededor: **reloj**, **tiempo**, **avisos sin leer**, **próximo recordatorio**, **estado de la casa** e **inversiones** del día (los de administración solo los ven administradores).
-- Abajo: escribe, mantén el micrófono o activa **Manos libres** y di «Aria».
-- **Pantalla completa** y **Salir** arriba a la derecha. Si tu sistema tiene activado «reducir movimiento», el orbe se queda casi quieto.
+<p align="center"><img alt="Modo HUD con tarjetas y orbe" src="img/captura-hud.png" width="100%"></p>
+
+- **El orbe**, en el centro, respira en reposo y cambia de color cuando ARIA **escucha** (verde), **procesa** (violeta) y **habla** (ondulando al ritmo de su voz). Su brillo «mira» hacia el ratón y las partículas se apartan del cursor. Debajo salen los subtítulos.
+- **Tarjetas** (cada una con su número y un piloto verde o ámbar): **clima**, **agenda de hoy**, **pendiente** (avisos y recordatorios), **finanzas**, **estado de la casa** (anillos de CPU, RAM y temperatura y la CPU del último minuto), **red y seguridad**, **precio de la luz** y **mercados**. Las de la casa y la red solo las ven los administradores. Al pasar el ratón por encima se iluminan y se inclinan en 3D.
+- **Acciones rápidas** bajo el orbe: **Leer resumen** (ARIA te lo dice en voz alta), **Silenciar**, **Agenda** y, para administradores, **Pausar anuncios 30 min**.
+- Abajo: escribe, mantén pulsado el micrófono o activa **Manos libres** y di «Aria».
+
+### Opciones del HUD
+
+Pulsa **Opciones** (arriba a la derecha). Todo se guarda en ese navegador.
+
+<p align="center"><img alt="Panel de opciones del HUD" src="img/captura-hud-opciones.png" width="100%"></p>
+
+| Opción | Qué hace |
+|---|---|
+| **Tarjetas** | Elige cuáles se muestran |
+| **Color** | Cian, violeta, ámbar, verde o rosa: cambia tarjetas, fondo y orbe |
+| **Movimiento con el ratón** | Parallax de la escena e inclinación de las tarjetas |
+| **Fondo animado** | Rejilla en perspectiva y estrellas |
+| **Cursor luminoso** | Un anillo de luz sigue al ratón |
+| **Reloj con segundos** | Muestra también los segundos |
+| **Leer en voz alta las respuestas** | Lo que respondes desde el HUD se lee con la voz de ARIA |
+| **Mantener la pantalla encendida** | Evita que la tableta se apague mientras el HUD está abierto |
+| **Modo quiosco** | Al tocar la pantalla pasa a pantalla completa y los botones se esconden tras unos segundos sin uso |
+
+Si tu sistema tiene activado «reducir movimiento» o usas una pantalla táctil, los efectos se desactivan solos.
+
+> [!TIP]
+> **Tableta en el salón**: abre el HUD, activa *Mantener la pantalla encendida* y *Modo quiosco*, y añade ARIA a la pantalla de inicio (app instalable). Toca una vez para pasar a pantalla completa.
 
 ## Agenda y cumpleaños
+
+<p align="center"><img alt="Agenda con calendario mensual" src="img/captura-agenda.png" width="100%"></p>
 
 - **Mes**, **Semana** o **Lista** (próximos 60 días). Pulsa un día para ver sus planes en el panel lateral; doble clic para crear un evento ese día.
 - **+ Evento**: título, fecha, hora de inicio y fin (o **todo el día**), lugar, repetición (semanal, mensual o anual), aviso previo y notas. Pulsa un evento para **editarlo** o **borrarlo**; si se repite, el cambio se aplica a toda la serie.
 - **+ Cumpleaños**: nombre, día, mes y, si quieres, el año para saber cuántos cumple. ARIA te avisa el mismo día o con antelación.
 - Por chat: «apúntame el dentista el jueves a las 17:30», «¿qué tengo mañana?», «el cumpleaños de Lucía es el 11 de octubre».
+
+### Ver la agenda en el móvil (Sincronizar)
+
+Pulsa **Sincronizar**:
+
+- **Suscribirte** (se actualiza sola): pulsa **Crear enlace**, cópialo y añádelo como *calendario suscrito*:
+  - **iPhone / Mac**: botón «Abrir en iPhone/Mac», o Ajustes → Calendario → Cuentas → Añadir cuenta → Otra → *Añadir calendario suscrito*.
+  - **Android**: en [calendar.google.com](https://calendar.google.com) desde el ordenador → *Otros calendarios* → «+» → *Desde URL*. Aparecerá en el móvil.
+  - **Outlook**: *Agregar calendario* → *Suscribirse desde la web*.
+- **Descargar .ics**: una copia para importar una vez (no se actualiza).
+
+> [!IMPORTANT]
+> El enlace es **privado**: quien lo tenga puede ver tu agenda (solo verla). ARIA lo enseña una sola vez; si lo pierdes o se filtra, crea uno nuevo (el anterior deja de funcionar) o pulsa **Desactivar**. Para que funcione fuera de casa, ARIA debe ser accesible desde internet; con Cloudflare Access añade una regla *Bypass* para la ruta `/cal/` (ver [INSTALACION.md](INSTALACION.md)).
 
 ## Mapa
 
@@ -270,28 +315,48 @@ Mapa de **OpenStreetMap**, sin claves ni seguimiento: busca una dirección, puls
 
 ## Información e inversiones
 
-- **Noticias por temas** (España, Tecnología, Economía… los eliges en **Editar temas y seguimiento**), con un resumen y sus fuentes.
-- **Mis inversiones**: busca un valor por nombre o símbolo (acciones, fondos, ETF, índices o criptomonedas) y añádelo. Si indicas **cantidad** y **precio medio**, verás el valor de tu posición y la ganancia o pérdida. Todo se convierte a **euros**, con una gráfica del último año y la variación del día, la semana, el mes y el año.
+<p align="center"><img alt="Información: inversiones y noticias" src="img/captura-informacion.png" width="100%"></p>
+
+- **Noticias por temas** (España, Tecnología, Economía… los eliges en **Editar temas y seguimiento**). Arriba, **En resumen**: unas viñetas escritas por ARIA. Debajo, una ficha por noticia con el medio, la fecha y un extracto; púlsala para abrirla.
+- **Mis inversiones**: busca un valor por nombre o símbolo (acciones, fondos, ETF, índices o criptomonedas) y añádelo. Si indicas **cantidad** y **precio medio**, verás el valor de tu posición y la ganancia o pérdida. Todo se convierte a **euros**, con una gráfica y la variación del día, la semana, el mes y el año (también Bitcoin y Ethereum).
 - ARIA informa, **no aconseja**: no es un asesor financiero.
+
+## Precio de la luz
+
+Si vives en España, ARIA consulta cada día el precio de la tarifa regulada (**PVPC**) en la web pública de Red Eléctrica (sin claves):
+
+- En **Inicio** y en el **HUD**: el precio de ahora, un gráfico de barras de las 24 horas (verde = barata, rojo = cara), la hora más barata y la más cara, y las mejores horas que quedan.
+- En el **resumen diario** de Telegram.
+- Por **chat**: «¿cuándo pongo la lavadora?», «¿está cara la luz ahora?».
+
+Fuera de España, apágalo con `ARIA_LUZ=0` en `.env`.
 
 ## Ajustes
 
-Lo que ve cada rol:
+Los ajustes están organizados por **secciones** (a la izquierda; en el móvil, pestañas arriba) y tienen un **buscador**: escribe «telegram», «contraseña» o «voz» y verás solo las tarjetas que lo mencionan.
 
-| Tarjeta | Qué hay | Quién |
+<p align="center"><img alt="Ajustes por secciones" src="img/captura-ajustes.png" width="100%"></p>
+
+| Sección | Tarjetas | Quién |
 |---|---|---|
-| **Usuarios** | Invitar, cambiar rol, activar/desactivar, poner contraseña para casa, eliminar | Administradores |
-| **Cerebros** | Orden, activar/desactivar y **Probar** cada cerebro | Administradores |
-| **Modelos locales** | Descargar, usar y borrar modelos de Ollama | Administradores |
-| **Avisos** | Tipos de aviso, canales, horas de silencio, resumen de buenos días, Telegram y notificaciones | Todos |
-| **Recordatorios** | Ver y crear recordatorios | Todos |
-| **Rutinas** | Crear, editar, pausar, ejecutar | Todos |
-| **Voz** | Micrófono, leer en voz alta, manos libres, velocidad | Todos |
-| **Memoria** | Recuerdos, aprendizaje automático y diario | Todos |
-| **Contraseña** | Cambiar la tuya (mínimo 10 caracteres) | Todos |
-| **Certificado** | Descargar el certificado para quitar el aviso del navegador | Administradores |
-| **Módulos** | Aplicaciones integradas y módulos: estado, herramientas y variables que usan | Administradores |
-| **Acerca de** | Versión | Administradores |
+| **General** | **Voz** (micrófono, leer en voz alta, manos libres, velocidad), **Verificación en dos pasos**, **Contraseña** y **Acerca de** | Todos (Acerca de: administradores) |
+| **Avisos** | Tipos de aviso, canales, horas de silencio, resumen diario, Telegram, notificaciones y **Recordatorios** | Todos |
+| **Automatización** | **Rutinas** y **Automatizaciones** («si pasa esto, haz aquello») | Todos (automatizaciones: administradores) |
+| **Memoria** | Recuerdos, aprendizaje automático, diario y proyectos | Todos |
+| **Inteligencia artificial** | **Cerebros** (orden, activar, Probar) y **Modelos locales** | Administradores |
+| **Usuarios** | Invitar, cambiar rol, activar/desactivar, contraseña para casa, eliminar | Administradores |
+| **Aplicaciones** | **Módulos**, integraciones y **Certificado** | Administradores |
+
+### Verificación en dos pasos
+
+Además de la contraseña, ARIA te pedirá un código de 6 cifras de tu móvil.
+
+1. Instala una app de autenticación (Google Authenticator, Aegis, 1Password, Microsoft Authenticator…).
+2. En **Ajustes → General → Verificación en dos pasos**, pulsa **Activar** y escanea el código QR (o escribe la clave a mano).
+3. Escribe el código que muestra la app y pulsa **Confirmar y activar**.
+4. **Guarda los 8 códigos de recuperación** en un sitio seguro: cada uno sirve una vez si pierdes el móvil.
+
+Al entrar, tras la contraseña, ARIA te pedirá el código. Si entras por tu dominio con Cloudflare Access, se usa el segundo factor de Access. Si un usuario pierde el móvil y los códigos, un administrador puede desactivárselo con `docker compose exec app python -m aria.dos_pasos desactivar <email>`.
 
 ## Avisos
 
@@ -325,7 +390,7 @@ Comandos:
 | Comando | Qué hace |
 |---|---|
 | `/estado` | Resumen de la casa |
-| `/resumen` | Resumen de buenos días |
+| `/resumen` | Resumen del día bien maquetado, con botones (Abrir ARIA, Agenda, Actualizar y Pausar anuncios) |
 | `/tiempo` | Previsión del tiempo (`/tiempo Madrid` para otra ciudad) |
 | `/recordatorios` | Tus recordatorios |
 | `/rutinas` | Tus rutinas, con botones **Ejecutar ahora** y **Pausar** |
@@ -338,6 +403,8 @@ Comandos:
 | `/nuevo` | Empieza otra conversación |
 | `/desvincular` | Desvincula este chat |
 | `/ayuda` | Ayuda |
+
+<p align="center"><img alt="Resumen diario en Telegram" src="img/captura-telegram.png" width="320"></p>
 
 Las acciones de administración piden **Confirmar**. Cada chat tiene su conversación («Telegram · …» en el historial de la web).
 

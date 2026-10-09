@@ -112,12 +112,12 @@ const Inicio = (() => {
         svg.append(r);
       });
       c.append(tarjetaR("rayo", "Precio de la luz", "rd-luz",
-        el("div", { class: "rd-grande" }, lz.ahora ? kwh(lz.ahora.precio) : kwh(lz.media)),
-        el("p", { class: "rd-sub" }, lz.ahora ? "ahora · " + ({ barata: "hora barata", media: "precio medio", cara: "hora cara" }[lz.nivel] || "") : "media de hoy"),
+        el("div", { class: "rd-grande" }, (lz.ahora ? lz.ahora.precio : lz.media).toLocaleString("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + " €"),
+        el("p", { class: "rd-sub" }, "por kWh · " + (lz.ahora ? "ahora, " + ({ barata: "hora barata", media: "precio medio", cara: "hora cara" }[lz.nivel] || "") : "media de hoy")),
         svg, el("div", { class: "rd-luz-ejes" }, el("span", null, "0 h"), el("span", null, "12 h"), el("span", null, "23 h")),
-        fila(null, "Más barata", lz.barata.hora + ":00 · " + kwh(lz.barata.precio)),
-        fila(null, "Más cara", lz.cara.hora + ":00 · " + kwh(lz.cara.precio), "aviso"),
-        lz.mejores_restantes?.length ? fila(null, "Mejores horas que quedan", lz.mejores_restantes.map((x) => x.hora + ":00").join(", ")) : null));
+        fila(null, "Más barata", lz.barata.hora + ":00 · " + kwh(lz.barata.precio).replace("/kWh", "")),
+        fila(null, "Más cara", lz.cara.hora + ":00 · " + kwh(lz.cara.precio).replace("/kWh", ""), "aviso"),
+        lz.mejores_restantes?.length ? el("p", { class: "rd-nota" }, "Mejores horas que quedan: " + lz.mejores_restantes.map((x) => x.hora + " h").join(", ")) : null));
     }
     const a = d.aplicaciones;
     if (a) {

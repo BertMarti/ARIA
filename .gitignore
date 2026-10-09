@@ -10,3 +10,6 @@ backups/
 # Encargos a modelos delegados (no se suben)
 TAREA.md
 INFORME.md
+
+# Datos de la demo (contraseña aleatoria, base de datos de ejemplo)
+herramientas/demo/.demo/

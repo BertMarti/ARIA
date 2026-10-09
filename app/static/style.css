@@ -875,3 +875,4 @@ kbd { font-family: var(--mono); font-size: .8em; border: 1px solid var(--borde-f
 .dosp-clave { font-family: var(--mono); letter-spacing: .06em; user-select: all; overflow-wrap: anywhere; }
 .dosp-codigo { max-width: 12rem; font: 600 1.3rem var(--mono); letter-spacing: .25em; text-align: center; }
 .dosp-rec { columns: 2; margin: 0; padding-left: 1.4rem; font-family: var(--mono); }
+.rd-nota { margin: .2rem 0 0; font-size: .86rem; color: var(--muted); }

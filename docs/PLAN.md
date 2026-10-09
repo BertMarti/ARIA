@@ -36,7 +36,7 @@ Cómo leer las tablas:
 | **Robot aspirador (Roborock)** | «Aria, aspira la cocina», estado y aviso al terminar (a través de Home Assistant o de la API local) | Módulo | M | — |
 | **Impresora 3D (Anycubic / OctoPrint)** | Progreso de la impresión, aviso al terminar o si falla, foto de la cámara | Módulo + contenedor | M | ~150 MB |
 | **Cámaras (Frigate)** | Detección de personas o coches en local y aviso por Telegram con la foto | Módulo + contenedor | L | 1 GB o más (mejor con un acelerador Coral) |
-| **Consumo eléctrico** | Precio de la luz por horas (PVPC de REE) y aviso de las horas baratas para poner la lavadora | Módulo | S | — |
+| **Consumo eléctrico** | ✅ Hecho: precio de la luz por horas (PVPC de REE). Pendiente: aviso automático de las horas baratas | Núcleo | S | — |
 
 ### 1.2 Multimedia
 
@@ -52,7 +52,7 @@ Cómo leer las tablas:
 
 | Idea | Qué haría ARIA | Tipo | Esfuerzo | RAM |
 |---|---|---|---|---|
-| **Calendario (Radicale, CalDAV)** | Citas por voz, recordatorios desde el calendario y agenda en el resumen de buenos días | Módulo + contenedor | M | ~50 MB |
+| **Calendario (Radicale, CalDAV)** | La agenda propia y la suscripción iCalendar ya están hechas; CalDAV añadiría editar desde el móvil | Módulo + contenedor | M | ~50 MB |
 | **Paperless-ngx** | Documentos escaneados con búsqueda: «¿cuándo caduca el seguro del coche?» | Módulo + contenedor | L | ~700 MB |
 | **Nextcloud / archivos** | Buscar y resumir documentos propios | Módulo + contenedor | L | ~500 MB |
 | **Correo (IMAP, solo lectura)** | Resumen de correos importantes en el resumen de buenos días | Módulo | M | — |
@@ -106,14 +106,15 @@ Ya disponible (ver la [guía de uso](USO.md)):
 - **Mapas libres:** OpenStreetMap, rutas y sitios cercanos, sin claves.
 - **Centro de información:** noticias por temas con resumen, bolsa y criptomonedas.
 - **Estadísticas por dispositivo** e **informe semanal** de la red y la VPN.
-- **Resumen diario** en Inicio, HUD y Telegram; **sistema en directo**, **reinicio seguro** y **automatizaciones**.
+- **Resumen diario** en Inicio, HUD y Telegram (con botones); **sistema en directo**, **reinicio seguro** y **automatizaciones**.
+- **HUD futurista** con tarjetas interactivas, opciones y modo quiosco; **precio de la luz** (PVPC); **agenda en el móvil** (iCalendar); **verificación en dos pasos**; gráficas de cripto; Ajustes por secciones.
 
 ## 3. Orden propuesto
 
 Ordenado por lo que más aporta con menos esfuerzo y menos consumo en la Pi:
 
-1. **Precio de la luz (PVPC)**, **gasolineras** y **vigilar precios**: pequeños, útiles cada día y encajan con las rutinas.
-2. **Calendario (Radicale)**: completa el resumen de buenos días y los recordatorios.
+1. **Gasolineras** y **vigilar precios** (la luz ya está hecha): pequeños, útiles cada día y encajan con las rutinas.
+2. **Calendario bidireccional (CalDAV)**: editar la agenda desde el móvil (ya se puede ver con la suscripción).
 3. **Home Assistant**: abre la puerta a las luces, los enchufes y el robot de casa con un solo módulo.
 4. **Uptime Kuma** e **historial de velocidad**: mejor vigilancia de la casa con poco consumo.
 5. **Documentos propios (RAG)** y **Paperless-ngx**: el gran salto como asistente personal, pero el más pesado.

@@ -14,11 +14,19 @@
   <img class="login-logo" src="/static/icon.svg" alt="" width="72" height="72">
   <h1>ARIA</h1>
   <p class="sub">Centro de control del laboratorio</p>
-  <form method="post" action="/login" autocomplete="on">
+  <form id="form-login" method="post" action="/login" autocomplete="on">
     <label>Usuario o email <input name="usuario" autocomplete="username" required autofocus></label>
     <label>Contraseña <input name="password" type="password" autocomplete="current-password" required></label>
     <button type="submit" class="primario">Entrar</button>
     <p id="error" class="error" hidden></p>
+  </form>
+  <form id="form-codigo" method="post" action="/login/codigo" autocomplete="off" hidden>
+    <p class="login-paso">Verificación en dos pasos</p>
+    <label>Código de tu app de autenticación <input name="codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="16" required placeholder="123 456"></label>
+    <button type="submit" class="primario">Verificar</button>
+    <p class="sub login-ayuda">¿Sin el móvil? Escribe uno de tus códigos de recuperación.</p>
+    <p id="error-codigo" class="error" hidden></p>
+    <a href="/login" class="sub">Volver</a>
   </form>
 </main>
 <script src="/static/login.js"></script>

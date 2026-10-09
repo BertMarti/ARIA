@@ -33,6 +33,8 @@ def entorno(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "ESCANER_DIR", tmp_path / "escaner")
     db.iniciar()
     usuarios.iniciar()
+    from aria import dos_pasos
+    dos_pasos.iniciar()
     finanzas.iniciar()
     red.iniciar()
     control.iniciar()

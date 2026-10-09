@@ -863,3 +863,15 @@ kbd { font-family: var(--mono); font-size: .8em; border: 1px solid var(--borde-f
 .sincro-enlace { display: flex; gap: .4rem; margin: .5rem 0; } .sincro-enlace input { flex: 1; min-width: 0; font-family: var(--mono); font-size: .8rem; }
 .sincro-paso ul { padding-left: 1.1rem; display: grid; gap: .35rem; margin: .5rem 0 0; }
 #dlg-sincro { max-width: 560px; }
+
+.login-paso { margin: 0 0 .4rem; font-weight: 700; color: var(--acento); text-align: center; }
+.login-ayuda { font-size: .8rem; margin: .3rem 0; text-align: center; }
+#form-codigo input { font: 600 1.4rem var(--mono); letter-spacing: .3em; text-align: center; }
+#form-codigo a { display: block; text-align: center; margin-top: .4rem; }
+
+.dosp-cuerpo { display: grid; gap: .6rem; }
+.dosp-ok { margin: 0; color: var(--ok); font-weight: 700; }
+.dosp-qr { width: 200px; height: 200px; padding: 8px; background: #fff; border-radius: 12px; image-rendering: pixelated; }
+.dosp-clave { font-family: var(--mono); letter-spacing: .06em; user-select: all; overflow-wrap: anywhere; }
+.dosp-codigo { max-width: 12rem; font: 600 1.3rem var(--mono); letter-spacing: .25em; text-align: center; }
+.dosp-rec { columns: 2; margin: 0; padding-left: 1.4rem; font-family: var(--mono); }

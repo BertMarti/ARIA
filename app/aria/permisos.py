@@ -53,6 +53,7 @@ _USUARIO = [
     ("DELETE", r"/api/diario/\d{4}-\d{2}-\d{2}"),
     ("GET", r"/api/briefing"),
     ("GET", r"/api/resumen-diario"),
+    ("GET", r"/api/2fa"), ("POST", r"/api/2fa/(preparar|activar|desactivar)"),
     ("GET", r"/api/agenda/ics"), ("GET", r"/api/agenda/suscripcion"), ("POST", r"/api/agenda/suscripcion"),
     ("DELETE", r"/api/agenda/suscripcion"),
     # Avisos, recordatorios, Telegram y push: cada usuario solo lo suyo (el id sale de la sesión).

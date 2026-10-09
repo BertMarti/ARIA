@@ -1,5 +1,6 @@
 """ARIA: aplicacion FastAPI (login, chat con Ollama, panel de servicios, Spotify)."""
 import asyncio
+import base64
 import hashlib
 import html
 import json
@@ -14,9 +15,10 @@ import httpx
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, estadisticas, finanzas, informacion, mapas, memoria, modelos, modulos, permisos, proyectos, push, recordatorios, red, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, dos_pasos, estadisticas, finanzas, informacion, mapas, memoria, modelos, modulos, permisos, proyectos, push, recordatorios, red, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -24,7 +26,9 @@ app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 # Rutas accesibles sin sesion.
 LIBRES = {"/health", "/internal/tls-ask", "/static/style.css", "/static/login.js",
           "/static/manifest.webmanifest", "/static/icon.svg", "/sw.js"}
-PUBLICAS = LIBRES | {"/login"}
+PUBLICAS = LIBRES | {"/login", "/login/codigo"}
+COOKIE_2P = "aria_2p"
+_ser_2p = URLSafeTimedSerializer(config.SECRET or "sin-secreto", salt="aria-dos-pasos")
 CSP = ("default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self'; script-src 'self'; worker-src 'self'; "
        "frame-ancestors 'none'")
 # El micrófono solo para ARIA (ni iframes ni otros orígenes); cámara y ubicación, para nadie.
@@ -61,6 +65,7 @@ async def _arranque():
     telemetria.iniciar()
     vpn_ubicaciones.iniciar()
     usuarios.iniciar()
+    dos_pasos.iniciar()
     finanzas.iniciar()
     red.iniciar()
     control.iniciar()
@@ -171,7 +176,7 @@ async def seguridad(request: Request, call_next):
             if pendiente:
                 return _entrando()
             return _cookie(RedirectResponse("/", status_code=303), nueva) if nueva else RedirectResponse("/", status_code=303)
-        if path != "/login":
+        if path not in ("/login", "/login/codigo"):
             if usuario is None:
                 if pendiente and not es_api:
                     return _entrando()
@@ -221,9 +226,79 @@ async def login(request: Request):
         auth.registrar_fallo(ip)
         await asyncio.sleep(1)
         return RedirectResponse("/login?e=1", status_code=303)
+    if await asyncio.to_thread(dos_pasos.activo, u["id"]):
+        # Contraseña correcta, falta el código del móvil: cookie de paso intermedio de 5 minutos (sin sesión)
+        resp = RedirectResponse("/login?paso=codigo", status_code=303)
+        resp.set_cookie(COOKIE_2P, _ser_2p.dumps({"u": u["id"], "v": u["version"]}), max_age=300,
+                        httponly=True, secure=True, samesite="strict", path="/login")
+        return resp
     auth.limpiar_fallos(ip)
     await asyncio.to_thread(usuarios.tocar_acceso, u["id"])
     return _cookie(RedirectResponse("/", status_code=303), u)
+
+
+@app.post("/login/codigo")
+async def login_codigo(request: Request):
+    """Segundo paso: código TOTP o de recuperación. Comparte el limitador de intentos con la contraseña."""
+    ip = _ip(request)
+    if (resto := auth.bloqueado(ip)):
+        return RedirectResponse(f"/login?e=bloqueado&s={resto}", status_code=303)
+    try:
+        datos = _ser_2p.loads(request.cookies.get(COOKIE_2P) or "", max_age=300)
+    except BadSignature:
+        return RedirectResponse("/login?e=caducado", status_code=303)
+    u = await asyncio.to_thread(usuarios.por_id, datos.get("u") if isinstance(datos, dict) else None)
+    if not u or not u["activo"] or datos.get("v") != u["version"]:
+        return RedirectResponse("/login?e=caducado", status_code=303)
+    cuerpo = parse_qs((await request.body())[:1024].decode("utf-8", "replace"))
+    if not await asyncio.to_thread(dos_pasos.verificar, u["id"], cuerpo.get("codigo", [""])[0]):
+        auth.registrar_fallo(ip)
+        await asyncio.sleep(1)
+        return RedirectResponse("/login?paso=codigo&e=codigo", status_code=303)
+    auth.limpiar_fallos(ip)
+    await asyncio.to_thread(usuarios.tocar_acceso, u["id"])
+    resp = _cookie(RedirectResponse("/", status_code=303), u)
+    resp.delete_cookie(COOKIE_2P, path="/login")
+    return resp
+
+
+# --- Verificación en dos pasos (Ajustes → General): cada usuario la suya ---
+@app.get("/api/2fa")
+async def api_2fa(request: Request):
+    uid = request.state.usuario["id"]
+    return {"activa": await asyncio.to_thread(dos_pasos.activo, uid),
+            "recuperacion": await asyncio.to_thread(dos_pasos.quedan_recuperacion, uid)}
+
+
+@app.post("/api/2fa/preparar")
+async def api_2fa_preparar(request: Request):
+    u = request.state.usuario
+    try:
+        d = await asyncio.to_thread(dos_pasos.preparar, u["id"], u.get("email") or u.get("nombre") or "usuario")
+    except dos_pasos.DosPasosError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    from . import telegram
+    png = await asyncio.to_thread(telegram.qr_png, d["uri"])
+    return {"secreto": d["secreto"], "qr": "data:image/png;base64," + base64.b64encode(png).decode()}
+
+
+@app.post("/api/2fa/activar")
+async def api_2fa_activar(request: Request):
+    d = await _json(request)
+    try:
+        return {"recuperacion": await asyncio.to_thread(dos_pasos.activar, request.state.usuario["id"], str(d.get("codigo", "")))}
+    except dos_pasos.DosPasosError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
+@app.post("/api/2fa/desactivar")
+async def api_2fa_desactivar(request: Request):
+    d = await _json(request)
+    try:
+        await asyncio.to_thread(dos_pasos.desactivar, request.state.usuario["id"], str(d.get("codigo", "")))
+    except dos_pasos.DosPasosError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    return {"activa": False}
 
 
 @app.post("/logout")

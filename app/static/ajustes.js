@@ -215,14 +215,55 @@ const Ajustes = (() => {
   }
 
   function activar() {
-    pintarSecciones();
+    pintarSecciones(); dosPasos();
     estadoVoz(); listarMics().catch(() => {});
     if (Sesion.esAdmin) { cerebros(); modelos(); if (Sesion.funciones.spotify) spotify(); acerca(); }
     if (!Sesion.tienePassword) { $("pass-actual").required = false; $("pass-actual-et").hidden = true; }
   }
+  // --- Verificación en dos pasos ---
+  async function dosPasos() {
+    const c = $("dosp-cuerpo"), r = await api("/api/2fa");
+    if (!r.ok) { c.textContent = "No disponible."; return; }
+    if (r.data.activa) {
+      const cod = el("input", { inputMode: "numeric", maxLength: 16, placeholder: "Código o código de recuperación", autocomplete: "one-time-code" });
+      const b = el("button", { type: "button", class: "peligro pequeno" }, "Desactivar");
+      b.addEventListener("click", async () => {
+        const x = await api("/api/2fa/desactivar", { method: "POST", json: { codigo: cod.value } });
+        toast(x.ok ? "Verificación en dos pasos desactivada." : x.data.error, x.ok ? "" : "mal"); if (x.ok) dosPasos();
+      });
+      c.replaceChildren(el("p", { class: "dosp-ok" }, "✓ Activada"), el("p", { class: "muted pequeno-txt" }, `Te quedan ${r.data.recuperacion} códigos de recuperación.`),
+        el("label", null, "Para desactivarla, escribe un código actual", cod), el("div", { class: "botones" }, b));
+      return;
+    }
+    const b = el("button", { type: "button", class: "primario" }, "Activar");
+    b.addEventListener("click", preparar2fa);
+    c.replaceChildren(el("p", { class: "muted" }, "Desactivada."), el("div", { class: "botones" }, b));
+  }
+  async function preparar2fa() {
+    const c = $("dosp-cuerpo"), r = await api("/api/2fa/preparar", { method: "POST" });
+    if (!r.ok) { toast(r.data.error || "No se pudo preparar.", "mal"); return; }
+    const cod = el("input", { inputMode: "numeric", maxLength: 8, placeholder: "123456", autocomplete: "one-time-code", class: "dosp-codigo" });
+    const ok = el("button", { type: "submit", class: "primario" }, "Confirmar y activar");
+    const f = el("form", { class: "dosp-form" }, el("label", null, "3. Escribe el código que muestra la app", cod), el("div", { class: "botones" }, ok));
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const x = await api("/api/2fa/activar", { method: "POST", json: { codigo: cod.value } });
+      if (!x.ok) { toast(x.data.error, "mal"); return; }
+      c.replaceChildren(el("p", { class: "dosp-ok" }, "✓ Activada"),
+        el("p", null, "Guarda estos códigos de recuperación en un sitio seguro. Cada uno sirve una vez si pierdes el móvil. No se volverán a mostrar."),
+        el("ol", { class: "dosp-rec" }, ...x.data.recuperacion.map((k) => el("li", null, k))),
+        (() => { const b = el("button", { type: "button", class: "fantasma pequeno" }, "Copiar códigos"); b.addEventListener("click", () => navigator.clipboard?.writeText(x.data.recuperacion.join("\n")).then(() => toast("Códigos copiados."))); return b; })(),
+        (() => { const b = el("button", { type: "button", class: "primario pequeno" }, "Ya los he guardado"); b.addEventListener("click", dosPasos); return b; })());
+    });
+    c.replaceChildren(el("p", null, "1. Abre tu app de autenticación y añade una cuenta escaneando este código:"),
+      el("img", { src: r.data.qr, alt: "Código QR para la app de autenticación", class: "dosp-qr", width: 200, height: 200 }),
+      el("p", { class: "muted pequeno-txt" }, "2. ¿No puedes escanearlo? Escribe esta clave a mano: ", el("code", { class: "dosp-clave" }, r.data.secreto)), f);
+    cod.focus();
+  }
+
   // --- Secciones: menú lateral (pestañas en el móvil) y buscador; cada tarjeta pertenece a una sección ---
   const SECCIONES = [
-    { id: "general", nombre: "General", desc: "Voz, contraseña y versión.", ico: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 12h2M19 12h2M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4", tarjetas: ["ajustes-voz", "ajustes-pass", "ajustes-acerca"] },
+    { id: "general", nombre: "General", desc: "Voz, contraseña, verificación en dos pasos y versión.", ico: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 12h2M19 12h2M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4", tarjetas: ["ajustes-voz", "ajustes-pass", "ajustes-2fa", "ajustes-acerca"] },
     { id: "avisos", nombre: "Avisos", desc: "Campana, Telegram, notificaciones, resumen diario y recordatorios.", ico: "M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0", tarjetas: ["ajustes-avisos", "ajustes-recordatorios"] },
     { id: "automatizar", nombre: "Automatización", desc: "Rutinas programadas y reglas «si pasa esto, haz aquello».", ico: "M13 3 4 14h7l-1 7 9-11h-7z", tarjetas: ["ajustes-rutinas", "ajustes-automatizaciones"] },
     { id: "memoria", nombre: "Memoria", desc: "Lo que ARIA recuerda de ti, tu diario y tus proyectos.", ico: "M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4.5A3 3 0 0 0 9 4zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1", tarjetas: ["ajustes-memoria"] },

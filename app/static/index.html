@@ -187,6 +187,7 @@
           <button type="button" class="agenda-tab" role="tab" data-modo="semana">Semana</button>
           <button type="button" class="agenda-tab" role="tab" data-modo="lista">Lista</button>
         </div>
+        <button type="button" class="fantasma pequeno" id="agenda-sincronizar">Sincronizar</button>
         <button type="button" class="fantasma pequeno" id="agenda-nuevo-cumple">+ Cumpleaños</button>
         <button type="button" class="primario pequeno" id="agenda-nuevo">+ Evento</button>
       </div>
@@ -676,6 +677,24 @@
     <p id="agenda-serie-nota" class="muted pequeno-txt" hidden>Es un evento que se repite: los cambios se aplican a toda la serie.</p>
     <div class="botones"><button type="button" class="peligro ag-borrar" id="agenda-borrar" hidden>Borrar</button><button type="button" class="fantasma" data-cerrar>Cancelar</button><button type="submit" class="primario">Guardar</button></div>
   </form></dialog>
+<dialog id="dlg-sincro" class="modal" aria-labelledby="sincro-titulo"><h2 id="sincro-titulo">Ver la agenda en el móvil</h2>
+  <p class="muted">Tus eventos y cumpleaños de ARIA, también en el calendario del teléfono o del ordenador.</p>
+  <section class="sincro-paso"><h3>Opción 1 · Suscribirte (se actualiza sola)</h3>
+    <p class="muted pequeno-txt">Crea un enlace privado. Quien lo tenga puede ver tu agenda: no lo compartas. Puedes cambiarlo o desactivarlo cuando quieras.</p>
+    <div id="sincro-enlace" class="sincro-enlace" hidden><input id="sincro-url" readonly aria-label="Enlace de suscripción"><button type="button" class="primario pequeno" id="sincro-copiar">Copiar</button></div>
+    <p id="sincro-estado" class="pequeno-txt"></p>
+    <div class="botones"><button type="button" class="primario pequeno" id="sincro-crear">Crear enlace</button><a id="sincro-webcal" class="boton fantasma pequeno" hidden>Abrir en iPhone/Mac</a><button type="button" class="peligro pequeno" id="sincro-quitar" hidden>Desactivar</button></div>
+    <details class="pequeno-txt"><summary>Cómo añadirlo</summary><ul>
+      <li><b>iPhone / Mac</b>: pulsa «Abrir en iPhone/Mac» o en Ajustes → Calendario → Cuentas → Añadir cuenta → Otra → «Añadir calendario suscrito» y pega el enlace.</li>
+      <li><b>Android (Google Calendar)</b>: en calendar.google.com, desde el ordenador: Otros calendarios → «+» → «Desde URL» y pega el enlace. Aparecerá en el móvil.</li>
+      <li><b>Outlook</b>: Agregar calendario → «Suscribirse desde la web».</li>
+      <li>Fuera de casa el enlace solo funciona si ARIA es accesible desde internet. Con Cloudflare Access, añade una regla <i>Bypass</i> para la ruta <code>/cal/</code> (el token largo hace de llave).</li>
+    </ul></details>
+  </section>
+  <section class="sincro-paso"><h3>Opción 2 · Descargar una copia</h3><p class="muted pequeno-txt">Un archivo .ics para importar una vez (no se actualiza).</p>
+    <div class="botones"><a class="boton fantasma pequeno" href="/api/agenda/ics" download>Descargar .ics</a></div></section>
+  <div class="botones"><button type="button" class="fantasma" data-cerrar>Cerrar</button></div>
+</dialog>
 <dialog id="dlg-cumple" class="modal" aria-labelledby="cumple-dlg-titulo"><h2 id="cumple-dlg-titulo">Nuevo cumpleaños</h2>
   <form id="form-cumple" class="formulario">
     <label>Nombre <input id="cumple-nombre" maxlength="120" required placeholder="¿De quién?"></label>

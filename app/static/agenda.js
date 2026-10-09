@@ -249,7 +249,35 @@ const Agenda = (() => {
     $("dlg-cumple").close(); toast("Cumpleaños borrado."); cargar();
   }
 
+  // --- Sincronizar con otros calendarios ---
+  function pintarSincro(activa, ruta) {
+    const url = ruta ? location.origin + ruta : "";
+    $("sincro-enlace").hidden = !url; $("sincro-url").value = url;
+    $("sincro-webcal").hidden = !url; if (url) $("sincro-webcal").href = url.replace(/^https?:/, "webcal:");
+    $("sincro-quitar").hidden = !activa;
+    $("sincro-crear").textContent = activa ? "Crear un enlace nuevo" : "Crear enlace";
+    $("sincro-estado").textContent = url ? "Copia el enlace ahora: por seguridad, ARIA no lo vuelve a mostrar." : activa ? "Tienes un enlace activo. Si lo has perdido, crea uno nuevo (el anterior dejará de funcionar)." : "No tienes ningún enlace activo.";
+  }
+  async function sincro() {
+    const r = await api("/api/agenda/suscripcion");
+    pintarSincro(r.ok && r.data.activa, null); $("dlg-sincro").showModal();
+  }
+  async function crearEnlace() {
+    if ($("sincro-quitar").hidden === false && !(await confirmar("Crear un enlace nuevo", "El enlace anterior dejará de funcionar en los calendarios donde lo tengas.", "Crear"))) return;
+    const r = await api("/api/agenda/suscripcion", { method: "POST" });
+    if (!r.ok) { toast(r.data?.error || "No se pudo crear.", "mal"); return; }
+    pintarSincro(true, r.data.ruta); $("sincro-url").select();
+  }
+
   function iniciar() {
+    $("agenda-sincronizar").addEventListener("click", sincro);
+    $("sincro-crear").addEventListener("click", crearEnlace);
+    $("sincro-copiar").addEventListener("click", async () => { try { await navigator.clipboard.writeText($("sincro-url").value); toast("Enlace copiado."); } catch (_) { $("sincro-url").select(); toast("Selecciona y copia el enlace.", "mal"); } });
+    $("sincro-quitar").addEventListener("click", async () => {
+      if (!(await confirmar("Desactivar el enlace", "Los calendarios suscritos dejarán de actualizarse.", "Desactivar"))) return;
+      await api("/api/agenda/suscripcion", { method: "DELETE" }); pintarSincro(false, null); toast("Enlace desactivado.");
+    });
+    $("dlg-sincro").addEventListener("click", (e) => { if (e.target.closest("[data-cerrar]")) $("dlg-sincro").close(); });
     $("cumple-mes").append(...MESES.map((m, i) => el("option", { value: String(i + 1) }, mayus(m))));
     $("agenda-nuevo").addEventListener("click", () => nuevo(elegido));
     $("agenda-nuevo-cumple").addEventListener("click", nuevoCumple);

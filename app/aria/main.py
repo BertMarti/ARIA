@@ -151,7 +151,7 @@ async def seguridad(request: Request, call_next):
     nueva = None          # usuario para el que hay que emitir cookie de sesión
     pendiente = False     # SSO: Cloudflare no respondió, hay que reintentar
     usuario = None
-    if path not in LIBRES:
+    if path not in LIBRES and not (path.startswith("/cal/") and request.method == "GET"):
         usuario = auth.sesion_usuario(request.cookies.get(auth.COOKIE))
         token = request.headers.get(sso.CABECERA)
         if token and sso.habilitado():

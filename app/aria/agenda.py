@@ -1,9 +1,11 @@
 """Agenda personal y cumpleaños, siempre aislados por usuario."""
 import calendar
+import hashlib
 import re
+import secrets
 import time
 from contextlib import closing
-from datetime import date, datetime, time as hora, timedelta
+from datetime import date, datetime, time as hora, timedelta, timezone
 
 from . import db, tiempo
 
@@ -29,6 +31,9 @@ def iniciar() -> None:
           nombre TEXT NOT NULL, dia INTEGER NOT NULL, mes INTEGER NOT NULL, anio INTEGER, aviso_dias INTEGER NOT NULL DEFAULT 0,
           notas TEXT NOT NULL DEFAULT '');
         CREATE INDEX IF NOT EXISTS idx_agenda_cumple_user ON agenda_cumpleanos(user_id, mes, dia);
+        CREATE TABLE IF NOT EXISTS agenda_suscripcion (
+          user_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE, token_hash TEXT NOT NULL UNIQUE,
+          creado REAL NOT NULL);
         """)
 
 
@@ -254,3 +259,100 @@ async def disparar_avisos(ahora=None):
                 edad=f"; cumple {c['edad']} años" if c.get("edad") is not None else ""
                 await avisos.emitir("agenda","info",f"Cumpleaños: {c['nombre']}{edad}.","agenda",[uid],extra={"cumpleanos":c["id"]}); hechos.append(c["id"])
     return hechos
+
+
+# --- Exportar a otros calendarios (iCalendar, RFC 5545) ------------------------------------------------------------
+_RRULE = {"semanal": "FREQ=WEEKLY", "mensual": "FREQ=MONTHLY", "anual": "FREQ=YEARLY"}
+
+
+def _ics_texto(v) -> str:
+    return str(v or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\r", "").replace("\n", "\\n")
+
+
+def _plegar(linea: str) -> str:
+    """Líneas de 75 octetos como máximo; las continuaciones empiezan por un espacio."""
+    b = linea.encode()
+    if len(b) <= 75:
+        return linea
+    trozos, actual = [], b""
+    for ch in linea:
+        c = ch.encode()
+        if len(actual) + len(c) > (75 if not trozos else 74):
+            trozos.append(actual.decode()); actual = b""
+        actual += c
+    trozos.append(actual.decode())
+    return "\r\n ".join(trozos)
+
+
+def _utc(iso: str) -> str:
+    return _fecha(iso).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def ics(uid: int) -> str:
+    """Calendario completo del usuario: eventos (con su repetición) y cumpleaños (cada año, todo el día)."""
+    sello = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    lineas = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ARIA//Agenda//ES", "CALSCALE:GREGORIAN",
+              "X-WR-CALNAME:ARIA", "X-PUBLISHED-TTL:PT1H", "REFRESH-INTERVAL;VALUE=DURATION:PT1H"]
+    with closing(db._con()) as con:
+        eventos = [dict(r) for r in con.execute("SELECT * FROM agenda_eventos WHERE user_id=? ORDER BY inicio", (uid,))]
+        cumples = [dict(r) for r in con.execute("SELECT * FROM agenda_cumpleanos WHERE user_id=?", (uid,))]
+    for e in eventos:
+        lineas += ["BEGIN:VEVENT", f"UID:evento-{e['id']}@aria", f"DTSTAMP:{sello}", f"SUMMARY:{_ics_texto(e['titulo'])}"]
+        if e["todo_el_dia"]:
+            d = _fecha(e["inicio"]).date()
+            lineas += [f"DTSTART;VALUE=DATE:{d:%Y%m%d}", f"DTEND;VALUE=DATE:{d + timedelta(days=1):%Y%m%d}"]
+        else:
+            lineas.append(f"DTSTART:{_utc(e['inicio'])}")
+            lineas.append(f"DTEND:{_utc(e['fin'])}" if e.get("fin") else "DURATION:PT1H")
+        if e["repeticion"] in _RRULE:
+            lineas.append("RRULE:" + _RRULE[e["repeticion"]])
+        if e.get("lugar"):
+            lineas.append(f"LOCATION:{_ics_texto(e['lugar'])}")
+        if e.get("notas"):
+            lineas.append(f"DESCRIPTION:{_ics_texto(e['notas'])}")
+        if e.get("aviso_min") is not None:
+            lineas += ["BEGIN:VALARM", "ACTION:DISPLAY", f"DESCRIPTION:{_ics_texto(e['titulo'])}",
+                       f"TRIGGER:-PT{int(e['aviso_min'])}M", "END:VALARM"]
+        lineas.append("END:VEVENT")
+    for c in cumples:
+        anio = c["anio"] or 2000
+        dia = min(c["dia"], calendar.monthrange(anio, c["mes"])[1])
+        inicio = date(anio, c["mes"], dia)
+        lineas += ["BEGIN:VEVENT", f"UID:cumple-{c['id']}@aria", f"DTSTAMP:{sello}",
+                   f"SUMMARY:{_ics_texto('Cumpleaños de ' + c['nombre'])}", f"DTSTART;VALUE=DATE:{inicio:%Y%m%d}",
+                   f"DTEND;VALUE=DATE:{inicio + timedelta(days=1):%Y%m%d}", "RRULE:FREQ=YEARLY", "TRANSP:TRANSPARENT", "END:VEVENT"]
+    lineas.append("END:VCALENDAR")
+    return "\r\n".join(_plegar(x) for x in lineas) + "\r\n"
+
+
+def _hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def crear_suscripcion(uid: int) -> str:
+    """Token nuevo (el anterior deja de valer). Solo se guarda su huella."""
+    token = secrets.token_urlsafe(32)
+    with closing(db._con()) as con, con:
+        con.execute("INSERT INTO agenda_suscripcion (user_id, token_hash, creado) VALUES (?,?,?) "
+                    "ON CONFLICT(user_id) DO UPDATE SET token_hash=excluded.token_hash, creado=excluded.creado",
+                    (uid, _hash(token), time.time()))
+    return token
+
+
+def tiene_suscripcion(uid: int) -> bool:
+    with closing(db._con()) as con:
+        return con.execute("SELECT 1 FROM agenda_suscripcion WHERE user_id=?", (uid,)).fetchone() is not None
+
+
+def borrar_suscripcion(uid: int) -> bool:
+    with closing(db._con()) as con, con:
+        return con.execute("DELETE FROM agenda_suscripcion WHERE user_id=?", (uid,)).rowcount > 0
+
+
+def usuario_de_token(token: str) -> int | None:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{30,100}", token or ""):
+        return None
+    with closing(db._con()) as con:
+        r = con.execute("SELECT s.user_id FROM agenda_suscripcion s JOIN usuarios u ON u.id=s.user_id "
+                        "WHERE s.token_hash=? AND u.activo=1", (_hash(token),)).fetchone()
+    return r["user_id"] if r else None

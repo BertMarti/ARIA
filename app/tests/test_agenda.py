@@ -412,3 +412,45 @@ def test_ocurrencias_indican_el_inicio_de_la_serie():
     agenda.crear_evento(uid, {"titulo": "Inglés", "inicio": "2026-10-08T20:00", "repeticion": "semanal"})
     occ = agenda.listar_eventos(uid, "2026-10-15", "2026-10-16")
     assert occ[0]["inicio"].startswith("2026-10-15T20:00") and occ[0]["serie_inicio"].startswith("2026-10-08T20:00")
+
+
+# --- Exportar a otros calendarios --------------------------------------------------------------------------
+def test_ics_con_eventos_repeticiones_avisos_y_cumpleanos(ana):
+    agenda.crear_evento(ana["id"], {"titulo": "Inglés; nivel B2, grupo 3", "inicio": "2026-10-08T20:00", "fin": "2026-10-08T21:00",
+                                    "repeticion": "semanal", "aviso_min": 30, "lugar": "Online"})
+    agenda.crear_evento(ana["id"], {"titulo": "Vacaciones", "inicio": "2026-12-20", "todo_el_dia": True})
+    agenda.crear_cumple(ana["id"], {"nombre": "Lucía", "dia": 11, "mes": 10, "anio": 1994})
+    t = agenda.ics(ana["id"])
+    assert t.startswith("BEGIN:VCALENDAR\r\n") and t.endswith("END:VCALENDAR\r\n")
+    assert "SUMMARY:Inglés\; nivel B2\\, grupo 3" in t
+    assert "DTSTART:20261008T180000Z" in t and "DTEND:20261008T190000Z" in t   # 20:00 en Madrid (verano) = 18:00 UTC
+    assert "RRULE:FREQ=WEEKLY" in t and "TRIGGER:-PT30M" in t and "LOCATION:Online" in t
+    assert "DTSTART;VALUE=DATE:20261220" in t and "DTEND;VALUE=DATE:20261221" in t
+    assert "SUMMARY:Cumpleaños de Lucía" in t and "DTSTART;VALUE=DATE:19941011" in t
+    assert all(len(l.encode()) <= 75 for l in t.split("\r\n"))
+
+
+def test_suscripcion_con_token_revocable(ana, admin):
+    c = cliente_de(ana)
+    assert c.get("/api/agenda/suscripcion").json() == {"activa": False}
+    agenda.crear_evento(ana["id"], {"titulo": "Dentista", "inicio": "2026-10-09T17:30"})
+    ruta = c.post("/api/agenda/suscripcion").json()["ruta"]
+    publico = TestClient(main.app, base_url=LAN)   # sin sesión: la app de calendario del móvil
+    r = publico.get(ruta)
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/calendar") and "Dentista" in r.text
+    assert agenda.usuario_de_token(ruta[5:-4]) == ana["id"]
+    with closing(db._con()) as con:   # solo se guarda la huella, nunca el token
+        assert ruta[5:-4] not in str(con.execute("SELECT * FROM agenda_suscripcion").fetchall()[0][:])
+    nueva = c.post("/api/agenda/suscripcion").json()["ruta"]   # regenerar invalida la anterior
+    assert publico.get(ruta).status_code == 404 and publico.get(nueva).status_code == 200
+    assert c.delete("/api/agenda/suscripcion").json() == {"activa": False}
+    assert publico.get(nueva).status_code == 404
+    assert publico.get("/cal/corto.ics").status_code == 404
+    assert TestClient(main.app, base_url=LAN, follow_redirects=False).post(nueva).status_code in (303, 401, 403, 405)   # solo lectura
+
+
+def test_descarga_ics_y_rutas_numericas(ana):
+    c = cliente_de(ana)
+    r = c.get("/api/agenda/ics")
+    assert r.status_code == 200 and "attachment" in r.headers["content-disposition"]
+    assert c.delete("/api/agenda/999999").status_code == 404

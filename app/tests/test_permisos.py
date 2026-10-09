@@ -1,6 +1,8 @@
 """Roles, aislamiento de conversaciones y gestión de usuarios."""
 import asyncio
 
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -91,6 +93,8 @@ RUTAS_USUARIO_RUTINAS = {
 RUTAS_USUARIO_AGENDA = {
     ("GET", "/api/agenda"), ("POST", "/api/agenda"), ("PATCH", "/api/agenda/{eid}"), ("DELETE", "/api/agenda/{eid}"),
     ("GET", "/api/cumpleanos"), ("POST", "/api/cumpleanos"), ("PATCH", "/api/cumpleanos/{cid}"), ("DELETE", "/api/cumpleanos/{cid}"),
+    ("GET", "/api/agenda/ics"), ("GET", "/api/agenda/suscripcion"), ("POST", "/api/agenda/suscripcion"),
+    ("DELETE", "/api/agenda/suscripcion"),
 }
 RUTAS_USUARIO_INFORMACION = {(m, "/api/informacion/" + r) for m, r in (
     ("GET", "noticias"), ("GET", "resumen"), ("GET", "temas"), ("POST", "temas"), ("DELETE", "temas"), ("GET", "mercados"),
@@ -122,13 +126,14 @@ def test_toda_ruta_registrada_esta_cubierta():
     from fastapi.routing import APIRoute
     usuario = {"id": 1, "rol": "usuario"}
     for r in todas_las_rutas():
-        ruta = r.path.replace("{cid}", "abc").replace("{uid}", "1").replace("{app_id}", "x") \
+        camino = re.sub(r"\{(\w+):\w+\}", r"{\1}", r.path)   # «{eid:int}» -> «{eid}» (sin tocar la ruta real)
+        ruta = camino.replace("{cid}", "abc").replace("{uid}", "1").replace("{app_id}", "x") \
                      .replace("{accion}", "x").replace("{mid}", "1").replace("{rid}", "1").replace("{fecha}", "2026-10-06") \
                      .replace("{aid}", "1").replace("{chat_id}", "1").replace("{sid}", "1").replace("{hid}", "1").replace("{identificador}", "1").replace("{eid}", "1") \
                      .replace("{token}", "a" * 24).replace("{n}", "1")
         for m in r.methods - {"HEAD", "OPTIONS"}:
             if permisos.permitido("usuario", m, ruta):
-                assert (m, r.path) in {
+                assert (m, camino) in {
                     ("GET", "/"), ("POST", "/logout"), ("GET", "/api/info"), ("GET", "/api/services"),
                     ("GET", "/api/shield"), ("GET", "/api/system"), ("GET", "/api/vpn/clients"),
                     ("GET", "/api/spotify/status"), ("GET", "/api/certificado"), ("POST", "/api/password"),
@@ -141,10 +146,10 @@ def test_toda_ruta_registrada_esta_cubierta():
                      ("GET", "/api/proyectos"), ("POST", "/api/proyectos"), ("PATCH", "/api/proyectos/{pid}"),
                      ("DELETE", "/api/proyectos/{pid}"), ("GET", "/api/proyectos/{pid}/decisiones"),
                      ("POST", "/api/proyectos/{pid}/decisiones"), ("DELETE", "/api/decisiones/{did}"),
-                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION | RUTAS_USUARIO_INFORMACION | RUTAS_USUARIO_AGENDA | RUTAS_USUARIO_MODULOS | RUTAS_USUARIO_MAPAS | permisos.rutas_modulos_usuario(), (m, r.path)
-                if r.path.startswith("/api/modulos/"):
+                } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION | RUTAS_USUARIO_INFORMACION | RUTAS_USUARIO_AGENDA | RUTAS_USUARIO_MODULOS | RUTAS_USUARIO_MAPAS | permisos.rutas_modulos_usuario(), (m, camino)
+                if camino.startswith("/api/modulos/"):
                     # Las de módulos solo se abren si su registro las declara (siempre bajo /api/modulos/<id>/).
-                    assert (m, r.path) in permisos.rutas_modulos_usuario(), (m, r.path)
+                    assert (m, camino) in permisos.rutas_modulos_usuario(), (m, camino)
     # Los módulos de prueba (tests/modulos_prueba/demo) aportan rutas de usuario y de admin: ambas se recorren.
     rutas = {(m, r.path) for r in todas_las_rutas() for m in r.methods}
     assert ("GET", "/api/modulos/demo/hola") in rutas and ("GET", "/api/modulos/demo/privado") in rutas

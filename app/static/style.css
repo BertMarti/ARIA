@@ -61,6 +61,9 @@ label input { margin-top: .3rem; }
 
 /* Estructura */
 body.app { display: grid; grid-template-columns: var(--nav-w) 1fr; height: 100dvh; overflow: hidden; }
+body.app.vista-prueba { padding-top: 3.35rem; }
+.banner-vista-prueba { position: fixed; inset: 0 0 auto; z-index: 100; min-height: 3.35rem; display: flex; align-items: center; justify-content: center; gap: .8rem; padding: .5rem 1rem; color: #201706; background: var(--warn); border-bottom: 1px solid #d18d1c; box-shadow: 0 4px 18px rgba(0, 0, 0, .35); font-weight: 650; }
+.banner-vista-prueba button { color: #201706; border-color: rgba(32, 23, 6, .5); }
 .nav { display: flex; flex-direction: column; align-items: stretch; gap: .35rem; padding: .9rem .5rem; background: rgba(8, 13, 22, .85); border-right: 1px solid var(--borde); }
 .marca { display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .3rem 0 1rem; letter-spacing: .2em; font-size: .75rem; color: var(--acento); }
 .nav-btn { flex-direction: column; gap: .15rem; width: 100%; padding: .6rem .2rem; border-color: transparent; color: var(--muted); font-size: .72rem; font-weight: 600; background: none; }
@@ -967,3 +970,10 @@ a.mi-carta:hover, a.mi-carta:focus-visible { border-color: rgba(56, 214, 255, .6
 .acc-editor { display: grid; gap: .6rem; margin-top: .6rem; }
 .acc-opciones { display: flex; flex-wrap: wrap; gap: .3rem 1rem; }
 .acc-num { width: 5.5rem; }
+.prueba-perfiles { margin-bottom: 1.4rem; padding-bottom: 1rem; border-bottom: 1px solid var(--borde); }
+.prueba-perfiles > h2 { margin-bottom: .35rem; }
+.prueba-perfiles > p { margin: 0 0 .7rem; }
+.prueba-perfiles-lista { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
+.prueba-perfil { display: flex; flex-direction: column; align-items: flex-start; gap: .45rem; padding: .7rem; border: 1px solid var(--borde); border-radius: 10px; background: rgba(5, 9, 16, .35); }
+.prueba-perfil p { flex: 1; margin: 0; }
+@media (max-width: 700px) { .banner-vista-prueba { justify-content: space-between; font-size: .85rem; } .banner-vista-prueba span { min-width: 0; } .prueba-perfiles-lista { grid-template-columns: 1fr; } }

@@ -3,12 +3,56 @@
 const Accesos = (() => {
   let info = null;
   const NOMBRES = { inicio: "Inicio", chat: "Chat", finanzas: "Finanzas", informacion: "Información", agenda: "Agenda", mapa: "Mapa", hud: "HUD" };
+  const NOMBRES_EXTRA = { red: "Red", seguridad: "Seguridad", control: "Control" };   // solo administradores
   const fecha = (ts) => new Date(ts * 1000).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" });
   const caduca = (ts) => !ts ? "sin caducidad" : ts * 1000 < Date.now() ? "caducado" : "hasta el " + new Date(ts * 1000).toLocaleDateString("es-ES", { day: "numeric", month: "long" });
 
   function avisoCf(cf) {
     if (cf === "hecho" || cf === null || cf === undefined) return "";
     return cf === "manual" ? " Añade su email al grupo «Invitados ARIA» de Cloudflare Access." : " Cloudflare: " + cf;
+  }
+
+  function resumenPerfil(id, p) {
+    if (id === "usuario") return "Todo lo del rol usuario: sin Red, Seguridad, Control ni administración.";
+    const secciones = (p.secciones || []).map((s) => NOMBRES[s] || NOMBRES_EXTRA[s] || s);
+    const noSecciones = Object.keys({ ...NOMBRES, ...NOMBRES_EXTRA }).filter((s) => !(p.secciones || []).includes(s));
+    const capacidad = (v, si, no) => v ? si : no;
+    return [
+      "Ve: " + (secciones.join(", ") || "ninguna"),
+      "No ve: " + (noSecciones.map((s) => NOMBRES[s] || NOMBRES_EXTRA[s]).join(", ") || "ninguna"),
+      (p.mensajes_dia ?? 0) + " mensajes y " + (p.imagenes_dia ?? 0) + " imágenes al día",
+      "Voz: " + (p.voz === "no" ? "no" : p.voz === "local" ? "local" : "sí"),
+      "Búsqueda: " + capacidad(p.busqueda, "sí", "no") + " · Memoria: " + capacidad(p.memoria, "sí", "no"),
+      "Telegram: " + capacidad(p.telegram, "sí", "no") + " · Rutinas: " + capacidad(p.rutinas, "sí", "no"),
+      p.dias ? "Caduca a los " + p.dias + " días" : "Sin caducidad"
+    ].join(" · ");
+  }
+
+  async function probarPerfil(id) {
+    const r = await api("/api/vista", { method: "POST", json: { perfil: id } });
+    if (!r.ok) { toast(r.data.error || "No se pudo activar la vista.", "mal"); return; }
+    location.assign("/#inicio");
+    location.reload();
+  }
+
+  function pintarPruebas() {
+    const zona = $("prueba-perfiles");
+    if (!zona || !info) return;
+    const perfiles = [
+      ["usuario", "Usuario", null],
+      ["familiar", "Familiar", info.perfiles.familiar],
+      ["visita", "Visita", info.perfiles.visita]
+    ];
+    zona.replaceChildren(
+      el("h2", null, "Probar perfiles"),
+      el("p", { class: "muted" }, "Comprueba cómo verá ARIA cada persona sin cerrar tu sesión de administrador."),
+      el("div", { class: "prueba-perfiles-lista" }, ...perfiles.map(([id, nombre, perfil]) => {
+        const boton = el("button", { type: "button", class: "fantasma pequeno" }, "Ver ARIA como " + nombre);
+        boton.addEventListener("click", () => probarPerfil(id));
+        return el("article", { class: "prueba-perfil" }, el("strong", null, nombre),
+          boton, el("p", { class: "muted" }, resumenPerfil(id, perfil || {})));
+      }))
+    );
   }
 
   function selectorPerfil(actual) {
@@ -95,6 +139,7 @@ const Accesos = (() => {
     const r = await api("/api/acceso");
     if (!r.ok) return;
     info = r.data;
+    pintarPruebas();
     $("accesos-cf").hidden = info.cloudflare;
     const p = $("accesos-pendientes"), v = $("accesos-invitados");
     p.replaceChildren(...(info.pendientes.length ? info.pendientes.map(pendiente) : [el("li", { class: "muted" }, "No hay solicitudes pendientes.")]));

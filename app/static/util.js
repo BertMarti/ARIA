@@ -125,7 +125,7 @@ function enlaceExterno(url, texto) {
 }
 
 // Sesión actual (usuario, rol). Los botones se ocultan por rol, pero quien manda es el servidor (403).
-const Sesion = { rol: "usuario", nombre: "", email: "", tienePassword: true, esAdmin: false, funciones: {}, limites: null };
+const Sesion = { rol: "usuario", nombre: "", email: "", tienePassword: true, esAdmin: false, funciones: {}, limites: null, vista: null };
 // Invitados (acceso aprobado desde /acceso): ¿su acceso incluye esta sección u opción? Sin límites, todo.
 const puede = (que) => !Sesion.limites || Sesion.limites.secciones.includes(que) || Sesion.limites[que] === true;
 async function cargarSesion() {
@@ -135,9 +135,27 @@ async function cargarSesion() {
   Sesion.tienePassword = data.tiene_password !== false; Sesion.esAdmin = Sesion.rol === "admin";
   Sesion.funciones = data.funciones || {};
   Sesion.limites = data.limites || null;
+  Sesion.vista = data.vista || null;
   document.body.classList.toggle("invitado", !!Sesion.limites);
   document.body.classList.toggle("rol-usuario", !Sesion.esAdmin);
   document.body.classList.toggle("sin-spotify", !Sesion.funciones.spotify);
+  const anterior = $("banner-vista-prueba");
+  if (anterior) anterior.remove();
+  document.body.classList.toggle("vista-prueba", !!Sesion.vista);
+  if (Sesion.vista) {
+    const nombres = { usuario: "Usuario", familiar: "Familiar", visita: "Visita" };
+    const salir = el("button", { type: "button", class: "pequeno" }, "Salir de la vista");
+    salir.addEventListener("click", async () => {
+      salir.disabled = true;
+      const r = await api("/api/vista", { method: "POST", json: { perfil: null } });
+      if (!r.ok) { salir.disabled = false; toast(r.data.error || "No se pudo salir de la vista.", "mal"); return; }
+      location.assign("/#ajustes");
+      location.reload();
+    });
+    document.body.prepend(el("div", { id: "banner-vista-prueba", class: "banner-vista-prueba", role: "status" },
+      el("span", null, "Estás viendo ARIA como «" + (nombres[Sesion.vista] || Sesion.vista) + "» · " +
+        (Sesion.vista === "usuario" ? "así la ve un usuario de la casa" : "así la ve un invitado")), salir));
+  }
 }
 
 // Ajuste por dispositivo (localStorage puede no estar disponible).

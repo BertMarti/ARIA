@@ -61,6 +61,7 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
 | 🌌 | **Modo HUD** (`#hud`): escena futurista con rejilla animada, orbe que «mira» al ratón y tarjetas que se iluminan y giran en 3D al pasar por encima. **Opciones**: qué tarjetas ver, 5 colores, efectos, reloj con segundos y voz. **Modo quiosco** para una tableta (pantalla siempre encendida, controles que se esconden). |
 | ⚡ | **Precio de la luz** (PVPC de España, sin claves): precio de ahora, horas más baratas y caras, gráfico de las 24 horas en Inicio y el HUD, y en el chat («¿cuándo pongo la lavadora?»). |
 | 📲 | **Agenda en el móvil**: suscríbete desde el calendario del iPhone, Android u Outlook con un enlace privado (se actualiza solo) o descarga un `.ics`. |
+| 🗣️ | **Elige la voz de ARIA**: 14 voces femeninas, tono (dulce, alegre, serena o muy tierna) y acento de España o latino, con ▶ para escucharlas antes. |
 | 🔐 | **Verificación en dos pasos** con cualquier app de autenticación (Google Authenticator, Aegis, 1Password…) y códigos de recuperación. |
 | 📰 | **Resumen diario** bien maquetado en **Inicio**, en el **HUD** y por **Telegram** cada mañana: tiempo, luz, salud de las aplicaciones, red, finanzas, inversiones (también Bitcoin y Ethereum con gráfica), agenda y cumpleaños. En Telegram llega con botones: Abrir ARIA, Agenda, Actualizar y Pausar anuncios. |
 | 📅 | **Agenda y cumpleaños**: calendario mensual, semanal y en lista, eventos que se repiten, avisos antes de cada cita y de cada cumpleaños. También por chat («apúntame el dentista el jueves a las 17:30»). |

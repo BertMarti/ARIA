@@ -123,6 +123,18 @@ Cómo elegir:
   - El micrófono se apaga al cambiar de pestaña o bloquear el móvil.
 - **Ajustes → Voz**: elegir micrófono y probarlo, leer en voz alta, manos libres y velocidad. Se guardan en cada dispositivo.
 
+### Elegir la voz de ARIA
+
+En **Ajustes → General → Voz**, apartado **Voz de ARIA**:
+
+- **14 voces femeninas** de Google Gemini, cada una con su carácter (suave, amable, cálida, alegre…). Pulsa **▶** para escuchar una frase de muestra y **Elegir** para quedártela.
+- **Tono**: *Dulce y cariñosa* (por defecto), *Alegre*, *Serena* o *Muy tierna*.
+- **Acento**: *España* (por defecto) o *Latinoamérica*.
+- **Escribe una frase** y pulsa **Escuchar** para oírla con tu elección.
+- Para una voz dulce y amable se recomiendan **Achernar**, **Vindemiatrix**, **Sulafat**, **Despina** o **Leda** con el tono *Dulce y cariñosa* o *Muy tierna*.
+
+La elección es de cada usuario y se usa en la web, el HUD y las notas de voz de Telegram. Las muestras se guardan, así que escuchar otra vez la misma combinación no gasta cuota. La capa gratuita de Gemini permite pocas voces por minuto y por día: si se agota, ARIA usa su voz local (femenina, española) hasta que se recupere.
+
 Privacidad: para detectar «Aria», el sonido va a tu máquina (nunca fuera). Lo que dices después se transcribe con Groq (o en tu máquina si no hay clave). **El audio no se guarda nunca.**
 
 ## Imágenes y tickets

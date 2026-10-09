@@ -34,6 +34,9 @@ ESCAPARATE_ESTATICOS = "/static/escaparate/"
 ACCESO = "/acceso"
 ACCESO_ESTATICOS = "/static/acceso/"
 ACCESO_LIBRES = {ACCESO, "/acceso/config", "/acceso/solicitar"}
+# «Probar como…»: perfiles con los que un administrador puede ver ARIA (cookie de sesión del navegador)
+VISTA_COOKIE = "aria_vista"
+VISTAS_PRUEBA = ("usuario", *invitados.PERFILES)
 
 
 def _libre(path: str) -> bool:
@@ -201,10 +204,21 @@ async def seguridad(request: Request, call_next):
                     return JSONResponse({"error": "No autenticado"}, status_code=401)
                 # Sin sesión, la portada enseña el escaparate (con su botón «Entrar»); el resto, al login
                 return RedirectResponse(ESCAPARATE if path == "/" else "/login", status_code=303)
+            # «Probar como…» (solo administradores): ARIA se comporta con el rol y los límites de otro perfil.
+            # Solo recorta: un usuario normal no puede activarlo, y /api/vista sigue abierta para volver.
+            vista = request.cookies.get(VISTA_COOKIE) if usuario["rol"] == "admin" else None
+            vista = vista if vista in VISTAS_PRUEBA else None
+            request.state.vista = vista
+            if vista and path != "/api/vista":
+                usuario = {**usuario, "rol": "usuario"}
+                request.state.usuario = usuario
             if not permisos.permitido(usuario["rol"], request.method, path):
                 return JSONResponse({"error": "No tienes permiso para esto."}, status_code=403)
             # Invitados: además del rol, sus límites (secciones, opciones y caducidad)
-            lim = await asyncio.to_thread(invitados.de, usuario["id"]) if usuario["rol"] != "admin" else None
+            if vista in invitados.PERFILES and path != "/api/vista":
+                lim = {**invitados.normalizar_limites(None, vista), "perfil": vista, "caduca": None}
+            else:
+                lim = await asyncio.to_thread(invitados.de, usuario["id"]) if usuario["rol"] != "admin" else None
             request.state.limites = lim
             if invitados.caducado(lim):
                 if es_api:
@@ -416,7 +430,21 @@ async def api_info(request: Request):
             "cerebro": {"id": primero.id, "etiqueta": primero.etiqueta()},
             "puertos": {"shield_web": config.SHIELD_WEB_PORT, "vpn": config.HEIMDALL_PORT},
             "funciones": {"spotify": config.SPOTIFY, "netflix": config.NETFLIX, "vision": vision.disponible()},
-            "limites": invitados.publico(getattr(request.state, "limites", None))}
+            "limites": invitados.publico(getattr(request.state, "limites", None)),
+            "vista": getattr(request.state, "vista", None)}
+
+
+@app.post("/api/vista")
+async def api_vista(request: Request):
+    """Solo administradores: «probar como» `usuario`, `visita` o `familiar` ({"perfil": null} para volver)."""
+    d = await _json(request)
+    perfil = d.get("perfil")
+    resp = JSONResponse({"vista": perfil if perfil in VISTAS_PRUEBA else None})
+    if perfil in VISTAS_PRUEBA:
+        resp.set_cookie(VISTA_COOKIE, perfil, max_age=4 * 3600, httponly=True, secure=True, samesite="strict")
+    else:
+        resp.delete_cookie(VISTA_COOKIE)
+    return resp
 
 
 @app.get("/api/certificado")

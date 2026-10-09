@@ -269,3 +269,37 @@ async def test_telegram_avisa_y_aprueba(monkeypatch):
     assert r == "Aprobada." and invitados.solicitud(s["id"])["estado"] == "aprobada"
     normal = usuarios.crear("normal@example.com", "Normal", "usuario")
     assert "administrador" in await telegram._accion(Bot(), {}, 99, normal, "acceso", {"sid": s["id"], "op": "rechazar"})
+
+
+# --- «Probar como…» (administradores) -----------------------------------------------------------------------------------
+def test_admin_prueba_perfiles_y_vuelve():
+    admin = usuarios.crear("jefa@example.com", "Jefa", "admin")
+    c = cliente(admin)
+    assert c.post("/api/vista", json={"perfil": "visita"}).json() == {"vista": "visita"}
+    info = c.get("/api/info").json()
+    assert info["vista"] == "visita" and info["rol"] == "usuario" and info["limites"]["perfil"] == "visita"
+    assert c.get("/api/finanzas/resumen").status_code == 403      # Visita no tiene Finanzas
+    assert c.get("/api/acceso").status_code == 403                 # ni nada de administración
+    assert c.get("/api/informacion/temas").status_code == 200
+    c.post("/api/vista", json={"perfil": "usuario"})
+    info = c.get("/api/info").json()
+    assert info["rol"] == "usuario" and info["limites"] is None and c.get("/api/finanzas/resumen").status_code == 200
+    assert c.post("/api/vista", json={"perfil": None}).json() == {"vista": None}
+    c.cookies.delete(main.VISTA_COOKIE)
+    assert c.get("/api/info").json()["rol"] == "admin" and c.get("/api/acceso").status_code == 200
+
+
+def test_un_usuario_no_puede_usar_la_vista():
+    u = usuarios.crear("normal@example.com", "Normal", "usuario")
+    c = cliente(u)
+    assert c.post("/api/vista", json={"perfil": "familiar"}).status_code == 403
+    c.cookies.set(main.VISTA_COOKIE, "familiar")
+    assert c.get("/api/info").json()["vista"] is None
+
+
+def test_vista_desconocida_se_ignora():
+    admin = usuarios.crear("jefa@example.com", "Jefa", "admin")
+    c = cliente(admin)
+    assert c.post("/api/vista", json={"perfil": "admin-supremo"}).json() == {"vista": None}
+    c.cookies.set(main.VISTA_COOKIE, "admin-supremo")
+    assert c.get("/api/info").json()["rol"] == "admin"

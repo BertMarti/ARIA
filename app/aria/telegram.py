@@ -1024,8 +1024,8 @@ async def canal(uid: int, aviso: dict) -> bool:
                 fila.append({"text": "Abrir ARIA", "url": f"{config.URL_PUBLICA}/#{aviso['enlace']}"})
             filas.append(fila)
         try:
-            if aviso.get("tipo") == "resumen":
-                await enviar_html(b, c["chat_id"], cab + aviso["texto"], teclado(*filas) if filas else None)
+            if aviso.get("html"):
+                await enviar_html(b, c["chat_id"], aviso["html"], teclado(*filas) if filas else None)
             else:
                 await enviar_texto(b, c["chat_id"], cab + aviso["texto"], teclado(*filas) if filas else None)
             enviado = True

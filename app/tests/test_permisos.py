@@ -137,7 +137,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("GET", "/api/voz/estado"), ("POST", "/api/voz/transcribir"), ("POST", "/api/voz/hablar"),
                     ("GET", "/api/memoria"), ("POST", "/api/memoria"), ("POST", "/api/memoria/ajustes"),
                      ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
-                     ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"),
+                     ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"), ("GET", "/api/resumen-diario"),
                      ("GET", "/api/proyectos"), ("POST", "/api/proyectos"), ("PATCH", "/api/proyectos/{pid}"),
                      ("DELETE", "/api/proyectos/{pid}"), ("GET", "/api/proyectos/{pid}/decisiones"),
                      ("POST", "/api/proyectos/{pid}/decisiones"), ("DELETE", "/api/decisiones/{did}"),
@@ -237,7 +237,7 @@ def test_migracion_conserva_el_hash_y_la_version(tmp_path, monkeypatch):
 
 
 # --- Herramientas del chat ---
-LECTURA = {"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "estado_sistema", "buscar_en_netflix",
+LECTURA = {"fecha_hora", "resumen_diario", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "estado_sistema", "buscar_en_netflix",
            "buscar_en_internet", "noticias", "tiempo",
            "recordar", "olvidar",  # las de memoria las tiene todo rol, sobre sus propios datos
            "recordatorio", "mis_recordatorios", "borrar_recordatorio",  # y los recordatorios (los suyos)

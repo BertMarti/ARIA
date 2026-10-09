@@ -43,10 +43,11 @@
       <article id="hud-tiempo" class="hud-widget"><h2>Tiempo de hoy</h2><p class="hud-valor"></p></article>
       <article id="hud-avisos" class="hud-widget"><h2>Avisos</h2><p class="hud-valor"></p></article>
       <article id="hud-recordatorio" class="hud-widget"><h2>Próximo recordatorio</h2><p class="hud-valor"></p></article>
-      <article id="hud-sistema" class="hud-widget hud-admin" hidden><h2>Sistema</h2><p class="hud-valor"></p></article>
+      <article id="hud-sistema" class="hud-widget hud-admin" hidden><h2>Estado de la casa</h2><p class="hud-valor"></p></article>
       <article id="hud-vpn" class="hud-widget hud-admin" hidden><h2>VPN conectados</h2><p class="hud-valor"></p></article>
-        <article id="hud-shield" class="hud-widget hud-admin" hidden><h2>Anuncios bloqueados hoy</h2><p class="hud-valor"></p></article>
-      <div class="hud-orbe-zona"><canvas id="hud-orbe" aria-label="Estado visual de ARIA"></canvas><p id="hud-subtitulo" class="hud-subtitulo" aria-live="polite"></p></div>
+      <article id="hud-shield" class="hud-widget hud-admin" hidden><h2>Anuncios bloqueados hoy</h2><p class="hud-valor"></p></article>
+      <article id="hud-inversiones" class="hud-widget" hidden><h2>Mis inversiones · hoy</h2><ul class="hud-lista"></ul></article>
+      <div class="hud-orbe-zona"><canvas id="hud-orbe" aria-label="Estado visual de ARIA"></canvas><p id="hud-estado" class="hud-estado">En espera</p><p id="hud-subtitulo" class="hud-subtitulo" aria-live="polite"></p></div>
     </div>
     <form id="hud-form" class="hud-entrada"><input id="hud-texto" maxlength="2000" placeholder="Habla con ARIA…" aria-label="Pregunta para ARIA"><button id="hud-mic" type="button" class="primario mic" aria-label="Mantén pulsado para hablar"><svg class="svg-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button type="submit" class="primario">Enviar</button><button type="button" id="hud-manos" class="fantasma" aria-pressed="false">Manos libres</button></form>
   </section>
@@ -61,7 +62,6 @@
         <strong>Avisos</strong>
         <button type="button" class="fantasma pequeno" id="avisos-todos">Marcar todo como leído</button>
       </div>
-      <details class="hud-resumen"><summary>Resumen del día</summary><div id="hud-resumen-cuerpo"></div></details>
       <ul id="avisos-lista" class="avisos-lista"></ul>
       <a href="#ajustes" class="avisos-pie" id="avisos-ajustes">Ajustes de avisos</a>
     </div>

@@ -431,22 +431,23 @@ def test_briefing_ventana():
 
 
 def test_briefing_programado_una_vez_al_dia(admin, monkeypatch):
-    from aria import briefing
+    from aria import resumen_diario
     enviados = []
 
     async def tg(uid, aviso):
-        enviados.append((uid, aviso["tipo"], aviso["texto"]))
+        enviados.append((uid, aviso["tipo"], aviso["texto"], aviso.get("html")))
         return True
     monkeypatch.setattr(avisos, "_CANALES", {"telegram": tg})
 
-    async def obtener(u, refrescar=False, ref=None):
+    async def construir(u, refrescar=False):
         return {"x": 1}
-    monkeypatch.setattr(briefing, "obtener", obtener)
-    monkeypatch.setattr(briefing, "texto_hablado", lambda d: "Buenos días, Lucía.")
+    monkeypatch.setattr(resumen_diario, "construir_resumen_diario", construir)
+    monkeypatch.setattr(resumen_diario, "texto_plano", lambda d: "Buenos días, Lucía.")
+    monkeypatch.setattr(resumen_diario, "telegram", lambda d: "<b>Buenos días, Lucía.</b>")
     ref = datetime(2026, 10, 7, 8, 5, tzinfo=tiempo.zona())
     assert correr(avisos.briefings_programados(ref)) == [admin["id"]]
     assert correr(avisos.briefings_programados(ref)) == []
-    assert enviados == [(admin["id"], "resumen", "Buenos días, Lucía.")]
+    assert enviados == [(admin["id"], "resumen", "Buenos días, Lucía.", "<b>Buenos días, Lucía.</b>")]
     assert avisos.listar(admin["id"])["avisos"] == []  # no ensucia la campana
 
 

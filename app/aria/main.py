@@ -694,8 +694,8 @@ async def api_briefing(request: Request, refrescar: int = 0):
 
 
 @app.get("/api/resumen-diario")
-async def api_resumen_diario(request: Request):
-    return await resumen_diario.construir_resumen_diario(request.state.usuario)
+async def api_resumen_diario(request: Request, refrescar: int = 0):
+    return await resumen_diario.construir_resumen_diario(request.state.usuario, refrescar=bool(refrescar))
 
 
 # --- Modelos ---

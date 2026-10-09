@@ -64,36 +64,94 @@ const Inicio = (() => {
     toast("Sistema: " + partes.join(" · ") + " · encendida " + d.uptime_texto);
   }
 
-  // --- Resumen diario: una sola fuente de datos y DOM seguro ---
-  const num = (n) => fmtNum(n);
-  const dec = (v) => String(v).replace(".", ",");
-  function icono(tipo) {
-    const paths = { tiempo: "M12 3v18M5 8h14M7 16h10", apps: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z", red: "M12 4v7m0 0-6 6m6-6 6 6M8 4h8", dinero: "M4 6h16v12H4zM7 12h10", bolsa: "M5 8h14v12H5zM8 8V5h8v3", agenda: "M5 4v3m14-3v3M4 9h16M5 6h14v14H5z" };
-    return el("svg", { class: "resumen-icono", viewBox: "0 0 24 24", "aria-hidden": "true" }, el("path", { d: paths[tipo] || paths.apps }));
+  // --- Resumen diario (/api/resumen-diario): la misma fuente que Telegram y el HUD; todo con nodos del DOM ---
+  const eur = (n, dec = 2) => Number(n).toLocaleString("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: "always" });
+  const pct = (p, signo = true) => (signo && p > 0 ? "+" : "") + Number(p).toLocaleString("es-ES", { minimumFractionDigits: signo ? 2 : 1, maximumFractionDigits: signo ? 2 : 1 }) + " %";
+  const hora = (iso) => String(iso || "").slice(11, 16);
+  // Iconos de trazo (SVG), no emojis: se ven igual en cualquier sistema
+  const ICONOS = {
+    tiempo: "M12 3v2M5.6 5.6l1.4 1.4M3 12h2M17 7l1.4-1.4M8.5 13a3.5 3.5 0 1 1 6.6 1.6M7 20h10a3 3 0 0 0 0-6 4.5 4.5 0 0 0-8.6-1A3.5 3.5 0 0 0 7 20z",
+    apps: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", red: "M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0M12 20h.01",
+    dinero: "M3 6h18v12H3zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM6 9v.01M18 15v.01", bolsa: "M3 17l6-6 4 4 8-8M15 7h6v6",
+    agenda: "M4 6h16v14H4zM4 10h16M8 3v5M16 3v5", escudo: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", llave: "M7 14a4 4 0 1 1 3.9-5H21v3h-2v3h-3v-3h-5.1A4 4 0 0 1 7 14z",
+    cerebro: "M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4.5A3 3 0 0 0 9 4zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1",
+    chip: "M7 7h10v10H7zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4", disco: "M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3v12c0 1.7-3.6 3-8 3s-8-1.3-8-3zM4 6c0 1.7 3.6 3 8 3s8-1.3 8-3",
+  };
+  function ico(nombre, clase = "rd-ico") {
+    const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg"), path = document.createElementNS(NS, "path");
+    svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("class", clase); svg.setAttribute("aria-hidden", "true");
+    path.setAttribute("d", ICONOS[nombre] || ICONOS.apps); svg.append(path); return svg;
   }
-  function tarjetaResumen(tipo, titulo, contenido, clase = "") { return el("article", { class: "resumen-card " + clase }, el("div", { class: "resumen-card-cab" }, icono(tipo), el("h3", null, titulo)), contenido); }
-  function progreso(valor) { const b = el("div", { class: "resumen-barra" }); const f = el("span"); f.style.width = Math.max(0, Math.min(100, Number(valor) || 0)) + "%"; b.append(f); return b; }
-  function cifra(texto, detalle = "") { return el("div", { class: "resumen-cifra" }, el("strong", null, texto), el("span", { class: "muted" }, detalle)); }
+  function tarjetaR(icono, titulo, clase, ...hijos) {
+    return el("article", { class: "rd-card " + (clase || "") },
+      el("header", { class: "rd-cab" }, el("span", { class: "rd-emoji" }, ico(icono)), el("h3", null, titulo)), ...hijos);
+  }
+  function barra(valor, aviso) {
+    const b = el("div", { class: "rd-barra" + (aviso ? " aviso" : "") }), f = el("span");
+    f.style.width = Math.max(0, Math.min(100, Number(valor) || 0)) + "%"; b.append(f); return b;
+  }
+  function fila(icono, etq, valor, clase) { return el("div", { class: "rd-fila " + (clase || "") }, el("span", { class: "muted rd-etq" }, icono ? ico(icono, "rd-ico-p") : null, etq), el("strong", null, valor)); }
+  function chipCambio(c) { return c == null ? null : el("span", { class: "rd-chip " + (c >= 0 ? "sube" : "baja") }, (c >= 0 ? "▲ " : "▼ ") + pct(c)); }
   function pintarResumen(d) {
     const c = $("resumen-cuerpo"); c.replaceChildren();
-    c.append(el("p", { class: "resumen-saludo" }, el("strong", null, d.saludo), " · " + d.fecha_texto));
-    if (d.tiempo) c.append(tarjetaResumen("tiempo", "El tiempo", cifra((d.tiempo.actual ?? "—") + " °C", d.tiempo.ciudad + " · " + d.tiempo.min + "–" + d.tiempo.max + " °C · lluvia " + d.tiempo.lluvia + " %")));
+    const t = d.tiempo;
+    if (t) c.append(tarjetaR("tiempo", "El tiempo · " + t.ciudad, "rd-tiempo",
+      el("div", { class: "rd-grande" }, (t.actual ?? t.max) + " °C"), el("p", { class: "rd-sub" }, t.cielo.charAt(0).toUpperCase() + t.cielo.slice(1)),
+      el("div", { class: "rd-mini" }, el("span", null, "↓ " + t.min + " °C"), el("span", null, "↑ " + t.max + " °C"), el("span", null, "Lluvia " + (t.lluvia ?? "—") + " %")),
+      t.aviso_manana ? el("p", { class: "rd-alerta" }, "⚠ " + t.aviso_manana) : null));
     const a = d.aplicaciones;
     if (a) {
-      const cuerpo = el("div", { class: "resumen-apps" }, el("p", { class: "resumen-veredicto" }, a.veredicto || ""));
-      if (a.shield) cuerpo.append(el("p", null, "SHIELD-DNS · " + num(a.shield.consultas) + " consultas · " + num(a.shield.bloqueadas) + " bloqueos (" + a.shield.porcentaje + " %)") );
-      if (a.heimdall) cuerpo.append(el("p", null, "HEIMDALL · " + a.heimdall.conectados + " de " + a.heimdall.total + " conectados"));
-      if (a.raspberry) { cuerpo.append(el("p", null, "Raspberry · " + (a.raspberry.temperatura ?? "—") + " °C · RAM " + (a.raspberry.ram ?? "—") + " %")); cuerpo.append(progreso(a.raspberry.ram)); cuerpo.append(progreso(a.raspberry.disco)); }
-      c.append(tarjetaResumen("apps", "Tus aplicaciones", cuerpo, "resumen-apps-card"));
+      const filas = [el("p", { class: "rd-veredicto " + (a.ok ? "ok" : "mal") }, a.ok ? "✓ Todo en orden" : "⚠ " + a.problemas.length + (a.problemas.length === 1 ? " cosa que revisar" : " cosas que revisar"))];
+      if (!a.ok) filas.push(el("ul", { class: "rd-problemas" }, ...a.problemas.map((p) => el("li", null, p.charAt(0).toUpperCase() + p.slice(1)))));
+      if (a.shield) filas.push(fila("escudo", "SHIELD-DNS", fmtNum(a.shield.bloqueadas) + " bloqueos · " + pct(a.shield.porcentaje, false)));
+      if (a.heimdall) filas.push(fila("llave", "HEIMDALL", a.heimdall.conectados + " de " + a.heimdall.total + " conectados"));
+      if (a.aria) filas.push(fila("cerebro", "Cerebros de IA", a.aria.listos + " de " + a.aria.total + " listos"));
+      const r = a.raspberry;
+      if (r) {
+        if (r.temperatura != null) filas.push(fila("chip", "Raspberry Pi", String(r.temperatura).replace(".", ",") + " °C", r.temperatura >= 75 ? "aviso" : ""));
+        if (r.encendida) filas.push(fila(null, "Encendida", r.encendida));
+        if (r.ram != null) filas.push(el("div", { class: "rd-medidor" }, el("span", { class: "muted" }, "RAM " + r.ram + " %"), barra(r.ram, r.ram > 85)));
+        if (r.disco != null) filas.push(el("div", { class: "rd-medidor" }, el("span", { class: "muted" }, "Disco " + r.disco + " %"), barra(r.disco, r.disco > 85)));
+      }
+      if (a.copia) filas.push(fila("disco", "Copia", a.copia.disponible ? "hace " + a.copia.hace : "no disponible", a.copia.antigua ? "aviso" : ""));
+      c.append(tarjetaR("apps", "Tus aplicaciones", "rd-apps", ...filas));
     }
-    if (d.red) c.append(tarjetaResumen("red", "Red", el("p", null, d.red.nuevos.length ? d.red.nuevos.length + " dispositivos nuevos" : "Sin dispositivos nuevos")));
-    if (d.finanzas) { const f = d.finanzas; c.append(tarjetaResumen("dinero", "Finanzas", el("div", null, cifra((f.gastos / 100).toFixed(2).replace(".", ",") + " €", "este mes · anterior " + (f.mes_anterior / 100).toFixed(2).replace(".", ",") + " €"), ...f.presupuestos.slice(0, 3).map((p) => el("div", { class: "resumen-presupuesto" }, el("span", null, p.categoria), progreso(p.porcentaje)))))); }
-    if (d.inversiones) c.append(tarjetaResumen("bolsa", "Mis inversiones", el("p", null, d.inversiones.valores.map((v) => v.nombre + ": " + (v.precio ?? "sin datos") + " €").join(" · "))));
-    const ag = d.agenda || {}; c.append(tarjetaResumen("agenda", "Hoy", el("p", null, (ag.eventos || []).length + " eventos · " + (d.recordatorios || []).length + " recordatorios")));
+    if (d.red) {
+      const rd = d.red, cuerpo = [el("div", { class: "rd-grande" }, String(rd.total)), el("p", { class: "rd-sub" }, "dispositivos en la red")];
+      cuerpo.push(el("p", null, rd.nuevos.length ? rd.nuevos.length + " nuevos en 24 h: " + rd.nuevos.slice(0, 4).map((x) => x.nombre).join(", ") : "Sin dispositivos nuevos en 24 h"));
+      if (rd.n_desconocidos) cuerpo.push(el("a", { class: "rd-alerta", href: "#red" }, rd.n_desconocidos + " sin identificar →"));
+      c.append(tarjetaR("red", "Red", "rd-red", ...cuerpo));
+    }
+    const f = d.finanzas;
+    if (f) {
+      const cuerpo = [el("div", { class: "rd-grande" }, eur(f.gastos / 100)), el("p", { class: "rd-sub" }, "gastado en " + f.mes_texto)];
+      if (f.mes_anterior_mismo_dia) {
+        const dif = Math.round((f.gastos - f.mes_anterior_mismo_dia) * 100 / f.mes_anterior_mismo_dia);
+        cuerpo.push(el("p", null, el("span", { class: "rd-chip " + (dif > 0 ? "baja" : "sube") }, (dif > 0 ? "▲ " : "▼ ") + Math.abs(dif) + " %"), " frente al mes pasado a estas alturas"));
+      }
+      for (const p of (f.presupuestos || []).slice().sort((x, y) => y.porcentaje - x.porcentaje).slice(0, 3))
+        cuerpo.push(el("div", { class: "rd-medidor" }, el("span", { class: "muted" }, p.categoria + " · " + Math.round(p.porcentaje) + " %"), barra(p.porcentaje, p.superado)));
+      c.append(tarjetaR("dinero", "Finanzas", "rd-fin", ...cuerpo));
+    }
+    const inv = d.inversiones;
+    if (inv) {
+      const lista = el("ul", { class: "rd-inv" }, ...inv.valores.map((v) => el("li", null,
+        el("span", { class: "rd-inv-nombre" }, v.nombre || v.simbolo), el("strong", null, eur(v.precio, v.precio >= 1000 ? 0 : 2)), chipCambio(v.variacion_dia))));
+      c.append(tarjetaR("bolsa", "Mis inversiones", "rd-inv-card", lista,
+        inv.total_posiciones ? fila(null, "Total de tus posiciones", eur(inv.total_posiciones)) : null,
+        el("a", { class: "rd-enlace", href: "#informacion" }, "Ver gráficas →")));
+    }
+    const ag = d.agenda || {}, items = [];
+    for (const e of ag.eventos || []) items.push(el("li", null, el("span", { class: "rd-hora" }, e.todo_el_dia ? "Día" : hora(e.inicio)), el("span", null, e.titulo + (e.lugar ? " · " + e.lugar : ""))));
+    for (const r of d.recordatorios || []) items.push(el("li", null, el("span", { class: "rd-hora" }, hora(r.cuando)), el("span", null, r.texto)));
+    for (const cu of ag.cumpleanos || []) items.push(el("li", null, el("span", { class: "rd-hora" }, "Cumple"), el("span", null, cu.nombre + (cu.edad ? " (" + cu.edad + ")" : "") + " · " + new Date(cu.fecha + "T12:00").toLocaleDateString("es-ES", { weekday: "long", day: "numeric" }))));
+    c.append(tarjetaR("agenda", "Hoy", "rd-hoy", items.length ? el("ul", { class: "rd-agenda" }, ...items) : el("p", { class: "muted" }, "Día despejado: sin eventos ni recordatorios."),
+      el("a", { class: "rd-enlace", href: "#agenda" }, "Abrir la agenda →")));
+    if (d.cierre) c.append(el("p", { class: "rd-cierre" }, d.cierre));
   }
   async function resumen(refrescar) {
     const tarjeta = $("resumen-hoy");
-    const { ok, data } = await api("/api/resumen-diario");
+    const { ok, data } = await api("/api/resumen-diario" + (refrescar ? "?refrescar=1" : ""));
     if (!ok || !data.fecha) { tarjeta.hidden = true; return; }
     if (!refrescar && Prefs.get("resumen_cerrado", "") === data.fecha) { tarjeta.hidden = true; return; }
     pintarResumen(data); tarjeta.hidden = false; tarjeta.dataset.fecha = data.fecha;
@@ -103,7 +161,12 @@ const Inicio = (() => {
     clearInterval(temporizador); temporizador = null;
     if (!si) return;
     saludo(); estados(); resumen(false); Modulos.pintarInicio();
-     temporizador = setInterval(() => { if (!document.hidden && !document.querySelector("dialog[open]")) { estados(); resumen(true); Modulos.pintarInicio(); } }, 300000);
+    let vueltas = 0;
+    temporizador = setInterval(() => {
+      if (document.hidden || document.querySelector("dialog[open]")) return;
+      estados(); Modulos.pintarInicio();
+      if (++vueltas % 20 === 0) resumen(false);   // cada 5 min (el servidor lo cachea 10 min)
+    }, 15000);
   }
 
   async function iniciar() {

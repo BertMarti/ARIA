@@ -187,7 +187,9 @@ const Voz = (() => {
         const audio = await c.decodeAudioData(buf);
         if (mio !== turno) { res(); return; }
         const s = c.createBufferSource(); s.buffer = audio; const a = c.createAnalyser(); a.fftSize = 256; s.connect(a); a.connect(c.destination); emitir("hablando", 0.2);
-        s.onended = () => { if (fuente === s) fuente = null; emitir("reposo"); res(); };
+        const muestras = new Uint8Array(a.fftSize);   // nivel de la voz de ARIA para el orbe del HUD
+        const medidor = setInterval(() => { a.getByteTimeDomainData(muestras); let q = 0; for (const v of muestras) q += (v - 128) ** 2; emitir("hablando", Math.min(1, Math.sqrt(q / muestras.length) / 40)); }, 80);
+        s.onended = () => { clearInterval(medidor); if (fuente === s) fuente = null; emitir("reposo"); res(); };
         fuente = s; s.start();
       } catch (_) { res(); }
     });

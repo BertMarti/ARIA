@@ -329,7 +329,7 @@ async def resumen_diario_tool(uid: int) -> str:
     usuario = next((u for u in usuarios.listar() if u["id"] == uid),
                     {"id": uid, "rol": "usuario"})
     from . import resumen_diario   # perezoso: resumen_diario importa módulos que dependen de tools
-    return resumen_diario._presentar(await resumen_diario.construir_resumen_diario(usuario))
+    return resumen_diario.texto_plano(await resumen_diario.construir_resumen_diario(usuario))
 
 
 @tool("estado_servicios", "Consulta el estado de los servicios SHIELD-DNS (bloqueo de anuncios) y HEIMDALL (VPN).")

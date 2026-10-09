@@ -12,8 +12,8 @@ async def test_construye_todos_los_bloques_y_filtra_el_rol(monkeypatch):
     monkeypatch.setattr(resumen_diario.informacion, "mercados", lambda uid: _async({"valores": [{"nombre": "Fondo", "precio": 12.5}]}))
     monkeypatch.setattr(resumen_diario.estadisticas, "resumen", lambda horas=24: _async({"totales": {"consultas": 100, "bloqueadas": 20, "porcentaje": 20}}))
     monkeypatch.setattr(resumen_diario.vpn, "listar", lambda: _async([]))
-    monkeypatch.setattr(resumen_diario.modulos, "listar", lambda rol: _async([]))
     monkeypatch.setattr(red, "dispositivos", lambda: _async([]))
+    resumen_diario._cache.clear()
     todos = await resumen_diario.construir_resumen_diario(admin)
     solo = await resumen_diario.construir_resumen_diario(user)
     assert todos["tiempo"] and todos["finanzas"] and todos["inversiones"]
@@ -47,8 +47,8 @@ async def test_servicios_caidos_se_omiten(monkeypatch):
     monkeypatch.setattr(resumen_diario.estadisticas, "resumen", caido)
     monkeypatch.setattr(resumen_diario.vpn, "listar", caido)
     monkeypatch.setattr(resumen_diario.red, "dispositivos", caido)
-    monkeypatch.setattr(resumen_diario.modulos, "listar", caido)
     monkeypatch.setattr(resumen_diario, "_cierre", caido)
+    resumen_diario._cache.clear()
     resultado = await resumen_diario.construir_resumen_diario(user)
     assert resultado["tiempo"] is None and resultado["inversiones"] is None
     assert "aplicaciones" in resultado
@@ -64,7 +64,7 @@ async def test_comando_resumen_manda_html_por_bot_falso(monkeypatch):
         async def llamar(self, metodo, **datos):
             self.llamadas.append((metodo, datos)); return {}
     bot = Bot()
-    monkeypatch.setattr(resumen_diario, "construir_resumen_diario", lambda u: _async({
+    monkeypatch.setattr(resumen_diario, "construir_resumen_diario", lambda u, refrescar=False: _async({
         "saludo": "Buenos días", "fecha_texto": "hoy", "tiempo": None,
         "aplicaciones": None, "red": None, "finanzas": None, "inversiones": None,
         "agenda": {"eventos": [], "cumpleanos": []}, "recordatorios": []}))
@@ -75,3 +75,63 @@ async def test_comando_resumen_manda_html_por_bot_falso(monkeypatch):
                                          "text": "/resumen"}}, bot)
     envios = [d for m, d in bot.llamadas if m == "sendMessage" and d.get("parse_mode") == "HTML"]
     assert envios and "<b>" in envios[-1]["text"]
+
+
+def _datos(**extra):
+    base = {"fecha": "2026-10-09", "saludo": "Buenos días, Ana", "fecha_texto": "viernes, 9 de octubre",
+            "tiempo": {"ciudad": "Pueblo", "cielo": "despejado", "actual": 18, "min": 11, "max": 24, "lluvia": 10},
+            "finanzas": {"mes_texto": "octubre", "gastos": 52340, "ingresos": 185000, "mes_anterior": 90000,
+                         "mes_anterior_mismo_dia": 60000,
+                         "presupuestos": [{"categoria": "Súper & más", "porcentaje": 64, "superado": False}]},
+            "inversiones": {"valores": [{"nombre": "Fondo", "precio": 1234.5, "variacion_dia": -0.84}],
+                            "total_posiciones": None},
+            "agenda": {"eventos": [{"titulo": "Dentista", "inicio": "2026-10-09T17:30", "lugar": "Centro"}],
+                       "cumpleanos": [{"nombre": "Lucía", "fecha": "2026-10-10", "edad": 32}]},
+            "recordatorios": [{"texto": "Basura", "cuando": "2026-10-09T21:00"}]}
+    base.update(extra)
+    return base
+
+
+def test_formato_espanol_y_secciones():
+    texto = resumen_diario.telegram(_datos())
+    assert "<b>Buenos días, Ana</b>" in texto and "<i>Viernes, 9 de octubre</i>" in texto
+    assert "Gastado: 523,40 €" in texto and "▼ 13 %" in texto
+    assert "Súper &amp; más 64 %" in texto
+    assert "Fondo: 1.234,50 € 🔴 -0,84 %" in texto
+    assert "• 17:30 Dentista — Centro" in texto and "⏰ 21:00 Basura" in texto
+    assert "🎂 Lucía cumple 32: mañana" in texto
+
+
+def test_texto_plano_sin_etiquetas():
+    texto = resumen_diario.texto_plano(_datos(saludo="Hola <b>x</b>"))
+    assert "<b>El tiempo" not in texto and "🌤️ El tiempo · Pueblo" in texto
+
+
+def test_aplicaciones_con_problemas_y_red():
+    d = _datos(aplicaciones={"ok": False, "veredicto": "Atención: SHIELD-DNS no responde", "problemas": ["SHIELD-DNS no responde"],
+                             "raspberry": {"temperatura": 49.6, "ram": 43, "disco": 12, "encendida": "3 días"}},
+               red={"total": 9, "nuevos": [{"nombre": "Tablet <x>"}], "n_desconocidos": 1,
+                    "desconocidos": [{"nombre": "Espressif", "ip": "192.168.1.45"}]})
+    texto = resumen_diario.telegram(d)
+    assert "⚠️ 1 cosa que revisar:\n   · SHIELD-DNS no responde" in texto
+    assert "🍓 Raspberry: 49,6 °C · RAM 43 % · disco 12 % · encendida 3 días" in texto
+    assert "Tablet &lt;x&gt;" in texto and "Espressif (192.168.1.45)" in texto
+
+
+@pytest.mark.asyncio
+async def test_cache_y_refresco(monkeypatch):
+    user = usuarios.crear("cache@example.invalid", "Cache", "usuario")
+    resumen_diario._cache.clear()
+    llamadas = []
+    async def tiempo_():
+        llamadas.append(1)
+        return None
+    monkeypatch.setattr(briefing, "_tiempo", tiempo_)
+    monkeypatch.setattr(briefing, "prevision", lambda dias=2: _async(None))
+    monkeypatch.setattr(resumen_diario.informacion, "mercados", lambda uid: _async({"valores": []}))
+    monkeypatch.setattr(resumen_diario, "_cierre", lambda d: _async(None))
+    await resumen_diario.construir_resumen_diario(user)
+    await resumen_diario.construir_resumen_diario(user)
+    assert len(llamadas) == 1
+    await resumen_diario.construir_resumen_diario(user, refrescar=True)
+    assert len(llamadas) == 2

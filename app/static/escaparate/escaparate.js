@@ -134,13 +134,15 @@
   }
   const burbuja = $("#ping-burbuja");
   let burbujaT = 0;
-  function pingLlama() {   // «Ah, y esa lucecita nerviosa es Ping»: se acerca al subtítulo y avisa
+  function pingSeAcerca() {   // «Ah, y esa lucecita nerviosa…»: Ping vuela junto al subtítulo y se pone en ámbar
     const lienzo = $("#ping-portada").getBoundingClientRect(), s = $("#subtitulo").getBoundingClientRect();
     pingPortada.destino = { x: Math.min(lienzo.width - 40, s.right - lienzo.left + 10), y: s.top - lienzo.top - 10 };
     pingPortada.estado("aviso");
+  }
+  function pingGrita() {   // «…es Ping.» → «¡Eh, mira!»
     clearTimeout(burbujaT);
-    burbujaT = setTimeout(() => { burbuja.hidden = false; seguirBurbuja(); pingHabla(); }, 9100);   // cuando ARIA termina: Ping cierra la bienvenida
-    temporizadores.push(setTimeout(pingSuelta, 12000));
+    burbuja.hidden = false; seguirBurbuja(); pingHabla();
+    burbujaT = setTimeout(pingSuelta, 3200);
   }
   function seguirBurbuja() {   // el bocadillo acompaña a Ping mientras revolotea
     if (burbuja.hidden) return;
@@ -148,7 +150,7 @@
     burbuja.style.left = p.x + "px"; burbuja.style.top = (p.y - 30) + "px";
     requestAnimationFrame(seguirBurbuja);
   }
-  function pingSuelta() { clearTimeout(burbujaT); pingPortada.destino = null; pingPortada.estado("ok"); burbuja.hidden = true; }
+  function pingSuelta() { clearTimeout(burbujaT); burbujaT = 0; pingPortada.destino = null; pingPortada.estado("ok"); burbuja.hidden = true; }
 
   // --- «Quiero escuchar a ARIA»: voz pregrabada + subtítulos ------------------------------------------
   const boton = $("#escuchar"), sub = $("#subtitulo");
@@ -162,22 +164,40 @@
     } else orbe.nivel = .35 + .25 * Math.sin(performance.now() / 120);
     requestAnimationFrame(nivel);
   }
-  // Inicio de cada frase en audio/bienvenida.mp3 (medido con los silencios de la grabación)
-  const MARCAS = [0, 4.0, 9.9, 16.8, 22.5];
-  function subtitulos(duracion, grabado) {
+  // Inicio de cada frase en audio/bienvenida.mp3 (medido con los silencios de la grabación) y el final de «…es Ping.»
+  const MARCAS = [0, 4.0, 9.9, 16.8, 22.5], FIN_ES_PING = 19.9, PAUSA_PING = 1.6;
+  function sincronizar() {   // con grabación: subtítulos y Ping siguen al tiempo real del audio
+    let pingHecho = false;
+    const paso = () => {
+      if (!activo || !audio) return;
+      const t = audio.currentTime;
+      let i = 0; while (i + 1 < MARCAS.length && t >= MARCAS[i + 1]) i++;
+      if (sub.textContent !== BIENVENIDA[i]) { sub.textContent = BIENVENIDA[i]; sub.classList.add("visible"); if (BIENVENIDA[i].includes("Ping")) pingSeAcerca(); }
+      if (!pingHecho && t >= FIN_ES_PING) {   // ARIA calla un momento y habla Ping
+        pingHecho = true; audio.pause(); pingGrita();
+        temporizadores.push(setTimeout(() => { if (activo) audio.play().catch(() => {}); }, PAUSA_PING * 1000));
+      }
+      requestAnimationFrame(paso);
+    };
+    audio.onended = () => temporizadores.push(setTimeout(parar, 2500));
+    paso();
+  }
+  function subtitulos(duracion) {   // sin grabación: reparto proporcional
     const total = BIENVENIDA.reduce((n, f) => n + f.length, 0);
     let t = 0;
-    BIENVENIDA.forEach((f, i) => {
-      if (grabado) t = MARCAS[i];
-      temporizadores.push(setTimeout(() => { sub.textContent = f; sub.classList.add("visible"); if (f.includes("Ping")) pingLlama(); }, t * 1000));
+    BIENVENIDA.forEach((f) => {
+      temporizadores.push(setTimeout(() => {
+        sub.textContent = f; sub.classList.add("visible");
+        if (f.includes("Ping")) { pingSeAcerca(); temporizadores.push(setTimeout(pingGrita, 2800)); }
+      }, t * 1000));
       t += duracion * f.length / total;
     });
-    temporizadores.push(setTimeout(parar, (grabado ? Math.max(t, duracion) + 3.5 : t + 1.5) * 1000));
+    temporizadores.push(setTimeout(parar, (t + 1.5) * 1000));
   }
   function parar() {
     activo = false; temporizadores.forEach(clearTimeout); temporizadores = [];
-    if (audio) { audio.pause(); audio.currentTime = 0; }
-    pingSuelta(); sub.classList.remove("visible"); boton.setAttribute("aria-checked", "false"); document.body.classList.remove("escuchando");
+    if (audio) { audio.onended = null; audio.pause(); audio.currentTime = 0; }
+    pingSuelta(); sub.textContent = ""; sub.classList.remove("visible"); boton.setAttribute("aria-checked", "false"); document.body.classList.remove("escuchando");
   }
   async function empezar() {
     prepararPing();
@@ -194,10 +214,10 @@
         } catch (_) { analizador = null; }
       }
       await audio.play();
-      subtitulos(audio.duration || 26, true);
+      sincronizar();
     } catch (_) {
       audio = null; $("#aviso-voz").hidden = false;   // sin grabación todavía: solo subtítulos
-      subtitulos(18, false);
+      subtitulos(18);
     }
     nivel();
   }

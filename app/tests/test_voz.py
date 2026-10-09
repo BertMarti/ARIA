@@ -197,8 +197,8 @@ def test_hablar(monkeypatch, ana):
 
     async def sintetizar(texto, vel, pref=None):
         vistos.update(texto=texto, vel=vel)
-        return b"RIFF....WAVE"
-    monkeypatch.setattr(voz, "sintetizar", sintetizar)
+        return b"RIFF....WAVE", "gemini"
+    monkeypatch.setattr(voz, "sintetizar_info", sintetizar)
     r = cliente_de(ana).post("/api/voz/hablar", json={"texto": "**Hola** [aquí](https://x.es)", "velocidad": 9})
     assert r.status_code == 200 and r.headers["content-type"] == "audio/wav"
     assert vistos == {"texto": "Hola aquí", "vel": voz.VEL_MAX}
@@ -219,7 +219,7 @@ def test_voz_disponible_para_usuario(monkeypatch, ana):
         return False
     monkeypatch.setattr(voz, "voz_local_ok", no)
     r = cliente_de(ana).get("/api/voz/estado")
-    assert r.status_code == 200 and r.json() == {"groq": True, "local": False}
+    assert r.status_code == 200 and {k: r.json()[k] for k in ("groq", "local")} == {"groq": True, "local": False}
 
 
 def test_post_de_voz_con_origen_ajeno(admin):

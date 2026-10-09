@@ -532,7 +532,9 @@ async def api_borrar_conversacion(cid: str, request: Request):
 # --- Voz ---
 @app.get("/api/voz/estado")
 async def api_voz_estado():
-    return {"groq": bool(os.environ.get("GROQ_API_KEY")), "local": await voz.voz_local_ok()}
+    vuelve = voz.gemini_vuelve()
+    return {"groq": bool(os.environ.get("GROQ_API_KEY")), "local": await voz.voz_local_ok(),
+            "gemini": voz.gemini_tts_disponible(), "gemini_vuelve": int(vuelve) if vuelve else None}
 
 
 @app.get("/api/voz/voces")
@@ -600,10 +602,14 @@ async def api_voz_hablar(request: Request):
                             status_code=429, headers={"Retry-After": str(resto)})
     try:
         pref = await asyncio.to_thread(voz.preferencias_de, request.state.usuario["id"])
-        wav = await voz.sintetizar(limpio, voz.velocidad(d.get("velocidad", 1.0)), pref)
+        wav, motor = await voz.sintetizar_info(limpio, voz.velocidad(d.get("velocidad", 1.0)), pref)
     except voz.AudioError as e:
         return JSONResponse({"error": e.mensaje}, status_code=e.estado)
-    return Response(wav, media_type="audio/wav")
+    # El navegador avisa si no ha sonado la voz elegida (cuota de Gemini agotada) y desde cuándo vuelve
+    cab = {"X-Voz-Motor": motor, "X-Voz-Nombre": pref["voz"]}
+    if motor == "local" and (vuelve := voz.gemini_vuelve()):
+        cab["X-Voz-Vuelve"] = str(int(vuelve))
+    return Response(wav, media_type="audio/wav", headers=cab)
 
 
 @app.websocket("/api/voz/despertar")

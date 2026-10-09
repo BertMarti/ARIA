@@ -152,7 +152,11 @@ const Ajustes = (() => {
     const { ok, data } = await api("/api/voz/estado");
     if (!ok) return;
     const stt = data.groq ? (data.local ? "Groq (local de respaldo)" : "Groq (el respaldo local no responde)") : (data.local ? "local en la Raspberry" : "no disponible");
-    $("voz-estado").textContent = "Transcripción: " + stt + " · Voz de ARIA: " + (data.local ? "Piper en la Raspberry" : "la del navegador (Piper no responde)") + ".";
+    const hora = (t) => new Date(t * 1000).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    const tts = data.gemini ? "Gemini (la voz que elijas abajo)"
+      : (data.gemini_vuelve ? "cuota de Gemini agotada por ahora (vuelve hacia las " + hora(data.gemini_vuelve) + "); mientras, " : "") +
+        (data.local ? "voz local de la Raspberry" : "la del navegador");
+    $("voz-estado").textContent = "Transcripción: " + stt + " · Voz de ARIA: " + tts + ".";
   }
   function voz() {
     const t = $("tts-activar");

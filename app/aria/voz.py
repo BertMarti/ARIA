@@ -305,7 +305,8 @@ def gemini_tts_disponible() -> bool:
 
 
 def _anotar_fallo_gemini(modelo: str, espera: float, motivo: str) -> None:
-    _espera_gemini[modelo] = _ahora() + min(max(espera, 5), 3600)
+    # Un 429 trae cuánto falta para la nueva cuota (la diaria se renueva a las 9:00 en España): se respeta entera
+    _espera_gemini[modelo] = _ahora() + min(max(espera, 5), 86400 if motivo == "HTTP 429" else 3600)
     log.warning("Gemini TTS %s falló (%s); en espera %d s", modelo, motivo, espera)
 
 
@@ -381,22 +382,34 @@ async def _gemini(texto: str, vel: float, pref: dict | None = None) -> bytes:
 
 
 async def sintetizar(texto: str, vel: float, pref: dict | None = None) -> bytes:
-    """Gemini con la voz elegida por el usuario si hay clave y no está en espera; si no, Piper en aria-voz."""
+    return (await sintetizar_info(texto, vel, pref))[0]
+
+
+def gemini_vuelve() -> float | None:
+    """Instante (epoch) en que vuelve a haber algún modelo de voz de Gemini, o None si ya lo hay."""
+    if _modelos_libres():
+        return None
+    esperas = [_espera_gemini.get(m.split(":")[0], 0) for m in TTS_MODELOS]
+    return time.time() + max(0, min(esperas) - _ahora()) if esperas else None
+
+
+async def sintetizar_info(texto: str, vel: float, pref: dict | None = None) -> tuple[bytes, str]:
+    """(wav, motor): «gemini» con la voz elegida por el usuario si hay clave y cuota; si no, «local» (Piper)."""
     p = preferencia(pref)
     clave = (texto, round(vel, 2), p["voz"], p["tono"], p["acento"])
     if clave in _cache_tts:
         _cache_tts.move_to_end(clave)
-        return _cache_tts[clave]
+        return _cache_tts[clave], "gemini"
     if gemini_tts_disponible():
         try:
             wav = await _gemini(texto, vel, p)
             _cache_tts[clave] = wav
             if len(_cache_tts) > CACHE_TTS:
                 _cache_tts.popitem(last=False)
-            return wav
+            return wav, "gemini"
         except AudioError:
             pass
-    return await sintetizar_local(texto, vel)
+    return await sintetizar_local(texto, vel), "local"
 
 
 async def sintetizar_local(texto: str, vel: float) -> bytes:

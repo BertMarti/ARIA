@@ -76,3 +76,22 @@ def test_muestra_sin_gemini_da_error_claro(ana, monkeypatch):
     monkeypatch.setattr(voz, "gemini_tts_disponible", lambda: False)
     r = cliente(ana).post("/api/voz/muestra", json={"voz": "Kore"})
     assert r.status_code == 503 and "Gemini" in r.json()["error"]
+
+
+def test_hablar_avisa_si_usa_la_voz_local(ana, monkeypatch):
+    async def info(texto, vel, pref=None):
+        return b"RIFF-local", "local"
+    monkeypatch.setattr(voz, "sintetizar_info", info)
+    monkeypatch.setattr(voz, "gemini_vuelve", lambda: 1_800_000_000)
+    voz.guardar_preferencias(ana["id"], {"voz": "Achernar"})
+    r = cliente(ana).post("/api/voz/hablar", json={"texto": "Hola"})
+    assert r.status_code == 200 and r.headers["x-voz-motor"] == "local"
+    assert r.headers["x-voz-nombre"] == "Achernar" and r.headers["x-voz-vuelve"] == "1800000000"
+
+
+def test_cuota_diaria_se_respeta_entera(monkeypatch):
+    monkeypatch.setattr(voz, "_espera_gemini", {})
+    voz._anotar_fallo_gemini("modelo-x", 50000, "HTTP 429")
+    assert voz._espera_gemini["modelo-x"] - voz._ahora() > 40000
+    voz._anotar_fallo_gemini("modelo-y", 50000, "red")
+    assert voz._espera_gemini["modelo-y"] - voz._ahora() <= 3600

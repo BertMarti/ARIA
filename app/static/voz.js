@@ -176,8 +176,19 @@ const Voz = (() => {
     try {
       const r = await fetch("/api/voz/hablar", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ texto, velocidad: velocidad() }) });
-      return r.ok ? await r.arrayBuffer() : null;
+      if (!r.ok) return null;
+      avisoMotor(r.headers);
+      return await r.arrayBuffer();
     } catch (_) { return null; }
+  }
+  // Si la voz elegida (Gemini) no está disponible, se dice una vez cada 30 min para que no parezca un fallo
+  let avisadoLocal = 0;
+  function avisoMotor(h) {
+    if (h.get("X-Voz-Motor") !== "local" || Date.now() - avisadoLocal < 30 * 60000) return;
+    avisadoLocal = Date.now();
+    const vuelve = Number(h.get("X-Voz-Vuelve")) || 0;
+    const cuando = vuelve ? " Vuelve hacia las " + new Date(vuelve * 1000).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) + "." : "";
+    toast("Se ha agotado por ahora la cuota gratuita de voces de Gemini: ARIA lee con su voz local en vez de «" + (h.get("X-Voz-Nombre") || "tu voz") + "»." + cuando);
   }
 
   function reproducir(buf, mio) {
@@ -214,7 +225,7 @@ const Voz = (() => {
     const mio = turno;
     const limpio = mdATexto(texto || "").trim().slice(0, 1500);
     if (!limpio) return;
-    const partes = trocear(limpio, 280);
+    const partes = trocear(limpio, 560);   // trozos grandes: menos peticiones a la cuota de Gemini
     let siguiente = pedir(partes[0]);
     for (let i = 0; i < partes.length; i++) {
       const buf = await siguiente;

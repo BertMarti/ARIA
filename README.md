@@ -36,6 +36,8 @@
 
 ARIA se amplía con **módulos**: cada aplicación que añades aparece en su página de Inicio, gana herramientas en el chat y puede mandarte avisos. Trae dos aplicaciones integradas como ejemplo, [SHIELD-DNS](https://github.com/BertMarti/SHIELD-DNS) (bloqueador de anuncios) y [HEIMDALL](https://github.com/BertMarti/HEIMDALL) (VPN), pero puedes añadir todas las que quieras.
 
+<p align="left"><img src="docs/img/ping/ping-hola.svg" alt="Ping: «¡Eh, mira! Esta es ARIA. Yo soy Ping.»"></p>
+
 <table>
   <tr>
     <td width="33%" valign="top"><h3>💸 Gratis</h3>Usa capas gratuitas de IA en la nube (Ollama Cloud, Groq, Gemini) y, si fallan, un modelo local.</td>
@@ -294,6 +296,8 @@ Las imágenes de Docker ocupan unos 10 GB (la de Ollama es la mayor) y el modelo
 
 ## 🚀 Inicio rápido (5 minutos)
 
+<p align="right"><img src="docs/img/ping/ping-instalar.svg" alt="Ping: «¿Cinco minutos? Yo lo hago en dos.»"></p>
+
 ```mermaid
 flowchart LR
     A["1️⃣ Clonar<br/>en ~/homelab"] --> B["2️⃣ ./install.sh"]
@@ -416,6 +420,8 @@ docker compose up -d
 
 ## 🔌 Añade tus propias aplicaciones (módulos)
 
+<p align="left"><img src="docs/img/ping/ping-modulos.svg" alt="Ping: «Más apps, más cosas que vigilar. ¡Me encanta!»"></p>
+
 Un módulo es una carpeta en `modulos/`. ARIA lo carga al arrancar y lo enchufa en varios sitios a la vez:
 
 ```mermaid
@@ -466,6 +472,8 @@ Con un `modulo.py` puedes añadir además herramientas al chat («¿qué receta 
 > Un módulo con `modulo.py` es código que se ejecuta dentro de ARIA. Instala solo módulos que hayas leído o de fuentes de confianza.
 
 ## 🧠 Cerebros: de dónde salen las respuestas
+
+<p align="right"><img src="docs/img/ping/ping-cerebros.svg" alt="Ping: «Pensando… (ARIA piensa, yo cuento anuncios)»"></p>
 
 ARIA prueba una **cadena de cerebros gratuitos** en orden. Si uno falla (límite gratuito agotado, clave rechazada, sin conexión o más de 30 s sin responder), pasa al siguiente sin que lo notes. Cada respuesta lleva una insignia con el cerebro que la dio.
 
@@ -522,6 +530,8 @@ flowchart TB
 
 ## 🔒 Seguridad y privacidad
 
+<p align="left"><img src="docs/img/ping/ping-seguridad.svg" alt="Ping: «Yo vigilo la red. Tú duerme tranquilo.»"></p>
+
 - **Lo que sale de casa.** Con el cerebro local no sale nada. Con Ollama Cloud, Groq o Gemini, tus mensajes, parte de tu memoria y los resultados de las herramientas (estado de la máquina, anuncios bloqueados, nombres de dispositivos…) se envían a esas empresas. En el plan gratuito de Google, Google puede usarlos para mejorar sus productos. Si no quieres, desactiva esos cerebros en Ajustes → Cerebros.
 - **Voz e imágenes.** El audio y las fotos se procesan en memoria y **no se guardan nunca**; solo queda el texto. Al hablar, el audio va a Groq (o se transcribe en tu máquina si no hay clave). Las fotos van a Gemini o Groq, sin metadatos (GPS, cámara…).
 - **Acceso.** HTTPS siempre, contraseñas cifradas (scrypt), 5 intentos fallidos bloquean la IP 5 minutos, protección CSRF y permisos por rol comprobados en el servidor. **Verificación en dos pasos** opcional (TOTP) por usuario, con el secreto cifrado y códigos de recuperación de un solo uso.
@@ -560,6 +570,8 @@ docker compose logs -f app  # registros
 <p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
 
 ## 🆘 Problemas frecuentes
+
+<p align="right"><img src="docs/img/ping/ping-problemas.svg" alt="Ping: «¿Algo falla? Mira aquí antes de asustarte.»"></p>
 
 Los más habituales. La lista completa está en la [guía de instalación](docs/INSTALACION.md#17-problemas-frecuentes).
 
@@ -656,5 +668,7 @@ flowchart LR
 ## 📄 Licencia
 
 MIT. Consulta [LICENSE](LICENSE).
+
+<p align="center"><img src="docs/img/ping/ping-adios.svg" alt="Ping: «¡Hasta luego! Y no toques mis anuncios.»"></p>
 
 <p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>

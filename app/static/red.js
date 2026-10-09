@@ -36,13 +36,14 @@ const Red = (() => {
     const tb = $("red-est-tabla").querySelector("tbody");
     if (!estadisticasDatos.length) { tb.replaceChildren(el("tr", null, el("td", { colSpan: 4, class: "muted" }, "Sin datos."))); return; }
     tb.replaceChildren(...estadisticasDatos.map((d) => {
-      const fila = el("tr", { class: "clicable" }, el("td", null, d.nombre, barra(d.porcentaje, 101, 101)),
+      const fila = el("tr", { class: "clicable" }, el("td", { class: "celda-nombre" }, d.nombre, barra(d.porcentaje, 101, 101)),
         el("td", { class: "mono" }, d.ip), el("td", { class: "mono" }, d.consultas.toLocaleString("es-ES")),
         el("td", null, fmtNumero(d.porcentaje) + " %", el("div", { class: "barra-mini" }, el("span"))));
       fila.querySelector(".barra-mini span").style.width = Math.min(100, d.porcentaje) + "%";
       fila.addEventListener("click", async () => { const r = await api(`/api/red/estadisticas/${encodeURIComponent(d.clave)}?horas=${$("red-est-horas").value}`); if (r.ok) pintarDetalle(r.data); });
       return fila;
     }));
+    etiquetarTabla($("red-est-tabla"));
   }
 
   async function cargarEstadisticas() {
@@ -129,17 +130,18 @@ const Red = (() => {
       const alias = el("input", { value: d.alias || "", placeholder: d.nombre || d.fabricante || "sin nombre", maxLength: 40, class: "alias", "aria-label": "Alias" });
       alias.addEventListener("change", () => marcar(d.clave, d.conocido, alias.value));
       return el("tr", { class: d.conocido ? "" : "nuevo" },
-        el("td", null, alias, d.alias && d.nombre ? el("div", { class: "muted pequeno-txt" }, d.nombre) : null),
+        el("td", { class: "celda-nombre" }, alias, d.alias && d.nombre ? el("div", { class: "muted pequeno-txt" }, d.nombre) : null),
         el("td", { class: "mono" }, d.ip),
         el("td", null, d.fabricante || "—"),
         el("td", { class: "mono" }, d.mac || "—"),
         el("td", { class: "muted" }, d.ultima_consulta ? fmtHora(d.ultima_consulta) : "—"),
         el("td", { class: "mono" }, d.puertos ? (d.puertos.join(", ") || "ninguno") : "—"),
         el("td", null, Parental.celda(d, estados)),
-        el("td", null, d.conocido
+        el("td", { class: "celda-acciones" }, d.conocido
           ? el("button", { type: "button", class: "fantasma pequeno", onclick: () => marcar(d.clave, false) }, "Olvidar")
           : el("button", { type: "button", class: "primario pequeno", onclick: () => marcar(d.clave, true) }, "Marcar como conocido")));
     }));
+    etiquetarTabla($("red-tabla"));
   }
 
   async function marcar(clave, conocido, alias) {

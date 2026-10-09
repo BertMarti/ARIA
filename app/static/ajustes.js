@@ -215,10 +215,53 @@ const Ajustes = (() => {
   }
 
   function activar() {
+    pintarSecciones();
     estadoVoz(); listarMics().catch(() => {});
     if (Sesion.esAdmin) { cerebros(); modelos(); if (Sesion.funciones.spotify) spotify(); acerca(); }
     if (!Sesion.tienePassword) { $("pass-actual").required = false; $("pass-actual-et").hidden = true; }
   }
-  function iniciar() { voz(); contrasena(); }
+  // --- Secciones: menú lateral (pestañas en el móvil) y buscador; cada tarjeta pertenece a una sección ---
+  const SECCIONES = [
+    { id: "general", nombre: "General", desc: "Voz, contraseña y versión.", ico: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 12h2M19 12h2M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4", tarjetas: ["ajustes-voz", "ajustes-pass", "ajustes-acerca"] },
+    { id: "avisos", nombre: "Avisos", desc: "Campana, Telegram, notificaciones, resumen diario y recordatorios.", ico: "M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0", tarjetas: ["ajustes-avisos", "ajustes-recordatorios"] },
+    { id: "automatizar", nombre: "Automatización", desc: "Rutinas programadas y reglas «si pasa esto, haz aquello».", ico: "M13 3 4 14h7l-1 7 9-11h-7z", tarjetas: ["ajustes-rutinas", "ajustes-automatizaciones"] },
+    { id: "memoria", nombre: "Memoria", desc: "Lo que ARIA recuerda de ti, tu diario y tus proyectos.", ico: "M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4.5A3 3 0 0 0 9 4zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1", tarjetas: ["ajustes-memoria"] },
+    { id: "ia", nombre: "Inteligencia artificial", desc: "Cerebros en la nube y modelos locales.", ico: "M7 7h10v10H7zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4", tarjetas: ["ajustes-cerebros", "ajustes-modelos"] },
+    { id: "usuarios", nombre: "Usuarios", desc: "Quién puede entrar y con qué permisos.", ico: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a5 5 0 0 0-5-5", tarjetas: ["ajustes-usuarios"] },
+    { id: "apps", nombre: "Aplicaciones", desc: "Módulos, integraciones y certificado HTTPS.", ico: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", tarjetas: ["ajustes-modulos", "ajustes-spotify", "ajustes-certificado"] },
+  ];
+  let seccion = Prefs.get("ajustes_seccion", "general");
+  const visibleRol = (id) => { const t = $(id); return t && (!t.classList.contains("solo-admin") || Sesion.esAdmin); };
+  function icoSec(d) {
+    const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg"), p = document.createElementNS(NS, "path");
+    svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true"); svg.setAttribute("class", "ajustes-ico"); p.setAttribute("d", d); svg.append(p); return svg;
+  }
+  function pintarSecciones() {
+    const busca = $("ajustes-buscar").value.trim().toLowerCase(), secs = SECCIONES.filter((x) => x.tarjetas.some(visibleRol));
+    if (!secs.some((x) => x.id === seccion)) seccion = secs[0]?.id;
+    $("ajustes-nav").replaceChildren(...secs.map((x) => {
+      const b = el("button", { type: "button", class: "ajustes-sec" + (x.id === seccion && !busca ? " activo" : "") }, icoSec(x.ico), el("span", null, x.nombre));
+      b.setAttribute("aria-current", x.id === seccion && !busca ? "page" : "false");
+      b.addEventListener("click", () => { seccion = x.id; Prefs.set("ajustes_seccion", x.id); $("ajustes-buscar").value = ""; pintarSecciones(); $("ajustes-cont").scrollIntoView({ block: "nearest" }); });
+      return b;
+    }));
+    const navAct = $("ajustes-nav").querySelector(".activo");
+    if (navAct) $("ajustes-nav").scrollLeft = navAct.offsetLeft - 8;   // en el móvil, la pestaña elegida queda a la vista
+    const actual = SECCIONES.find((x) => x.id === seccion);
+    $("ajustes-desc").textContent = busca ? "Resultados de «" + busca + "»" : actual ? actual.desc : "";
+    let alguna = false;
+    for (const x of SECCIONES) for (const id of x.tarjetas) {
+      const t = $(id); if (!t) continue;
+      const ok = busca ? t.textContent.toLowerCase().includes(busca) : x.id === seccion;
+      t.classList.toggle("fuera-seccion", !ok);
+      if (ok && visibleRol(id) && !t.hidden) alguna = true;
+    }
+    $("ajustes-vacio").hidden = alguna;
+  }
+  function iniciar() {
+    voz(); contrasena();
+    $("ajustes-buscar").addEventListener("input", pintarSecciones);
+    pintarSecciones();
+  }
   return { iniciar, activar, modelos };
 })();

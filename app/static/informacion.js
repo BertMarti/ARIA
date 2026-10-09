@@ -20,8 +20,22 @@ const Informacion = (() => {
     if (!activo) return;
     const rs = await Promise.all([api("/api/informacion/resumen?tema=" + encodeURIComponent(activo)), api("/api/informacion/noticias?tema=" + encodeURIComponent(activo))]);
     const resumen = $("info-resumen"), lista = $("info-noticias"); resumen.replaceChildren(); lista.replaceChildren();
-    if (rs[0].ok) { if (rs[0].data.resumen) resumen.append(nodo("p", rs[0].data.resumen)); else resumen.append(nodo("p", "No hay cerebro en la nube: se muestran solo titulares.", "muted")); }
-    if (rs[1].ok) (rs[1].data.noticias || []).forEach((n) => { const a = el("a", { href: n.url, target: "_blank", rel: "noopener noreferrer" }, n.titulo); lista.append(el("li", null, a, nodo("small", (n.dominio || "") + (n.fecha ? " · " + n.fecha : ""), "muted"))); });
+    if (rs[0].ok) {
+      // El resumen llega en Markdown: se pinta con el renderizador seguro, sin la línea final de «Fuentes:» (las fuentes ya están en las fichas)
+      const texto = String(rs[0].data.resumen || "").split("\n").filter((l) => !/^\s*(\*\*)?fuentes?:?/i.test(l)).join("\n").trim();
+      if (texto) { const caja = el("div", { class: "info-resumen-texto" }); renderMd(texto, caja); resumen.append(el("h3", { class: "info-resumen-tit" }, "En resumen"), caja); }
+      else resumen.append(nodo("p", "No hay cerebro en la nube: se muestran solo titulares.", "muted"));
+    }
+    if (!rs[1].ok) { lista.append(el("li", { class: "muted" }, rs[1].data?.error || "No se pudieron cargar las noticias.")); return; }
+    for (const n of rs[1].data.noticias || []) {
+      const fecha = n.fecha ? new Date(n.fecha + "T12:00") : null;
+      const cuando = fecha && !isNaN(fecha) ? fecha.toLocaleDateString("es-ES", { day: "numeric", month: "short" }) : "";
+      lista.append(el("li", { class: "noticia" }, el("a", { href: n.url, target: "_blank", rel: "noopener noreferrer", class: "noticia-enlace" },
+        el("span", { class: "noticia-fuente" }, el("span", { class: "noticia-inicial" }, (n.dominio || "?").charAt(0).toUpperCase()), n.dominio || "Fuente", cuando ? el("span", { class: "muted" }, " · " + cuando) : null),
+        el("strong", { class: "noticia-titulo" }, n.titulo),
+        n.extracto ? el("span", { class: "noticia-extracto" }, n.extracto) : null)));
+    }
+    if (!lista.children.length) lista.append(el("li", { class: "muted" }, "Sin noticias recientes de este tema."));
   }
   const eur = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
   const eurFino = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 4 });

@@ -16,6 +16,12 @@ function el(tag, props, ...hijos) {
   return e;
 }
 
+// Tablas «fichas»: en el móvil cada fila se muestra como una ficha; cada celda lleva el nombre de su columna.
+function etiquetarTabla(tabla) {
+  const cab = [...tabla.querySelectorAll("thead th")].map((th) => th.textContent.replace(/[↕]/g, "").trim());
+  for (const tr of tabla.querySelectorAll("tbody tr")) [...tr.children].forEach((td, i) => { if (cab[i]) td.dataset.et = cab[i]; });
+}
+
 function fmtBytes(n) {
   n = Number(n) || 0;
   const u = ["B", "KB", "MB", "GB", "TB"];

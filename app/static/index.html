@@ -319,12 +319,12 @@
         <p class="muted" id="red-nota"></p>
         <p class="muted pequeno-txt">Control parental: el botón «Control» de cada dispositivo permite pausar su internet, bloquear servicios (TikTok, YouTube, Fortnite…) y poner horarios. Funciona solo por DNS (SHIELD-DNS): un dispositivo con DNS propio o cifrado, con VPN, o que use el DNS secundario del router (AdGuard) puede saltárselo. El router y la Raspberry están protegidos.</p>
         <div class="botones"><button type="button" class="fantasma pequeno" id="red-conocer-todos">Marcar todos como conocidos</button></div>
-        <div class="tabla-cont"><table class="tabla" id="red-tabla"><thead><tr><th>Nombre</th><th>IP</th><th>Fabricante</th><th>MAC</th><th>Visto</th><th>Puertos</th><th>Control</th><th></th></tr></thead><tbody></tbody></table></div>
+        <div class="tabla-cont"><table class="tabla fichas" id="red-tabla"><thead><tr><th>Nombre</th><th>IP</th><th>Fabricante</th><th>MAC</th><th>Visto</th><th>Puertos</th><th>Control</th><th></th></tr></thead><tbody></tbody></table></div>
       </article>
       <article class="tarjeta ancha" id="red-estadisticas">
         <div class="tarjeta-cab"><h2>Estadísticas por dispositivo</h2><label class="pequeno-txt">Periodo <select id="red-est-horas"><option value="24">24 horas</option><option value="168">7 días</option></select></label></div>
         <p class="muted" id="red-est-nota">Consultas DNS vistas por SHIELD-DNS.</p>
-        <div class="tabla-cont"><table class="tabla" id="red-est-tabla"><thead><tr><th>Dispositivo</th><th>IP</th><th data-orden="consultas">Consultas ↕</th><th data-orden="porcentaje">% bloqueo ↕</th></tr></thead><tbody></tbody></table></div>
+        <div class="tabla-cont"><table class="tabla fichas" id="red-est-tabla"><thead><tr><th>Dispositivo</th><th>IP</th><th data-orden="consultas">Consultas ↕</th><th data-orden="porcentaje">% bloqueo ↕</th></tr></thead><tbody></tbody></table></div>
         <div id="red-est-detalle" class="red-detalle" hidden></div>
       </article>
     </div>
@@ -374,8 +374,11 @@
 
   <!-- AJUSTES -->
   <section id="v-ajustes" class="vista" hidden>
-    <header class="vista-cab"><h1>Ajustes</h1></header>
-    <div class="rejilla ajustes">
+    <header class="vista-cab ajustes-cab"><div><h1>Ajustes</h1><p class="muted" id="ajustes-desc">Elige una sección.</p></div>
+      <label class="ajustes-buscar"><span class="sr">Buscar en ajustes</span><input id="ajustes-buscar" type="search" placeholder="Buscar un ajuste…" autocomplete="off"></label></header>
+    <div class="ajustes-layout">
+      <nav id="ajustes-nav" class="ajustes-nav" aria-label="Secciones de ajustes"></nav>
+      <div class="rejilla ajustes" id="ajustes-cont">
       <article class="tarjeta ancha solo-admin" id="ajustes-usuarios">
         <h2>Usuarios</h2>
         <p class="muted usuario-nota">Para que pueda entrar desde fuera, su email también debe estar autorizado en Cloudflare Access (Zero Trust → Access → Applications → ARIA → Policies). Desde casa puede entrar con la contraseña que le pongas.</p>
@@ -594,6 +597,8 @@
         <h2>Acerca de</h2>
         <div id="acerca-cuerpo" class="muted">Cargando…</div>
       </article>
+        <p id="ajustes-vacio" class="muted ajustes-vacio" hidden>Ningún ajuste coincide con la búsqueda.</p>
+      </div>
     </div>
   </section>
 </main>

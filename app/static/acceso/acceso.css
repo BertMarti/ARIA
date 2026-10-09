@@ -1,0 +1,31 @@
+/* Página pública /acceso: mismas tipografías y colores que el escaparate (escaparate.css va antes). */
+.acceso { max-width: 1080px; margin: 0 auto; padding: 1rem clamp(1rem, 4vw, 3rem) 4rem; }
+.acc-cab { position: relative; padding: 2rem 0 1rem; }
+.acc-ping { position: absolute; right: 0; top: 0; width: min(320px, 45vw); height: 180px; pointer-events: none; }
+.acc-titulo { margin: 0; font: 800 clamp(2.4rem, 7vw, 4.6rem)/1 var(--titulo); text-transform: uppercase; text-shadow: 0 0 30px rgba(var(--c), .25); }
+.acc-lema { max-width: 38rem; color: var(--gris); font-size: 1.1rem; }
+.acc-pasos { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 2rem 0; padding: 0; }
+.acc-pasos li { padding: 1.1rem 1.2rem; border: 1px solid var(--borde); border-radius: 10px; background: radial-gradient(120% 90% at 50% 0%, rgba(var(--c), .08), transparent 60%), #050b16; }
+.acc-pasos h2 { margin: .8rem 0 .3rem; font: 800 1.1rem var(--titulo); text-transform: uppercase; }
+.acc-pasos p { margin: 0; color: var(--gris); font-size: .95rem; }
+.acc-rejilla { display: grid; grid-template-columns: 3fr 2fr; gap: 1rem; align-items: start; }
+@media (max-width: 800px) { .acc-rejilla { grid-template-columns: 1fr; } }
+.acc-caja { padding: 1.3rem 1.4rem; border: 1px solid var(--borde); border-radius: 10px; background: #050b16; }
+.acc-caja h2 { margin: 0 0 .8rem; font: 500 .82rem var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--cian); }
+.acc-caja label { display: grid; gap: .35rem; margin-bottom: .9rem; font: 400 .78rem var(--mono); letter-spacing: .08em; color: var(--gris); }
+.acc-caja input, .acc-caja textarea { width: 100%; padding: .7rem .8rem; font: 400 1rem var(--texto); color: var(--tinta); background: #02050b;
+  border: 1px solid rgba(var(--c), .25); border-radius: 6px; }
+.acc-caja input:focus, .acc-caja textarea:focus { outline: none; border-color: var(--cian); box-shadow: 0 0 0 3px rgba(var(--c), .15); }
+.acc-trampa { position: absolute !important; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.acc-boton { display: inline-block; padding: .7rem 1.2rem; border: 1px solid var(--cian); background: rgba(var(--c), .15); color: var(--tinta);
+  font: 500 .85rem var(--mono); letter-spacing: .12em; text-transform: uppercase; text-decoration: none; cursor: pointer;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+.acc-boton:hover { background: rgba(var(--c), .3); }
+.acc-boton:disabled { opacity: .5; cursor: default; }
+.acc-boton.secundario { border-color: var(--borde); background: none; }
+.acc-error { color: var(--rosa); }
+.acc-nota { margin: 1rem 0 0; font-size: .82rem; color: var(--gris); }
+.acc-lado section + section { margin-top: 1.6rem; padding-top: 1.4rem; border-top: 1px solid var(--borde); }
+.acc-lado p { color: var(--gris); font-size: .95rem; }
+.acc-estado { font-size: 1.05rem; color: var(--tinta) !important; }
+.acc-estado.pendiente { color: #fbbf24 !important; } .acc-estado.aprobada { color: var(--verde) !important; } .acc-estado.rechazada { color: var(--rosa) !important; }

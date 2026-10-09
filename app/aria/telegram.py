@@ -26,7 +26,7 @@ from contextlib import closing
 
 import httpx
 
-from . import avisos, config, db, enlaces, recordatorios, resumen_diario, rutinas, telemetria
+from . import avisos, config, db, enlaces, recordatorios, resumen_diario, rutinas, telemetria, usuarios
 
 log = logging.getLogger("aria.telegram")
 
@@ -395,6 +395,34 @@ async def enviar_briefing_voz(b, chat_id: int, u: dict) -> bool:
     else:
         await b.subir("sendDocument", "document", "briefing.wav", datos, mime, chat_id=chat_id, caption="🔊 Tu briefing de hoy")
     return True
+
+
+async def avisar_solicitud(sid: int) -> int:
+    """Avisa a los administradores de una solicitud de acceso nueva, con botones para aprobarla o rechazarla.
+    Devuelve a cuántos chats llegó (0 si no hay bot o ningún administrador lo tiene vinculado)."""
+    from . import invitados
+    b = bot()
+    s = await asyncio.to_thread(invitados.solicitud, sid)
+    if not b or not s or s["estado"] != "pendiente":
+        return 0
+    texto = ("🔑 <b>Nueva solicitud de acceso a ARIA</b>\n\n"
+             f"<b>{html.escape(s['nombre'])}</b> · {html.escape(s['email'])}\n"
+             f"<i>{html.escape(s['motivo'])}</i>\n\n"
+             "Si la apruebas, entrará con el código que Cloudflare envía a ese email y solo verá lo de su perfil.")
+    n = 0
+    for u in await asyncio.to_thread(usuarios.listar):
+        if u["rol"] != "admin" or not u["activo"]:
+            continue
+        for c in await asyncio.to_thread(chats_de, u["id"]):
+            f = lambda op: asyncio.to_thread(ficha, c["chat_id"], u["id"], "acceso", {"sid": sid, "op": op}, 7 * 86400)
+            tec = teclado([boton("✅ Visita (7 días)", await f("visita")), boton("✅ Familiar", await f("familiar"))],
+                          [boton("❌ Rechazar", await f("rechazar"))])
+            try:
+                await enviar_html(b, c["chat_id"], texto, tec)
+                n += 1
+            except TelegramError as e:
+                log.warning("Aviso de solicitud no enviado a un chat (%s)", e)
+    return n
 
 
 async def briefing_voz_a_usuario(u: dict) -> int:
@@ -977,6 +1005,26 @@ async def _accion(b, cq: dict, chat_id: int, u: dict, accion: str, d: dict) -> s
         ok, texto = await vision.registrar_ticket(u, t, d.get("cid"))
         await enviar_texto(b, chat_id, texto)
         return "Apuntado." if ok else "No se pudo apuntar."
+    if accion == "acceso":   # solicitud de acceso: aprobar con un perfil o rechazar
+        if not admin:
+            return "Eso solo lo puede hacer un administrador."
+        from . import api_acceso, invitados
+        await _quitar_botones(b, cq)
+        try:
+            if d.get("op") == "rechazar":
+                s = await asyncio.to_thread(invitados.rechazar, int(d.get("sid", 0)))
+                await enviar_texto(b, chat_id, f"❌ Solicitud de {s['nombre']} rechazada.")
+                return "Rechazada."
+            r = await api_acceso.aprobar(int(d.get("sid", 0)), str(d.get("op")), None, u["id"])
+        except (invitados.AccesoError, usuarios.UsuarioError) as e:
+            return str(e)[:190]
+        nombre, email = r["usuario"]["nombre"], r["usuario"]["email"]
+        cf = r["cloudflare"]
+        extra = ("Ya está en el grupo de invitados de Cloudflare: puede entrar." if cf == "hecho" else
+                 f"Falta un paso: añade {email} al grupo «Invitados ARIA» en Cloudflare Access." if cf == "manual" else
+                 f"No pude añadirlo en Cloudflare ({cf}). Añádelo a mano.")
+        await enviar_texto(b, chat_id, f"✅ {nombre} tiene acceso con el perfil «{invitados.PERFILES[r['solicitud']['perfil']]['nombre']}». {extra}")
+        return "Aprobada."
     if accion == "resumen_voz":
         ok = await enviar_briefing_voz(b, chat_id, u)
         return "Aquí lo tienes." if ok else "Ahora mismo no puedo hablar; prueba en un rato."

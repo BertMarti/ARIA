@@ -482,6 +482,12 @@ async def tick(ahora: float | None = None) -> None:
         await informes_semanales_programados()
     except Exception:  # noqa: BLE001
         log.exception("Falló el informe semanal programado")
+    try:   # accesos de invitados caducados: se desactivan y salen del grupo de Cloudflare
+        from . import api_acceso
+        for uid in await api_acceso.caducar_vencidos():
+            log.info("Acceso de invitado caducado (usuario %s)", uid)
+    except Exception:  # noqa: BLE001
+        log.exception("Falló la caducidad de accesos de invitados")
     if ahora - _ultimo_purgado > 86400:
         _ultimo_purgado = ahora
         await asyncio.to_thread(purgar)

@@ -4,7 +4,7 @@ import json
 import logging
 from typing import AsyncIterator
 
-from . import agentes, aprender, briefing, cerebros, db, memoria, tools, vision
+from . import agentes, aprender, briefing, cerebros, db, invitados, memoria, tools, vision
 
 log = logging.getLogger("aria.chat")
 
@@ -128,8 +128,12 @@ async def elegir_agente(usuario: dict, conv_agente: str | None, texto: str) -> t
     return agentes.obtener(aid), texto, motivo, None
 
 
-async def conversar(usuario: dict, cid: str | None, texto: str, agente: str | None = None) -> AsyncIterator[dict]:
+async def conversar(usuario: dict, cid: str | None, texto: str, agente: str | None = None,
+                    limites: dict | None = None) -> AsyncIterator[dict]:
     """Guarda el mensaje, responde en streaming y persiste la respuesta (aunque se aborte).
+
+    `limites` (invitados): recorta las herramientas a consultas sin datos de casa y, si su acceso no incluye
+    memoria, no aprende nada de lo que dice.
 
     La conversación debe ser del usuario; si no lo es (o no existe) se crea una nueva.
     `agente`: el del selector (se guarda en la conversación si el rol puede usarlo)."""
@@ -146,7 +150,8 @@ async def conversar(usuario: dict, cid: str | None, texto: str, agente: str | No
     yield {"type": "conv", "id": cid, "titulo": conv["titulo"], "agente": conv.get("agente") or agentes.AUTO}
     memoria.uid_actual.set(uid)  # las herramientas de memoria y el contexto actúan sobre este usuario
     # Primer «hola» del día: en lugar de una respuesta normal, el resumen de buenos días (versión hablada).
-    if briefing.es_saludo(texto) and not await asyncio.to_thread(briefing.saludado_hoy, uid):
+    # (Los invitados no: ese resumen cuenta cosas de la casa.)
+    if not limites and briefing.es_saludo(texto) and not await asyncio.to_thread(briefing.saludado_hoy, uid):
         try:
             hablado = briefing.texto_hablado(await briefing.obtener(usuario))
         except Exception:  # noqa: BLE001 - si falla, se responde como siempre
@@ -170,7 +175,8 @@ async def conversar(usuario: dict, cid: str | None, texto: str, agente: str | No
         contexto[-1] = {"role": "user", "content": limpio}
     acumulado, pendiente, cerebro, toco_memoria = "", None, None, False
     try:
-        async for ev in responder(contexto, usuario["rol"], usuario["nombre"], agente=ag, uid=uid):
+        tope = invitados.herramientas(limites) if limites else None
+        async for ev in responder(contexto, usuario["rol"], usuario["nombre"], agente=ag, uid=uid, limite=tope):
             if ev["type"] == "cerebro":
                 cerebro = ev["etiqueta"]
             elif ev["type"] == "token":
@@ -192,7 +198,7 @@ async def conversar(usuario: dict, cid: str | None, texto: str, agente: str | No
             db.anadir(cid, "assistant", acumulado, cerebro, ag.id)
         # Aprendizaje automático: en segundo plano y solo con cerebros de la nube. No se aprende de peticiones
         # de recordar/olvidar (ya las atiende la herramienta; «olvida X» no debe volver a aprenderse).
-        if not toco_memoria and not (tools.relevantes(texto) & tools.MEMORIA):
+        if (not limites or limites.get("memoria")) and not toco_memoria and not (tools.relevantes(texto) & tools.MEMORIA):
             try:
                 aprender.programar(uid, usuario["nombre"], texto)
             except Exception:  # noqa: BLE001

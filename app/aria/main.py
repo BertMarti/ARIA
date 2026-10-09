@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, cerebros, chat, config, control, cve, db, diario, dos_pasos, estadisticas, finanzas, informacion, mapas, memoria, modelos, modulos, permisos, proyectos, push, recordatorios, red, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, cerebros, chat, config, control, cve, db, diario, dos_pasos, estadisticas, finanzas, informacion, invitados, mapas, memoria, modelos, modulos, permisos, proyectos, push, recordatorios, red, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -30,12 +30,16 @@ PUBLICAS = LIBRES | {"/login", "/login/codigo"}
 # Escaparate público «Conoce a ARIA»: estático, con datos inventados y sin llamadas a la API.
 ESCAPARATE = "/hola"
 ESCAPARATE_ESTATICOS = "/static/escaparate/"
+# Acceso por invitación: la página pública para pedir acceso y sus dos llamadas (sin sesión).
+ACCESO = "/acceso"
+ACCESO_ESTATICOS = "/static/acceso/"
+ACCESO_LIBRES = {ACCESO, "/acceso/config", "/acceso/solicitar"}
 
 
 def _libre(path: str) -> bool:
-    if path in LIBRES or path == ESCAPARATE:
+    if path in LIBRES or path == ESCAPARATE or path in ACCESO_LIBRES or re.fullmatch(r"/acceso/estado/[\w-]{20,40}", path):
         return True
-    return path.startswith(ESCAPARATE_ESTATICOS) and ".." not in path and "\\" not in path
+    return path.startswith((ESCAPARATE_ESTATICOS, ACCESO_ESTATICOS)) and ".." not in path and "\\" not in path
 
 
 COOKIE_2P = "aria_2p"
@@ -76,6 +80,7 @@ async def _arranque():
     telemetria.iniciar()
     vpn_ubicaciones.iniciar()
     usuarios.iniciar()
+    invitados.iniciar()
     dos_pasos.iniciar()
     voz.iniciar()
     finanzas.iniciar()
@@ -198,6 +203,16 @@ async def seguridad(request: Request, call_next):
                 return RedirectResponse(ESCAPARATE if path == "/" else "/login", status_code=303)
             if not permisos.permitido(usuario["rol"], request.method, path):
                 return JSONResponse({"error": "No tienes permiso para esto."}, status_code=403)
+            # Invitados: además del rol, sus límites (secciones, opciones y caducidad)
+            lim = await asyncio.to_thread(invitados.de, usuario["id"]) if usuario["rol"] != "admin" else None
+            request.state.limites = lim
+            if invitados.caducado(lim):
+                if es_api:
+                    return JSONResponse({"error": "Tu acceso a ARIA ha caducado."}, status_code=403)
+                return _pagina("Acceso caducado", '<p class="error">Tu acceso a ARIA ha caducado.</p>'
+                               '<p class="sub">Si necesitas más tiempo, vuelve a pedirlo en <a href="/acceso">/acceso</a>.</p>', 403)
+            if not invitados.permitido(lim, path):
+                return JSONResponse({"error": "Tu acceso no incluye esto."}, status_code=403)
     resp = await call_next(request)
     if nueva:
         _cookie(resp, nueva)
@@ -324,6 +339,16 @@ async def logout(request: Request):
 
 
 # --- Paginas ---
+@app.get(ACCESO)
+async def pagina_acceso():
+    """Página pública para pedir acceso (si hay Turnstile, la CSP deja cargar su reto)."""
+    r = _html_versionado("acceso/index.html")
+    if config.TURNSTILE_SITIO:
+        r.headers["Content-Security-Policy"] = CSP.replace("script-src 'self'", "script-src 'self' https://challenges.cloudflare.com") \
+            + "; frame-src https://challenges.cloudflare.com"
+    return r
+
+
 @app.get(ESCAPARATE)
 async def escaparate():
     return _html_versionado("escaparate/index.html")
@@ -342,6 +367,7 @@ app.include_router(api_avisos.router)
 app.include_router(api_rutinas.router)
 app.include_router(api_automatizaciones.router)
 app.include_router(api_agenda.router)
+app.include_router(api_acceso.router)
 app.include_router(api_modulos.router)
 app.include_router(api_informacion.router)
 app.include_router(api_sistema.router)
@@ -389,7 +415,8 @@ async def api_info(request: Request):
             "email": u["email"], "rol": u["rol"], "tiene_password": u["tiene_password"],
             "cerebro": {"id": primero.id, "etiqueta": primero.etiqueta()},
             "puertos": {"shield_web": config.SHIELD_WEB_PORT, "vpn": config.HEIMDALL_PORT},
-            "funciones": {"spotify": config.SPOTIFY, "netflix": config.NETFLIX, "vision": vision.disponible()}}
+            "funciones": {"spotify": config.SPOTIFY, "netflix": config.NETFLIX, "vision": vision.disponible()},
+            "limites": invitados.publico(getattr(request.state, "limites", None))}
 
 
 @app.get("/api/certificado")
@@ -446,6 +473,12 @@ async def api_chat(request: Request):
     d = await _json_limitado(request, MAX_CUERPO_CHAT)
     if d is None:
         return JSONResponse({"error": "La imagen es demasiado grande (máximo 5 MB)."}, status_code=413)
+    lim = getattr(request.state, "limites", None)
+    if lim:   # invitados: cupo diario de mensajes e imágenes
+        try:
+            await asyncio.to_thread(invitados.gastar, u["id"], lim, "imagenes" if d.get("imagen") is not None else "mensajes")
+        except invitados.AccesoError as e:
+            return JSONResponse({"error": str(e)}, status_code=429)
     texto = d.get("message")
     cid = d.get("conversation_id")
     imagen = d.pop("imagen", None)
@@ -475,7 +508,7 @@ async def api_chat(request: Request):
         return JSONResponse({"error": "Agente desconocido"}, status_code=400)
     if agente and not agentes.permitido(agente, u["rol"]):
         return JSONResponse({"error": "Ese agente es solo para administradores."}, status_code=403)
-    return _ndjson(chat.conversar(u, cid, texto, agente))
+    return _ndjson(chat.conversar(u, cid, texto, agente, lim))
 
 
 # --- Tickets leídos de una imagen: el usuario confirma (o descarta) apuntarlos en sus finanzas ---
@@ -621,7 +654,11 @@ async def api_voz_hablar(request: Request):
                             status_code=429, headers={"Retry-After": str(resto)})
     try:
         pref = await asyncio.to_thread(voz.preferencias_de, request.state.usuario["id"])
-        wav, motor = await voz.sintetizar_info(limpio, voz.velocidad(d.get("velocidad", 1.0)), pref)
+        lim = getattr(request.state, "limites", None)
+        if lim and lim["voz"] == "local":   # invitados: su voz no gasta la cuota de Gemini de la casa
+            wav, motor = await voz.sintetizar_local(limpio, voz.velocidad(d.get("velocidad", 1.0))), "local"
+        else:
+            wav, motor = await voz.sintetizar_info(limpio, voz.velocidad(d.get("velocidad", 1.0)), pref)
     except voz.AudioError as e:
         return JSONResponse({"error": e.mensaje}, status_code=e.estado)
     # El navegador avisa si no ha sonado la voz elegida (cuota de Gemini agotada) y desde cuándo vuelve
@@ -842,7 +879,12 @@ async def api_resumen_voz(request: Request):
         return JSONResponse({"error": f"Demasiadas peticiones de voz. Espera {resto} s."},
                             status_code=429, headers={"Retry-After": str(resto)})
     try:
-        wav, motor, _ = await briefing_voz.audio(request.state.usuario)
+        lim = getattr(request.state, "limites", None)
+        if lim and lim["voz"] == "local":
+            guion = await briefing_voz.obtener_guion(request.state.usuario)
+            wav, motor = await voz.sintetizar_local(voz.limpiar_para_voz(guion, 2000), 1.0), "local"
+        else:
+            wav, motor, _ = await briefing_voz.audio(request.state.usuario)
     except voz.AudioError as e:
         return JSONResponse({"error": e.mensaje}, status_code=e.estado)
     pref = await asyncio.to_thread(voz.preferencias_de, uid)

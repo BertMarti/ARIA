@@ -960,3 +960,10 @@ a.mi-carta:hover, a.mi-carta:focus-visible { border-color: rgba(56, 214, 255, .6
 @media (prefers-reduced-motion: reduce) { .mi-v-orbe i, .mi-v-red i, .mi-v-mapa i { animation: none; } a.mi-carta:hover { transform: none; } }
 @media (max-width: 520px) { .mi-rejilla { grid-template-columns: 1fr 1fr; gap: .6rem; } .mi-carta { min-height: 180px; padding: .8rem; } .mi-carta.destacada, .mi-carta.pronto { grid-column: span 2; }
   .mi-nombre { font-size: 1rem; } .mi-visual { min-height: 56px; } .mi-dato { font-size: .8rem; } }
+
+/* Invitados (acceso aprobado desde /acceso): nada del estado de la casa en Inicio */
+.invitado #tile-shield, .invitado #tile-vpn, .invitado #tile-spotify, .invitado .inicio-sistema { display: none !important; }
+.acc-detalles { margin-top: .4rem; } .acc-detalles summary { cursor: pointer; color: var(--acento); font-size: .88rem; }
+.acc-editor { display: grid; gap: .6rem; margin-top: .6rem; }
+.acc-opciones { display: flex; flex-wrap: wrap; gap: .3rem 1rem; }
+.acc-num { width: 5.5rem; }

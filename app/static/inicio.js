@@ -20,6 +20,7 @@ const Inicio = (() => {
   }
 
   async function estados() {
+    if (Sesion.limites) return;   // invitados: nada del estado de la casa
     const [sh, vp, sp, sis] = await Promise.all([api("/api/shield"), api("/api/vpn/clients"), (Sesion.funciones.spotify ? api("/api/spotify/status") : Promise.resolve({ data: {} })), api("/api/system")]);
     const s = sh.data, v = vp.data, p = sp.data;
     if (s.conectado) tile("tile-shield", "ok", fmtNum(s.bloqueadas) + " anuncios bloqueados (24 h)", s.bloqueo_activo ? "Activo" : "En pausa");
@@ -218,7 +219,7 @@ const Inicio = (() => {
   }
   function pintarMenu(d) {
     const cont = $("menu-inicio"); if (!cont) return;
-    const visibles = MENU.filter((m) => !(m.admin && !Sesion.esAdmin));
+    const visibles = MENU.filter((m) => !(m.admin && !Sesion.esAdmin) && (m.pronto || m.vista === "resumen" || puede(m.vista)));
     cont.replaceChildren(...visibles.map((m, i) => {
       const [estado, clase] = m.estado(d), visual = el("span", { class: "mi-visual" }, m.visual(d));
       visual.setAttribute("aria-hidden", "true");

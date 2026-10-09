@@ -47,6 +47,14 @@ SPOTIFY_REDIRECT_URI = os.environ.get("SPOTIFY_REDIRECT_URI") or f"https://{LAN_
 # Inicio de sesión único con Cloudflare Access (vacío = desactivado).
 CF_TEAM = os.environ.get("ARIA_CF_ACCESS_TEAM", "").strip().lower().removeprefix("https://").strip("/")
 CF_AUD = os.environ.get("ARIA_CF_ACCESS_AUD", "").strip()
+# Acceso por invitación: ARIA añade y quita emails del grupo «Invitados ARIA» de Cloudflare Access (token con permiso
+# «Access: Organizations, Identity Providers, and Groups · Edit»). Sin esto, el administrador lo hace a mano.
+CF_API_TOKEN = os.environ.get("ARIA_CF_API_TOKEN", "").strip()
+CF_CUENTA = os.environ.get("ARIA_CF_CUENTA", "").strip()
+CF_GRUPO_INVITADOS = os.environ.get("ARIA_CF_GRUPO_INVITADOS", "").strip()
+# Cloudflare Turnstile (opcional) en el formulario público /acceso
+TURNSTILE_SITIO = os.environ.get("ARIA_TURNSTILE_SITIO", "").strip()
+TURNSTILE_SECRETO = os.environ.get("ARIA_TURNSTILE_SECRETO", "").strip()
 ADMIN_EMAILS = [e.strip().lower() for e in os.environ.get("ARIA_ADMIN_EMAILS", "").split(",") if e.strip()]
 
 # Agentes Redes / Seguridad. La red permitida es la ÚNICA que se puede escanear (guardia en la app y en el escáner).

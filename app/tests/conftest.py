@@ -33,6 +33,9 @@ def entorno(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "ESCANER_DIR", tmp_path / "escaner")
     db.iniciar()
     usuarios.iniciar()
+    from aria import invitados
+    invitados.iniciar()
+    invitados.olvidar_cache()
     from aria import dos_pasos
     dos_pasos.iniciar()
     from aria import voz

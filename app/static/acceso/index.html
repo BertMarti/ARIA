@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrar en ARIA</title>
+<meta name="description" content="Cómo pedir acceso a ARIA: solo entra quien el administrador autoriza.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/static/escaparate/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/escaparate/escaparate.css">
+<link rel="stylesheet" href="/static/acceso/acceso.css">
+</head>
+<body>
+<header class="barra">
+  <a class="marca-mini" href="/hola"><span class="anillo" aria-hidden="true"></span>ARIA</a>
+  <nav aria-label="Navegación">
+    <a href="/hola">← Conoce a ARIA</a>
+  </nav>
+</header>
+
+<main class="acceso">
+  <section class="acc-cab">
+    <canvas class="acc-ping" aria-hidden="true"></canvas>
+    <p class="indice"><span>Acceso</span></p>
+    <h1 class="acc-titulo">Entrar en ARIA</h1>
+    <p class="acc-lema">ARIA es privada: solo entra quien el administrador autoriza, y cada persona ve solo lo que se le permite.</p>
+  </section>
+
+  <ol class="acc-pasos">
+    <li><span class="t-num">01</span><h2>Pide acceso</h2><p>Rellena el formulario de abajo con tu nombre, tu email y en una frase quién eres.</p></li>
+    <li><span class="t-num">02</span><h2>Espera la aprobación</h2><p>El administrador recibe tu solicitud y decide. Puedes ver el estado aquí mismo, desde este navegador.</p></li>
+    <li><span class="t-num">03</span><h2>Entra con tu email</h2><p>Pulsa <b>Ya tengo acceso</b> y escribe tu email: Cloudflare te envía un código de un solo uso. Sin contraseñas.</p></li>
+  </ol>
+
+  <div class="acc-rejilla">
+    <form id="acc-form" class="acc-caja" novalidate>
+      <h2>Pedir acceso</h2>
+      <label>Nombre<input id="acc-nombre" name="nombre" autocomplete="name" maxlength="60" required></label>
+      <label>Email<input id="acc-email" name="email" type="email" autocomplete="email" maxlength="254" required></label>
+      <label>¿Quién eres o para qué quieres entrar?<textarea id="acc-motivo" name="motivo" rows="3" maxlength="400" required></textarea></label>
+      <label class="acc-trampa" aria-hidden="true">Web<input id="acc-web" name="web" tabindex="-1" autocomplete="off"></label>
+      <div id="acc-turnstile"></div>
+      <button type="submit" class="acc-boton" id="acc-enviar">Enviar solicitud</button>
+      <p id="acc-error" class="acc-error" role="alert" hidden></p>
+      <p class="acc-nota">Solo se guardan tu nombre, tu email y tu mensaje, para decidir. Si no se aprueba, se borran en 30 días.</p>
+    </form>
+
+    <aside class="acc-caja acc-lado">
+      <section id="acc-estado" hidden aria-live="polite">
+        <h2>Tu solicitud</h2>
+        <p id="acc-estado-texto" class="acc-estado"></p>
+        <button type="button" class="acc-boton secundario" id="acc-comprobar">Comprobar ahora</button>
+      </section>
+      <section>
+        <h2>¿Ya tienes acceso?</h2>
+        <p>Entra con el email que te aprobaron.</p>
+        <a class="acc-boton" href="/login">Ya tengo acceso</a>
+      </section>
+      <section class="acc-limites">
+        <h2>Qué verás dentro</h2>
+        <p>Depende de lo que te autoricen: normalmente el chat con ARIA, noticias, el mapa y el tiempo. Nada de la red de casa, ni de sus dispositivos, ni de los datos de nadie más.</p>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script src="/static/escaparate/ping.js"></script>
+<script src="/static/acceso/acceso.js"></script>
+</body>
+</html>

@@ -5,7 +5,7 @@
   const SOLO_ADMIN = ["control", "red", "seguridad"];
   function mostrar() {
     let v = location.hash.replace("#", "");
-    if (!VISTAS.includes(v) || (SOLO_ADMIN.includes(v) && !Sesion.esAdmin)) v = "inicio";
+    if (!VISTAS.includes(v) || (SOLO_ADMIN.includes(v) && !Sesion.esAdmin) || (v !== "ajustes" && !puede(v))) v = "inicio";
     for (const n of VISTAS) $("v-" + n).hidden = n !== v;
     document.body.classList.toggle("modo-hud", v === "hud");
     document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => b.classList.toggle("activo", b.dataset.vista === v));
@@ -19,7 +19,7 @@
     Seguridad.activar(v === "seguridad");
     Mapa.activar(v === "mapa");
     Hud.activar(v === "hud");
-    if (v === "ajustes") { Ajustes.activar(); Usuarios.activar(); Memoria.activar(); Avisos.activar(); Rutinas.activar(); if (Sesion.esAdmin) { Modulos.pintarAjustes(); Automatizaciones.activar(); } }
+    if (v === "ajustes") { Ajustes.activar(); Usuarios.activar(); Memoria.activar(); Avisos.activar(); Rutinas.activar(); if (Sesion.esAdmin) { Modulos.pintarAjustes(); Automatizaciones.activar(); Accesos.activar(); } }
     document.title = "ARIA · " + { inicio: "Inicio", chat: "Chat", finanzas: "Finanzas", informacion: "Información", agenda: "Agenda", red: "Red", seguridad: "Seguridad", control: "Centro de control", ajustes: "Ajustes", mapa: "Mapa", hud: "HUD" }[v];
   }
   document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => b.addEventListener("click", () => { location.hash = b.dataset.vista; }));
@@ -30,6 +30,8 @@
     Chat.refrescarCerebro();
     if (new URLSearchParams(location.search).get("spotify")) history.replaceState(null, "", "/#ajustes");
     Compartir.revisar(); // «Compartir con ARIA» desde otra app del móvil (Web Share Target)
+    // Invitados: fuera de la barra lo que su acceso no incluye
+    document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => { if (b.dataset.vista !== "ajustes" && !puede(b.dataset.vista)) b.hidden = true; });
     mostrar();
   })();
 })();

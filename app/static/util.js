@@ -125,13 +125,17 @@ function enlaceExterno(url, texto) {
 }
 
 // Sesión actual (usuario, rol). Los botones se ocultan por rol, pero quien manda es el servidor (403).
-const Sesion = { rol: "usuario", nombre: "", email: "", tienePassword: true, esAdmin: false, funciones: {} };
+const Sesion = { rol: "usuario", nombre: "", email: "", tienePassword: true, esAdmin: false, funciones: {}, limites: null };
+// Invitados (acceso aprobado desde /acceso): ¿su acceso incluye esta sección u opción? Sin límites, todo.
+const puede = (que) => !Sesion.limites || Sesion.limites.secciones.includes(que) || Sesion.limites[que] === true;
 async function cargarSesion() {
   const { ok, data } = await api("/api/info");
   if (!ok) return;
   Sesion.rol = data.rol || "usuario"; Sesion.nombre = data.usuario || ""; Sesion.email = data.email || "";
   Sesion.tienePassword = data.tiene_password !== false; Sesion.esAdmin = Sesion.rol === "admin";
   Sesion.funciones = data.funciones || {};
+  Sesion.limites = data.limites || null;
+  document.body.classList.toggle("invitado", !!Sesion.limites);
   document.body.classList.toggle("rol-usuario", !Sesion.esAdmin);
   document.body.classList.toggle("sin-spotify", !Sesion.funciones.spotify);
 }

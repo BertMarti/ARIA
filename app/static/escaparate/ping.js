@@ -10,13 +10,21 @@ const Ping = (() => {
   class Ping {
     constructor(lienzo, opciones = {}) {
       this.lienzo = lienzo; this.ctx = lienzo.getContext("2d");
-      this.opc = { sigue: false, escala: 1, ...opciones };
+      this.opc = { sigue: false, escala: 1, zona: { x: .5, y: .48, ax: .26, ay: .12 }, ...opciones };
+      this.destino = null;   // {x, y} en px del lienzo: vuela allí y se queda revoloteando
       this.col = [...COLORES.ok]; this.obj = COLORES.ok;
       this.p = { x: 0, y: 0, vx: 0, vy: 0 }; this.raton = null; this.estela = []; this.raf = 0; this.t0 = performance.now();
       this._dibujar = this._dibujar.bind(this);
       if (this.opc.sigue) {
         lienzo.addEventListener("pointermove", (e) => { const r = lienzo.getBoundingClientRect(); this.raton = { x: e.clientX - r.left, y: e.clientY - r.top }; });
         lienzo.addEventListener("pointerleave", () => { this.raton = null; });
+      }
+      if (this.opc.global) {   // lienzo de fondo sin eventos propios (pointer-events: none): escucha a toda la ventana
+        addEventListener("pointermove", (e) => {
+          const r = lienzo.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+          this.raton = x >= 0 && y >= 0 && x <= r.width && y <= r.height ? { x, y } : null;
+        }, { passive: true });
+        document.documentElement.addEventListener("pointerleave", () => { this.raton = null; });
       }
       this.visible = true;
       if ("IntersectionObserver" in window) {
@@ -26,6 +34,7 @@ const Ping = (() => {
       this.iniciar();
     }
     estado(nombre) { this.obj = COLORES[nombre] || COLORES.ok; }
+    posicion() { return { x: this.p.x, y: this.p.y }; }
     iniciar() { if (!this.raf) this.raf = requestAnimationFrame(this._dibujar); }
     parar() { cancelAnimationFrame(this.raf); this.raf = 0; }
     _tam() {
@@ -56,8 +65,9 @@ const Ping = (() => {
       c.clearRect(0, 0, W, H);
       // Vuelo: sigue al ratón con inercia o pasea solo
       const p = this.p;
-      const tx = this.raton ? this.raton.x + 30 : W / 2 + Math.sin(t * .5) * W * .26;
-      const ty = this.raton ? this.raton.y - 26 : H * .48 + Math.sin(t * .9) * H * .12;
+      const z = this.opc.zona, d = this.destino;
+      const tx = d ? d.x + Math.sin(t * 1.3) * 14 : this.raton ? this.raton.x + 30 : W * z.x + Math.sin(t * .5) * W * z.ax;
+      const ty = d ? d.y + Math.sin(t * 1.7) * 8 : this.raton ? this.raton.y - 26 : H * z.y + Math.sin(t * .9) * H * z.ay;
       p.vx += (tx - p.x) * .018; p.vy += (ty - p.y) * .018; p.vx *= .86; p.vy *= .86; p.x += p.vx; p.y += p.vy;
       const y = p.y + (quieto ? 0 : Math.sin(t * 3.2) * 3);
       if (!quieto) { this.estela.push({ x: p.x + (Math.random() * 10 - 5), y: y + 12 * k, v: 1 }); if (this.estela.length > 50) this.estela.shift(); }

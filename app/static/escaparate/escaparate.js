@@ -106,6 +106,25 @@
   const orbe = new Orbe($("#orbe"));
   $$(".mini-orbe").forEach((l) => new Orbe(l));
   $$(".mini-ping").forEach((l) => new Ping(l, { escala: .9 }));
+  // Ping de la portada: revolotea junto al orbe y sigue al ratón por toda la portada
+  const pingPortada = new Ping($("#ping-portada"), { global: true, escala: 1.1, zona: { x: .72, y: .3, ax: .12, ay: .09 } });
+  const burbuja = $("#ping-burbuja");
+  let burbujaT = 0;
+  function pingLlama() {   // «Ah, y esa lucecita nerviosa es Ping»: se acerca al subtítulo y avisa
+    const lienzo = $("#ping-portada").getBoundingClientRect(), s = $("#subtitulo").getBoundingClientRect();
+    pingPortada.destino = { x: Math.min(lienzo.width - 40, s.right - lienzo.left + 10), y: s.top - lienzo.top - 10 };
+    pingPortada.estado("aviso");
+    clearTimeout(burbujaT);
+    burbujaT = setTimeout(() => { burbuja.hidden = false; seguirBurbuja(); }, 700);
+    temporizadores.push(setTimeout(pingSuelta, 4200));
+  }
+  function seguirBurbuja() {   // el bocadillo acompaña a Ping mientras revolotea
+    if (burbuja.hidden) return;
+    const p = pingPortada.posicion();
+    burbuja.style.left = p.x + "px"; burbuja.style.top = (p.y - 30) + "px";
+    requestAnimationFrame(seguirBurbuja);
+  }
+  function pingSuelta() { clearTimeout(burbujaT); pingPortada.destino = null; pingPortada.estado("ok"); burbuja.hidden = true; }
 
   // --- «Quiero escuchar a ARIA»: voz pregrabada + subtítulos ------------------------------------------
   const boton = $("#escuchar"), sub = $("#subtitulo");
@@ -123,7 +142,7 @@
     const total = BIENVENIDA.reduce((n, f) => n + f.length, 0);
     let t = 0;
     BIENVENIDA.forEach((f) => {
-      temporizadores.push(setTimeout(() => { sub.textContent = f; sub.classList.add("visible"); }, t * 1000));
+      temporizadores.push(setTimeout(() => { sub.textContent = f; sub.classList.add("visible"); if (f.includes("Ping")) pingLlama(); }, t * 1000));
       t += duracion * f.length / total;
     });
     temporizadores.push(setTimeout(parar, t * 1000 + 1500));
@@ -131,7 +150,7 @@
   function parar() {
     activo = false; temporizadores.forEach(clearTimeout); temporizadores = [];
     if (audio) { audio.pause(); audio.currentTime = 0; }
-    sub.classList.remove("visible"); boton.setAttribute("aria-checked", "false"); document.body.classList.remove("escuchando");
+    pingSuelta(); sub.classList.remove("visible"); boton.setAttribute("aria-checked", "false"); document.body.classList.remove("escuchando");
   }
   async function empezar() {
     activo = true; boton.setAttribute("aria-checked", "true"); document.body.classList.add("escuchando");

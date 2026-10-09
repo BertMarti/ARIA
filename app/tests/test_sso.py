@@ -154,7 +154,7 @@ def test_email_falsificado_sin_jwt_no_da_nada(cliente):
         r = cliente.get("/api/info", headers=h)
         assert r.status_code == 401
         r = cliente.get("/", headers=h)
-        assert r.status_code == 303 and r.headers["location"] == "/login"
+        assert r.status_code == 303 and r.headers["location"] == "/hola"   # sin sesión, la portada enseña el escaparate
         assert auth.COOKIE not in r.headers.get("set-cookie", "")
     assert usuarios.por_email("pepe@example.com") is None  # ni siquiera se autocrea
 

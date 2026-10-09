@@ -27,6 +27,17 @@ app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 LIBRES = {"/health", "/internal/tls-ask", "/static/style.css", "/static/login.js",
           "/static/manifest.webmanifest", "/static/icon.svg", "/sw.js"}
 PUBLICAS = LIBRES | {"/login", "/login/codigo"}
+# Escaparate público «Conoce a ARIA»: estático, con datos inventados y sin llamadas a la API.
+ESCAPARATE = "/hola"
+ESCAPARATE_ESTATICOS = "/static/escaparate/"
+
+
+def _libre(path: str) -> bool:
+    if path in LIBRES or path == ESCAPARATE:
+        return True
+    return path.startswith(ESCAPARATE_ESTATICOS) and ".." not in path and "\\" not in path
+
+
 COOKIE_2P = "aria_2p"
 _ser_2p = URLSafeTimedSerializer(config.SECRET or "sin-secreto", salt="aria-dos-pasos")
 CSP = ("default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self'; script-src 'self'; worker-src 'self'; "
@@ -53,7 +64,7 @@ _PAGINAS: dict = {}
 def _html_versionado(nombre: str) -> HTMLResponse:
     if nombre not in _PAGINAS:
         contenido = (config.STATIC_DIR / nombre).read_text(encoding="utf-8")
-        _PAGINAS[nombre] = re.sub(r'(/static/[\w.-]+\.(?:css|js|svg|webmanifest))"',
+        _PAGINAS[nombre] = re.sub(r'(/static/[\w./-]+\.(?:css|js|svg|webmanifest))"',
                                   lambda m: f'{m.group(1)}?v={_VERSION_ESTATICOS}"', contenido)
     return HTMLResponse(_PAGINAS[nombre], headers={"Cache-Control": "no-store"})
 
@@ -157,7 +168,7 @@ async def seguridad(request: Request, call_next):
     nueva = None          # usuario para el que hay que emitir cookie de sesión
     pendiente = False     # SSO: Cloudflare no respondió, hay que reintentar
     usuario = None
-    if path not in LIBRES and not (path.startswith("/cal/") and request.method == "GET"):
+    if not _libre(path) and not (path.startswith("/cal/") and request.method == "GET"):
         usuario = auth.sesion_usuario(request.cookies.get(auth.COOKIE))
         token = request.headers.get(sso.CABECERA)
         if token and sso.habilitado():
@@ -183,7 +194,8 @@ async def seguridad(request: Request, call_next):
                     return _entrando()
                 if es_api:
                     return JSONResponse({"error": "No autenticado"}, status_code=401)
-                return RedirectResponse("/login", status_code=303)
+                # Sin sesión, la portada enseña el escaparate (con su botón «Entrar»); el resto, al login
+                return RedirectResponse(ESCAPARATE if path == "/" else "/login", status_code=303)
             if not permisos.permitido(usuario["rol"], request.method, path):
                 return JSONResponse({"error": "No tienes permiso para esto."}, status_code=403)
     resp = await call_next(request)
@@ -312,6 +324,11 @@ async def logout(request: Request):
 
 
 # --- Paginas ---
+@app.get(ESCAPARATE)
+async def escaparate():
+    return _html_versionado("escaparate/index.html")
+
+
 @app.get("/")
 async def index():
     return _html_versionado("index.html")

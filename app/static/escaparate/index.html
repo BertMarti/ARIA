@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#02050b">
+<meta name="description" content="ARIA: una asistente de inteligencia artificial que vive en tu casa. Habla, escucha, cuida tu red y no hace nada sin tu permiso.">
+<title>ARIA · Tu casa, con voz propia</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/escaparate/escaparate.css">
+</head>
+<body>
+<canvas id="cielo" class="cielo" aria-hidden="true"></canvas>
+
+<header class="barra">
+  <a class="marca-mini" href="#inicio" aria-label="ARIA, inicio"><span class="anillo" aria-hidden="true"></span><span>ARIA</span></a>
+  <nav aria-label="Secciones">
+    <a href="#menu">Menú</a>
+    <a href="#hoy">Qué funciona hoy</a>
+    <a href="#pregunta">Pregúntale</a>
+    <a class="entrar" href="/login">Entrar</a>
+  </nav>
+</header>
+
+<main id="inicio">
+  <!-- Portada -->
+  <section class="portada" aria-labelledby="titulo">
+    <div class="escena" aria-hidden="true"><canvas id="orbe" class="orbe"></canvas></div>
+    <h1 id="titulo" class="marca">AR<span>I</span>A</h1>
+    <p class="lema">Tu casa, con voz propia.</p>
+    <p class="sublema">Hecha en casa · Se queda en casa</p>
+    <button type="button" id="escuchar" class="interruptor" role="switch" aria-checked="false">
+      <span class="pista" aria-hidden="true"><span class="bola"></span></span>Quiero escuchar a ARIA
+    </button>
+    <p id="subtitulo" class="subtitulo" aria-live="polite"></p>
+    <p id="aviso-voz" class="aviso-voz" hidden>Su voz se está grabando: de momento, solo subtítulos.</p>
+  </section>
+
+  <!-- Menú en tarjetas -->
+  <section id="menu" class="seccion" aria-labelledby="menu-titulo">
+    <p class="indice"><span>01</span> · Menú</p>
+    <h2 id="menu-titulo" class="sr">Lo que puedes ver</h2>
+    <div class="tarjetas">
+      <button type="button" class="tarjeta" data-demo="demo-hud">
+        <span class="t-cab"><span class="t-num">01</span><span class="t-etq">HUD</span></span>
+        <span class="t-visual t-orbe" aria-hidden="true"><canvas class="mini-orbe"></canvas></span>
+        <span class="t-titulo">Su presencia</span>
+        <span class="t-texto">Un orbe que escucha, piensa y habla. A pantalla completa.</span>
+        <span class="t-ir" aria-hidden="true">→</span>
+      </button>
+      <button type="button" class="tarjeta" data-demo="demo-agenda">
+        <span class="t-cab"><span class="t-num">02</span><span class="t-etq">Agenda</span></span>
+        <span class="t-visual t-calendario" aria-hidden="true"><i></i><i></i><i class="hoy"></i><i></i><i class="cumple"></i><i></i><i></i></span>
+        <span class="t-titulo">Tu tiempo</span>
+        <span class="t-texto">Citas, cumpleaños y avisos. También en el calendario del móvil.</span>
+        <span class="t-ir" aria-hidden="true">→</span>
+      </button>
+      <button type="button" class="tarjeta t-casa" data-demo="demo-casa">
+        <span class="t-cab"><span class="t-num">03</span><span class="t-etq">Tu casa</span></span>
+        <span class="t-visual" aria-hidden="true"><canvas class="mini-ping"></canvas></span>
+        <span class="t-titulo">Red, VPN y anuncios</span>
+        <span class="t-texto">Ping vigila la red y atrapa los anuncios. Con mucho orgullo.</span>
+        <span class="t-ir" aria-hidden="true">→</span>
+      </button>
+      <button type="button" class="tarjeta" data-demo="demo-info">
+        <span class="t-cab"><span class="t-num">04</span><span class="t-etq">Información</span></span>
+        <span class="t-visual t-grafica" aria-hidden="true"><svg viewBox="0 0 120 40" preserveAspectRatio="none"><polyline points="0,30 15,26 30,28 45,18 60,21 75,12 90,15 105,7 120,9"/></svg></span>
+        <span class="t-titulo">El mundo, resumido</span>
+        <span class="t-texto">Noticias por temas, mercados y el precio de la luz.</span>
+        <span class="t-ir" aria-hidden="true">→</span>
+      </button>
+      <a class="tarjeta" href="#hoy">
+        <span class="t-cab"><span class="t-num">05</span><span class="t-etq">Hoy</span></span>
+        <span class="t-visual t-lista" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="t-titulo">Qué funciona hoy</span>
+        <span class="t-texto">Lo que ya sabe hacer y lo que está aprendiendo.</span>
+        <span class="t-ir" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Qué funciona hoy -->
+  <section id="hoy" class="seccion" aria-labelledby="hoy-titulo">
+    <p class="indice"><span>02</span> · Qué funciona hoy</p>
+    <h2 id="hoy-titulo" class="sr">Qué funciona hoy</h2>
+    <ul class="lista-hoy">
+      <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        <div><h3>Habla, escucha y no se inventa nada</h3><p>Di «Aria» y pregunta. Si algo no puede hacerlo, te lo dice claro, sin adornos.</p></div></li>
+      <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM4 10h16M8 3v5M16 3v5"/></svg>
+        <div><h3>Te lleva el día</h3><p>Cada mañana, el tiempo, el precio de la luz, tu agenda y tus finanzas. En casa o por Telegram.</p></div></li>
+      <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+        <div><h3>Cuida la casa</h3><p>Bloquea anuncios en toda la red, te da una VPN propia y avisa si aparece un dispositivo que no conoce.</p></div></li>
+      <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9H3zM9 20v-6h6v6"/></svg>
+        <div><h3>Tus datos no salen de casa</h3><p>Corre en tu propio ordenador. Gratis, de código abierto, con varios usuarios y permisos.</p></div></li>
+    </ul>
+
+    <p class="indice violeta"><span>03</span> · En construcción</p>
+    <ul class="lista-hoy construccion">
+      <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4.5A3 3 0 0 0 9 4zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/></svg>
+        <div><h3>Memoria de verdad <em>En construcción</em></h3><p>Que recuerde lo que importa, olvide lo que sobra y no se trague bulos.</p></div></li>
+      <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3 4 14h7l-1 7 9-11h-7z"/></svg>
+        <div><h3>Se adelanta, con permiso <em>En construcción</em></h3><p>Que proponga antes de que lo pidas: «la luz está barata», «tienes cita en 30 minutos»… Tú decides.</p></div></li>
+      <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+        <div><h3>Ojos, gestos y voz propia <em>En construcción</em></h3><p>Ver cuando se lo pidas, manejar el HUD con la mano y hablar con una voz entrenada en casa.</p></div></li>
+    </ul>
+  </section>
+
+  <!-- Pregúntale -->
+  <section id="pregunta" class="seccion" aria-labelledby="preg-titulo">
+    <p class="indice"><span>04</span> · Pregúntale algo</p>
+    <h2 id="preg-titulo" class="sr">Pregúntale algo a ARIA</h2>
+    <div class="preguntas" role="group" aria-label="Preguntas">
+      <button type="button" data-r="0">¿Qué eres exactamente?</button>
+      <button type="button" data-r="1">¿Me escuchas todo el rato?</button>
+      <button type="button" data-r="2">¿Qué hace Ping?</button>
+      <button type="button" data-r="3">¿Cuánto cuestas?</button>
+    </div>
+    <p id="respuesta" class="respuesta" aria-live="polite">Elige una pregunta.</p>
+  </section>
+
+  <!-- Cierre -->
+  <section class="seccion cierre" aria-labelledby="cierre-titulo">
+    <div class="cierre-caja">
+      <div>
+        <h2 id="cierre-titulo">Tu propia ARIA</h2>
+        <p>Gratis y de código abierto. Se instala con un comando en una Raspberry Pi o en un PC con Linux.</p>
+      </div>
+      <a class="boton" href="https://github.com/BertMarti/ARIA" rel="noopener">Ver el proyecto →</a>
+    </div>
+  </section>
+</main>
+
+<footer class="pie"><span>ARIA · hecha en casa</span><span>Esta página es una demostración: los datos son inventados.</span></footer>
+
+<!-- Demos (solo lectura, datos inventados) -->
+<dialog id="demo-hud" class="demo" aria-labelledby="dh-t">
+  <div class="demo-cab"><p class="indice"><span>01</span> · HUD</p><button type="button" class="cerrar" aria-label="Cerrar">✕</button></div>
+  <h2 id="dh-t">Su presencia</h2>
+  <div class="demo-hud">
+    <canvas class="demo-orbe" aria-hidden="true"></canvas>
+    <div class="mini-tarjetas">
+      <div class="mini"><span>01 · Clima</span><strong>18°</strong><small>Despejado · Madrid</small></div>
+      <div class="mini"><span>02 · Agenda</span><strong>17:30</strong><small>Dentista</small></div>
+      <div class="mini"><span>07 · Luz</span><strong>0,092 €</strong><small>kWh ahora · barata</small></div>
+    </div>
+  </div>
+  <p class="demo-nota">El orbe cambia de color al escuchar, pensar y hablar, y ondula con su voz. En casa ocupa toda la pantalla.</p>
+</dialog>
+
+<dialog id="demo-agenda" class="demo" aria-labelledby="da-t">
+  <div class="demo-cab"><p class="indice"><span>02</span> · Agenda</p><button type="button" class="cerrar" aria-label="Cerrar">✕</button></div>
+  <h2 id="da-t">Tu tiempo</h2>
+  <ul class="demo-lista">
+    <li><span>Hoy · 17:30</span>Dentista <small>Clínica Centro</small></li>
+    <li><span>Hoy · 20:00</span>Clase de inglés <small>Cada semana</small></li>
+    <li class="cumple"><span>Domingo</span>Cumpleaños de Lucía <small>Cumple 32 · aviso un día antes</small></li>
+    <li><span>Lunes · 10:00</span>Revisión del coche <small>Taller</small></li>
+  </ul>
+  <p class="demo-nota">«Aria, apúntame el dentista el jueves a las cinco y media.» Y aparece también en el calendario de tu móvil.</p>
+</dialog>
+
+<dialog id="demo-casa" class="demo" aria-labelledby="dc-t">
+  <div class="demo-cab"><p class="indice"><span>03</span> · Tu casa</p><button type="button" class="cerrar" aria-label="Cerrar">✕</button></div>
+  <h2 id="dc-t">Red, VPN y anuncios</h2>
+  <div class="demo-casa">
+    <canvas class="demo-ping" aria-hidden="true"></canvas>
+    <div class="casa-datos">
+      <div class="mini"><span>Anuncios atrapados hoy</span><strong id="contador">1.284</strong></div>
+      <div class="mini"><span>Dispositivos en la red</span><strong>12</strong></div>
+      <div class="mini"><span>VPN</span><strong>2 / 4</strong></div>
+    </div>
+  </div>
+  <p id="ping-dice" class="ping-dice" aria-live="polite">¡Eh, mira! 1.284 anuncios atrapados hoy.</p>
+</dialog>
+
+<dialog id="demo-info" class="demo" aria-labelledby="di-t">
+  <div class="demo-cab"><p class="indice"><span>04</span> · Información</p><button type="button" class="cerrar" aria-label="Cerrar">✕</button></div>
+  <h2 id="di-t">El mundo, resumido</h2>
+  <div class="mercados">
+    <div class="mini"><span>Índice A</span><strong>11.240 €</strong><small class="sube">▲ 0,84 %</small></div>
+    <div class="mini"><span>Fondo global</span><strong>142,30 €</strong><small class="sube">▲ 0,31 %</small></div>
+    <div class="mini"><span>Cripto</span><strong>58.910 €</strong><small class="baja">▼ 1,92 %</small></div>
+  </div>
+  <ul class="demo-lista noticias">
+    <li><span>Tecnología</span>Un resumen de tres líneas con lo importante del día</li>
+    <li><span>Economía</span>Los mercados cierran la semana con subidas moderadas</li>
+    <li><span>Luz</span>Las horas más baratas de hoy, de dos a cinco de la tarde</li>
+  </ul>
+  <p class="demo-nota">Datos de ejemplo. En casa, ARIA resume las noticias de los temas que elijas y sigue tus inversiones en euros.</p>
+</dialog>
+
+<script src="/static/escaparate/ping.js"></script>
+<script src="/static/escaparate/escaparate.js"></script>
+</body>
+</html>

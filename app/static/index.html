@@ -539,8 +539,19 @@
           <input type="range" id="voz-vel" min="0.7" max="1.5" step="0.05" value="1">
         </label>
         <div class="botones"><button type="button" class="fantasma pequeno" id="voz-probar">Probar voz</button></div>
+        <section class="voces" aria-labelledby="voces-titulo">
+          <h3 id="voces-titulo">Voz de ARIA</h3>
+          <p class="muted pequeno-txt">Todas son voces femeninas de Google Gemini. Pulsa ▶ para escucharla y «Elegir» para quedártela; se usa en la web, el HUD y las notas de voz de Telegram.</p>
+          <div class="voces-opciones">
+            <div><span class="voces-et">Tono</span><div id="voces-tonos" class="segmentado" role="group" aria-label="Tono de la voz"></div></div>
+            <label class="voces-acento"><span class="voces-et">Acento</span><select id="voces-acento"></select></label>
+          </div>
+          <div id="voces-lista" class="voces-lista" role="list"></div>
+          <form id="voces-frase" class="voces-frase"><input id="voces-frase-txt" maxlength="200" placeholder="Escribe una frase y escúchala con la voz elegida"><button type="submit" class="fantasma pequeno">▶ Escuchar</button></form>
+          <p id="voces-nota" class="muted pequeno-txt"></p>
+        </section>
         <p class="muted" id="voz-estado"></p>
-        <p class="muted">Privacidad: al hablar, el audio se envía a Groq para transcribirlo (si hay clave); si Groq falla o no está configurado, se transcribe en la Raspberry. El audio no se guarda nunca. La voz de ARIA es «Leda» de Google Gemini (el texto que lee se envía a Gemini si hay clave); si falla o se agota la cuota, se genera en la Raspberry (Piper), y si tampoco, se usa la del navegador. Los ajustes se guardan en este dispositivo.</p>
+        <p class="muted">Privacidad: al hablar, el audio se envía a Groq para transcribirlo (si hay clave); si Groq falla o no está configurado, se transcribe en la Raspberry. El audio no se guarda nunca. La voz de ARIA es la que elijas arriba, de Google Gemini (el texto que lee se envía a Gemini si hay clave); si falla o se agota la cuota, se genera en la Raspberry (Piper, voz femenina española), y si tampoco, se usa la del navegador. Los ajustes se guardan en este dispositivo.</p>
       </article>
       <article class="tarjeta ancha" id="ajustes-memoria">
         <h2>Memoria</h2>

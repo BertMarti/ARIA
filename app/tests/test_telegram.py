@@ -345,7 +345,7 @@ def test_nota_de_voz_con_transcriptor_falso(bot, admin, monkeypatch):
         return "qué hora es <b>"
     sintetizados = []
 
-    async def sintetizar(texto):
+    async def sintetizar(texto, uid=None):
         sintetizados.append(texto)
         return b"OggS-respuesta", "audio/ogg"
     monkeypatch.setattr(voz_puente, "transcribir", transcribir)

@@ -195,7 +195,7 @@ def test_quitar_despertar(entrada, esperado):
 def test_hablar(monkeypatch, ana):
     vistos = {}
 
-    async def sintetizar(texto, vel):
+    async def sintetizar(texto, vel, pref=None):
         vistos.update(texto=texto, vel=vel)
         return b"RIFF....WAVE"
     monkeypatch.setattr(voz, "sintetizar", sintetizar)

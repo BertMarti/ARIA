@@ -69,7 +69,7 @@ def test_rota_modelos_si_uno_agota_la_cuota(monkeypatch):
     assert asyncio.run(voz.sintetizar(TEXTO, 1.0)) == bueno
     assert vistos == ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"]
     assert voz._espera_gemini["gemini-3.1-flash-tts-preview"] - voz._ahora() == pytest.approx(5, abs=1)
-    assert "Say warmly" in llamadas[-1].read().decode()
+    assert "acento de España" in llamadas[-1].read().decode()
 
 
 def test_modelo_plano_no_recibe_estilo(monkeypatch):

@@ -876,3 +876,17 @@ kbd { font-family: var(--mono); font-size: .8em; border: 1px solid var(--borde-f
 .dosp-codigo { max-width: 12rem; font: 600 1.3rem var(--mono); letter-spacing: .25em; text-align: center; }
 .dosp-rec { columns: 2; margin: 0; padding-left: 1.4rem; font-family: var(--mono); }
 .rd-nota { margin: .2rem 0 0; font-size: .86rem; color: var(--muted); }
+
+/* Ajustes → Voz de ARIA */
+.voces { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--borde); display: grid; gap: .7rem; }
+.voces h3 { margin: 0; }
+.voces-opciones { display: flex; flex-wrap: wrap; gap: .8rem 1.2rem; align-items: flex-end; }
+.voces-et { display: block; margin-bottom: .3rem; font-size: .78rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.voces-acento select { min-width: 10rem; }
+.voces-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .5rem; }
+.voz-ficha { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .6rem; align-items: center; padding: .55rem .65rem; border: 1px solid var(--borde); border-radius: 12px; background: var(--bg2); transition: border-color .15s; }
+.voz-ficha:hover { border-color: var(--borde-fuerte); }
+.voz-ficha.elegida { border-color: var(--acento); box-shadow: inset 3px 0 0 var(--acento); }
+.voz-play { width: 2.3rem; height: 2.3rem; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+.voz-txt { display: grid; min-width: 0; } .voz-txt span { font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voces-frase { display: flex; gap: .4rem; } .voces-frase input { flex: 1; min-width: 0; }

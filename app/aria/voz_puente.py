@@ -53,7 +53,7 @@ async def transcribir(datos: bytes, mime: str = "audio/ogg") -> str:
         raise VozError("No se pudo transcribir la nota de voz.") from None
 
 
-async def sintetizar(texto: str) -> tuple | None:
+async def sintetizar(texto: str, uid: int | None = None) -> tuple | None:
     """(audio, mime) o None si no hay síntesis. Pide OGG/Opus a aria-voz; si devuelve WAV, se usa tal cual."""
     v = _voz()
     if v is None:
@@ -63,7 +63,7 @@ async def sintetizar(texto: str) -> tuple | None:
         return None
     if v.gemini_tts_disponible():  # misma voz que en la web (Gemini «Leda»), convertida a OGG en aria-voz
         try:
-            wav = await v.sintetizar(limpio, 1.0)
+            wav = await v.sintetizar(limpio, 1.0, v.preferencias_de(uid) if uid else None)
             async with httpx.AsyncClient(timeout=httpx.Timeout(60, connect=5)) as c:
                 r = await c.post(f"{v.VOZ_URL}/ogg", content=wav, headers={"Content-Type": "audio/wav"})
             if r.status_code == 200 and r.headers.get("content-type", "").startswith("audio/ogg"):

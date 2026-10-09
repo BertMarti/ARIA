@@ -35,6 +35,8 @@ def entorno(tmp_path, monkeypatch):
     usuarios.iniciar()
     from aria import dos_pasos
     dos_pasos.iniciar()
+    from aria import voz
+    voz.iniciar()
     finanzas.iniciar()
     red.iniciar()
     control.iniciar()

@@ -66,6 +66,7 @@ async def _arranque():
     vpn_ubicaciones.iniciar()
     usuarios.iniciar()
     dos_pasos.iniciar()
+    voz.iniciar()
     finanzas.iniciar()
     red.iniciar()
     control.iniciar()
@@ -534,6 +535,34 @@ async def api_voz_estado():
     return {"groq": bool(os.environ.get("GROQ_API_KEY")), "local": await voz.voz_local_ok()}
 
 
+@app.get("/api/voz/voces")
+async def api_voz_voces(request: Request):
+    """Catálogo de voces (todas femeninas), tonos y acentos, y la elección del usuario."""
+    return {"voces": [{"id": k, "desc": v} for k, v in voz.VOCES.items()],
+            "tonos": [{"id": k, "nombre": v[0]} for k, v in voz.TONOS.items()],
+            "acentos": [{"id": k, "nombre": v[0]} for k, v in voz.ACENTOS.items()],
+            "actual": await asyncio.to_thread(voz.preferencias_de, request.state.usuario["id"]),
+            "gemini": voz.gemini_tts_disponible()}
+
+
+@app.post("/api/voz/preferencias")
+async def api_voz_preferencias(request: Request):
+    return await asyncio.to_thread(voz.guardar_preferencias, request.state.usuario["id"], await _json(request))
+
+
+@app.post("/api/voz/muestra")
+async def api_voz_muestra(request: Request):
+    """Frase de prueba con una voz (sin guardarla como preferida). Las muestras se guardan en disco."""
+    d = await _json(request)
+    if (resto := voz.limite_tts.esperar(request.state.usuario["id"])):
+        return JSONResponse({"error": f"Demasiadas pruebas seguidas. Espera {resto} s."}, status_code=429)
+    try:
+        wav = await voz.muestra(d)
+    except voz.AudioError as e:
+        return JSONResponse({"error": e.mensaje}, status_code=e.estado)
+    return Response(wav, media_type="audio/wav")
+
+
 @app.post("/api/voz/transcribir")
 async def api_voz_transcribir(request: Request):
     """Audio crudo en el cuerpo (Content-Type audio/webm, ogg, wav, mp4 o mpeg). No se guarda."""
@@ -570,7 +599,8 @@ async def api_voz_hablar(request: Request):
         return JSONResponse({"error": f"Demasiadas peticiones de voz. Espera {resto} s."},
                             status_code=429, headers={"Retry-After": str(resto)})
     try:
-        wav = await voz.sintetizar(limpio, voz.velocidad(d.get("velocidad", 1.0)))
+        pref = await asyncio.to_thread(voz.preferencias_de, request.state.usuario["id"])
+        wav = await voz.sintetizar(limpio, voz.velocidad(d.get("velocidad", 1.0)), pref)
     except voz.AudioError as e:
         return JSONResponse({"error": e.mensaje}, status_code=e.estado)
     return Response(wav, media_type="audio/wav")

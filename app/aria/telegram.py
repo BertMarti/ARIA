@@ -516,7 +516,7 @@ async def _charlar(b, chat_id: int, u: dict, texto: str, con_voz: bool = False) 
     await enviar_texto(b, chat_id, respuesta)
     if con_voz and (await asyncio.to_thread(avisos.ajustes, u["id"]))["voz_telegram"]:
         from . import voz_puente
-        audio = await voz_puente.sintetizar(respuesta)
+        audio = await voz_puente.sintetizar(respuesta, u["id"])
         if audio:
             datos, mime = audio
             if mime == "audio/ogg":

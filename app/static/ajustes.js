@@ -165,6 +165,7 @@ const Ajustes = (() => {
     vel.value = Prefs.get("voz_vel", "1"); $("voz-vel-txt").textContent = fmtVel(vel.value);
     vel.addEventListener("input", () => { Prefs.set("voz_vel", vel.value); $("voz-vel-txt").textContent = fmtVel(vel.value); });
     $("voz-probar").addEventListener("click", () => Voz.hablar("Hola, soy ARIA. Así sueno a esta velocidad."));
+    $("voces-frase").addEventListener("submit", (e) => { e.preventDefault(); const t = $("voces-frase-txt").value.trim(); if (t) Voz.hablar(t); else Voz.hablar("Hola, soy ARIA. ¿Qué tal te ha ido el día?"); });
     $("voz-mic").addEventListener("change", (e) => Prefs.set("mic", e.target.value));
     $("voz-probar-mic").addEventListener("click", probarMic);
     const manos = $("voz-manos");
@@ -174,6 +175,58 @@ const Ajustes = (() => {
       for (const id of ["voz-mic", "voz-probar-mic", "voz-manos"]) $(id).disabled = true;
       $("voz-estado").textContent = "El micrófono solo funciona por HTTPS.";
     }
+  }
+
+  // --- Elegir la voz de ARIA (catálogo del servidor; muestras guardadas en disco para no gastar cuota) ---
+  let voces = null, pref = null, fuenteMuestra = null;
+  async function reproducir(respuesta) {
+    const c = Voz.audioCtx(); if (c.state === "suspended") await c.resume();
+    const buf = await c.decodeAudioData(await respuesta.arrayBuffer());
+    if (fuenteMuestra) try { fuenteMuestra.stop(); } catch (_) { /* ya parada */ }
+    Voz.parar();
+    const s = c.createBufferSource(); s.buffer = buf; s.connect(c.destination); s.start(); fuenteMuestra = s;
+  }
+  async function escuchar(datos, boton) {
+    const t = boton?.textContent; if (boton) { boton.disabled = true; boton.textContent = "…"; }
+    try {
+      const r = await fetch("/api/voz/muestra", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(datos) });
+      if (!r.ok) { let e = "No se pudo generar la voz."; try { e = (await r.json()).error || e; } catch (_) { /* sin cuerpo */ } toast(e, "mal"); return; }
+      await reproducir(r);
+    } catch (_) { toast("No se pudo reproducir la muestra.", "mal"); }
+    finally { if (boton) { boton.disabled = false; boton.textContent = t; } }
+  }
+  async function guardarVoz(cambio) {
+    const r = await api("/api/voz/preferencias", { method: "POST", json: { ...pref, ...cambio } });
+    if (r.ok) { pref = r.data; pintarVoces(); }
+  }
+  function pintarVoces() {
+    $("voces-tonos").replaceChildren(...voces.tonos.map((t) => {
+      const b = el("button", { type: "button", class: t.id === pref.tono ? "activo" : "" }, t.nombre);
+      b.setAttribute("aria-pressed", String(t.id === pref.tono));
+      b.addEventListener("click", () => guardarVoz({ tono: t.id }));
+      return b;
+    }));
+    const sel = $("voces-acento");
+    if (!sel.options.length) { sel.append(...voces.acentos.map((a) => el("option", { value: a.id }, a.nombre))); sel.addEventListener("change", () => guardarVoz({ acento: sel.value })); }
+    sel.value = pref.acento;
+    $("voces-lista").replaceChildren(...voces.voces.map((v) => {
+      const elegida = v.id === pref.voz;
+      const probar = el("button", { type: "button", class: "fantasma pequeno voz-play", title: "Escuchar a " + v.id }, "▶");
+      probar.setAttribute("aria-label", "Escuchar la voz " + v.id);
+      probar.addEventListener("click", () => escuchar({ voz: v.id, tono: pref.tono, acento: pref.acento }, probar));
+      const elegir = el("button", { type: "button", class: elegida ? "primario pequeno" : "fantasma pequeno" }, elegida ? "✓ Elegida" : "Elegir");
+      elegir.disabled = elegida;
+      elegir.addEventListener("click", () => guardarVoz({ voz: v.id }));
+      return el("div", { class: "voz-ficha" + (elegida ? " elegida" : ""), role: "listitem" },
+        probar, el("div", { class: "voz-txt" }, el("strong", null, v.id), el("span", { class: "muted" }, v.desc)), elegir);
+    }));
+    $("voces-nota").textContent = voces.gemini ? "Recomendadas para una voz dulce y amable: Achernar, Vindemiatrix, Sulafat, Despina y Leda, con el tono «Dulce y cariñosa» o «Muy tierna»."
+      : "Ahora mismo Gemini no está disponible (sin clave o sin cuota): ARIA usará su voz local. Las muestras ya escuchadas siguen funcionando.";
+  }
+  async function cargarVoces() {
+    const r = await api("/api/voz/voces");
+    if (!r.ok) { $("voces-lista").textContent = "No disponible."; return; }
+    voces = r.data; pref = r.data.actual; pintarVoces();
   }
 
   // --- Contraseña ---
@@ -215,7 +268,7 @@ const Ajustes = (() => {
   }
 
   function activar() {
-    pintarSecciones(); dosPasos();
+    pintarSecciones(); dosPasos(); if (!voces) cargarVoces();
     estadoVoz(); listarMics().catch(() => {});
     if (Sesion.esAdmin) { cerebros(); modelos(); if (Sesion.funciones.spotify) spotify(); acerca(); }
     if (!Sesion.tienePassword) { $("pass-actual").required = false; $("pass-actual-et").hidden = true; }

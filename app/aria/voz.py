@@ -11,6 +11,8 @@ import re
 import time
 import unicodedata
 from collections import OrderedDict, deque
+from contextlib import closing
+from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
@@ -259,6 +261,34 @@ TTS_MODELOS = [m.strip() for m in os.environ.get(
     "ARIA_TTS_MODELOS", "gemini-3.1-flash-tts-preview,gemini-2.5-flash-preview-tts,gemini-3.8-flash-tts:plano"
 ).split(",") if m.strip()]
 TTS_VOZ = os.environ.get("ARIA_TTS_VOZ", "Leda")
+
+# Voces femeninas de Gemini, con su carácter (según Google), y cómo se le pide a Gemini que hable.
+VOCES = {
+    "Leda": "Juvenil y cálida", "Achernar": "Suave y delicada", "Vindemiatrix": "Amable y tierna",
+    "Sulafat": "Cálida y cercana", "Despina": "Aterciopelada", "Aoede": "Ligera y alegre",
+    "Callirrhoe": "Tranquila y relajada", "Autonoe": "Luminosa", "Laomedeia": "Animada y risueña",
+    "Erinome": "Clara y nítida", "Zephyr": "Brillante", "Kore": "Firme y segura",
+    "Gacrux": "Madura y serena", "Pulcherrima": "Directa y expresiva",
+}
+TONOS = {
+    "dulce": ("Dulce y cariñosa", "con una voz femenina muy dulce, cálida y cariñosa, sonriendo"),
+    "alegre": ("Alegre", "con una voz femenina alegre, cercana y llena de energía"),
+    "serena": ("Serena", "con una voz femenina serena y suave, con calma y sin prisa"),
+    "tierna": ("Muy tierna", "con una voz femenina muy tierna y delicada, casi susurrando con cariño"),
+}
+ACENTOS = {"es-ES": ("España", "con acento de España (castellano peninsular)"),
+           "es-US": ("Latinoamérica", "con acento latinoamericano neutro")}
+PREF_DEFECTO = {"voz": TTS_VOZ if TTS_VOZ in VOCES else "Leda", "tono": "dulce", "acento": "es-ES"}
+FRASE_MUESTRA = "Hola, soy ARIA. Estoy aquí para ayudarte en lo que necesites. ¿Qué tal te ha ido el día?"
+
+
+def preferencia(datos: dict | None) -> dict:
+    """Normaliza una preferencia de voz (valores desconocidos -> los de por defecto)."""
+    d = dict(PREF_DEFECTO)
+    for k, validos in (("voz", VOCES), ("tono", TONOS), ("acento", ACENTOS)):
+        if isinstance(datos, dict) and datos.get(k) in validos:
+            d[k] = datos[k]
+    return d
 _espera_gemini: dict = {}  # modelo -> instante hasta el que no se usa (cuota, error)
 _cache_tts: OrderedDict = OrderedDict()  # (texto, velocidad) -> WAV; ahorra cuota al releer
 CACHE_TTS = 64
@@ -291,9 +321,11 @@ def _pcm_a_wav(pcm: bytes, frecuencia: int = 24000) -> bytes:
     return buf.getvalue()
 
 
-def _estilo(vel: float) -> str:
-    ritmo = " and a bit faster" if vel >= 1.15 else " and slowly" if vel <= 0.85 else ""
-    return f"Say warmly and sweetly{ritmo}: "
+def _estilo(vel: float, pref: dict | None = None) -> str:
+    """Indicación para Gemini, en español, para que no elija otro acento. El texto va después de los dos puntos."""
+    p = preferencia(pref)
+    ritmo = ", un poco más deprisa" if vel >= 1.15 else ", despacio" if vel <= 0.85 else ""
+    return f"Lee en español {ACENTOS[p['acento']][1]}, {TONOS[p['tono']][1]}{ritmo}: "
 
 
 def _espera_429(r: httpx.Response) -> float:
@@ -303,11 +335,13 @@ def _espera_429(r: httpx.Response) -> float:
     return float(m.group(1)) + 1 if m else 60
 
 
-async def _gemini_modelo(modelo: str, plano: bool, texto: str, vel: float) -> bytes:
+async def _gemini_modelo(modelo: str, plano: bool, texto: str, vel: float, pref: dict | None = None) -> bytes:
     import base64
-    cuerpo = {"contents": [{"parts": [{"text": texto if plano else _estilo(vel) + texto}]}],
+    p = preferencia(pref)
+    cuerpo = {"contents": [{"parts": [{"text": texto if plano else _estilo(vel, p) + texto}]}],
               "generationConfig": {"responseModalities": ["AUDIO"],
-                                   "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": TTS_VOZ}}}}}
+                                   "speechConfig": {"languageCode": p["acento"],
+                                                    "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": p["voz"]}}}}}
     try:
         async with _cliente(30) as c:
             r = await c.post(GEMINI_TTS_URL.format(modelo), json=cuerpo,
@@ -336,25 +370,26 @@ async def _gemini_modelo(modelo: str, plano: bool, texto: str, vel: float) -> by
     return datos
 
 
-async def _gemini(texto: str, vel: float) -> bytes:
+async def _gemini(texto: str, vel: float, pref: dict | None = None) -> bytes:
     for m in _modelos_libres():
         modelo, _, opcion = m.partition(":")
         try:
-            return await _gemini_modelo(modelo, opcion == "plano", texto, vel)
+            return await _gemini_modelo(modelo, opcion == "plano", texto, vel, pref)
         except AudioError:
             continue
     raise AudioError(503, "Ningún modelo de voz de Gemini disponible.")
 
 
-async def sintetizar(texto: str, vel: float) -> bytes:
-    """Gemini (voz «Leda») si hay clave y no está en espera; si no, Piper en aria-voz."""
-    clave = (texto, round(vel, 2))
+async def sintetizar(texto: str, vel: float, pref: dict | None = None) -> bytes:
+    """Gemini con la voz elegida por el usuario si hay clave y no está en espera; si no, Piper en aria-voz."""
+    p = preferencia(pref)
+    clave = (texto, round(vel, 2), p["voz"], p["tono"], p["acento"])
     if clave in _cache_tts:
         _cache_tts.move_to_end(clave)
         return _cache_tts[clave]
     if gemini_tts_disponible():
         try:
-            wav = await _gemini(texto, vel)
+            wav = await _gemini(texto, vel, p)
             _cache_tts[clave] = wav
             if len(_cache_tts) > CACHE_TTS:
                 _cache_tts.popitem(last=False)
@@ -480,3 +515,50 @@ async def _enviar_y_cerrar(ws, error: str | None) -> None:
         await ws.close()
     except Exception:  # el navegador ya se fue
         pass
+
+
+# --- Preferencias de voz por usuario y muestras para probar las voces -------------------------------
+def iniciar() -> None:
+    from . import db
+    with closing(db._con()) as con, con:
+        con.execute("CREATE TABLE IF NOT EXISTS voz_preferencias (user_id INTEGER PRIMARY KEY REFERENCES usuarios(id) "
+                    "ON DELETE CASCADE, voz TEXT NOT NULL, tono TEXT NOT NULL, acento TEXT NOT NULL)")
+
+
+def preferencias_de(uid: int) -> dict:
+    from . import db
+    with closing(db._con()) as con:
+        r = con.execute("SELECT voz, tono, acento FROM voz_preferencias WHERE user_id=?", (uid,)).fetchone()
+    return preferencia(dict(r) if r else None)
+
+
+def guardar_preferencias(uid: int, datos: dict) -> dict:
+    from . import db
+    p = preferencia({**preferencias_de(uid), **{k: v for k, v in (datos or {}).items() if k in ("voz", "tono", "acento")}})
+    with closing(db._con()) as con, con:
+        con.execute("INSERT INTO voz_preferencias (user_id, voz, tono, acento) VALUES (?,?,?,?) ON CONFLICT(user_id) "
+                    "DO UPDATE SET voz=excluded.voz, tono=excluded.tono, acento=excluded.acento",
+                    (uid, p["voz"], p["tono"], p["acento"]))
+    return p
+
+
+def _ruta_muestra(p: dict) -> Path:
+    from . import config
+    return config.DATA_DIR / "voz-muestras" / f"{p['voz']}-{p['tono']}-{p['acento']}.wav"
+
+
+async def muestra(pref: dict) -> bytes:
+    """Frase de prueba con esa voz. Se guarda en disco: cada combinación gasta cuota de Gemini una sola vez."""
+    p = preferencia(pref)
+    ruta = _ruta_muestra(p)
+    if ruta.exists():
+        return ruta.read_bytes()
+    if not gemini_tts_disponible():
+        raise AudioError(503, "Las voces de Gemini no están disponibles ahora (falta la clave o se agotó la cuota "
+                              "del minuto). Inténtalo en un momento.")
+    wav = await _gemini(FRASE_MUESTRA, 1.0, p)
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    tmp = ruta.with_suffix(".tmp")
+    tmp.write_bytes(wav)
+    tmp.replace(ruta)
+    return wav

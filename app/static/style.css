@@ -351,11 +351,14 @@ body.modo-hud > .nav, body.modo-hud > .manos-libres, body.modo-hud .campana-zona
 .rd-chip.sube { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
 .rd-chip.baja { color: var(--mal); background: color-mix(in srgb, var(--mal) 14%, transparent); }
 .rd-inv { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
-.rd-inv li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: .55rem; }
-.rd-inv-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rd-inv li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "n n" "p c"; align-items: center; gap: .1rem .55rem; padding-bottom: .35rem; border-bottom: 1px solid var(--borde); }
+.rd-inv li:last-child { border-bottom: 0; padding-bottom: 0; }
+.rd-inv-nombre { grid-area: n; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: .86rem; }
+.rd-inv li > strong { grid-area: p; font-size: 1.05rem; } .rd-inv li > .rd-chip { grid-area: c; justify-self: end; }
 .rd-inv strong { font-variant-numeric: tabular-nums; }
 .rd-agenda { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
-.rd-agenda li { display: grid; grid-template-columns: 3.6rem minmax(0, 1fr); gap: .5rem; }
+.rd-agenda li { display: grid; grid-template-columns: 4.3rem minmax(0, 1fr); gap: .5rem; }
+.rd-agenda .rd-hora { white-space: nowrap; }
 .rd-hora { color: var(--acento); font-variant-numeric: tabular-nums; font-weight: 600; }
 .rd-enlace { margin-top: auto; padding-top: .3rem; font-size: .88rem; color: var(--acento); text-decoration: none; }
 .rd-enlace:hover { text-decoration: underline; }

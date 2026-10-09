@@ -286,7 +286,9 @@ def test_mercados_por_defecto(admin, monkeypatch):
     assert [v["precio"] for v in d["valores"]] == [12345.6, 5000.0, 70000, 3500]
     assert [v.get("variacion") for v in d["valores"]] == [None, None, -2.1, 1.4]
     assert all(v.get("divisa") == "EUR" and v.get("id") is None for v in d["valores"])
-    assert len(vistas) == 3  # dos gráficos de Yahoo y una sola consulta a CoinGecko
+    assert len(vistas) == 5  # dos gráficos de Yahoo, un precio de CoinGecko y un histórico por moneda (con caché 1 h)
+    correr(informacion.mercados(admin["id"]))
+    assert len(vistas) == 8  # el histórico de cripto sale de la caché
 
 
 def test_mercados_con_el_seguimiento_del_usuario(admin, ana, monkeypatch):
@@ -660,3 +662,24 @@ def test_cotizacion_en_peniques_se_pasa_a_libras_y_luego_a_euros(admin, monkeypa
     v = correr(informacion.mercados(admin["id"]))["valores"][0]
     assert v["precio"] == pytest.approx(100.0 / 0.85) and v["anterior"] == pytest.approx(99.0 / 0.86)
     assert (v["divisa"], v["divisa_original"]) == ("EUR", "GBp")
+
+
+def test_cripto_con_historico_y_variaciones(admin, monkeypatch):
+    serie = [100.0 + i for i in range(366)]   # 366 cierres diarios: el último es 465
+    async def precio(ids):
+        return [{"simbolo": "bitcoin", "nombre": "Bitcoin", "tipo": "cripto", "precio": 465.0, "variacion": 1.5, "divisa": "EUR"}]
+    async def historia(i):
+        return serie if i == "bitcoin" else []
+    monkeypatch.setattr(informacion, "_coingecko", precio)
+    monkeypatch.setattr(informacion, "_coingecko_historia", historia)
+    informacion.anadir_valor(admin["id"], "bitcoin")
+    btc = next(v for v in correr(informacion.mercados(admin["id"]))["valores"] if v["simbolo"] == "bitcoin")
+    assert btc["variacion_dia"] == 1.5 and len(btc["cierre"]) == 366
+    assert round(btc["variacion_semana"], 3) == round((465 - 458) / 458 * 100, 3)
+    assert round(btc["variacion_ano"], 3) == round((465 - 100) / 100 * 100, 3)
+    h = correr(informacion.historico("bitcoin", 30))
+    assert len(h["cierre"]) == 30 and h["cierre"][-1] == 465.0
+
+
+def test_historia_coingecko_rechaza_ids_raros():
+    assert correr(informacion._coingecko_historia("../../etc")) == []

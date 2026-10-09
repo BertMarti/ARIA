@@ -75,6 +75,9 @@ async def test_comando_resumen_manda_html_por_bot_falso(monkeypatch):
                                          "text": "/resumen"}}, bot)
     envios = [d for m, d in bot.llamadas if m == "sendMessage" and d.get("parse_mode") == "HTML"]
     assert envios and "<b>" in envios[-1]["text"]
+    botones = [x for fila in envios[-1]["reply_markup"]["inline_keyboard"] for x in fila]
+    assert any(x["text"].endswith("Actualizar") for x in botones)
+    assert any("Pausar anuncios" in x["text"] for x in botones)   # es administrador
 
 
 def _datos(**extra):

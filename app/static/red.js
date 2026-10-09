@@ -48,6 +48,12 @@ const Red = (() => {
   async function cargarEstadisticas() {
     const r = await api("/api/red/estadisticas?horas=" + $("red-est-horas").value);
     if (!r.ok) { $("red-est-nota").textContent = r.data.error || "No se pudieron cargar las estadísticas."; return; }
+    if (r.data.disponible === false) {
+      estadisticasDatos = [];
+      $("red-est-nota").textContent = "Estadísticas no disponibles ahora: " + r.data.error + " Aparecerán solas cuando SHIELD-DNS responda.";
+      $("red-est-tabla").querySelector("tbody").replaceChildren(el("tr", null, el("td", { colSpan: 4, class: "muted" }, "Sin conexión con SHIELD-DNS.")));
+      return;
+    }
     estadisticasDatos = r.data.dispositivos || []; $("red-est-nota").textContent = `${r.data.totales.consultas.toLocaleString("es-ES")} consultas · ${r.data.totales.bloqueadas.toLocaleString("es-ES")} bloqueadas (${fmtNumero(r.data.totales.porcentaje)} %)`; pintarEstadisticas();
   }
 

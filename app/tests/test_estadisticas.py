@@ -250,7 +250,7 @@ def test_pihole_caido_da_error_legible(datos, admin):
         correr(estadisticas.resumen(24))
     assert "SHIELD-DNS" in str(e.value) and "contactar" in str(e.value)
     r = cliente_de(admin).get("/api/red/estadisticas")
-    assert r.status_code == 502 and "contactar" in r.json()["error"]
+    assert r.status_code == 200 and r.json()["disponible"] is False and "contactar" in r.json()["error"]
     # Y en el detalle el mensaje es el mismo, con la misma respuesta legible
     with pytest.raises(estadisticas.EstadisticasError, match="SHIELD-DNS"):
         correr(estadisticas.detalle(PORTATIL))

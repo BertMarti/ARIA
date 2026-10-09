@@ -1,7 +1,7 @@
 """Centro de información: noticias, mercados y preferencias por usuario."""
-import re
 import json
 import logging
+import re
 import time
 from contextlib import closing
 from pathlib import Path
@@ -197,6 +197,33 @@ async def _coingecko(ids: list[str]) -> list[dict]:
         return [{"simbolo": i, "error": "Cotización no disponible ahora"} for i in ids]
 
 
+async def _coingecko_historia(identificador: str) -> list:
+    """Cierres diarios en euros del último año (CoinGecko, sin clave). Caché de 1 h por moneda."""
+    if not re.fullmatch(r"[a-z0-9-]{1,60}", str(identificador)):
+        return []
+    clave = ("cg-historia", identificador)
+    if clave in _cache and time.monotonic() - _cache[clave][0] < 3600:
+        return _cache[clave][1]
+    try:
+        async with httpx.AsyncClient(timeout=10) as cl:
+            r = await cl.get(f"https://api.coingecko.com/api/v3/coins/{identificador}/market_chart",
+                             params={"vs_currency": "eur", "days": 365, "interval": "daily"})
+            r.raise_for_status()
+            cierres = [float(p[1]) for p in r.json().get("prices", []) if isinstance(p, list) and len(p) == 2]
+    except (httpx.HTTPError, ValueError, TypeError):
+        return []
+    _cache[clave] = (time.monotonic(), cierres)
+    return cierres
+
+
+def _variaciones_cripto(x: dict, cierres: list) -> None:
+    """La cripto cotiza todos los días: semana = 7 cierres, mes = 30, año = 365."""
+    precio = x.get("precio")
+    x["cierre"] = cierres
+    for nombre, pasos in (("semana", 7), ("mes", 30), ("ano", 365)):
+        x[f"variacion_{nombre}"] = _variacion(precio, cierres[-pasos - 1]) if len(cierres) > pasos else None
+
+
 def _cierre_anterior(ts: list, cierres: list, hora_precio, defecto):
     """Cierre del día ANTERIOR a la última cotización. `chartPreviousClose` de Yahoo es el cierre previo a todo el
     rango pedido (hace un mes o un año), así que no sirve para la variación diaria."""
@@ -248,6 +275,8 @@ async def mercados(uid: int) -> dict:
             x = dict(cr.get(v["simbolo"], {"simbolo": v["simbolo"], "error": "Sin datos"}))
             x.update({"variacion_dia": x.get("variacion"), "variacion_semana": None,
                       "variacion_mes": None, "variacion_ano": None})
+            if not x.get("error"):
+                _variaciones_cripto(x, await _coingecko_historia(v["simbolo"]))
         else: x = await _a_euros(await yahoo(v["simbolo"], "1y"), "1y")   # un año: variaciones de semana, mes y año
         x.update({"id": v.get("id"), "nombre": v.get("nombre", x.get("simbolo")), "cantidad": v.get("cantidad"),
                   "precio_medio": v.get("precio_medio")})
@@ -261,5 +290,14 @@ async def mercados(uid: int) -> dict:
 
 
 async def historico(simbolo: str, dias: int = 30) -> dict:
+    v = _valor(simbolo)
+    if v.get("tipo") == "cripto":
+        cierres = await _coingecko_historia(v["simbolo"])
+        if not cierres:
+            return {"simbolo": v["simbolo"], "error": "Histórico no disponible ahora"}
+        x = {"simbolo": v["simbolo"], "precio": cierres[-1], "divisa": "EUR"}
+        _variaciones_cripto(x, cierres)
+        x["cierre"] = cierres[-max(1, min(int(dias), 365)):]
+        return x
     rango = "6mo" if dias > 180 else "1mo"
-    return await _a_euros(await yahoo(_valor(simbolo)["simbolo"], rango), rango)
+    return await _a_euros(await yahoo(v["simbolo"], rango), rango)

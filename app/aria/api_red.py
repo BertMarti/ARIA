@@ -78,9 +78,13 @@ async def historial(dias: int = 7):
 @router.get("/api/red/estadisticas")
 async def estadisticas_red(horas: int = 24):
     try:
-        return await estadisticas.resumen(horas)
+        return {"disponible": True, **await estadisticas.resumen(horas)}
     except estadisticas.EstadisticasError as e:
-        return _err(str(e), 502 if "conectado" in str(e) or "contactar" in str(e) else 400)
+        if "conectado" in str(e) or "contactar" in str(e):
+            # SHIELD-DNS caído o sin configurar: no es un fallo de la petición; la vista lo explica
+            return {"disponible": False, "error": str(e), "horas": horas, "dispositivos": [],
+                    "totales": {"consultas": 0, "bloqueadas": 0, "porcentaje": 0}}
+        return _err(str(e), 400)
 
 
 @router.get("/api/red/estadisticas/{clave}")

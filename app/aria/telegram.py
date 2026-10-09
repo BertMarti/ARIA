@@ -358,6 +358,25 @@ async def enviar_html(b, chat_id: int, texto: str, teclado_: dict | None = None)
     return enviados
 
 
+async def teclado_resumen(chat_id: int, u: dict) -> dict:
+    """Botones bajo el resumen diario: abrir ARIA o la agenda y, para administradores, pausar anuncios."""
+    filas = []
+    if config.URL_PUBLICA:
+        filas.append([{"text": "🏠 Abrir ARIA", "url": f"{config.URL_PUBLICA}/#inicio"},
+                      {"text": "📅 Agenda", "url": f"{config.URL_PUBLICA}/#agenda"}])
+    fila = [boton("🔄 Actualizar", await asyncio.to_thread(ficha, chat_id, u["id"], "resumen_actualizar", None, 86400))]
+    if u.get("rol") == "admin":
+        fila.append(boton("⏸️ Pausar anuncios 30 min", await asyncio.to_thread(
+            ficha, chat_id, u["id"], "pedir", {"op": "pausar", "min": 30}, 86400)))
+    filas.append(fila)
+    return teclado(*filas)
+
+
+async def enviar_resumen(b, chat_id: int, u: dict, refrescar: bool = False) -> list:
+    d = await resumen_diario.construir_resumen_diario(u, refrescar=refrescar)
+    return await enviar_html(b, chat_id, resumen_diario.telegram(d), await teclado_resumen(chat_id, u))
+
+
 # --- Límites ------------------------------------------------------------------------------------------------------
 _lim_mensajes = avisos.Limitador(20, 60)        # por chat vinculado
 _lim_aviso_rapido = avisos.Limitador(1, 60)
@@ -627,7 +646,7 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
     elif cmd == "estado":
         await enviar(await texto_estado(u))
     elif cmd == "resumen":
-        await enviar_html(b, chat_id, resumen_diario.telegram(await resumen_diario.construir_resumen_diario(u)))
+        await enviar_resumen(b, chat_id, u)
     elif cmd == "tiempo":
         await enviar(await _texto_tiempo(arg))
     elif cmd == "recordatorios":
@@ -924,6 +943,9 @@ async def _accion(b, cq: dict, chat_id: int, u: dict, accion: str, d: dict) -> s
         ok, texto = await vision.registrar_ticket(u, t, d.get("cid"))
         await enviar_texto(b, chat_id, texto)
         return "Apuntado." if ok else "No se pudo apuntar."
+    if accion == "resumen_actualizar":
+        await enviar_resumen(b, chat_id, u, refrescar=True)
+        return "Resumen actualizado."
     if accion == "pedir":  # paso previo: se pide «Confirmar»
         if d.get("op") in OPS_ADMIN and not admin:
             return "Eso solo lo puede hacer un administrador."
@@ -1025,7 +1047,9 @@ async def canal(uid: int, aviso: dict) -> bool:
             filas.append(fila)
         try:
             if aviso.get("html"):
-                await enviar_html(b, c["chat_id"], aviso["html"], teclado(*filas) if filas else None)
+                u = await asyncio.to_thread(_usuario, uid)
+                tec = await teclado_resumen(c["chat_id"], u) if u and aviso.get("tipo") == "resumen" else (teclado(*filas) if filas else None)
+                await enviar_html(b, c["chat_id"], aviso["html"], tec)
             else:
                 await enviar_texto(b, c["chat_id"], cab + aviso["texto"], teclado(*filas) if filas else None)
             enviado = True

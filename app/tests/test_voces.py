@@ -95,3 +95,32 @@ def test_cuota_diaria_se_respeta_entera(monkeypatch):
     assert voz._espera_gemini["modelo-x"] - voz._ahora() > 40000
     voz._anotar_fallo_gemini("modelo-y", 50000, "red")
     assert voz._espera_gemini["modelo-y"] - voz._ahora() <= 3600
+
+
+def test_voz_propia_va_directa_a_la_raspberry(ana, monkeypatch):
+    pedidas = []
+    async def local(texto, vel, voz="auto"):
+        pedidas.append(voz); return b"RIFF-propia"
+    async def gemini(*a, **k):
+        raise AssertionError("con la voz propia no se usa Gemini")
+    async def hay():
+        return "es_ES-aria-medium"
+    monkeypatch.setattr(voz, "sintetizar_local", local)
+    monkeypatch.setattr(voz, "_gemini", gemini)
+    monkeypatch.setattr(voz, "gemini_tts_disponible", lambda: True)
+    monkeypatch.setattr(voz, "voz_propia", hay)
+    c = cliente(ana)
+    d = c.get("/api/voz/voces").json()
+    assert d["voces"][0]["id"] == "propia" and d["voces"][0]["local"] is True
+    assert c.post("/api/voz/preferencias", json={"voz": "propia"}).json()["voz"] == "propia"
+    r = c.post("/api/voz/hablar", json={"texto": "Hola"})
+    assert r.status_code == 200 and r.headers["x-voz-motor"] == "propia"
+    assert c.post("/api/voz/muestra", json={"voz": "propia"}).content == b"RIFF-propia"
+    assert pedidas == ["propia", "propia"]
+
+
+def test_sin_voz_propia_no_aparece(ana, monkeypatch):
+    async def no_hay():
+        return None
+    monkeypatch.setattr(voz, "voz_propia", no_hay)
+    assert all(v["id"] != "propia" for v in cliente(ana).get("/api/voz/voces").json()["voces"])

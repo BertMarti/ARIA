@@ -216,13 +216,13 @@ const Ajustes = (() => {
     $("voces-lista").replaceChildren(...voces.voces.map((v) => {
       const elegida = v.id === pref.voz;
       const probar = el("button", { type: "button", class: "fantasma pequeno voz-play", title: "Escuchar a " + v.id }, "▶");
-      probar.setAttribute("aria-label", "Escuchar la voz " + v.id);
+      probar.setAttribute("aria-label", "Escuchar la voz " + (v.nombre || v.id));
       probar.addEventListener("click", () => escuchar({ voz: v.id, tono: pref.tono, acento: pref.acento }, probar));
       const elegir = el("button", { type: "button", class: elegida ? "primario pequeno" : "fantasma pequeno" }, elegida ? "✓ Elegida" : "Elegir");
       elegir.disabled = elegida;
       elegir.addEventListener("click", () => guardarVoz({ voz: v.id }));
-      return el("div", { class: "voz-ficha" + (elegida ? " elegida" : ""), role: "listitem" },
-        probar, el("div", { class: "voz-txt" }, el("strong", null, v.id), el("span", { class: "muted" }, v.desc)), elegir);
+      return el("div", { class: "voz-ficha" + (elegida ? " elegida" : "") + (v.local ? " propia" : ""), role: "listitem" },
+        probar, el("div", { class: "voz-txt" }, el("strong", null, v.nombre || v.id), el("span", { class: "muted" }, v.desc)), elegir);
     }));
     $("voces-nota").textContent = voces.gemini ? "Recomendadas para una voz dulce y amable: Achernar, Vindemiatrix, Sulafat, Despina y Leda, con el tono «Dulce y cariñosa» o «Muy tierna»."
       : "Ahora mismo Gemini no está disponible (sin clave o sin cuota): ARIA usará su voz local. Las muestras ya escuchadas siguen funcionando.";

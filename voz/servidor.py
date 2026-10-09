@@ -93,14 +93,48 @@ def _voz():
     return _piper
 
 
-def sintetizar(texto: str, velocidad: float) -> bytes:
+# Voz propia (entrenada con herramientas/voz-propia): el primer .onnx de VOZ_PROPIA_DIR con su .onnx.json.
+# Si existe, es la voz local por defecto; se recarga sola si cambias el archivo.
+PROPIA_DIR = Path(os.environ.get("VOZ_PROPIA_DIR", "/voz-propia"))
+_propia: dict = {}
+
+
+def _ruta_propia() -> Path | None:
+    try:
+        return next((p for p in sorted(PROPIA_DIR.glob("*.onnx")) if p.with_suffix(".onnx.json").exists()), None)
+    except OSError:
+        return None
+
+
+def _voz_propia():
+    from piper import PiperVoice
+    ruta = _ruta_propia()
+    if ruta is None:
+        return None
+    clave = (str(ruta), ruta.stat().st_mtime)
+    if _propia.get("clave") != clave:
+        _propia.update(clave=clave, voz=PiperVoice.load(str(ruta)), nombre=ruta.stem)
+        log.info("Voz propia cargada: %s", ruta.name)
+    return _propia["voz"]
+
+
+def sintetizar(texto: str, velocidad: float, voz: str = "auto") -> bytes:
+    """voz: «propia», «base» (sharvard) o «auto» (la propia si está instalada)."""
     from piper import SynthesisConfig
-    mapa = _voz().config.speaker_id_map or {}
-    cfg = SynthesisConfig(length_scale=1.0 / velocidad, speaker_id=mapa.get(HABLANTE))
+    v = None
+    if voz in ("auto", "propia"):
+        try:
+            v = _voz_propia()
+        except Exception:  # noqa: BLE001 - un modelo propio roto no debe dejar a ARIA sin voz
+            log.exception("No se pudo cargar la voz propia; se usa la de base")
+    if v is None:
+        v = _voz()
+    mapa = v.config.speaker_id_map or {}
+    cfg = SynthesisConfig(length_scale=1.0 / velocidad, speaker_id=mapa.get(HABLANTE) if mapa else None)
     buf = io.BytesIO()
     with _cerrojo_piper:
         with wave.open(buf, "wb") as w:
-            _voz().synthesize_wav(texto, w, syn_config=cfg)
+            v.synthesize_wav(texto, w, syn_config=cfg)
     return buf.getvalue()
 
 
@@ -272,7 +306,9 @@ async def health():
 
 @app.get("/estado")
 async def estado():
+    propia = _ruta_propia()
     return {"whisper": WHISPER, "whisper_cargado": _whisper is not None, "voz": VOZ_PIPER,
+            "propia": propia.stem if propia else None,
             "activacion": "aria",
             "flujos": _flujos, "max_flujos": MAX_FLUJOS}
 
@@ -302,7 +338,8 @@ async def tts(request: Request):
         return JSONResponse({"error": "texto no válido"}, status_code=400)
     if not isinstance(vel, (int, float)) or isinstance(vel, bool) or not 0.5 <= vel <= 2.0:
         vel = 1.0
-    wav = await asyncio.to_thread(sintetizar, texto.strip(), float(vel))
+    voz = d.get("voz") if isinstance(d, dict) and d.get("voz") in ("auto", "propia", "base") else "auto"
+    wav = await asyncio.to_thread(sintetizar, texto.strip(), float(vel), voz)
     if isinstance(d, dict) and d.get("formato") == "ogg":  # notas de voz de Telegram (OGG/Opus)
         try:
             return Response(await asyncio.to_thread(wav_a_ogg, wav), media_type="audio/ogg")

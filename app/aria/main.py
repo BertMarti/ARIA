@@ -540,7 +540,9 @@ async def api_voz_estado():
 @app.get("/api/voz/voces")
 async def api_voz_voces(request: Request):
     """Catálogo de voces (todas femeninas), tonos y acentos, y la elección del usuario."""
-    return {"voces": [{"id": k, "desc": v} for k, v in voz.VOCES.items()],
+    propia = [{"id": voz.PROPIA, "nombre": "Voz propia de ARIA", "desc": "Entrenada en casa · sin internet ni límites", "local": True}] \
+        if await voz.voz_propia() else []
+    return {"voces": propia + [{"id": k, "desc": v} for k, v in voz.VOCES.items()],
             "tonos": [{"id": k, "nombre": v[0]} for k, v in voz.TONOS.items()],
             "acentos": [{"id": k, "nombre": v[0]} for k, v in voz.ACENTOS.items()],
             "actual": await asyncio.to_thread(voz.preferencias_de, request.state.usuario["id"]),

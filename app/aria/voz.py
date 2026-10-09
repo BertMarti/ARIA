@@ -282,10 +282,13 @@ PREF_DEFECTO = {"voz": TTS_VOZ if TTS_VOZ in VOCES else "Leda", "tono": "dulce",
 FRASE_MUESTRA = "Hola, soy ARIA. Estoy aquí para ayudarte en lo que necesites. ¿Qué tal te ha ido el día?"
 
 
+PROPIA = "propia"   # voz entrenada en casa (herramientas/voz-propia), servida por aria-voz sin internet
+
+
 def preferencia(datos: dict | None) -> dict:
     """Normaliza una preferencia de voz (valores desconocidos -> los de por defecto)."""
     d = dict(PREF_DEFECTO)
-    for k, validos in (("voz", VOCES), ("tono", TONOS), ("acento", ACENTOS)):
+    for k, validos in (("voz", {**VOCES, PROPIA: ""}), ("tono", TONOS), ("acento", ACENTOS)):
         if isinstance(datos, dict) and datos.get(k) in validos:
             d[k] = datos[k]
     return d
@@ -396,6 +399,8 @@ def gemini_vuelve() -> float | None:
 async def sintetizar_info(texto: str, vel: float, pref: dict | None = None) -> tuple[bytes, str]:
     """(wav, motor): «gemini» con la voz elegida por el usuario si hay clave y cuota; si no, «local» (Piper)."""
     p = preferencia(pref)
+    if p["voz"] == PROPIA:   # la voz propia vive en la Raspberry: ni cuota ni internet
+        return await sintetizar_local(texto, vel, PROPIA), PROPIA
     clave = (texto, round(vel, 2), p["voz"], p["tono"], p["acento"])
     if clave in _cache_tts:
         _cache_tts.move_to_end(clave)
@@ -412,10 +417,11 @@ async def sintetizar_info(texto: str, vel: float, pref: dict | None = None) -> t
     return await sintetizar_local(texto, vel), "local"
 
 
-async def sintetizar_local(texto: str, vel: float) -> bytes:
+async def sintetizar_local(texto: str, vel: float, voz: str = "auto") -> bytes:
+    """Piper en aria-voz. «auto» usa la voz propia si está instalada; si no, la de base."""
     try:
         async with _cliente(60) as c:
-            r = await c.post(f"{VOZ_URL}/tts", json={"texto": texto, "velocidad": vel})
+            r = await c.post(f"{VOZ_URL}/tts", json={"texto": texto, "velocidad": vel, "voz": voz})
     except httpx.HTTPError as e:
         raise AudioError(503, "El servicio de voz no responde.") from e
     if r.status_code != 200 or r.headers.get("content-type", "").split(";")[0] != "audio/wav":
@@ -560,9 +566,30 @@ def _ruta_muestra(p: dict) -> Path:
     return config.DATA_DIR / "voz-muestras" / f"{p['voz']}-{p['tono']}-{p['acento']}.wav"
 
 
+_propia_cache: dict = {}
+
+
+async def voz_propia() -> str | None:
+    """Nombre de la voz propia instalada en aria-voz (o None). Se consulta como mucho una vez por minuto."""
+    if _propia_cache and _ahora() - _propia_cache["t"] < 60:
+        return _propia_cache["nombre"]
+    nombre = None
+    try:
+        async with _cliente(5) as c:
+            r = await c.get(f"{VOZ_URL}/estado")
+        if r.status_code == 200:
+            nombre = r.json().get("propia")
+    except (httpx.HTTPError, ValueError):
+        pass
+    _propia_cache.update(t=_ahora(), nombre=nombre)
+    return nombre
+
+
 async def muestra(pref: dict) -> bytes:
     """Frase de prueba con esa voz. Se guarda en disco: cada combinación gasta cuota de Gemini una sola vez."""
     p = preferencia(pref)
+    if p["voz"] == PROPIA:
+        return await sintetizar_local(FRASE_MUESTRA, 1.0, PROPIA)
     ruta = _ruta_muestra(p)
     if ruta.exists():
         return ruta.read_bytes()

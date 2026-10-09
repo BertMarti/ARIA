@@ -81,6 +81,9 @@ services:
     container_name: aria-voz
     restart: unless-stopped
     networks: [voz]
+    # Voz propia (opcional): copia aquí es_ES-aria-medium.onnx y su .onnx.json (ver herramientas/voz-propia)
+    volumes:
+      - ./data/voz-propia:/voz-propia:ro
     environment:
       VOZ_HILOS: ${VOZ_HILOS:-4}
       VOZ_CONFIANZA: ${VOZ_CONFIANZA:-0.6}

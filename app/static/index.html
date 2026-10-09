@@ -133,10 +133,14 @@
     <article class="tarjeta info-cartera"><h2>Mis inversiones</h2><div id="info-mercados" class="rejilla"><p class="muted">Cargando mercados…</p></div></article>
     <div class="info-layout"><article class="tarjeta"><div id="info-temas" class="pestanas"></div><div id="info-resumen" class="resumen-cuerpo"></div><ul id="info-noticias" class="lista-info"></ul></article>
       <aside class="tarjeta"><h2>Temas</h2><p class="muted pequeno-txt">Personaliza las noticias que quieres ver.</p><ul id="info-temas-lista"></ul></aside></div>
+  </section>
+
   <section id="v-agenda" class="vista" hidden>
     <header class="vista-cab"><h1>Agenda</h1><div class="fila-form"><button type="button" class="fantasma pequeno" id="agenda-hoy">Hoy</button><button type="button" class="fantasma pequeno" id="agenda-prev">Anterior</button><button type="button" class="fantasma pequeno" id="agenda-next">Siguiente</button><button type="button" class="primario pequeno" id="agenda-nuevo">Nuevo evento</button></div></header>
     <p id="agenda-rango" class="muted"></p>
     <div class="rejilla"><article class="tarjeta ancha"><div class="fila-form"><button type="button" class="fantasma pequeno agenda-tab" data-modo="dia">Día</button><button type="button" class="fantasma pequeno agenda-tab" data-modo="semana">Semana</button><button type="button" class="fantasma pequeno agenda-tab" data-modo="mes">Mes</button></div><ul id="agenda-eventos" class="filas"></ul></article><article class="tarjeta"><h2>Próximos cumpleaños</h2><ul id="agenda-cumples" class="filas"></ul></article></div>
+  </section>
+
   <!-- MAPA -->
   <section id="v-mapa" class="vista vista-mapa" hidden>
     <header class="vista-cab"><div><h1>Mapa</h1><p class="muted">OpenStreetMap, sin claves ni seguimiento.</p></div></header>
@@ -625,12 +629,24 @@
   </div>
 </dialog>
 
-<dialog id="dlg-info" class="modal" aria-labelledby="info-dlg-titulo">
+<dialog id="dlg-info" class="modal modal-ancho" aria-labelledby="info-dlg-titulo">
   <h2 id="info-dlg-titulo">Personalizar Información</h2>
-  <p class="muted">Un tema por línea. Se guardan solo tus preferencias.</p>
-  <form id="info-form"><textarea id="info-temas-editar" rows="7" maxlength="420" aria-label="Temas"></textarea>
-    <div class="botones"><button type="button" class="fantasma" data-cerrar>Cancelar</button><button type="submit" class="primario">Guardar temas</button></div>
-  </form>
+  <section class="par-seccion" aria-labelledby="info-cartera-titulo">
+    <h3 id="info-cartera-titulo">Mis inversiones</h3>
+    <p class="muted pequeno-txt">La cantidad y el precio medio de compra son opcionales y privados: con ellos ARIA calcula el valor de tu posición y tu ganancia o pérdida.</p>
+    <ul id="info-cartera-lista" class="cartera-lista"></ul>
+    <form id="info-buscar" class="fila-form"><label class="sr" for="info-buscar-texto">Buscar valor</label>
+      <input id="info-buscar-texto" maxlength="60" placeholder="Busca: msci world, apple, ibex, bitcoin…" required>
+      <button type="submit" class="fantasma">Buscar</button></form>
+    <ul id="info-buscar-resultados" class="cartera-lista" aria-live="polite"></ul>
+  </section>
+  <section class="par-seccion">
+    <h3>Temas de noticias</h3>
+    <p class="muted pequeno-txt">Un tema por línea.</p>
+    <form id="info-form"><textarea id="info-temas-editar" rows="6" maxlength="420" aria-label="Temas"></textarea>
+      <div class="botones"><button type="button" class="fantasma" data-cerrar>Cerrar</button><button type="submit" class="primario">Guardar temas</button></div>
+    </form>
+  </section>
 </dialog>
 
 <script src="/static/util.js"></script>

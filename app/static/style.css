@@ -504,3 +504,30 @@ kbd { font-family: var(--mono); font-size: .8em; border: 1px solid var(--borde-f
 .pildora.mod-error { color: var(--mal); border-color: rgba(251, 93, 106, .5); background: rgba(251, 93, 106, .08); }
 #modulos-lista .fila-info { gap: .15rem; flex: 1; }
 #modulos-lista code { font-size: .8rem; }
+
+/* Información → Mis inversiones */
+#info-mercados { grid-template-columns: repeat(auto-fill, minmax(min(100%, 15.5rem), 1fr)); }
+.inversion { display: grid; gap: .45rem; align-content: start; position: relative; overflow: hidden; }
+.inversion::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--acento), var(--acento-2)); opacity: .8; }
+.inv-cab { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; min-width: 0; }
+.inv-cab strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-precio { display: flex; align-items: baseline; flex-wrap: wrap; gap: .3rem .6rem; font-size: 1.65rem; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.inv-dia { font-size: .9rem; font-weight: 600; padding: .1rem .5rem; border-radius: 999px; }
+.inv-dia.sube, .chip-var.sube b, .inv-posicion .sube { color: var(--ok); }
+.inv-dia.baja, .chip-var.baja b, .inv-posicion .baja { color: var(--mal); }
+.inv-dia.sube { background: rgba(52, 211, 153, .12); }
+.inv-dia.baja { background: rgba(251, 93, 106, .12); }
+.inv-periodos { display: flex; flex-wrap: wrap; gap: .35rem; }
+.chip-var { font-size: .78rem; color: var(--muted); border: 1px solid var(--borde); border-radius: 999px; padding: .12rem .55rem; font-variant-numeric: tabular-nums; }
+.chip-var.nulo b { color: var(--muted); font-weight: 500; }
+.inv-posicion { display: grid; gap: .15rem; font-size: .88rem; padding-top: .45rem; border-top: 1px solid var(--borde); }
+.mini-grafica { width: 100%; height: 44px; display: block; }
+.mini-grafica .linea { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.mini-grafica.sube .linea { stroke: var(--ok); } .mini-grafica.baja .linea { stroke: var(--mal); }
+.mini-grafica .area { stroke: none; opacity: .14; }
+.mini-grafica.sube .area { fill: var(--ok); } .mini-grafica.baja .area { fill: var(--mal); }
+.cartera-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+.cartera-fila { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .4rem .8rem; padding: .45rem .6rem; border: 1px solid var(--borde); border-radius: 10px; }
+.cartera-fila input { width: 8.5rem; }
+@media (max-width: 560px) { .cartera-fila input { width: 100%; } .inv-precio { font-size: 1.45rem; } }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .inv-dia.sube { background: rgba(5, 150, 105, .1); } }

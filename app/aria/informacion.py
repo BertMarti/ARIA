@@ -118,22 +118,36 @@ def lista(uid: int) -> list[dict]:
                                               "FROM info_seguimiento WHERE user_id=? ORDER BY id", (uid,))]
 
 
+def _numero_opcional(x, campo: str):
+    if x in (None, ""):
+        return None
+    try:
+        n = float(str(x).replace(",", "."))
+    except ValueError:
+        raise InformacionError(f"{campo} debe ser un número.") from None
+    if n < 0 or n > 1e12:
+        raise InformacionError(f"{campo} no es válido.")
+    return n
+
+
 def anadir_valor(uid: int, simbolo: str, nombre: str | None = None, tipo: str | None = None,
                  cantidad=None, precio_medio=None) -> dict:
+    """Añade un valor al seguimiento o, si ya estaba, actualiza su nombre, cantidad y precio medio."""
     v = _valor(simbolo)
     simbolo_real, tipo_real = v["simbolo"], v["tipo"]
-    if len(lista(uid)) >= MAX_SEGUIMIENTO:
-        raise InformacionError("La lista de seguimiento admite como máximo 15 valores.")
+    cantidad, precio_medio = _numero_opcional(cantidad, "La cantidad"), _numero_opcional(precio_medio, "El precio medio")
+    existentes = {x["simbolo"]: x for x in lista(uid)}
     with closing(db._con()) as con, con:
-        try:
+        if simbolo_real in existentes:
+            con.execute("UPDATE info_seguimiento SET nombre=?, cantidad=?, precio_medio=? WHERE user_id=? AND simbolo=?",
+                        (nombre or existentes[simbolo_real]["nombre"], cantidad, precio_medio, uid, simbolo_real))
+        else:
+            if len(existentes) >= MAX_SEGUIMIENTO:
+                raise InformacionError("La lista de seguimiento admite como máximo 15 valores.")
             con.execute("INSERT INTO info_seguimiento(user_id, simbolo, nombre, tipo, cantidad, precio_medio) "
                         "VALUES (?,?,?,?,?,?)", (uid, simbolo_real, nombre or v.get("nombre", simbolo_real),
                                                    tipo or tipo_real, cantidad, precio_medio))
-        except Exception as e:
-            if "UNIQUE" in str(e):
-                raise InformacionError("Ese valor ya está en tu seguimiento.") from e
-            raise
-    return lista(uid)[-1]
+    return next(x for x in lista(uid) if x["simbolo"] == simbolo_real)
 
 
 def borrar_valor(uid: int, identificador: int) -> bool:
@@ -183,6 +197,18 @@ async def _coingecko(ids: list[str]) -> list[dict]:
         return [{"simbolo": i, "error": "Cotización no disponible ahora"} for i in ids]
 
 
+def _cierre_anterior(ts: list, cierres: list, hora_precio, defecto):
+    """Cierre del día ANTERIOR a la última cotización. `chartPreviousClose` de Yahoo es el cierre previo a todo el
+    rango pedido (hace un mes o un año), así que no sirve para la variación diaria."""
+    validos = [(t, c) for t, c in zip(ts, cierres) if c is not None and t]
+    if not validos or not hora_precio:
+        return defecto
+    dia = lambda t: time.strftime("%Y-%m-%d", time.gmtime(t))
+    if hora_precio and dia(validos[-1][0]) >= dia(hora_precio):
+        return validos[-2][1] if len(validos) > 1 else defecto   # la serie ya incluye el día de la cotización
+    return validos[-1][1]
+
+
 async def yahoo(simbolo: str, rango: str = "1mo") -> dict:
     try:
         async with httpx.AsyncClient(timeout=8, headers={"User-Agent": "Mozilla/5.0 ARIA/2.0"}) as cl:
@@ -190,9 +216,10 @@ async def yahoo(simbolo: str, rango: str = "1mo") -> dict:
                              params={"range": rango, "interval": "1d"})
             r.raise_for_status(); meta = r.json()["chart"]["result"][0]
         m, q = meta.get("meta", {}), (meta.get("indicators", {}).get("quote") or [{}])[0]
+        ts, cierres = meta.get("timestamp", []) or [], q.get("close", []) or []
         return {"simbolo": simbolo, "precio": m.get("regularMarketPrice"), "divisa": m.get("currency"),
-                "anterior": m.get("chartPreviousClose"), "timestamp": meta.get("timestamp", []),
-                "cierre": q.get("close", [])}
+                "anterior": _cierre_anterior(ts, cierres, m.get("regularMarketTime"), m.get("chartPreviousClose")),
+                "timestamp": ts, "cierre": cierres}
     except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError):
         return {"simbolo": simbolo, "error": "Cotización no disponible ahora"}
 
@@ -221,7 +248,7 @@ async def mercados(uid: int) -> dict:
             x = dict(cr.get(v["simbolo"], {"simbolo": v["simbolo"], "error": "Sin datos"}))
             x.update({"variacion_dia": x.get("variacion"), "variacion_semana": None,
                       "variacion_mes": None, "variacion_ano": None})
-        else: x = await _a_euros(await yahoo(v["simbolo"]))
+        else: x = await _a_euros(await yahoo(v["simbolo"], "1y"), "1y")   # un año: variaciones de semana, mes y año
         x.update({"id": v.get("id"), "nombre": v.get("nombre", x.get("simbolo")), "cantidad": v.get("cantidad"),
                   "precio_medio": v.get("precio_medio")})
         if x.get("cantidad") is not None and x.get("precio") is not None and x.get("precio_medio") is not None:

@@ -64,32 +64,36 @@ const Inicio = (() => {
     toast("Sistema: " + partes.join(" · ") + " · encendida " + d.uptime_texto);
   }
 
-  // --- Resumen de buenos días («Tu resumen de hoy») ---
+  // --- Resumen diario: una sola fuente de datos y DOM seguro ---
   const num = (n) => fmtNum(n);
   const dec = (v) => String(v).replace(".", ",");
-  function lista(items) { return el("ul", { class: "resumen-lista" }, ...items.map((t) => el("li", null, t))); }
-  function bloque(titulo, contenido) { return el("section", { class: "resumen-bloque" }, el("h3", null, titulo), contenido); }
+  function icono(tipo) {
+    const paths = { tiempo: "M12 3v18M5 8h14M7 16h10", apps: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z", red: "M12 4v7m0 0-6 6m6-6 6 6M8 4h8", dinero: "M4 6h16v12H4zM7 12h10", bolsa: "M5 8h14v12H5zM8 8V5h8v3", agenda: "M5 4v3m14-3v3M4 9h16M5 6h14v14H5z" };
+    return el("svg", { class: "resumen-icono", viewBox: "0 0 24 24", "aria-hidden": "true" }, el("path", { d: paths[tipo] || paths.apps }));
+  }
+  function tarjetaResumen(tipo, titulo, contenido, clase = "") { return el("article", { class: "resumen-card " + clase }, el("div", { class: "resumen-card-cab" }, icono(tipo), el("h3", null, titulo)), contenido); }
+  function progreso(valor) { const b = el("div", { class: "resumen-barra" }); const f = el("span"); f.style.width = Math.max(0, Math.min(100, Number(valor) || 0)) + "%"; b.append(f); return b; }
+  function cifra(texto, detalle = "") { return el("div", { class: "resumen-cifra" }, el("strong", null, texto), el("span", { class: "muted" }, detalle)); }
   function pintarResumen(d) {
     const c = $("resumen-cuerpo"); c.replaceChildren();
     c.append(el("p", { class: "resumen-saludo" }, el("strong", null, d.saludo), " · " + d.fecha_texto));
-    if (d.tiempo) c.append(bloque("El tiempo", el("p", null, d.tiempo.ciudad + ": " + d.tiempo.cielo + (d.tiempo.actual != null ? ", ahora " + d.tiempo.actual + " °C" : "") + ", entre " + d.tiempo.min + " y " + d.tiempo.max + " °C" + (d.tiempo.lluvia != null ? " · lluvia " + d.tiempo.lluvia + " %" : ""))));
-    if (d.ayer) c.append(bloque("Ayer", lista(d.ayer.resumen.split("\n").map((l) => l.replace(/^[-•\s]+/, "")).filter(Boolean))));
-    const casa = d.casa || {}, f = [];
-    const a = casa.anuncios;
-    f.push(a ? num(a.bloqueadas) + " anuncios bloqueados " + (a.dia === "ayer" ? "ayer" : "(últimas 24 h)") + " (" + dec(a.porcentaje) + " % de " + num(a.consultas) + " consultas)" : "Anuncios bloqueados: no disponible");
-    if (casa.vpn) {
-      const v = casa.vpn;
-      f.push(v.disponible ? "VPN: " + v.conectados + " de " + v.total + " dispositivos conectados ahora" + (v.ultimas_24h.length ? "; en 24 h: " + v.ultimas_24h.join(", ") : "") : "VPN: no disponible");
+    if (d.tiempo) c.append(tarjetaResumen("tiempo", "El tiempo", cifra((d.tiempo.actual ?? "—") + " °C", d.tiempo.ciudad + " · " + d.tiempo.min + "–" + d.tiempo.max + " °C · lluvia " + d.tiempo.lluvia + " %")));
+    const a = d.aplicaciones;
+    if (a) {
+      const cuerpo = el("div", { class: "resumen-apps" }, el("p", { class: "resumen-veredicto" }, a.veredicto || ""));
+      if (a.shield) cuerpo.append(el("p", null, "SHIELD-DNS · " + num(a.shield.consultas) + " consultas · " + num(a.shield.bloqueadas) + " bloqueos (" + a.shield.porcentaje + " %)") );
+      if (a.heimdall) cuerpo.append(el("p", null, "HEIMDALL · " + a.heimdall.conectados + " de " + a.heimdall.total + " conectados"));
+      if (a.raspberry) { cuerpo.append(el("p", null, "Raspberry · " + (a.raspberry.temperatura ?? "—") + " °C · RAM " + (a.raspberry.ram ?? "—") + " %")); cuerpo.append(progreso(a.raspberry.ram)); cuerpo.append(progreso(a.raspberry.disco)); }
+      c.append(tarjetaResumen("apps", "Tus aplicaciones", cuerpo, "resumen-apps-card"));
     }
-    const s = casa.sistema;
-    if (s) f.push("Raspberry: " + [s.temperatura != null ? dec(s.temperatura) + " °C" : null, s.ram != null ? "RAM " + s.ram + " %" : null, s.disco != null ? "disco " + s.disco + " %" : null].filter(Boolean).join(" · "));
-    if (casa.copia) f.push("Última copia fuera de la Pi: " + (casa.copia.disponible ? casa.copia.hace + (casa.copia.antigua ? " (antigua)" : "") : "no disponible"));
-    c.append(bloque("En casa", lista(f)));
-    if (d.recuerdos && d.recuerdos.length) c.append(bloque("Por si te viene bien hoy", lista(d.recuerdos)));
+    if (d.red) c.append(tarjetaResumen("red", "Red", el("p", null, d.red.nuevos.length ? d.red.nuevos.length + " dispositivos nuevos" : "Sin dispositivos nuevos")));
+    if (d.finanzas) { const f = d.finanzas; c.append(tarjetaResumen("dinero", "Finanzas", el("div", null, cifra((f.gastos / 100).toFixed(2).replace(".", ",") + " €", "este mes · anterior " + (f.mes_anterior / 100).toFixed(2).replace(".", ",") + " €"), ...f.presupuestos.slice(0, 3).map((p) => el("div", { class: "resumen-presupuesto" }, el("span", null, p.categoria), progreso(p.porcentaje)))))); }
+    if (d.inversiones) c.append(tarjetaResumen("bolsa", "Mis inversiones", el("p", null, d.inversiones.valores.map((v) => v.nombre + ": " + (v.precio ?? "sin datos") + " €").join(" · "))));
+    const ag = d.agenda || {}; c.append(tarjetaResumen("agenda", "Hoy", el("p", null, (ag.eventos || []).length + " eventos · " + (d.recordatorios || []).length + " recordatorios")));
   }
   async function resumen(refrescar) {
     const tarjeta = $("resumen-hoy");
-    const { ok, data } = await api("/api/briefing" + (refrescar ? "?refrescar=1" : ""));
+    const { ok, data } = await api("/api/resumen-diario");
     if (!ok || !data.fecha) { tarjeta.hidden = true; return; }
     if (!refrescar && Prefs.get("resumen_cerrado", "") === data.fecha) { tarjeta.hidden = true; return; }
     pintarResumen(data); tarjeta.hidden = false; tarjeta.dataset.fecha = data.fecha;
@@ -99,7 +103,7 @@ const Inicio = (() => {
     clearInterval(temporizador); temporizador = null;
     if (!si) return;
     saludo(); estados(); resumen(false); Modulos.pintarInicio();
-    temporizador = setInterval(() => { if (!document.hidden && !document.querySelector("dialog[open]")) { estados(); Modulos.pintarInicio(); } }, 15000);
+     temporizador = setInterval(() => { if (!document.hidden && !document.querySelector("dialog[open]")) { estados(); resumen(true); Modulos.pintarInicio(); } }, 300000);
   }
 
   async function iniciar() {

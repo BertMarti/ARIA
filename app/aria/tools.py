@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import agenda, busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, informacion, mapas, memoria, proyectos, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, vpn, vpn_ubicaciones
+from . import agenda, busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, informacion, mapas, memoria, proyectos, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -50,7 +50,7 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 
 
 # Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
-SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn",
+SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "resumen_diario",
                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo",
                           "resumir_enlace", "resumen_noticias", "precio", "mis_mercados", "mis_inversiones",
                            "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo",
@@ -159,6 +159,7 @@ _INTENCIONES = [
     ((r"\b(resumen|res[uú]meme|titulares?|noticias?)\b", r"\b(tema|actualidad|tecnolog[ií]a|econom[ií]a|deportes?|ciencia|espa[nñ]a)\b"), {"resumen_noticias"}),
     ((r"\b(precio|cotizaci[oó]n|valor)\b", r"\b(bitcoin|btc|ethereum|eth|ibex|apple|acciones?|bolsa)\b"), {"precio"}),
     ((r"\b(mercados?|inversiones?|cartera|bolsa)\b",), {"mis_mercados", "mis_inversiones"}),
+    ((r"\b(resumen del d[ií]a|resumen diario|res[uú]meme el d[ií]a)\b",), {"resumen_diario"}),
     # Memoria personal: «recuerda que…», «apunta que…» / «olvida que…», «no recuerdes…»
     ((r"\b(recuerda|acu[eé]rdate|ac[eé]rdate|apunta|anota|memoriza|ten en cuenta)\b",), {"recordar"}),
     ((r"\brecu[eé]rdame\b", r"!" + _CUANDO), {"recordar", "recordatorio"}),
@@ -321,6 +322,14 @@ async def mis_inversiones(uid: int) -> str:
         else:
             partes.append(f"{x['nombre']}: {x.get('precio', x.get('error', 'sin datos'))} {x.get('divisa', '')}")
     return "Tu cartera hoy: " + "; ".join(partes)
+
+
+@tool("resumen_diario", "Prepara el resumen completo del día con tiempo, finanzas, agenda y estado de la casa.", usa_uid=True)
+async def resumen_diario_tool(uid: int) -> str:
+    usuario = next((u for u in usuarios.listar() if u["id"] == uid),
+                    {"id": uid, "rol": "usuario"})
+    from . import resumen_diario   # perezoso: resumen_diario importa módulos que dependen de tools
+    return resumen_diario._presentar(await resumen_diario.construir_resumen_diario(usuario))
 
 
 @tool("estado_servicios", "Consulta el estado de los servicios SHIELD-DNS (bloqueo de anuncios) y HEIMDALL (VPN).")

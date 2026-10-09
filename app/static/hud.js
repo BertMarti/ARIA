@@ -14,10 +14,11 @@ const Hud = (() => {
   }
   function ocultar(id) { $w(id).hidden = true; }
   async function datos() {
-    const peticiones = [api("/api/briefing"), api("/api/avisos"), api("/api/recordatorios")];
+    const peticiones = [api("/api/resumen-diario"), api("/api/avisos"), api("/api/recordatorios")];
     if (Sesion.esAdmin) peticiones.push(api("/api/system"), api("/api/vpn/clients"), api("/api/shield"));
     const [b, a, r, s, v, sh] = await Promise.allSettled(peticiones);
     if (b?.value?.ok && b.value.data.tiempo) { const t = b.value.data.tiempo; texto("hud-tiempo", `${t.ciudad}: ${t.cielo}, ${t.actual ?? ""} °C · ${t.min}-${t.max} °C`); } else ocultar("hud-tiempo");
+    if (b?.value?.ok) { const r = $("hud-resumen-cuerpo"); r.replaceChildren(); r.append(el("p", { class: "resumen-veredicto" }, b.value.data.aplicaciones?.veredicto || "Resumen disponible")); r.append(el("p", null, b.value.data.fecha_texto)); }
     if (a?.value?.ok) texto("hud-avisos", `${a.value.data.no_leidos || 0} sin leer`); else ocultar("hud-avisos");
     if (r?.value?.ok) { const rs = r.value.data.recordatorios || []; texto("hud-recordatorio", rs.length ? `${rs[0].texto} · ${rs[0].descripcion}` : "Ninguno pendiente"); } else ocultar("hud-recordatorio");
     if (!Sesion.esAdmin) return;

@@ -26,7 +26,7 @@ from contextlib import closing
 
 import httpx
 
-from . import avisos, config, db, enlaces, recordatorios, rutinas, telemetria
+from . import avisos, config, db, enlaces, recordatorios, resumen_diario, rutinas, telemetria
 
 log = logging.getLogger("aria.telegram")
 
@@ -340,6 +340,24 @@ async def enviar_texto(b, chat_id: int, md: str, teclado_: dict | None = None) -
     return enviados
 
 
+async def enviar_html(b, chat_id: int, texto: str, teclado_: dict | None = None) -> list:
+    """Envía HTML ya escapado sin volver a pasarlo por el conversor Markdown."""
+    trozos, actual = [], ""
+    for seccion in (texto or "").split("\n\n"):
+        if actual and len(actual) + len(seccion) + 2 > LIMITE:
+            trozos.append(actual)
+            actual = ""
+        actual += ("\n\n" if actual else "") + seccion
+    if actual or not trozos:
+        trozos.append(actual)
+    enviados = []
+    for i, trozo in enumerate(trozos):
+        extra = {"reply_markup": teclado_} if teclado_ and i == len(trozos) - 1 else {}
+        enviados.append(await b.llamar("sendMessage", chat_id=chat_id, text=trozo[:LIMITE], parse_mode="HTML",
+                                       link_preview_options={"is_disabled": True}, **extra))
+    return enviados
+
+
 # --- Límites ------------------------------------------------------------------------------------------------------
 _lim_mensajes = avisos.Limitador(20, 60)        # por chat vinculado
 _lim_aviso_rapido = avisos.Limitador(1, 60)
@@ -609,8 +627,7 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
     elif cmd == "estado":
         await enviar(await texto_estado(u))
     elif cmd == "resumen":
-        from . import briefing
-        await enviar(briefing.texto_hablado(await briefing.obtener(u)))
+        await enviar_html(b, chat_id, resumen_diario.telegram(await resumen_diario.construir_resumen_diario(u)))
     elif cmd == "tiempo":
         await enviar(await _texto_tiempo(arg))
     elif cmd == "recordatorios":
@@ -1007,7 +1024,10 @@ async def canal(uid: int, aviso: dict) -> bool:
                 fila.append({"text": "Abrir ARIA", "url": f"{config.URL_PUBLICA}/#{aviso['enlace']}"})
             filas.append(fila)
         try:
-            await enviar_texto(b, c["chat_id"], cab + aviso["texto"], teclado(*filas) if filas else None)
+            if aviso.get("tipo") == "resumen":
+                await enviar_html(b, c["chat_id"], cab + aviso["texto"], teclado(*filas) if filas else None)
+            else:
+                await enviar_texto(b, c["chat_id"], cab + aviso["texto"], teclado(*filas) if filas else None)
             enviado = True
         except TelegramError as e:
             log.warning("No se pudo enviar el aviso por Telegram (%s)", e.codigo)

@@ -312,6 +312,14 @@ body.modo-hud > .nav, body.modo-hud > .manos-libres, body.modo-hud .campana-zona
 .resumen-saludo { margin: .6rem 0 .2rem; }
 .resumen-bloque h3 { margin: .8rem 0 .2rem; font-size: .95rem; color: var(--acento); text-transform: none; letter-spacing: 0; }
 .resumen-lista { margin: 0; padding-left: 1.2rem; }
+.resumen-cuerpo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.resumen-saludo { grid-column: 1 / -1; }
+.resumen-card { min-width: 0; padding: 1rem; border: 1px solid var(--borde); border-radius: calc(var(--radio) - 2px); background: color-mix(in srgb, var(--panel) 82%, var(--acento)); }
+.resumen-card-cab { display: flex; align-items: center; gap: .55rem; margin-bottom: .65rem; }.resumen-card h3 { margin: 0; color: var(--txt); }
+.resumen-icono { width: 1.35rem; height: 1.35rem; fill: none; stroke: var(--acento); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+.resumen-cifra { display: grid; gap: .15rem; }.resumen-cifra strong { font-size: clamp(1.35rem, 3vw, 2rem); color: var(--txt); font-variant-numeric: tabular-nums; }.resumen-veredicto { color: var(--ok); font-weight: 700; }.resumen-barra { height: .4rem; margin: .25rem 0 .55rem; overflow: hidden; border-radius: 99px; background: var(--borde); }.resumen-barra span { display: block; height: 100%; border-radius: inherit; background: var(--acento); transition: width .3s ease; }.resumen-presupuesto { display: grid; gap: .2rem; margin-top: .45rem; }
+.hud-resumen { position: absolute; z-index: 3; right: 1rem; bottom: 5rem; width: min(320px, calc(100% - 2rem)); padding: .8rem 1rem; border: 1px solid rgba(56,214,255,.3); border-radius: 12px; background: rgba(10,20,34,.8); color: var(--txt); }.hud-resumen summary { cursor: pointer; color: var(--acento); font-weight: 700; }
+@media (max-width: 700px) { .resumen-cuerpo { grid-template-columns: 1fr; }.resumen-saludo { grid-column: auto; }.resumen-card { padding: .9rem; } }
 .mem-nuevo { margin-top: .8rem; }
 
 /* Marquesina: recorte con «…»; al pasar el ratón se desliza de derecha a izquierda */

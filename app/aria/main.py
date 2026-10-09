@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTex
 from fastapi.staticfiles import StaticFiles
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, estadisticas, finanzas, informacion, mapas, memoria, modelos, modulos, permisos, proyectos, push, recordatorios, red, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, cerebros, chat, config, control, cve, db, diario, estadisticas, finanzas, informacion, mapas, memoria, modelos, modulos, permisos, proyectos, push, recordatorios, red, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -691,6 +691,11 @@ async def api_briefing(request: Request, refrescar: int = 0):
     """Resumen de buenos días del usuario (caché del día; ?refrescar=1 lo regenera). El rol `usuario` no recibe
     datos de administrador (VPN, copias)."""
     return await briefing.obtener(request.state.usuario, refrescar=bool(refrescar))
+
+
+@app.get("/api/resumen-diario")
+async def api_resumen_diario(request: Request):
+    return await resumen_diario.construir_resumen_diario(request.state.usuario)
 
 
 # --- Modelos ---

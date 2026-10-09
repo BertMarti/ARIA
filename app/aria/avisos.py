@@ -258,7 +258,8 @@ async def emitir(tipo: str, severidad: str, texto: str, enlace: str = "", destin
             await automatizaciones.evento(tipo, {"tipo": tipo, "texto": texto, **(extra or {})})
         except Exception:  # noqa: BLE001 - una regla rota no debe afectar a los avisos
             log.exception("Falló el hook de automatizaciones")
-    texto = " ".join(str(texto).split())[:MAX_TEXTO] if "\n" not in str(texto) else str(texto).strip()[:MAX_TEXTO * 3]
+    limite_texto = 4096 if tipo == "resumen" else MAX_TEXTO * 3
+    texto = " ".join(str(texto).split())[:MAX_TEXTO] if "\n" not in str(texto) else str(texto).strip()[:limite_texto]
     if destinatarios is None:
         destinatarios = await asyncio.to_thread(admins)
     hechos = []
@@ -538,7 +539,8 @@ async def briefings_programados(ref: datetime | None = None) -> list:
             continue
         await asyncio.to_thread(_anotar_enviado, clave)  # antes de enviar: si falla, no se repite cada 20 s
         try:
-            texto = briefing.texto_hablado(await briefing.obtener(u))
+            from . import resumen_diario
+            texto = resumen_diario.telegram(await resumen_diario.construir_resumen_diario(u))
         except Exception:  # noqa: BLE001
             log.exception("No se pudo preparar el resumen de %s", u["id"])
             continue

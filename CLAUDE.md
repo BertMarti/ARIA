@@ -47,6 +47,8 @@ Pruebas unitarias: ver README (sección Pruebas). Prueba real: login con `ARIA_U
 - CSP: el audio se reproduce con WebAudio (`decodeAudioData`), así que no hace falta `media-src blob:`; el WebSocket va a `'self'`.
 - `faster-whisper` 1.2.1 no funciona con PyAV 19 (`metadata_errors`): `av<19`. `libvosk.so` necesita `libatomic1`.
 
+- Tono de voz de ARIA: femenina, cálida y cercana (tú), en castellano peninsular. Los tonos se definen en `voz.TONOS`; cualquier tono nuevo debe indicarse en español y probarse con las muestras (`/api/voz/muestra`), que se guardan en `data/voz-muestras/`.
+
 ## Visión (2026-10-08)
 - `vision.py`: tipo real por bytes (JPEG/PNG/WebP), ≤ 5 MB, `sin_metadatos` (quita APP1/APP13/COM de JPEG, tEXt/eXIf de PNG, EXIF/XMP de WebP; conserva ICC) sin Pillow; proveedores OpenAI-compatibles Gemini → Groq con esperas en `cerebros._esperas` (claves `vision_*`); nunca el local. Límite por usuario con `voz.Limitador`.
 - `/api/chat` acepta `imagen` (data URL; cuerpo ≤ 7,2 MB) → `chat.conversar_imagen` (sin herramientas ni agentes, sin aprendizaje). Evento `ticket` con ficha en memoria (`vision.proponer`/`tomar`: usuario, un uso, 30 min) → `POST`/`DELETE /api/vision/tickets/{token}`. Telegram usa sus fichas (`ticket` + `cancelar`).

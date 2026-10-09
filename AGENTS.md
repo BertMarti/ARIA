@@ -52,6 +52,7 @@ Extensiones enchufables en `modulos/<id>/` (montada `:ro` en `/srv/modulos`): `m
 - Nunca enviar claves privadas ni texto de la API/modelo al navegador vía `innerHTML`.
 - Solo tocar contenedores `aria-*`. No hacer push sin revisión.
 - La documentación debe describir solo lo que existe.
+- Escaparate público (cuando exista): es lo único visible sin sesión. Solo datos inventados, todo estático y pregrabado (sin IA en vivo, formularios, analítica ni cookies), tipografías alojadas en ARIA y la misma CSP estricta.
 
 ## Trabajo con varios modelos (opcional, vía OpenCode)
 

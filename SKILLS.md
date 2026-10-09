@@ -86,6 +86,11 @@ Los emails de `ARIA_ADMIN_EMAILS` en `.env` son siempre administradores y no se 
 - Cambiar la voz de Piper o el modelo Whisper: `docker compose build --build-arg VOZ_PIPER=es_ES-davefx-medium --build-arg VOZ_WHISPER=small voz` (small es ~2,5 veces más lento en la Pi).
 - Si «Aria» se activa sola: sube `VOZ_CONFIANZA` en `.env` (por defecto 0.6) y `docker compose up -d`.
 
+## Playbook: elegir la voz o crear una propia
+- Elegir: Ajustes → General → Voz → «Voz de ARIA»: ▶ para escuchar, «Elegir», tono y acento. Cada combinación nueva gasta una petición de Gemini la primera vez.
+- Si no suena la voz elegida, es la cuota de Gemini: ARIA avisa y usa la voz local hasta que vuelve.
+- Voz propia (local, sin cuotas): seguir [herramientas/voz-propia](herramientas/voz-propia/README.md) y copiar `es_ES-aria-medium.onnx` y su `.onnx.json` a `data/voz-propia/`.
+
 ## Playbook: crear el bot de Telegram y vincularlo
 1. Telegram → @BotFather → `/newbot` → nombre «ARIA» y usuario acabado en `bot`. Copia el token (no lo pegues en ningún chat).
 2. `.env`: `TELEGRAM_BOT_TOKEN=<token>`; `docker compose up -d` (recrea `aria-app`).

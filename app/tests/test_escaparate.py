@@ -40,8 +40,19 @@ def test_sin_estilos_ni_scripts_en_linea_y_versionado():
     assert "/static/escaparate/escaparate.js?v=" in html
 
 
+# Huellas (SHA-256, 16 primeros caracteres) de términos privados que nunca deben salir en el escaparate.
+# Se guardan cifradas a propósito: el repositorio es público y no debe contener los términos en claro.
+HUELLAS_PRIVADAS = {"cdb9e920c729ca5c", "5218e6cf2cde8fba", "4bdbc215d8dc3c57", "1c3cc04ef6615b24", "6a62362c11e91c9f"}
+
+
+def _huella(t: str) -> str:
+    import hashlib
+    return hashlib.sha256(t.encode()).hexdigest()[:16]
+
+
 def test_sin_llamadas_a_la_api_ni_datos_reales():
     texto = "".join(p.read_text(encoding="utf-8") for p in ESC.glob("*.*") if p.suffix in (".html", ".js", ".css"))
     assert "/api/" not in texto and "fetch(" not in texto
-    for prohibido in ():
-        assert prohibido not in texto, prohibido
+    assert not re.search(r"192\.168\.(?!1\.)\d+\.", texto), "solo IPs de ejemplo 192.168.1.x"
+    palabras = set(re.findall(r"[\w.-]+", texto.lower()))
+    assert not {_huella(w) for w in palabras} & HUELLAS_PRIVADAS, "hay un dato privado en el escaparate"

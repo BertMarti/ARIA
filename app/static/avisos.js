@@ -53,7 +53,7 @@ const Avisos = (() => {
     const a = structuredClone(estado.ajustes);
     document.querySelectorAll("#av-tipos input[data-tipo]").forEach((c) => { a.tipos[c.dataset.tipo] = c.checked; });
     a.silencio = { activo: $("av-silencio").checked, desde: $("av-desde").value || "23:00", hasta: $("av-hasta").value || "08:00" };
-    a.briefing = { activo: $("av-briefing").checked, hora: $("av-briefing-hora").value || "08:00", canal: $("av-briefing-canal").value };
+    a.briefing = { activo: $("av-briefing").checked, hora: $("av-briefing-hora").value || "08:00", canal: $("av-briefing-canal").value, voz: $("av-briefing-voz").checked };
     a.informe = { activo: $("av-informe").checked, dia: Number($("av-informe-dia").value), hora: $("av-informe-hora").value || "20:00", canal: $("av-informe-canal").value };
     const tgc = $("av-canal-telegram"), pc = $("av-canal-push"), vz = $("av-voz");
     if (tgc) a.canales.telegram = tgc.checked;
@@ -222,7 +222,7 @@ const Avisos = (() => {
       tipos.append(el("label", { class: "interruptor" }, i, el("span", null, t.nombre)));
     }
     $("av-silencio").checked = a.silencio.activo; $("av-desde").value = a.silencio.desde; $("av-hasta").value = a.silencio.hasta;
-    $("av-briefing").checked = a.briefing.activo; $("av-briefing-hora").value = a.briefing.hora; $("av-briefing-canal").value = a.briefing.canal;
+    $("av-briefing").checked = a.briefing.activo; $("av-briefing-hora").value = a.briefing.hora; $("av-briefing-canal").value = a.briefing.canal; $("av-briefing-voz").checked = a.briefing.voz !== false;
     const informe = a.informe || { activo: true, dia: 6, hora: "20:00", canal: "telegram" };
     $("av-informe").checked = informe.activo; $("av-informe-dia").value = String(informe.dia); $("av-informe-hora").value = informe.hora; $("av-informe-canal").value = informe.canal;
     pintarTelegram();
@@ -236,7 +236,7 @@ const Avisos = (() => {
     $("avisos-ajustes").addEventListener("click", cerrar);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("avisos-panel").hidden) cerrar(); });
     document.addEventListener("click", (e) => { if (!$("avisos-panel").hidden && !e.target.closest(".campana-zona")) cerrar(); });
-    for (const id of ["av-silencio", "av-desde", "av-hasta", "av-briefing", "av-briefing-hora", "av-briefing-canal", "av-informe", "av-informe-dia", "av-informe-hora", "av-informe-canal"]) $(id).addEventListener("change", guardar);
+    for (const id of ["av-silencio", "av-desde", "av-hasta", "av-briefing", "av-briefing-hora", "av-briefing-canal", "av-briefing-voz", "av-informe", "av-informe-dia", "av-informe-hora", "av-informe-canal"]) $(id).addEventListener("change", guardar);
     $("av-probar").addEventListener("click", async () => {
       const x = await api("/api/avisos/probar", { method: "POST" });
       if (!x.ok) { msg("av-msg", x.data.error || "No se pudo probar.", true); return; }

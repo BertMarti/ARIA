@@ -130,19 +130,10 @@ const Hud = (() => {
   }
 
   // --- Acciones rápidas ---
-  function textoResumen() {
-    const d = resumen; if (!d) return "";
-    const partes = [d.saludo + "."];
-    if (d.tiempo) partes.push(`En ${d.tiempo.ciudad}, ${d.tiempo.cielo}, con ${d.tiempo.actual ?? d.tiempo.max} grados y una máxima de ${d.tiempo.max}.`);
-    if (d.aplicaciones) partes.push(d.aplicaciones.ok ? "Todo en casa está en orden." : "Hay que revisar: " + d.aplicaciones.problemas.join(", ") + ".");
-    const ev = d.agenda?.eventos || [];
-    partes.push(ev.length ? `Hoy tienes ${ev.length === 1 ? "un evento" : ev.length + " eventos"}: ` + ev.map((e) => (e.todo_el_dia ? "" : "a las " + hora(e.inicio) + ", ") + e.titulo).join("; ") + "." : "No tienes eventos hoy.");
-    return partes.join(" ");
-  }
   function rapidas() {
     const b = (txt, fn, solo) => { if (solo && !Sesion.esAdmin) return null; const x = el("button", { type: "button", class: "hud-rapida" }, txt); x.addEventListener("click", fn); return x; };
     $w("hud-rapidas").replaceChildren(...[
-      b("Leer resumen", () => { const t = textoResumen(); if (t) { $w("hud-subtitulo").textContent = t; Voz.hablar(t); } }),
+      b("Briefing del día", () => Voz.briefing((t) => { $w("hud-subtitulo").textContent = t; })),
       b("Silenciar", () => Voz.parar()),
       b("Agenda", () => { location.hash = "agenda"; }),
       b("Pausar anuncios 30 min", async () => {

@@ -52,7 +52,10 @@ def _huella(t: str) -> str:
 
 def test_sin_llamadas_a_la_api_ni_datos_reales():
     texto = "".join(p.read_text(encoding="utf-8") for p in ESC.glob("*.*") if p.suffix in (".html", ".js", ".css"))
-    assert "/api/" not in texto and "fetch(" not in texto
+    assert "/api/" not in texto and "XMLHttpRequest" not in texto
+    # fetch() solo para sus propios ficheros estáticos (la voz de Ping): nada de servidor ni de terceros
+    assert all(u.startswith("/static/escaparate/") for u in re.findall(r"fetch\(\s*[\"'`]([^\"'`]*)", texto))
+    assert texto.count("fetch(") == len(re.findall(r"fetch\(\s*[\"'`]", texto))
     assert not re.search(r"192\.168\.(?!1\.)\d+\.", texto), "solo IPs de ejemplo 192.168.1.x"
     palabras = set(re.findall(r"[\w.-]+", texto.lower()))
     assert not {_huella(w) for w in palabras} & HUELLAS_PRIVADAS, "hay un dato privado en el escaparate"

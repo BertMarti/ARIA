@@ -128,7 +128,7 @@ def ajustes_defecto() -> dict:
     return {"tipos": {t: d for t, (_, _, d) in TIPOS.items()},
             "silencio": {"activo": True, "desde": "23:00", "hasta": "08:00"},
             "canales": {"telegram": True, "push": True},
-            "briefing": {"activo": True, "hora": "08:00", "canal": "telegram"},
+            "briefing": {"activo": True, "hora": "08:00", "canal": "telegram", "voz": True},
             "informe": {"activo": True, "dia": 6, "hora": "20:00", "canal": "telegram"},
             "voz_telegram": False}
 
@@ -163,6 +163,8 @@ def normalizar_ajustes(d) -> dict:
     base["briefing"]["hora"] = _hhmm(b.get("hora"), base["briefing"]["hora"])
     if b.get("canal") in ("telegram", "push", "ambos"):
         base["briefing"]["canal"] = b["canal"]
+    if isinstance(b.get("voz"), bool):
+        base["briefing"]["voz"] = b["voz"]
     i = d.get("informe") if isinstance(d.get("informe"), dict) else {}
     if isinstance(i.get("activo"), bool):
         base["informe"]["activo"] = i["activo"]
@@ -522,6 +524,9 @@ def briefing_toca(a: dict, ref: datetime) -> bool:
     return timedelta(0) <= ref - objetivo < timedelta(seconds=VENTANA_BRIEFING_S)
 
 
+_tareas_voz: set = set()   # referencias a las tareas de voz en curso (si no, el recolector podría cortarlas)
+
+
 async def briefings_programados(ref: datetime | None = None) -> list:
     from . import briefing
     ref = (ref.astimezone(tiempo.zona()) if ref else tiempo.ahora())
@@ -547,6 +552,11 @@ async def briefings_programados(ref: datetime | None = None) -> list:
         # Push recibe el texto plano; Telegram, el HTML completo (en `extra`, sin recortar a mitad de etiqueta)
         await emitir("resumen", "info", texto, "inicio", [u["id"]], ignorar_silencio=True, guardar=False, canales_=lista,
                      extra={"html": html_tg})
+        if "telegram" in lista and a["briefing"]["voz"]:   # y debajo, el briefing hablado (en segundo plano: tarda)
+            from . import telegram
+            t = asyncio.create_task(telegram.briefing_voz_a_usuario(u))
+            _tareas_voz.add(t)
+            t.add_done_callback(_tareas_voz.discard)
         enviados.append(u["id"])
     return enviados
 

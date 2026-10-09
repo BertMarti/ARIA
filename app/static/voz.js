@@ -237,6 +237,28 @@ const Voz = (() => {
     }
   }
 
+  // Briefing hablado: el guion del día y su audio, que el servidor sintetiza una vez y guarda.
+  // alGuion(texto) recibe el guion (para subtítulos). La promesa se resuelve al terminar o al pararlo.
+  async function briefing(alGuion) {
+    parar();
+    const mio = turno;
+    const g = await api("/api/resumen-diario/hablado");
+    if (mio !== turno) return;
+    const guion = g.ok ? g.data.guion : "";
+    if (!guion) { toast("No hay resumen que leer ahora mismo.", "mal"); return; }
+    if (alGuion) alGuion(guion);
+    emitir("pensando");
+    try {
+      const r = await fetch("/api/resumen-diario/voz");
+      if (mio !== turno) return;
+      if (!r.ok) throw new Error("sin audio");
+      avisoMotor(r.headers);
+      await reproducir(await r.arrayBuffer(), mio);
+    } catch (_) {
+      if (mio === turno) { emitir("reposo"); await hablar(guion); }   // respaldo: lectura por trozos
+    }
+  }
+
   function parar() {
     turno++;
     if (fuente) { try { fuente.stop(); } catch (_) { /* ya parada */ } fuente = null; }
@@ -254,7 +276,7 @@ const Voz = (() => {
     } catch (_) { /* sin audio */ }
   }
 
-  return { botonMic, hablar, parar, pitido, abrirMic, errorMic, avisoSilencio, micDisponible, audioCtx, trocear };
+  return { botonMic, hablar, briefing, parar, pitido, abrirMic, errorMic, avisoSilencio, micDisponible, audioCtx, trocear };
 })();
 
 // «Manos libres»: el navegador envía el micrófono (PCM 16 kHz) por WebSocket; aria-voz avisa

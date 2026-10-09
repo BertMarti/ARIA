@@ -359,12 +359,13 @@ async def enviar_html(b, chat_id: int, texto: str, teclado_: dict | None = None)
 
 
 async def teclado_resumen(chat_id: int, u: dict) -> dict:
-    """Botones bajo el resumen diario: abrir ARIA o la agenda y, para administradores, pausar anuncios."""
+    """Botones bajo el resumen diario: abrir ARIA o la agenda, escucharlo y, para administradores, pausar anuncios."""
     filas = []
     if config.URL_PUBLICA:
         filas.append([{"text": "🌐 Abrir ARIA", "url": f"{config.URL_PUBLICA}/#inicio"},
                       {"text": "📅 Agenda", "url": f"{config.URL_PUBLICA}/#agenda"}])
-    fila = [boton("🔄 Actualizar", await asyncio.to_thread(ficha, chat_id, u["id"], "resumen_actualizar", None, 86400))]
+    fila = [boton("🔊 Escuchar", await asyncio.to_thread(ficha, chat_id, u["id"], "resumen_voz", None, 86400)),
+            boton("🔄 Actualizar", await asyncio.to_thread(ficha, chat_id, u["id"], "resumen_actualizar", None, 86400))]
     if u.get("rol") == "admin":
         fila.append(boton("⏸️ Pausar anuncios 30 min", await asyncio.to_thread(
             ficha, chat_id, u["id"], "pedir", {"op": "pausar", "min": 30}, 86400)))
@@ -375,6 +376,39 @@ async def teclado_resumen(chat_id: int, u: dict) -> dict:
 async def enviar_resumen(b, chat_id: int, u: dict, refrescar: bool = False) -> list:
     d = await resumen_diario.construir_resumen_diario(u, refrescar=refrescar)
     return await enviar_html(b, chat_id, resumen_diario.telegram(d), await teclado_resumen(chat_id, u))
+
+
+async def enviar_briefing_voz(b, chat_id: int, u: dict) -> bool:
+    """El briefing hablado como nota de voz (o, si no se puede convertir a OGG, como archivo de audio)."""
+    from . import briefing_voz
+    tarea = asyncio.create_task(_escribiendo(b, chat_id, "record_voice"))
+    try:
+        wav, _motor, _ = await briefing_voz.audio(u)
+        datos, mime = await briefing_voz.ogg(wav)
+    except Exception:  # noqa: BLE001 - cualquier fallo de voz: se avisa con texto y el resumen escrito sigue valiendo
+        log.exception("No se pudo preparar el briefing hablado")
+        return False
+    finally:
+        tarea.cancel()
+    if mime == "audio/ogg":
+        await b.subir("sendVoice", "voice", "briefing.ogg", datos, mime, chat_id=chat_id, caption="🔊 Tu briefing de hoy")
+    else:
+        await b.subir("sendDocument", "document", "briefing.wav", datos, mime, chat_id=chat_id, caption="🔊 Tu briefing de hoy")
+    return True
+
+
+async def briefing_voz_a_usuario(u: dict) -> int:
+    """Envía el briefing hablado a todos los chats vinculados del usuario. Devuelve a cuántos llegó."""
+    b = bot()
+    if not b:
+        return 0
+    n = 0
+    for c in await asyncio.to_thread(chats_de, u["id"]):
+        try:
+            n += await enviar_briefing_voz(b, c["chat_id"], u)
+        except TelegramError as e:
+            log.warning("Briefing hablado no enviado a un chat (%s)", e)
+    return n
 
 
 # --- Límites ------------------------------------------------------------------------------------------------------
@@ -943,6 +977,9 @@ async def _accion(b, cq: dict, chat_id: int, u: dict, accion: str, d: dict) -> s
         ok, texto = await vision.registrar_ticket(u, t, d.get("cid"))
         await enviar_texto(b, chat_id, texto)
         return "Apuntado." if ok else "No se pudo apuntar."
+    if accion == "resumen_voz":
+        ok = await enviar_briefing_voz(b, chat_id, u)
+        return "Aquí lo tienes." if ok else "Ahora mismo no puedo hablar; prueba en un rato."
     if accion == "resumen_actualizar":
         await enviar_resumen(b, chat_id, u, refrescar=True)
         return "Resumen actualizado."

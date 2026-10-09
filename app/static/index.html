@@ -126,6 +126,7 @@
       <div class="resumen-cab">
         <h2>Resumen del día</h2>
         <div class="fila-acc">
+          <button type="button" class="fantasma pequeno" id="resumen-escuchar" aria-pressed="false">▶ Escuchar</button>
           <button type="button" class="fantasma pequeno" id="resumen-actualizar">Actualizar</button>
           <button type="button" class="fantasma pequeno" id="resumen-cerrar">Cerrar por hoy</button>
         </div>
@@ -451,6 +452,7 @@
           <label>A las <input type="time" id="av-briefing-hora" value="08:00"></label>
           <label>Por <select id="av-briefing-canal"><option value="telegram">Telegram</option><option value="push">Notificación</option><option value="ambos">Los dos</option></select></label>
         </div>
+        <label class="interruptor"><input type="checkbox" id="av-briefing-voz"><span>En Telegram, también con la voz de ARIA (un minuto)</span></label>
         <h3>Informe semanal</h3>
         <label class="interruptor"><input type="checkbox" id="av-informe"><span>Enviarme el informe semanal</span></label>
         <div class="fila-form">

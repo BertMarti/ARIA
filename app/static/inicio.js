@@ -289,6 +289,12 @@ const Inicio = (() => {
     $("menu-inicio").addEventListener("pointermove", luzRaton, { passive: true });
     $("resumen-cerrar").addEventListener("click", () => { Prefs.set("resumen_cerrado", $("resumen-hoy").dataset.fecha || ""); $("resumen-hoy").hidden = true; });
     $("resumen-actualizar").addEventListener("click", async () => { await resumen(true); toast("Resumen actualizado."); });
+    const escuchar = $("resumen-escuchar");
+    escuchar.addEventListener("click", async () => {
+      if (escuchar.getAttribute("aria-pressed") === "true") { Voz.parar(); return; }
+      escuchar.setAttribute("aria-pressed", "true"); escuchar.textContent = "■ Parar";
+      try { await Voz.briefing(); } finally { escuchar.setAttribute("aria-pressed", "false"); escuchar.textContent = "▶ Escuchar"; }
+    });
     $("form-preguntar").addEventListener("submit", (e) => {
       e.preventDefault();
       const t = $("preguntar-texto").value.trim(); if (!t) return;

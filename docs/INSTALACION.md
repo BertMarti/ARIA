@@ -308,6 +308,16 @@ Si quieres que el calendario del móvil se actualice con tu agenda de ARIA tambi
 
 Solo se abre `/cal/<token>.ics`, de solo lectura: el token es largo, aleatorio y revocable desde ARIA.
 
+### Escaparate público «Conoce a ARIA» (opcional)
+
+ARIA trae una página pública, `/hola`, que la presenta (con Ping y su voz pregrabada) sin datos reales ni llamadas a tu ARIA. Quien entra en `/` sin sesión acaba en ella. Para que se vea desde internet con Cloudflare Access:
+
+1. Zero Trust → Access → Applications → **Create new application** → *Self-hosted and private*.
+2. Dos destinos: `aria.tu-dominio.com` con la ruta `hola` y `aria.tu-dominio.com` con la ruta `static/escaparate`.
+3. Política con acción **Bypass** e *Include → Everyone*.
+
+Cloudflare aplica primero la aplicación con la ruta más concreta, así que solo esas dos rutas quedan abiertas; todo lo demás (`/`, `/login`, `/api/…`) sigue pidiendo tu acceso. Como `/` sigue protegida, comparte el enlace directo a `/hola`.
+
 ### Inicio de sesión único (SSO)
 
 Para que ARIA no te vuelva a pedir contraseña cuando ya has pasado por Cloudflare Access:

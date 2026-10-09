@@ -1,4 +1,4 @@
-"""Capturas de la ARIA de demostración (datos ficticios) con Chromium headless vía CDP.
+"""Capturas de la ARIA de demostración (datos ficticios) y de su escaparate público con Chromium headless vía CDP.
 
 Uso: python3 capturar.py SALIDA [nombre ...]   (necesita chromium, Pillow y websockets)
 """
@@ -24,6 +24,8 @@ PUERTO = 9341
 # nombre: (hash, ancho, alto, móvil, js previo, espera)
 HABLAR = ("window._t = setInterval(() => dispatchEvent(new CustomEvent('aria:estado', {detail: {estado: 'hablando', nivel: .55 + Math.random() * .35}})), 80);"
           "dispatchEvent(new CustomEvent('aria:hud-texto', {detail: {texto: 'Buenas tardes, Ana. Hoy en Madrid hará 20 grados y cielo despejado. A las 17:30 tienes el dentista.'}}));")
+ESCUCHANDO = ("document.body.classList.add('escuchando'); const s = document.getElementById('subtitulo');"
+              "s.textContent = 'Ah, y esa lucecita nerviosa es Ping. No le hagas mucho caso.'; s.classList.add('visible');")
 CAPTURAS = {
     "captura-inicio": ("inicio", 1280, 1400, False, "", 6),
     "captura-hud": ("hud", 1440, 900, False, HABLAR, 6),
@@ -41,6 +43,11 @@ CAPTURAS = {
     "captura-movil-agenda": ("agenda", 390, 844, True, "document.querySelector('.agenda-tab[data-modo=lista]').click()", 4),
     "captura-movil-red": ("red", 390, 844, True, "document.getElementById('red-tabla').scrollIntoView()", 4),
     "captura-movil-ajustes": ("ajustes", 390, 844, True, "localStorage.setItem('aria_ajustes_seccion','general'); location.reload()", 5),
+    # Escaparate público (/hola): rutas que empiezan por «/» se abren tal cual, sin #vista
+    "captura-escaparate": ("/hola", 1440, 900, False, ESCUCHANDO, 4),
+    "captura-escaparate-menu": ("/hola", 1440, 900, False, "document.getElementById('menu').scrollIntoView()", 4),
+    "captura-ping": ("/hola", 1280, 820, False, "document.querySelector('[data-demo=demo-casa]').click()", 5),
+    "captura-movil-escaparate": ("/hola", 390, 844, True, "", 4),
 }
 
 
@@ -100,7 +107,7 @@ async def main(salida: Path, nombres):
                 h, an, al, movil, previo, espera = CAPTURAS[nombre]
                 await c("Emulation.setDeviceMetricsOverride", width=an, height=al, deviceScaleFactor=2 if movil else 1, mobile=movil)
                 await c("Emulation.setEmulatedMedia", features=[{"name": "prefers-color-scheme", "value": "dark"}])
-                await c("Page.navigate", url=f"{BASE}/#{h}")
+                await c("Page.navigate", url=f"{BASE}{h}" if h.startswith("/") else f"{BASE}/#{h}")
                 await asyncio.sleep(2.5)
                 await c.js("location.reload()")
                 await asyncio.sleep(espera)

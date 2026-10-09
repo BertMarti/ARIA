@@ -109,20 +109,20 @@ Ya disponible (ver la [guía de uso](USO.md)):
 - **Resumen diario** en Inicio, HUD y Telegram (con botones); **sistema en directo**, **reinicio seguro** y **automatizaciones**.
 - **HUD futurista** con tarjetas interactivas, opciones y modo quiosco; **precio de la luz** (PVPC); **agenda en el móvil** (iCalendar); **verificación en dos pasos**; gráficas de cripto; Ajustes por secciones.
 
-## Próximo: ARIA PRO (propuesta)
+## ARIA PRO (en marcha)
 
-Pendiente de aprobación. La idea es enseñar ARIA mejor y darle funciones de asistente «de película», sin perder lo que es: una IA de casa, cálida y que no hace nada sin permiso.
+Aprobado y en curso. La idea es enseñar ARIA mejor y darle funciones de asistente «de película», sin perder lo que es: una IA de casa, cálida y que no hace nada sin permiso.
 
 | Bloque | Qué | Estado |
 |---|---|---|
-| **Escaparate público** | Página «Conoce a ARIA»: portada oscura con su voz presentándose (pregrabada), menú en tarjetas numeradas y demos de solo lectura con datos inventados. Sin IA en vivo, sin formularios ni analítica | Propuesta |
-| **Inicio en tarjetas** | El menú principal de ARIA como tarjetas numeradas con estado (activo, aviso, pronto) | Propuesta |
-| **Voz «Elegante»** | Nuevo tono: serena, segura, con un punto de ironía amable | Propuesta |
+| **Escaparate público** | Página «Conoce a ARIA»: portada oscura con su voz presentándose (pregrabada), menú en tarjetas numeradas y demos de solo lectura con datos inventados. Sin IA en vivo, sin formularios ni analítica y **Ping**, su hada de luz con voz propia, en `/hola` | ✅ Hecho |
+| **Inicio en tarjetas** | El menú principal de ARIA como tarjetas numeradas con estado (activo, aviso, pronto) | ✅ Hecho |
+| **Voz «Elegante»** | Nuevo tono: serena, segura, con un punto de ironía amable | ✅ Hecho |
 | **Voz diseñada** | Una voz nueva creada a partir de una descripción (Qwen3-TTS VoiceDesign, Apache 2.0) y entrenada para Piper con [herramientas/voz-propia](../herramientas/voz-propia/README.md): local y sin cuotas | Propuesta |
 | **Voz en streaming** | Empezar a hablar al terminar la primera frase | Propuesta |
 | **Memoria de verdad** | Búsqueda semántica local, recuerdos con fuente y confianza, olvido de lo que no se usa | Propuesta |
 | **Proactividad con permiso** | ARIA propone acciones ante eventos en una bandeja (aprobar o rechazar) y registra todo lo que hace | Propuesta |
-| **Briefing hablado** | Un minuto de voz cada mañana con lo importante | Propuesta |
+| **Briefing hablado** | Un minuto de voz cada mañana con lo importante (Telegram como nota de voz, HUD e Inicio) | ✅ Hecho |
 | **Ojos y gestos en el HUD** | Cámara bajo petición («¿qué ves?») y control con la mano (MediaPipe, en el navegador) | Propuesta |
 | **Mapa 3D** | MapLibre + OpenFreeMap: edificios en 3D y «vuela a…», sin claves | Propuesta |
 | **ARIA flotante** | Mini-ventana siempre visible en el PC con orbe, subtítulos y micrófono | Propuesta |

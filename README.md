@@ -50,14 +50,36 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
 </p>
 
 <p align="center">
-  <img alt="Página de Inicio de ARIA con el resumen del día en tarjetas" src="docs/img/captura-inicio.png" width="100%">
-  <br><sub><b>Inicio</b>: el resumen del día en tarjetas (tiempo, precio de la luz, estado de tus aplicaciones, red, finanzas, inversiones y agenda). Instancia de demostración con datos ficticios.</sub>
+  <img alt="Página de Inicio de ARIA: menú de tarjetas numeradas (HUD, resumen del día, agenda, tu casa, información, mapa, chat, finanzas) y debajo el resumen del día" src="docs/img/captura-inicio.png" width="100%">
+  <br><sub><b>Inicio</b>: un menú de tarjetas numeradas con un dato vivo en cada una (el tiempo, tu próxima cita, los dispositivos de casa…) y su estado, y debajo el resumen del día con ▶ <b>Escuchar</b>. Instancia de demostración con datos ficticios.</sub>
 </p>
+
+### 🧚 Conoce a Ping
+
+<table>
+  <tr>
+    <td width="58%"><img alt="Escaparate público de ARIA: marca ARIA gigante, el orbe y Ping, un hada de luz holográfica, revoloteando junto al logotipo" src="docs/img/captura-escaparate.png"></td>
+    <td width="42%"><img alt="Demo «Tu casa» del escaparate: Ping junto a los anuncios atrapados, los dispositivos de la red y la VPN" src="docs/img/captura-ping.png"></td>
+  </tr>
+</table>
+
+**Ping** es la compañera de ARIA: una pequeña **hada de luz holográfica** que vive en la red de casa. Atrapa los anuncios (SHIELD-DNS), vigila quién entra por la VPN (HEIMDALL) y lleva la cuenta de todo con mucho orgullo: «¡Eh, mira! 1.284 anuncios atrapados hoy».
+
+- **Cambia de color según lo que pasa**: cian si todo va bien, ámbar si hay algo que mirar, rosa si es una alerta y violeta mientras piensa.
+- **Tiene voz propia**, muy aguda y traviesa, y un tintineo de tres notas compuesto para ARIA. Cuando ARIA la presenta («…esa lucecita nerviosa es Ping»), ARIA hace una pausa y Ping suelta su «¡Eh, mira!».
+- **Vuela sola**: al principio sigue tu ratón y luego revolotea por libre. Está dibujada en un `<canvas>` propio, sin imágenes externas, y respeta «reducir movimiento».
+
+Ping se estrena en el **escaparate público** de ARIA (`/hola`): una página estática que enseña qué es ARIA a cualquiera sin exponer nada de casa (datos de ejemplo, voz pregrabada, sin servidor ni analítica). Tiene una portada con el orbe, el interruptor **«Quiero escuchar a ARIA»** para que se presente con su voz, un menú de demos, «Qué funciona hoy» y unas preguntas con respuesta.
+
+> Ping está inspirada en el espíritu de las hadas guía de los videojuegos clásicos, pero su diseño, su nombre, su voz y sus sonidos son originales de ARIA.
 
 ### 🆕 Novedades
 
 | | Qué hay de nuevo |
 |:---:|---|
+| 🧚 | **Escaparate «Conoce a ARIA»** (`/hola`) y **Ping**, su hada de luz con voz propia: ARIA se presenta con su voz y Ping la interrumpe con un «¡Eh, mira!». Página pública y estática, sin datos reales. |
+| 🔢 | **Inicio en tarjetas numeradas**: 01 HUD · 02 Resumen del día · 03 Agenda · 04 Tu casa · 05 Información · 06 Mapa · 07 Chat · 08 Finanzas, cada una con un dato vivo y su estado (ACTIVO, AVISO, PRONTO). |
+| 🎧 | **Briefing hablado**: el resumen del día contado por ARIA en un minuto. Por Telegram cada mañana como **nota de voz** (y con el botón **🔊 Escuchar**), en el HUD (**Briefing del día**) y en Inicio (**▶ Escuchar**). Se sintetiza una vez y se guarda, así que apenas gasta cuota de voz. |
 | 🌌 | **Modo HUD** (`#hud`): escena futurista con rejilla animada, orbe que «mira» al ratón y tarjetas que se iluminan y giran en 3D al pasar por encima. **Opciones**: qué tarjetas ver, 5 colores, efectos, reloj con segundos y voz. **Modo quiosco** para una tableta (pantalla siempre encendida, controles que se esconden). |
 | ⚡ | **Precio de la luz** (PVPC de España, sin claves): precio de ahora, horas más baratas y caras, gráfico de las 24 horas en Inicio y el HUD, y en el chat («¿cuándo pongo la lavadora?»). |
 | 📲 | **Agenda en el móvil**: suscríbete desde el calendario del iPhone, Android u Outlook con un enlace privado (se actualiza solo) o descarga un `.ics`. |
@@ -75,7 +97,9 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
 
 - [✨ Qué puede hacer](#-qué-puede-hacer)
 - [📸 Capturas](#-capturas)
+- [🧚 Conoce a Ping](#-conoce-a-ping)
 - [🧩 Cómo está hecha](#-cómo-está-hecha)
+  - [🎙️ Cómo funciona la voz](#️-cómo-funciona-la-voz)
 - [📋 Requisitos](#-requisitos)
 - [🚀 Inicio rápido (5 minutos)](#-inicio-rápido-5-minutos)
 - [📚 Guías](#-guías)
@@ -95,7 +119,7 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
 | | Grupo | Qué incluye |
 |:---:|---|---|
 | 💬 | **Asistente y chat** | Chat con conversaciones guardadas, respuestas en directo, botón Detener, copiar y Markdown.<br>**Agentes especializados**: ARIA (general), `@finanzas`, `@redes` y `@seguridad`. ARIA elige el adecuado sola o lo eliges tú.<br>**Búsqueda en internet y noticias** con un metabuscador propio (SearXNG), citando las fuentes.<br>**Resumir enlaces** que pegas o compartes desde el móvil.<br>**Visión**: mándale una foto y pregúntale por ella; si es un ticket, te propone apuntar el gasto. |
-| 🎙️ | **Voz** | Micrófono (pulsar para hablar), botón **Leer** en cada respuesta y modo **manos libres**: dices «Aria» y tu pregunta.<br>Voz natural en la nube con respaldo local en tu máquina; transcripción en la nube con respaldo local. |
+| 🎙️ | **Voz** | Micrófono (pulsar para hablar), botón **Leer** en cada respuesta y modo **manos libres**: dices «Aria» y tu pregunta.<br>**Briefing hablado** del día (un minuto) en Telegram, el HUD e Inicio.<br>Voz natural en la nube con respaldo local en tu máquina; transcripción en la nube con respaldo local. Ver [cómo funciona la voz](#-cómo-funciona-la-voz). |
 | 🧠 | **Memoria y automatización** | **Memoria**: recuerda datos tuyos («recuerda que…») y escribe un **diario** de cada día.<br>**Resumen de buenos días** en Inicio, en el chat y, si quieres, por Telegram o notificación.<br>**Recordatorios** en lenguaje natural («recuérdame mañana a las 9…») y **rutinas** programadas («cada mañana a las 8, dime el tiempo y tres titulares»). |
 | 🔔 | **Avisos y canales** | Campana de avisos en la web, **bot de Telegram** propio y **notificaciones push** en el móvil o el navegador.<br>Vigila la casa sola: servicios caídos, dispositivos desconocidos, temperatura, disco, copias atrasadas… |
 | 🏡 | **Tu casa y tu red** | **Finanzas personales**: movimientos, categorías, presupuestos e importación del CSV del banco.<br>**Inventario de red**: dispositivos de la LAN, latencia, test de velocidad e historial.<br>**Seguridad**: escaneo defensivo de puertos de tu red y búsqueda de vulnerabilidades conocidas.<br>**Control parental** por dispositivo (pausar internet, bloquear TikTok, YouTube…, horarios), mediante SHIELD-DNS. |
@@ -137,6 +161,9 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
     <td><img alt="Panel de avisos abierto desde la campana" src="docs/img/captura-avisos.png"><p align="center"><sub><b>Avisos</b>: la campana de la casa</sub></p></td>
     <td><img alt="Ajustes, sección Rutinas" src="docs/img/captura-rutinas.png"><p align="center"><sub><b>Rutinas</b>: tareas que ARIA hace sola</sub></p></td>
   </tr>
+  <tr>
+    <td colspan="2"><img alt="Menú del escaparate público con cinco tarjetas numeradas: su presencia, tu tiempo, red VPN y anuncios con Ping, el mundo resumido y qué funciona hoy" src="docs/img/captura-escaparate-menu.png"><p align="center"><sub><b>Escaparate</b> (<code>/hola</code>): cada tarjeta abre una demo de solo lectura con datos de ejemplo</sub></p></td>
+  </tr>
 </table>
 
 <details>
@@ -157,6 +184,8 @@ ARIA se amplía con **módulos**: cada aplicación que añades aparece en su pá
   <img alt="Dispositivos de la red en fichas, en el móvil" src="docs/img/captura-movil-red.png" width="230">
   &nbsp;
   <img alt="Ajustes en el móvil, con pestañas de secciones" src="docs/img/captura-movil-ajustes.png" width="230">
+  &nbsp;
+  <img alt="Escaparate público de ARIA en el móvil, con Ping" src="docs/img/captura-movil-escaparate.png" width="230">
 </p>
 
 <p align="center"><img alt="Centro de control con SHIELD-DNS, HEIMDALL y el sistema en directo por contenedor" src="docs/img/captura-centro-control.png" width="100%"><br><sub><b>Centro de control</b>: SHIELD-DNS, HEIMDALL, el sistema en directo y el reinicio seguro</sub></p>
@@ -230,6 +259,20 @@ sequenceDiagram
     IA-->>A: Respuesta redactada
     A-->>T: Respuesta en directo con la insignia del cerebro y del agente
 ```
+
+### 🎙️ Cómo funciona la voz
+
+| Paso | Qué se usa | Respaldo | Dónde ocurre |
+|---|---|---|---|
+| **Oír «Aria»** (manos libres) | Detector de palabra clave en `aria-voz` | — | Siempre en tu máquina: el sonido no sale de casa |
+| **Entender lo que dices** | Whisper en **Groq** (gratis, muy rápido) | **faster-whisper** en `aria-voz` | Nube o tu máquina |
+| **Hablar** | **Gemini TTS**: 14 voces femeninas, con tono y acento de España | **Piper** en `aria-voz` (voz femenina española) o tu **voz propia** | Nube o tu máquina |
+| **Notas de voz de Telegram** | La misma voz, convertida a OGG/Opus en `aria-voz` | WAV | Tu máquina |
+| **Escaparate y Ping** | Audio **pregrabado** (MP3) | Subtítulos | El navegador del visitante |
+
+- **Cuota**: la capa gratuita de Gemini da pocas síntesis al día. Por eso las muestras de voces, las frases repetidas y el **briefing hablado** se guardan, y cuando la cuota se agota ARIA habla con Piper y avisa hasta qué hora.
+- **Voz propia**: si dejas un modelo Piper (`.onnx` + `.onnx.json`) en `data/voz-propia/`, ARIA puede usarlo como voz sin internet ni cuotas. En [`herramientas/voz-propia/`](herramientas/voz-propia/) tienes cómo grabarla (siempre con el consentimiento de quien pone la voz) y un cuaderno para entrenarla gratis en Google Colab.
+- **Privacidad**: el audio que grabas no se guarda nunca; solo se transcribe y se descarta.
 
 <p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
 

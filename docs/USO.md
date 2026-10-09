@@ -62,8 +62,8 @@ Arriba a la derecha está la **campana** de avisos.
 Es la página que ves al entrar.
 
 - **«Pregúntale a ARIA»**: escribe (o pulsa el micrófono) y se abre un chat con tu pregunta.
-- **Resumen del día**: tarjetas con el tiempo, tus aplicaciones, la red, tus finanzas, tus inversiones y tu agenda de hoy (ver [Resumen diario](#resumen-diario)). Puedes cerrarlo por hoy o actualizarlo.
-- **Modo HUD**: el primer mosaico abre la [pantalla HUD](#modo-hud).
+- **Tu ARIA, en tarjetas numeradas**: *01 Modo HUD*, *02 Resumen del día*, *03 Agenda*, *04 Tu casa* (solo administradores), *05 Información*, *06 Mapa*, *07 Chat* y *08 Finanzas*. Cada tarjeta enseña un dato vivo (el tiempo y la luz, tu próxima cita, los dispositivos de casa y los anuncios atrapados, tus inversiones, lo gastado este mes…) y su estado: **ACTIVO**, **AVISO** si hay algo que mirar o **PRONTO** para lo que está en construcción. Al pulsar una, vas a esa sección; *Resumen del día* te lleva al resumen (y lo vuelve a abrir si lo cerraste).
+- **Resumen del día**: tarjetas con el tiempo, tus aplicaciones, la red, tus finanzas, tus inversiones y tu agenda de hoy (ver [Resumen diario](#resumen-diario)). **▶ Escuchar** lo lee ARIA en un minuto ([briefing hablado](#briefing-hablado)); también puedes cerrarlo por hoy o actualizarlo.
 - **Aplicaciones**: un mosaico por aplicación (Chat, SHIELD-DNS, HEIMDALL y los [módulos](MODULOS.md) que tengas). El punto de color dice si está **activa**, **caída** o **sin instalar**. Al pulsar, se abre en una pestaña nueva. En SHIELD-DNS y HEIMDALL, **Copiar contraseña** te ahorra teclearla en su panel (solo administradores).
 - **Acciones rápidas** (administradores): *Pausar anuncios 5 min*, *Reanudar anuncios*, *Añadir dispositivo a la VPN* y *Estado del sistema*.
 - **Sistema**: temperatura, memoria, disco y carga de la máquina.
@@ -135,6 +135,10 @@ En **Ajustes → General → Voz**, apartado **Voz de ARIA**:
 
 La elección es de cada usuario y se usa en la web, el HUD y las notas de voz de Telegram. Las muestras se guardan, así que escuchar otra vez la misma combinación no gasta cuota. La capa gratuita de Gemini permite pocas voces por minuto y por día: si se agota, ARIA usa su voz local (femenina, española) hasta que se recupere.
 
+### El escaparate y Ping
+
+En `/hola` hay una página **pública** para enseñar ARIA a quien quieras sin darle acceso a nada: datos de ejemplo, voz pregrabada y ninguna llamada a tu ARIA. Activa **«Quiero escuchar a ARIA»** para que se presente; en mitad de la presentación, **Ping** (el hada de luz que vigila la red) la interrumpe con su «¡Eh, mira!». Ping sigue tu ratón unos segundos y después vuela por libre. Si usas Cloudflare Access, mira cómo abrir solo esa página en la [guía de instalación](INSTALACION.md).
+
 Privacidad: para detectar «Aria», el sonido va a tu máquina (nunca fuera). Lo que dices después se transcribe con Groq (o en tu máquina si no hay clave). **El audio no se guarda nunca.**
 
 ## Imágenes y tickets
@@ -170,6 +174,15 @@ Un único resumen que verás igual en tres sitios: la tarjeta **Resumen del día
 
 - Por **Telegram** o **notificación** a la hora que elijas (por defecto, las 08:00): actívalo en **Ajustes → Avisos**. En Telegram llega con botones: **Abrir ARIA**, **Agenda**, **Actualizar** y, para administradores, **Pausar anuncios 30 min**. También puedes pedirlo cuando quieras con `/resumen` o diciéndole «resúmeme el día».
 - El resumen se prepara una vez cada 10 minutos como mucho; **Actualizar** lo rehace al momento.
+
+### Briefing hablado
+
+El resumen del día, **contado por ARIA en un minuto** y con la voz que elegiste: el tiempo, las horas de luz más baratas, tu agenda en orden, los cumpleaños de hoy, cómo está la casa, tus gastos del mes y lo que más se mueve en tus inversiones.
+
+- **Telegram**: debajo del resumen de la mañana llega como **nota de voz**. Puedes quitarlo en **Ajustes → Avisos** («En Telegram, también con la voz de ARIA»). Y en cualquier resumen, el botón **🔊 Escuchar** te lo manda al momento.
+- **HUD**: acción rápida **Briefing del día**, con el texto en subtítulos.
+- **Inicio**: **▶ Escuchar** en la tarjeta del resumen (y **■ Parar**).
+- Se prepara una vez por la mañana, otra por la tarde y otra por la noche, y se guarda: escucharlo otra vez no gasta cuota de voz. Si la cuota de Gemini está agotada, lo lee la voz local y se vuelve a intentar con tu voz más tarde.
 
 ## Recordatorios
 

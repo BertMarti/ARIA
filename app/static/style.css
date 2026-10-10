@@ -259,6 +259,19 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 .tile-ico .svg-ico { width: 2rem; height: 2rem; }
 .inicio-cab p { text-transform: none; }
 
+/* Propuestas pendientes: acciones domésticas que requieren confirmación explícita. */
+.propuestas { margin: 1.2rem 0 1.4rem; }
+.propuestas > .mi-indice { margin-bottom: .7rem; }
+.propuestas-lista { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+.propuesta { min-width: 0; padding: .9rem 1rem; background: #050b16; border: 1px solid rgba(56, 214, 255, .18); border-left: 3px solid var(--warn); border-radius: 10px; box-shadow: 0 0 18px rgba(245, 184, 75, .06); transition: opacity .18s ease, transform .18s ease; }
+.propuesta.saliendo { opacity: 0; transform: translateY(-4px); }
+.propuesta-cab { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+.propuesta-cab strong { overflow-wrap: anywhere; }
+.propuesta-ico { width: 1.35rem; height: 1.35rem; flex: 0 0 auto; fill: none; stroke: var(--warn); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.propuesta-detalle { margin: .45rem 0 .75rem; color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+.propuesta-acciones { display: flex; flex-wrap: wrap; gap: .45rem; }
+@media (max-width: 700px) { .propuestas-lista { grid-template-columns: 1fr; } }
+
 /* Cerebros */
 .cerebro-badge { margin-right: auto; align-self: center; font-size: .72rem; color: var(--muted); opacity: .85; }
 .cerebro-badge[hidden] { display: none; }

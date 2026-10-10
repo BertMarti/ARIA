@@ -259,16 +259,67 @@ const Inicio = (() => {
     pintarResumen(data); tarjeta.hidden = false; tarjeta.dataset.fecha = data.fecha;
   }
 
+  const ICONOS_PROPUESTAS = { luz: "rayo", cita: "agenda", red: "red" };
+  function quitarPropuesta(tarjeta) {
+    tarjeta.classList.add("saliendo");
+    const quitar = () => {
+      tarjeta.remove();
+      const lista = $("propuestas-lista");
+      if (!lista.children.length) $("propuestas").hidden = true;
+    };
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) quitar();
+    else tarjeta.addEventListener("transitionend", quitar, { once: true });
+    setTimeout(quitar, 220);
+  }
+  async function resolverPropuesta(propuesta, tarjeta, aprobar) {
+    const botones = tarjeta.querySelectorAll("button");
+    botones.forEach((b) => { b.disabled = true; });
+    const accion = aprobar ? "aprobar" : "rechazar";
+    const r = await api("/api/propuestas/" + encodeURIComponent(propuesta.id) + "/" + accion, { method: "POST" });
+    if (!r.ok) {   // se queda para volver a intentarlo
+      toast(r.data.error || "No se pudo resolver la propuesta.", "mal");
+      botones.forEach((b) => { b.disabled = false; });
+      return;
+    }
+    {
+      const p = r.data.propuesta || {};
+      const resultado = p.resultado || "la propuesta";
+      toast(p.estado === "aprobada" ? "Hecho: " + resultado : p.estado === "fallida" ? "No se pudo: " + resultado : "De acuerdo", p.estado === "fallida" ? "mal" : "");
+    }
+    quitarPropuesta(tarjeta);
+  }
+  function pintarPropuestas(propuestas) {
+    const zona = $("propuestas"), lista = $("propuestas-lista");
+    lista.replaceChildren(...propuestas.map((p) => {
+      const tarjeta = el("article", { class: "propuesta", dataset: { id: String(p.id) } });
+      const cab = el("div", { class: "propuesta-cab" }, ico(ICONOS_PROPUESTAS[p.tipo], "propuesta-ico"), el("strong", null, p.titulo || "Propuesta de ARIA"));
+      const detalle = el("p", { class: "propuesta-detalle" }, p.detalle || "");
+      const si = el("button", { type: "button", class: "primario pequeno" }, "Sí, hazlo");
+      const no = el("button", { type: "button", class: "fantasma pequeno" }, "No, gracias");
+      si.addEventListener("click", () => resolverPropuesta(p, tarjeta, true));
+      no.addEventListener("click", () => resolverPropuesta(p, tarjeta, false));
+      tarjeta.append(cab, detalle, el("div", { class: "propuesta-acciones" }, si, no));
+      return tarjeta;
+    }));
+    zona.hidden = !propuestas.length;
+  }
+  async function propuestas() {
+    const zona = $("propuestas");
+    if (Sesion.limites) { zona.hidden = true; return; }
+    const r = await api("/api/propuestas");
+    if (r.ok && Array.isArray(r.data.propuestas)) pintarPropuestas(r.data.propuestas);
+  }
+
   function activar(si) {
     clearInterval(temporizador); temporizador = null;
     if (!si) return;
-    saludo(); reloj(); estados(); resumen(false); Modulos.pintarInicio();
+    saludo(); reloj(); estados(); resumen(false); propuestas(); Modulos.pintarInicio();
     let vueltas = 0;
     temporizador = setInterval(() => {
       reloj();
       if (document.hidden || document.querySelector("dialog[open]")) return;
       estados(); Modulos.pintarInicio();
-      if (++vueltas % 20 === 0) resumen(false);   // cada 5 min (el servidor lo cachea 10 min)
+      if (++vueltas % 20 === 0) { resumen(false); propuestas(); }   // cada 5 min (el servidor lo cachea 10 min)
     }, 15000);
   }
 

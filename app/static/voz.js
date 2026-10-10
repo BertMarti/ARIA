@@ -237,6 +237,49 @@ const Voz = (() => {
     }
   }
 
+  // Lectura en streaming: ARIA empieza a hablar en cuanto termina la primera frase, mientras el modelo sigue escribiendo.
+  //   const l = Voz.lector(); l.empujar(textoHastaAhora) ... ; await l.fin();
+  // El primer trozo sale pronto (una frase); los siguientes se agrupan (~450 caracteres) para no gastar más
+  // peticiones de la cuota de voz que leyendo al final. Voz.parar() lo corta.
+  const PRIMER_MIN = 40, TROZO = 450, MAX_LECTURA = 1500;
+  function lector() {
+    parar();
+    const mio = turno;
+    let consumido = 0, leidos = 0, cola = Promise.resolve(), terminado = false;
+    const frasesCompletas = (t) => {   // hasta el último fin de frase seguido de espacio o salto de línea
+      const m = [...t.matchAll(/[.!?…:](?=\s)|\n/g)];
+      return m.length ? m[m.length - 1].index + 1 : 0;
+    };
+    function encolar(texto) {
+      const limpio = mdATexto(texto).replace(/\s+/g, " ").trim().slice(0, Math.max(0, MAX_LECTURA - leidos));
+      if (!limpio || mio !== turno) return;
+      leidos += limpio.length;
+      const audio = pedir(limpio);   // se pide ya: mientras suena el trozo anterior, se sintetiza este
+      cola = cola.then(async () => {
+        const buf = await audio;
+        if (mio !== turno) return;
+        if (buf) await reproducir(buf, mio); else await hablarNavegador(limpio, mio);
+      });
+    }
+    function empujar(texto) {
+      if (terminado || mio !== turno || leidos >= MAX_LECTURA) return;
+      const pendiente = texto.slice(consumido);
+      const corte = frasesCompletas(pendiente);
+      if (!corte) return;
+      const minimo = consumido === 0 ? PRIMER_MIN : TROZO;
+      if (corte < minimo) return;
+      encolar(pendiente.slice(0, corte));
+      consumido += corte;
+    }
+    function fin(texto) {
+      if (terminado) return cola;
+      terminado = true;
+      if (typeof texto === "string" && texto.length > consumido) encolar(texto.slice(consumido));
+      return cola;
+    }
+    return { empujar, fin, activo: () => mio === turno };
+  }
+
   // Briefing hablado: el guion del día y su audio, que el servidor sintetiza una vez y guarda.
   // alGuion(texto) recibe el guion (para subtítulos). La promesa se resuelve al terminar o al pararlo.
   async function briefing(alGuion) {
@@ -276,7 +319,7 @@ const Voz = (() => {
     } catch (_) { /* sin audio */ }
   }
 
-  return { botonMic, hablar, briefing, parar, pitido, abrirMic, errorMic, avisoSilencio, micDisponible, audioCtx, trocear };
+  return { botonMic, hablar, lector, briefing, parar, pitido, abrirMic, errorMic, avisoSilencio, micDisponible, audioCtx, trocear };
 })();
 
 // «Manos libres»: el navegador envía el micrófono (PCM 16 kHz) por WebSocket; aria-voz avisa
@@ -349,9 +392,9 @@ const ManosLibres = (() => {
       enviando = false;
       if (!ev.text) { if (ev.aviso) toast(ev.aviso, "mal"); escuchar(); return; }
       estado("«" + ev.text + "»", "pensando");
-      const respuesta = await Chat.enviarDesdeVoz(ev.text);
+      const respuesta = await Chat.enviarDesdeVoz(ev.text, true);   // la lee mientras llega
       if (!activa) return;
-      if (respuesta) { estado("Respondiendo… (di «Aria» al terminar)", "hablando"); window.dispatchEvent(new CustomEvent("aria:estado", { detail: { estado: "hablando" } })); await Voz.hablar(respuesta); }
+      if (respuesta) { estado("Respondiendo… (di «Aria» al terminar)", "hablando"); await Chat.lectura(); }
       escuchar();
     }
   }

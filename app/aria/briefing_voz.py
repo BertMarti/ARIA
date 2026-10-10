@@ -17,7 +17,7 @@ from datetime import date
 
 import httpx
 
-from . import config, resumen_diario, tiempo, voz
+from . import config, invitados, resumen_diario, tiempo, voz
 
 log = logging.getLogger("aria.briefing_voz")
 
@@ -128,9 +128,10 @@ def _prefs_clave(uid: int) -> tuple[dict, str]:
     return pref, f"{pref['voz']}-{pref['tono']}-{pref['acento']}"
 
 
-def _base(usuario: dict, ref=None) -> str:
-    """Por usuario, rol (el guion de un admin cuenta cosas de la casa), día y franja."""
-    return f"{usuario['id']}-{usuario.get('rol', 'usuario')}-{tiempo.hoy(ref).isoformat()}-{_franja(ref)}"
+def _base(usuario: dict, limites: dict | None = None, ref=None) -> str:
+    """Por usuario, rol y perfil (el guion de un admin cuenta cosas de la casa; el de una visita, menos), día y franja."""
+    perfil = (limites or {}).get("perfil", "")
+    return f"{usuario['id']}-{usuario.get('rol', 'usuario')}{perfil}-{tiempo.hoy(ref).isoformat()}-{_franja(ref)}"
 
 
 def purgar() -> int:
@@ -145,16 +146,16 @@ def purgar() -> int:
     return n
 
 
-async def obtener_guion(usuario: dict, refrescar: bool = False) -> str:
+async def obtener_guion(usuario: dict, refrescar: bool = False, limites: dict | None = None) -> str:
     """El guion de esta franja del día: se fija la primera vez y se reutiliza (salvo `refrescar`)."""
-    ruta = _dir() / (_base(usuario) + ".json")
+    ruta = _dir() / (_base(usuario, limites) + ".json")
     if not refrescar and ruta.is_file():
         try:
             return json.loads(ruta.read_text())["guion"]
         except (OSError, ValueError, KeyError):
             pass
     d = await resumen_diario.construir_resumen_diario(usuario, refrescar=refrescar)
-    texto = guion(d)
+    texto = guion(invitados.recortar_resumen(d, limites))
     await asyncio.to_thread(ruta.write_text, json.dumps({"guion": texto, "generado": time.time()}, ensure_ascii=False))
     return texto
 
@@ -200,13 +201,13 @@ async def _sintetizar(texto: str, pref: dict) -> tuple[bytes, str]:
     return _unir(wavs), motores.pop()
 
 
-async def audio(usuario: dict, refrescar: bool = False) -> tuple[bytes, str, str]:
+async def audio(usuario: dict, refrescar: bool = False, limites: dict | None = None) -> tuple[bytes, str, str]:
     """(wav, motor, guion) del briefing de esta franja del día."""
     uid = usuario["id"]
-    texto = await obtener_guion(usuario, refrescar)
+    texto = await obtener_guion(usuario, refrescar, limites)
     pref, voz_clave = await asyncio.to_thread(_prefs_clave, uid)
     huella = hashlib.sha256((texto + voz_clave).encode()).hexdigest()[:12]
-    clave = f"{_base(usuario)}-{huella}"
+    clave = f"{_base(usuario, limites)}-{huella}"
     ruta = _dir() / f"{clave}.wav"
     async with _bloqueos.setdefault(clave, asyncio.Lock()):
         if ruta.is_file():

@@ -182,6 +182,20 @@ def publico(lim: dict | None) -> dict | None:
                                 "rutinas", "caduca")}
 
 
+def recortar_resumen(d: dict, lim: dict | None) -> dict:
+    """El resumen del día de un invitado solo con lo de sus secciones (sin Finanzas ni Agenda si no las tiene)."""
+    if lim is None:
+        return d
+    d = dict(d)
+    if "finanzas" not in lim["secciones"]:
+        d.pop("finanzas", None)
+    if "agenda" not in lim["secciones"]:
+        d["agenda"], d["recordatorios"] = {"eventos": [], "cumpleanos": [], "proyectos": []}, []
+    if "informacion" not in lim["secciones"]:
+        d.pop("inversiones", None)
+    return d
+
+
 def gastar(uid: int, lim: dict | None, tipo: str = "mensajes") -> int | None:
     """Apunta un uso de hoy y devuelve cuántos quedan (None = sin límite). Lanza AccesoError si ya no quedan."""
     if lim is None:

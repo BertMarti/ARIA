@@ -303,3 +303,11 @@ def test_vista_desconocida_se_ignora():
     assert c.post("/api/vista", json={"perfil": "admin-supremo"}).json() == {"vista": None}
     c.cookies.set(main.VISTA_COOKIE, "admin-supremo")
     assert c.get("/api/info").json()["rol"] == "admin"
+
+
+def test_resumen_de_una_visita_sin_secciones_ajenas():
+    d = {"tiempo": {"x": 1}, "finanzas": {"gastos": 1}, "inversiones": {"valores": []},
+         "agenda": {"eventos": [{"titulo": "Dentista"}]}, "recordatorios": [{"texto": "x"}]}
+    v = invitados.recortar_resumen(d, invitados.normalizar_limites(None, "visita"))
+    assert "finanzas" not in v and v["agenda"]["eventos"] == [] and v["recordatorios"] == [] and "inversiones" in v
+    assert invitados.recortar_resumen(d, None) is d

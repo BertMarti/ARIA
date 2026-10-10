@@ -374,7 +374,9 @@ async def teclado_resumen(chat_id: int, u: dict) -> dict:
 
 
 async def enviar_resumen(b, chat_id: int, u: dict, refrescar: bool = False) -> list:
+    from . import invitados
     d = await resumen_diario.construir_resumen_diario(u, refrescar=refrescar)
+    d = invitados.recortar_resumen(d, await asyncio.to_thread(invitados.de, u["id"]))
     return await enviar_html(b, chat_id, resumen_diario.telegram(d), await teclado_resumen(chat_id, u))
 
 
@@ -383,7 +385,8 @@ async def enviar_briefing_voz(b, chat_id: int, u: dict) -> bool:
     from . import briefing_voz
     tarea = asyncio.create_task(_escribiendo(b, chat_id, "record_voice"))
     try:
-        wav, _motor, _ = await briefing_voz.audio(u)
+        from . import invitados
+        wav, _motor, _ = await briefing_voz.audio(u, limites=await asyncio.to_thread(invitados.de, u["id"]))
         datos, mime = await briefing_voz.ogg(wav)
     except Exception:  # noqa: BLE001 - cualquier fallo de voz: se avisa con texto y el resumen escrito sigue valiendo
         log.exception("No se pudo preparar el briefing hablado")

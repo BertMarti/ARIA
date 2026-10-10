@@ -890,13 +890,15 @@ async def api_briefing(request: Request, refrescar: int = 0):
 
 @app.get("/api/resumen-diario")
 async def api_resumen_diario(request: Request, refrescar: int = 0):
-    return await resumen_diario.construir_resumen_diario(request.state.usuario, refrescar=bool(refrescar))
+    d = await resumen_diario.construir_resumen_diario(request.state.usuario, refrescar=bool(refrescar))
+    return invitados.recortar_resumen(d, getattr(request.state, "limites", None))
 
 
 @app.get("/api/resumen-diario/hablado")
 async def api_resumen_hablado(request: Request, refrescar: int = 0):
     """Guion del briefing hablado de esta franja del día (fijo hasta que se refresque)."""
-    return {"guion": await briefing_voz.obtener_guion(request.state.usuario, refrescar=bool(refrescar))}
+    return {"guion": await briefing_voz.obtener_guion(request.state.usuario, refrescar=bool(refrescar),
+                                                      limites=getattr(request.state, "limites", None))}
 
 
 @app.get("/api/resumen-diario/voz")
@@ -909,10 +911,10 @@ async def api_resumen_voz(request: Request):
     try:
         lim = getattr(request.state, "limites", None)
         if lim and lim["voz"] == "local":
-            guion = await briefing_voz.obtener_guion(request.state.usuario)
+            guion = await briefing_voz.obtener_guion(request.state.usuario, limites=lim)
             wav, motor = await voz.sintetizar_local(voz.limpiar_para_voz(guion, 2000), 1.0), "local"
         else:
-            wav, motor, _ = await briefing_voz.audio(request.state.usuario)
+            wav, motor, _ = await briefing_voz.audio(request.state.usuario, limites=lim)
     except voz.AudioError as e:
         return JSONResponse({"error": e.mensaje}, status_code=e.estado)
     pref = await asyncio.to_thread(voz.preferencias_de, uid)

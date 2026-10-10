@@ -116,7 +116,7 @@ async def test_motores_mezclados_se_rehacen_con_la_voz_local(ana, monkeypatch):
 
 
 def test_api_guion_y_audio(ana, monkeypatch):
-    async def audio(usuario, refrescar=False):
+    async def audio(usuario, refrescar=False, limites=None):
         return _wav(), "gemini", "Hola"
     monkeypatch.setattr(briefing_voz, "audio", audio)
     c = TestClient(main.app, base_url=LAN)
@@ -144,7 +144,7 @@ async def test_telegram_manda_nota_de_voz(ana, monkeypatch):
         async def subir(self, metodo, campo, nombre, contenido, mime, **datos):
             subidas.append((metodo, mime, datos.get("caption")))
 
-    async def audio(usuario, refrescar=False):
+    async def audio(usuario, refrescar=False, limites=None):
         return _wav(), "gemini", "Hola"
 
     async def ogg(wav):

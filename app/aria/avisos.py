@@ -550,7 +550,9 @@ async def briefings_programados(ref: datetime | None = None) -> list:
         await asyncio.to_thread(_anotar_enviado, clave)  # antes de enviar: si falla, no se repite cada 20 s
         try:
             from . import resumen_diario
+            from . import invitados
             d = await resumen_diario.construir_resumen_diario(u, refrescar=True)
+            d = invitados.recortar_resumen(d, await asyncio.to_thread(invitados.de, u["id"]))
             texto, html_tg = resumen_diario.texto_plano(d), resumen_diario.telegram(d)
         except Exception:  # noqa: BLE001
             log.exception("No se pudo preparar el resumen de %s", u["id"])

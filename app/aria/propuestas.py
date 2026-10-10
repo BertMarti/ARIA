@@ -20,7 +20,7 @@ log = logging.getLogger("aria.propuestas")
 PROPONIBLES = {"recordatorio": "Recordatorio ", "marcar_dispositivo_conocido": "Dispositivo "}
 MAX_PENDIENTES = 10
 RETENCION_DIAS = 30
-ESTADOS = ("pendiente", "aprobada", "rechazada", "caducada", "fallida")
+ESTADOS = ("pendiente", "ejecutando", "aprobada", "rechazada", "caducada", "fallida")
 
 
 class PropuestaError(Exception):
@@ -91,8 +91,15 @@ def obtener(uid: int, pid: int) -> dict | None:
 
 def _resolver(pid: int, estado: str, resultado: str | None = None) -> None:
     with closing(db._con()) as con, con:
-        con.execute("UPDATE propuestas SET estado=?, resultado=?, resuelto=? WHERE id=? AND estado='pendiente'",
+        con.execute("UPDATE propuestas SET estado=?, resultado=?, resuelto=? WHERE id=? AND estado IN ('pendiente','ejecutando')",
                     (estado, (resultado or "")[:400] or None, time.time(), pid))
+
+
+def _reclamar(pid: int, uid: int) -> bool:
+    """Pasa la propuesta a «ejecutando» de forma atómica: si dos aprobaciones llegan a la vez, solo una gana."""
+    with closing(db._con()) as con, con:
+        return con.execute("UPDATE propuestas SET estado='ejecutando' WHERE id=? AND user_id=? AND estado='pendiente'",
+                           (pid, uid)).rowcount == 1
 
 
 async def decidir(usuario: dict, pid: int, aprobar: bool) -> dict:
@@ -108,7 +115,16 @@ async def decidir(usuario: dict, pid: int, aprobar: bool) -> dict:
     if not aprobar:
         await asyncio.to_thread(_resolver, pid, "rechazada")
         return await asyncio.to_thread(obtener, usuario["id"], pid)
-    res = await _ejecutar(tools, p, usuario)
+    if not await asyncio.to_thread(_reclamar, pid, usuario["id"]):
+        raise PropuestaError("Esa propuesta ya se está atendiendo.")
+    if p["herramienta"] not in PROPONIBLES:   # p. ej. una propuesta antigua de algo que ya no se puede proponer
+        await asyncio.to_thread(_resolver, pid, "fallida", "Esa acción ya no se puede hacer desde una propuesta.")
+        return await asyncio.to_thread(obtener, usuario["id"], pid)
+    try:
+        res = await _ejecutar(tools, p, usuario)
+    except Exception:  # noqa: BLE001 - que nunca se quede en «ejecutando»
+        log.exception("Falló una propuesta aprobada")
+        res = "Error al ejecutar la propuesta."
     fallo = not res.startswith(PROPONIBLES[p["herramienta"]])
     await asyncio.to_thread(_resolver, pid, "fallida" if fallo else "aprobada", res)
     return await asyncio.to_thread(obtener, usuario["id"], pid)
@@ -156,7 +172,8 @@ def _citas(u: dict, ahora: datetime) -> list:
         if e.get("todo_el_dia") or not e.get("inicio"):
             continue
         try:
-            ini = datetime.fromisoformat(str(e["inicio"])[:16]).replace(tzinfo=ahora.tzinfo)
+            ini = datetime.fromisoformat(str(e["inicio"]))
+            ini = ini.replace(tzinfo=ahora.tzinfo) if ini.tzinfo is None else ini.astimezone(ahora.tzinfo)
         except ValueError:
             continue
         falta = (ini - ahora).total_seconds()

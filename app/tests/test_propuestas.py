@@ -171,3 +171,32 @@ def test_invitado_no_ve_propuestas():
     s = invitados.solicitar("Ana", "ana@example.com", "Soy la vecina", "1.1.1.1")
     inv = invitados.aprobar(s["id"])["usuario"]
     assert cliente(inv).get("/api/propuestas").status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_dos_aprobaciones_a_la_vez_ejecutan_una_sola_vez(monkeypatch):
+    import asyncio
+    from aria import tools
+    u = _usuario()
+    p = _proponer(u)
+    llamadas = []
+
+    async def lenta(nombre, args, rol, uid=None, **k):
+        llamadas.append(nombre)
+        await asyncio.sleep(.05)
+        return "Recordatorio 1 programado."
+    monkeypatch.setattr(tools, "ejecutar", lenta)
+    r = await asyncio.gather(propuestas.decidir(u, p["id"], True), propuestas.decidir(u, p["id"], True), return_exceptions=True)
+    assert len(llamadas) == 1 and sum(isinstance(x, propuestas.PropuestaError) for x in r) == 1
+    assert propuestas.obtener(u["id"], p["id"])["estado"] == "aprobada"
+
+
+def test_cita_con_zona_horaria_explicita(monkeypatch):
+    from datetime import timedelta, timezone
+    from aria import agenda, tiempo
+    u = _usuario()
+    ahora = tiempo.ahora()
+    ini_utc = (ahora + timedelta(minutes=90)).astimezone(timezone.utc)
+    monkeypatch.setattr(agenda, "listar_eventos", lambda *a: [{"id": 7, "titulo": "Dentista", "inicio": ini_utc.isoformat()}])
+    [c] = propuestas._citas(u, ahora)
+    assert c["args"]["cuando"] == (ini_utc.astimezone(ahora.tzinfo) - timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M")

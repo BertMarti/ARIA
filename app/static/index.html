@@ -416,6 +416,17 @@
         <h3>Invitados</h3>
         <ul id="accesos-invitados" class="filas"></ul>
       </article>
+      <article class="tarjeta ancha solo-admin" id="ajustes-registro">
+        <h2>Registro de actividad</h2>
+        <p class="muted">Consulta qué herramientas ha usado cada agente, para quién, cuándo y con qué resultado. Los argumentos sensibles se ocultan automáticamente.</p>
+        <div class="fila-form registro-filtros">
+          <label>Usuario <select id="registro-usuario"><option value="">Todos</option></select></label>
+          <label>Herramienta <select id="registro-herramienta"><option value="">Todas</option></select></label>
+          <label class="interruptor"><input type="checkbox" id="registro-errores"><span>Solo errores</span></label>
+          <button type="button" class="fantasma" id="registro-actualizar">Actualizar</button>
+        </div>
+        <div class="tabla-cont"><table class="tabla fichas" id="registro-tabla"><thead><tr><th>Fecha</th><th>Usuario</th><th>Origen</th><th>Agente</th><th>Herramienta</th><th>Resultado</th><th>Tiempo en ms</th></tr></thead><tbody></tbody></table></div>
+      </article>
       <article class="tarjeta ancha solo-admin" id="ajustes-cerebros">
         <h2>Cerebros</h2>
         <p class="muted">ARIA prueba los cerebros en este orden y pasa al siguiente si uno falla o llega a su límite gratuito. El local siempre está disponible como último recurso. Las claves se rellenan en el archivo .env, nunca aquí.</p>
@@ -793,6 +804,7 @@
 <script src="/static/accesos.js"></script>
 <script src="/static/inicio.js"></script>
 <script src="/static/ajustes.js"></script>
+<script src="/static/registro.js"></script>
 <script src="/static/finanzas.js"></script>
 <script src="/static/parental.js"></script>
 <script src="/static/red.js"></script>

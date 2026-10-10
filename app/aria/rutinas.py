@@ -344,7 +344,7 @@ def _recortar(texto: str) -> str:
 async def ejecutar(r: dict, canales_: list | None = None, ahora: float | None = None) -> dict:
     """Ejecuta una rutina ya y entrega el resultado. `canales_`: None = los de la rutina; [] = solo la campana.
     Devuelve {estado, texto}. Nunca lanza (todo fallo queda como estado «error» y aviso en la campana)."""
-    from . import cerebros
+    from . import cerebros, registro
     uid = r["user_id"] if "user_id" in r else None
     u = await asyncio.to_thread(_usuario, uid) if uid is not None else None
     if not u:
@@ -353,32 +353,37 @@ async def ejecutar(r: dict, canales_: list | None = None, ahora: float | None = 
         return {"estado": "en_curso", "texto": "Esa rutina ya se está ejecutando."}
     _en_curso.add(r["id"])
     try:
-        cid = None
-        if not cerebros.hay_nube():
-            estado = "sin_nube"
-            texto = (f"La rutina «{r['nombre']}» no se ha ejecutado: ahora mismo solo responde el cerebro local "
-                     "y las rutinas solo usan cerebros en la nube.")
-        else:
-            try:
-                async with _sem:
-                    res, cerebro, ag_id = await asyncio.wait_for(_correr(u, r), TIMEOUT_S)
-                cid = await asyncio.to_thread(_guardar_conversacion, u, r, ag_id, res, cerebro)
-                estado, texto = "ok", f"**Rutina «{r['nombre']}»**\n\n{_recortar(res)}"
-            except asyncio.TimeoutError:
-                estado, texto = "error", f"La rutina «{r['nombre']}» tardó demasiado (más de {TIMEOUT_S} s) y se canceló."
-            except RutinaError as e:
-                estado, texto = "error", f"La rutina «{r['nombre']}» no pudo completarse: {e}"
-            except Exception:  # noqa: BLE001 - una rutina rota no debe tumbar el planificador
-                log.exception("Falló la rutina %s", r["id"])
-                estado, texto = "error", f"La rutina «{r['nombre']}» falló por un error interno."
-        ahora = time.time() if ahora is None else ahora
-        await asyncio.to_thread(_guardar_resultado, r["id"], estado, texto, cid, ahora)
-        lista = _canales(r["canal"]) if canales_ is None else canales_
-        await avisos.emitir("rutina", "info" if estado == "ok" else "aviso", texto, "ajustes", [uid],
-                            ignorar_silencio=True, canales_=lista, extra={"rutina": r["id"]})
-        return {"estado": estado, "texto": texto}
+        with registro.origen("rutina"):
+            return await _ejecutar_registrada(r, canales_, ahora, uid, u, cerebros)
     finally:
         _en_curso.discard(r["id"])
+
+
+async def _ejecutar_registrada(r, canales_, ahora, uid, u, cerebros):
+    cid = None
+    if not cerebros.hay_nube():
+        estado = "sin_nube"
+        texto = (f"La rutina «{r['nombre']}» no se ha ejecutado: ahora mismo solo responde el cerebro local "
+                 "y las rutinas solo usan cerebros en la nube.")
+    else:
+        try:
+            async with _sem:
+                res, cerebro, ag_id = await asyncio.wait_for(_correr(u, r), TIMEOUT_S)
+            cid = await asyncio.to_thread(_guardar_conversacion, u, r, ag_id, res, cerebro)
+            estado, texto = "ok", f"**Rutina «{r['nombre']}»**\n\n{_recortar(res)}"
+        except asyncio.TimeoutError:
+            estado, texto = "error", f"La rutina «{r['nombre']}» tardó demasiado (más de {TIMEOUT_S} s) y se canceló."
+        except RutinaError as e:
+            estado, texto = "error", f"La rutina «{r['nombre']}» no pudo completarse: {e}"
+        except Exception:  # noqa: BLE001 - una rutina rota no debe tumbar el planificador
+            log.exception("Falló la rutina %s", r["id"])
+            estado, texto = "error", f"La rutina «{r['nombre']}» falló por un error interno."
+    ahora = time.time() if ahora is None else ahora
+    await asyncio.to_thread(_guardar_resultado, r["id"], estado, texto, cid, ahora)
+    lista = _canales(r["canal"]) if canales_ is None else canales_
+    await avisos.emitir("rutina", "info" if estado == "ok" else "aviso", texto, "ajustes", [uid],
+                        ignorar_silencio=True, canales_=lista, extra={"rutina": r["id"]})
+    return {"estado": estado, "texto": texto}
 
 
 def vencidas(ahora: float) -> list:

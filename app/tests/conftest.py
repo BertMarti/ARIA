@@ -11,7 +11,7 @@ os.environ["ARIA_MODULOS_DIR"] = str(Path(__file__).resolve().parent / "modulos_
 os.environ.pop("ARIA_MODULOS", None)
 import pytest
 
-from aria import agenda, auth, avisos, cerebros, config, control, cve, db, finanzas, push, recordatorios, red, sso, telegram, usuarios
+from aria import agenda, auth, avisos, cerebros, config, control, cve, db, finanzas, push, recordatorios, red, registro, sso, telegram, usuarios
 
 
 @pytest.fixture(autouse=True)
@@ -33,6 +33,7 @@ def entorno(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "ESCANER_DIR", tmp_path / "escaner")
     db.iniciar()
     usuarios.iniciar()
+    registro.iniciar()
     from aria import invitados
     invitados.iniciar()
     invitados.olvidar_cache()

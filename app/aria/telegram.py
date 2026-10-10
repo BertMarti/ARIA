@@ -26,7 +26,7 @@ from contextlib import closing
 
 import httpx
 
-from . import avisos, config, db, enlaces, recordatorios, resumen_diario, rutinas, telemetria, usuarios
+from . import avisos, config, db, enlaces, recordatorios, registro, resumen_diario, rutinas, telemetria, usuarios
 
 log = logging.getLogger("aria.telegram")
 
@@ -544,19 +544,20 @@ async def _responder(u: dict, chat_id: int, fabrica) -> tuple[str, dict | None, 
     acumulado, error, ticket = "", None, None
     gen = fabrica(None if nueva else cid)
     try:
-        async for ev in gen:
-            t = ev.get("type")
-            if t == "conv":
-                cid = ev["id"]
-                await asyncio.to_thread(_fijar_conv, chat_id, cid)
-            elif t == "token":
-                acumulado += ev["text"]
-            elif t in ("reinicio", "herramienta"):
-                acumulado = ""  # lo dicho antes de usar una herramienta no es la respuesta final
-            elif t == "error":
-                error = ev.get("text")
-            elif t == "ticket":
-                ticket = ev.get("datos")
+        with registro.origen("telegram"):
+            async for ev in gen:
+                t = ev.get("type")
+                if t == "conv":
+                    cid = ev["id"]
+                    await asyncio.to_thread(_fijar_conv, chat_id, cid)
+                elif t == "token":
+                    acumulado += ev["text"]
+                elif t in ("reinicio", "herramienta"):
+                    acumulado = ""  # lo dicho antes de usar una herramienta no es la respuesta final
+                elif t == "error":
+                    error = ev.get("text")
+                elif t == "ticket":
+                    ticket = ev.get("datos")
     finally:
         await gen.aclose()
     if nueva and cid:

@@ -105,7 +105,7 @@ async def responder(mensajes: list, rol: str = "admin", quien: str | None = None
                 except ValueError:
                     args = {}
             yield {"type": "herramienta", "name": nombre, "args": args}
-            res = await tools.ejecutar(nombre, args, rol, uid=uid, solo=permitidas)
+            res = await tools.ejecutar(nombre, args, rol, uid=uid, solo=permitidas, agente=agente.id if agente else None)
             yield {"type": "resultado", "name": nombre, "text": res[:2000]}
             msgs.append({"role": "tool", "tool_name": nombre, "content": res})
     yield {"type": "error", "text": "Demasiadas llamadas a herramientas seguidas."}

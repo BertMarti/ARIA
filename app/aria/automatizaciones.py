@@ -12,6 +12,7 @@ from contextlib import closing
 from datetime import datetime
 
 from . import avisos, db, tiempo
+from . import registro as registro_herramientas   # (aquí «registro» ya es la función del historial de cada automatización)
 
 log = logging.getLogger("aria.automatizaciones")
 MAX_POR_USUARIO = 20
@@ -216,8 +217,9 @@ async def disparar(uid, r, evento, simular=False):
             if con.execute("UPDATE automatizaciones SET ultimo_disparo=? WHERE id=? AND user_id=? AND (ultimo_disparo IS NULL OR ?-ultimo_disparo>=?)", (ahora, r["id"], uid, ahora, ANTI_BUCLE_S)).rowcount == 0: return {"omitida": "anti_bucle"}
     resultados = []
     try:
-        for a in r["acciones"]: resultados.append(await _accion(uid, a, evento))
-        estado = "ok"
+        with registro_herramientas.origen("automatizacion"):
+            for a in r["acciones"]: resultados.append(await _accion(uid, a, evento))
+            estado = "ok"
     except Exception as e: estado = "error: " + str(e); log.exception("Automatización %s", r["id"])
     if not simular:
         with closing(db._con()) as con, con:

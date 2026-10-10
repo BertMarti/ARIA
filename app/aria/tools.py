@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import agenda, busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, informacion, mapas, memoria, proyectos, recordatorios, red, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
+from . import agenda, busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, informacion, mapas, memoria, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -220,28 +220,35 @@ registrar_errores(estadisticas.EstadisticasError)
 
 
 async def ejecutar(nombre: str, args: dict | None, rol: str = "admin", uid: int | None = None,
-                   solo: set | None = None) -> str:
+                   solo: set | None = None, agente: str | None = None) -> str:
     """Ejecuta una herramienta comprobando el rol y, si se da `solo`, las del agente activo.
     Las de memoria usan el usuario fijado en `memoria.uid_actual` por el chat; las de datos propios, `uid`."""
+    inicio = time.perf_counter()
+    original = args
+    def fin(res, ok):
+        registro.anotar(uid, rol, agente, nombre, original, ok, res, (time.perf_counter() - inicio) * 1000)
+        return res
     t = _REGISTRO.get(nombre)
     if not t:
-        return f"Herramienta desconocida: {nombre}"
+        return fin(f"Herramienta desconocida: {nombre}", False)
     if nombre not in permitidas(rol) or (solo is not None and nombre not in solo):
-        return "No tienes permiso para esa acción: pídesela al administrador."
+        return fin("No tienes permiso para esa acción: pídesela al administrador.", False)
     args = {k: v for k, v in (args or {}).items() if k != "uid"} if isinstance(args, dict) else {}
     if t["uid"]:
         if uid is None:
-            return "No sé qué usuario eres; vuelve a entrar en ARIA."
+            return fin("No sé qué usuario eres; vuelve a entrar en ARIA.", False)
         args["uid"] = uid
     try:
         res = await t["fn"](**args)
     except _ERRORES_LEGIBLES as e:
-        return str(e)
+        return fin(str(e), False)
     except TypeError:
-        return "Argumentos no válidos para la herramienta."
+        return fin("Argumentos no válidos para la herramienta.", False)
     except Exception as e:  # noqa: BLE001 - se informa al modelo, no se rompe el chat
-        return f"Error al ejecutar la herramienta: {type(e).__name__}"
-    return res if isinstance(res, str) else json.dumps(res, ensure_ascii=False)
+        return fin(f"Error al ejecutar la herramienta: {type(e).__name__}", False)
+    texto = res if isinstance(res, str) else json.dumps(res, ensure_ascii=False)
+    es_error = texto.startswith(("Argumentos no válidos para la herramienta.", "Error al ejecutar la herramienta:"))
+    return fin(texto, not es_error)
 
 
 @tool("fecha_hora", "Devuelve la fecha y hora actuales.")

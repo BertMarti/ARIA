@@ -325,7 +325,7 @@ const Ajustes = (() => {
     { id: "automatizar", nombre: "Automatización", desc: "Rutinas programadas y reglas «si pasa esto, haz aquello».", ico: "M13 3 4 14h7l-1 7 9-11h-7z", tarjetas: ["ajustes-rutinas", "ajustes-automatizaciones"] },
     { id: "memoria", nombre: "Memoria", desc: "Lo que ARIA recuerda de ti, tu diario y tus proyectos.", ico: "M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4.5A3 3 0 0 0 9 4zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1", tarjetas: ["ajustes-memoria"] },
     { id: "ia", nombre: "Inteligencia artificial", desc: "Cerebros en la nube y modelos locales.", ico: "M7 7h10v10H7zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4", tarjetas: ["ajustes-cerebros", "ajustes-modelos"] },
-    { id: "usuarios", nombre: "Usuarios", desc: "Quién puede entrar y con qué permisos.", ico: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a5 5 0 0 0-5-5", tarjetas: ["ajustes-usuarios", "ajustes-accesos"] },
+     { id: "usuarios", nombre: "Usuarios", desc: "Quién puede entrar y con qué permisos.", ico: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a5 5 0 0 0-5-5", tarjetas: ["ajustes-usuarios", "ajustes-accesos", "ajustes-registro"] },
     { id: "apps", nombre: "Aplicaciones", desc: "Módulos, integraciones y certificado HTTPS.", ico: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", tarjetas: ["ajustes-modulos", "ajustes-spotify", "ajustes-certificado"] },
   ];
   let seccion = Prefs.get("ajustes_seccion", "general");

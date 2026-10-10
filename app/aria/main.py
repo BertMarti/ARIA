@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, cerebros, chat, config, control, cve, db, diario, dos_pasos, estadisticas, finanzas, informacion, invitados, mapas, memoria, modelos, modulos, permisos, proyectos, push, recordatorios, red, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, cerebros, chat, config, control, cve, db, diario, dos_pasos, estadisticas, finanzas, informacion, invitados, mapas, memoria, modelos, modulos, permisos, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -80,6 +80,7 @@ async def _arranque():
     if not auth.habilitado():
         log.error("Faltan ARIA_USER / ARIA_PASSWORD o ARIA_SECRET (>=16 caracteres): login deshabilitado.")
     db.iniciar()
+    registro.iniciar()
     telemetria.iniciar()
     vpn_ubicaciones.iniciar()
     usuarios.iniciar()
@@ -1022,6 +1023,13 @@ def _err_usuario(e: Exception) -> JSONResponse:
 @app.get("/api/users")
 async def api_usuarios():
     return {"usuarios": await asyncio.to_thread(usuarios.listar)}
+
+
+@app.get("/api/registro")
+async def api_registro(usuario: int | None = None, herramienta: str | None = None,
+                       errores: int = 0, limite: int = 100):
+    return {"filas": await asyncio.to_thread(registro.listar, usuario, herramienta, bool(errores), limite),
+            "herramientas": await asyncio.to_thread(registro.herramientas_usadas)}
 
 
 @app.post("/api/users")

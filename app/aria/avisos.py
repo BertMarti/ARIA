@@ -491,6 +491,11 @@ async def tick(ahora: float | None = None) -> None:
     if ahora - _ultimo_purgado > 86400:
         _ultimo_purgado = ahora
         await asyncio.to_thread(purgar)
+        try:
+            from . import registro
+            await asyncio.to_thread(registro.purgar)
+        except Exception:  # noqa: BLE001
+            log.exception("Falló la purga del registro de herramientas")
 
 
 async def bucle(retraso: float = 30) -> None:

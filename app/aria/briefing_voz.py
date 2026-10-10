@@ -128,8 +128,9 @@ def _prefs_clave(uid: int) -> tuple[dict, str]:
     return pref, f"{pref['voz']}-{pref['tono']}-{pref['acento']}"
 
 
-def _base(uid: int, ref=None) -> str:
-    return f"{uid}-{tiempo.hoy(ref).isoformat()}-{_franja(ref)}"
+def _base(usuario: dict, ref=None) -> str:
+    """Por usuario, rol (el guion de un admin cuenta cosas de la casa), día y franja."""
+    return f"{usuario['id']}-{usuario.get('rol', 'usuario')}-{tiempo.hoy(ref).isoformat()}-{_franja(ref)}"
 
 
 def purgar() -> int:
@@ -146,7 +147,7 @@ def purgar() -> int:
 
 async def obtener_guion(usuario: dict, refrescar: bool = False) -> str:
     """El guion de esta franja del día: se fija la primera vez y se reutiliza (salvo `refrescar`)."""
-    ruta = _dir() / (_base(usuario["id"]) + ".json")
+    ruta = _dir() / (_base(usuario) + ".json")
     if not refrescar and ruta.is_file():
         try:
             return json.loads(ruta.read_text())["guion"]
@@ -205,7 +206,7 @@ async def audio(usuario: dict, refrescar: bool = False) -> tuple[bytes, str, str
     texto = await obtener_guion(usuario, refrescar)
     pref, voz_clave = await asyncio.to_thread(_prefs_clave, uid)
     huella = hashlib.sha256((texto + voz_clave).encode()).hexdigest()[:12]
-    clave = f"{_base(uid)}-{huella}"
+    clave = f"{_base(usuario)}-{huella}"
     ruta = _dir() / f"{clave}.wav"
     async with _bloqueos.setdefault(clave, asyncio.Lock()):
         if ruta.is_file():

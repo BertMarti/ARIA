@@ -7,7 +7,7 @@
   let turnstile = "";
 
   const lienzo = $(".acc-ping");
-  if (lienzo && window.Ping) new Ping(lienzo, { global: true, sigueMs: 5000, escala: .9, zona: { x: .6, y: .5, ax: .25, ay: .2 } });
+  if (lienzo && typeof Ping !== "undefined") new Ping(lienzo, { global: true, sigueMs: 5000, escala: .9, zona: { x: .6, y: .5, ax: .25, ay: .2 } });
 
   const leer = () => { try { return localStorage.getItem(CLAVE) || ""; } catch (_) { return ""; } };
   const guardar = (t) => { try { localStorage.setItem(CLAVE, t); } catch (_) { /* sin almacenamiento */ } };
@@ -55,6 +55,7 @@
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || "No se pudo enviar.");
       if (d.token) guardar(d.token);
+      else if (!leer()) { $("#acc-estado").hidden = false; $("#acc-estado-texto").textContent = "Ya había una solicitud con ese email. Su estado solo se ve desde el navegador en el que se envió."; boton.textContent = "Solicitud enviada"; return; }
       $("#acc-form").reset();
       boton.textContent = "Solicitud enviada";
       await comprobar();

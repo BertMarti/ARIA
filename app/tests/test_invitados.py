@@ -45,7 +45,7 @@ def test_solicitud_valida_y_sus_errores():
 def test_misma_persona_no_duplica_y_hay_limite_por_ip():
     a = _pedir()
     b = _pedir()
-    assert b["repetida"] and b["token"] == a["token"]
+    assert b["repetida"] and b["token"] is None and a["token"]   # el token solo lo tiene quien la envió
     _pedir("otro@example.com")
     with pytest.raises(invitados.AccesoError, match="mañana"):
         _pedir("tercero@example.com")

@@ -191,11 +191,11 @@ def gastar(uid: int, lim: dict | None, tipo: str = "mensajes") -> int | None:
     col = "mensajes" if tipo == "mensajes" else "imagenes"
     with closing(db._con()) as con, con:
         con.execute("INSERT OR IGNORE INTO uso_invitados (user_id, fecha) VALUES (?,?)", (uid, hoy))
-        usado = con.execute(f"SELECT {col} FROM uso_invitados WHERE user_id=? AND fecha=?", (uid, hoy)).fetchone()[0]
-        if usado >= tope:
+        # Comprobar y sumar en una sola sentencia: dos peticiones a la vez no pueden pasarse del cupo
+        if con.execute(f"UPDATE uso_invitados SET {col}={col}+1 WHERE user_id=? AND fecha=? AND {col} < ?", (uid, hoy, tope)).rowcount == 0:
             raise AccesoError("Has llegado al límite de hoy: " + (
                 f"{tope} mensajes." if tipo == "mensajes" else f"{tope} imágenes." if tope else "tu acceso no incluye imágenes."))
-        con.execute(f"UPDATE uso_invitados SET {col}={col}+1 WHERE user_id=? AND fecha=?", (uid, hoy))
+        usado = con.execute(f"SELECT {col} FROM uso_invitados WHERE user_id=? AND fecha=?", (uid, hoy)).fetchone()[0] - 1
         con.execute("DELETE FROM uso_invitados WHERE fecha < ?", (tiempo.hoy().replace(day=1).isoformat(),))
     return tope - usado - 1
 
@@ -228,8 +228,8 @@ def solicitar(nombre, email, motivo, ip: str) -> dict:
         if con.execute("SELECT COUNT(*) FROM solicitudes_acceso WHERE estado='pendiente'").fetchone()[0] >= MAX_PENDIENTES:
             raise AccesoError("Ahora mismo hay muchas solicitudes pendientes. Prueba más tarde.")
         previa = con.execute("SELECT token, id FROM solicitudes_acceso WHERE email=? AND estado='pendiente'", (email,)).fetchone()
-        if previa:
-            return {"token": previa["token"], "id": previa["id"], "repetida": True}
+        if previa:   # sin su token: quien solo sabe el email no debe poder ver el nombre ni el estado de otra persona
+            return {"token": None, "id": previa["id"], "repetida": True}
         token = secrets.token_urlsafe(18)
         cur = con.execute("INSERT INTO solicitudes_acceso (token, nombre, email, motivo, ip, creado) VALUES (?,?,?,?,?,?)",
                           (token, nombre, email, motivo, ip_h, ahora))

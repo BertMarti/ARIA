@@ -150,3 +150,19 @@ async def test_cerebros_configurados_cuentan_como_listos(monkeypatch):
     a = await resumen_diario._aplicaciones()
     assert a["aria"] == {"listos": 1, "total": 2}
     assert "ningún cerebro de IA está disponible" not in a["problemas"]
+
+
+@pytest.mark.asyncio
+async def test_la_cache_es_por_rol(monkeypatch):
+    """«Probar como…»: el mismo admin con rol usuario no debe recibir su resumen de administrador en caché."""
+    admin = usuarios.crear("jefa@example.invalid", "Jefa", "admin")
+    monkeypatch.setattr(briefing, "_tiempo", lambda: _async(None))
+    monkeypatch.setattr(briefing, "prevision", lambda dias=2: _async(None))
+    monkeypatch.setattr(resumen_diario.informacion, "mercados", lambda uid: _async(None))
+    monkeypatch.setattr(resumen_diario.estadisticas, "resumen", lambda horas=24: _async(None))
+    monkeypatch.setattr(resumen_diario.vpn, "listar", lambda: _async([]))
+    monkeypatch.setattr(red, "dispositivos", lambda: _async([]))
+    resumen_diario._cache.clear()
+    assert "aplicaciones" in await resumen_diario.construir_resumen_diario(admin)
+    como_usuario = await resumen_diario.construir_resumen_diario({**admin, "rol": "usuario"})
+    assert "aplicaciones" not in como_usuario and "red" not in como_usuario

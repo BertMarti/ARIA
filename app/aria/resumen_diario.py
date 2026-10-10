@@ -138,7 +138,8 @@ async def construir_resumen_diario(usuario: dict, refrescar: bool = False) -> di
     """Contrato común de Inicio, HUD, Telegram y la herramienta. El uid sale siempre de la sesión."""
     uid, admin = usuario["id"], usuario.get("rol") == "admin"
     hoy = tiempo.hoy()
-    c = _cache.get(uid)
+    clave = (uid, admin)   # por rol: la vista «Probar como…» de un admin no debe ver su caché de admin
+    c = _cache.get(clave)
     if c and not refrescar and time.monotonic() - c[0] < CACHE_S and c[1]["fecha"] == hoy.isoformat():
         return c[1]
     tiempo_d, mercados, prevision, luz_d = await asyncio.gather(
@@ -164,7 +165,7 @@ async def construir_resumen_diario(usuario: dict, refrescar: bool = False) -> di
     cierre = await _async_seguro(lambda: _cierre(datos))
     if cierre and isinstance(cierre, (list, tuple)) and cierre[0]:
         datos["cierre"] = " ".join(str(cierre[0]).split())[:240]
-    _cache[uid] = (time.monotonic(), datos)
+    _cache[clave] = (time.monotonic(), datos)
     return datos
 
 

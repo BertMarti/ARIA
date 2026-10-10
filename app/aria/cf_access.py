@@ -4,6 +4,7 @@ La aplicación de ARIA en Access debe tener una política «Allow» que incluya 
 vacío, así que siempre lleva una regla de relleno con un email imposible (`RELLENO`). El token solo necesita el
 permiso de grupos de Access; nunca se registra.
 """
+import asyncio
 import logging
 
 import httpx
@@ -14,6 +15,7 @@ log = logging.getLogger("aria.cf_access")
 
 API = "https://api.cloudflare.com/client/v4"
 RELLENO = "nadie@aria.invalid"
+_bloqueo = asyncio.Lock()   # leer-cambiar-escribir del grupo, de uno en uno (dos aprobaciones a la vez no se pisan)
 
 
 class CloudflareError(Exception):
@@ -55,6 +57,11 @@ async def _cambiar(email: str, poner: bool) -> bool:
     if not configurado():
         return False
     email = email.strip().lower()
+    async with _bloqueo:
+        return await _cambiar_bloqueado(email, poner)
+
+
+async def _cambiar_bloqueado(email: str, poner: bool) -> bool:
     g = await _pedir("GET")
     antes = g.get("include") or []
     if (email in _emails(antes)) == poner:

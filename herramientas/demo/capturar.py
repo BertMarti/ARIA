@@ -26,6 +26,8 @@ HABLAR = ("window._t = setInterval(() => dispatchEvent(new CustomEvent('aria:est
           "dispatchEvent(new CustomEvent('aria:hud-texto', {detail: {texto: 'Buenas tardes, Ana. Hoy en Madrid hará 20 grados y cielo despejado. A las 17:30 tienes el dentista.'}}));")
 ESCUCHANDO = ("document.body.classList.add('escuchando'); const s = document.getElementById('subtitulo');"
               "s.textContent = 'Ah, y esa lucecita nerviosa es Ping. No le hagas mucho caso.'; s.classList.add('visible');")
+VER_COMO_VISITA = ("fetch('/api/vista', {method: 'POST', headers: {'Content-Type': 'application/json'},"
+                   " body: JSON.stringify({perfil: 'visita'})}).then(() => location.reload())")
 CAPTURAS = {
     "captura-inicio": ("inicio", 1280, 1400, False, "", 6),
     "captura-hud": ("hud", 1440, 900, False, HABLAR, 6),
@@ -48,6 +50,9 @@ CAPTURAS = {
     "captura-escaparate-menu": ("/hola", 1440, 900, False, "document.getElementById('menu').scrollIntoView()", 4),
     "captura-ping": ("/hola", 1280, 820, False, "document.querySelector('[data-demo=demo-casa]').click()", 5),
     "captura-movil-escaparate": ("/hola", 390, 844, True, "", 4),
+    "captura-acceso": ("/acceso", 1280, 1000, False, "", 4),
+    # Va la última: deja la sesión en «Probar como Visita» (la siguiente ejecución vuelve a entrar desde cero)
+    "captura-probar-visita": ("inicio", 1280, 900, False, VER_COMO_VISITA, 5),
 }
 
 

@@ -73,7 +73,11 @@ git worktree add ../.wt/<tarea> -b feat/<tarea>
 opencode run -m <proveedor/modelo> --dir ../.wt/<tarea> "Implementa ... siguiendo AGENTS.md"
 ```
 
-**Reparto orientativo**
+**Regla del proyecto:** el orquestador no escribe el trabajo pesado: backend e interfaces nuevas van a un modelo de código,
+la documentación a un modelo rápido, los tests extra a modelos gratuitos y cada entrega pasa una revisión cruzada de solo lectura.
+El orquestador diseña, se ocupa de la seguridad (middleware, permisos, autenticación, secretos), integra, prueba y despliega.
+
+**Reparto
 | Tarea | Modelo |
 |---|---|
 | Diseño, seguridad, depuración difícil, revisión final | El más capaz (orquestador) |

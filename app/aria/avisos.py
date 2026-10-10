@@ -501,6 +501,11 @@ async def tick(ahora: float | None = None) -> None:
         _ultimo_purgado = ahora
         await asyncio.to_thread(purgar)
         try:
+            from . import embeddings, memoria
+            await asyncio.gather(asyncio.to_thread(memoria.purgar_automaticos, ahora), embeddings.rellenar())
+        except Exception:  # noqa: BLE001
+            log.exception("Falló la actualización de la memoria semántica")
+        try:
             from . import registro
             await asyncio.to_thread(registro.purgar)
         except Exception:  # noqa: BLE001

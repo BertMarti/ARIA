@@ -46,7 +46,7 @@ const Memoria = (() => {
     for (const r of data.recuerdos) {
       ul.append(el("li", { class: "fila", id: "mem-r-" + r.id },
         el("div", { class: "fila-info" }, el("span", null, r.texto),
-          el("span", { class: "muted" }, (r.origen === "auto" ? "Aprendido solo" : "Me lo pediste") + " · " + fechaCorta(r.creado))),
+          el("span", { class: "muted" }, (r.origen === "auto" ? "Aprendido por ARIA" : "Me lo pediste") + " · confianza " + Math.round((r.confianza ?? 1) * 100) + " % · " + fechaCorta(r.creado))),
         el("div", { class: "fila-acc" },
           el("button", { type: "button", class: "fantasma pequeno", onclick: () => editar(r) }, "Editar"),
           el("button", { type: "button", class: "peligro pequeno", onclick: () => borrar(r) }, "Borrar"))));

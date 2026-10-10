@@ -37,14 +37,15 @@ async def responder(mensajes: list, rol: str = "admin", quien: str | None = None
         permitidas = (permitidas if permitidas is not None else tools.generales() & tools.permitidas(rol)) & set(limite)
     uid, ctx = (uid if uid is not None else memoria.uid_actual.get()), {}
 
-    def memoria_para(prov) -> dict:
+    async def memoria_para(prov) -> dict:
         """Recuerdos del usuario para el prompt (nube: ~1 200 + ~900 caracteres; local: ≤ 300). Nunca rompe el chat."""
         if uid is None:
             return {}
         if prov.nube not in ctx:
             try:
                 ultimo = next((m["content"] for m in reversed(msgs) if m["role"] == "user"), "")
-                ctx[prov.nube] = memoria.contexto(uid, quien or "", ultimo, bool(prov.nube))
+                orden = await memoria.relevantes(uid, ultimo, memoria.MAX_RECUERDOS)
+                ctx[prov.nube] = memoria.contexto(uid, quien or "", ultimo, bool(prov.nube), orden)
             except Exception:  # noqa: BLE001
                 log.exception("No se pudo preparar la memoria")
                 ctx[prov.nube] = ""
@@ -68,7 +69,7 @@ async def responder(mensajes: list, rol: str = "admin", quien: str | None = None
                 de_agente = {"herramientas": permitidas}
             try:
                 async for ev in prov.ronda(msgs, con_tools=not ultima, rol=rol, nombre=quien,
-                                           **de_agente, **memoria_para(prov)):
+                                           **de_agente, **(await memoria_para(prov))):
                     if ev["type"] in ("token", "pensando", "llamadas") and not anunciado:
                         anunciado = True
                         yield {"type": "cerebro", "id": prov.id, "nombre": prov.nombre,

@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, cerebros, chat, config, control, cve, db, diario, dos_pasos, estadisticas, finanzas, informacion, invitados, mapas, memoria, modelos, modulos, permisos, propuestas, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, mapas, memoria, modelos, modulos, permisos, propuestas, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -87,6 +87,7 @@ async def _arranque():
     invitados.iniciar()
     propuestas.iniciar()
     dos_pasos.iniciar()
+    app.state.embeddings = asyncio.create_task(embeddings.rellenar())
     voz.iniciar()
     finanzas.iniciar()
     red.iniciar()
@@ -115,7 +116,7 @@ async def _arranque():
 
 @app.on_event("shutdown")
 async def _parada():
-    for nombre in ("diario", "avisos", "telegram", "control", "arranque"):
+    for nombre in ("diario", "avisos", "telegram", "control", "arranque", "embeddings"):
         tarea = getattr(app.state, nombre, None)
         if tarea:
             tarea.cancel()
@@ -761,6 +762,8 @@ async def api_memoria_anadir(request: Request):
         rec, nuevo = await asyncio.to_thread(memoria.anadir, request.state.usuario["id"], d["texto"], "usuario")
     except memoria.MemoriaError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
+    if nuevo and rec:
+        embeddings.programar(request.state.usuario["id"], rec["id"], rec["texto"])
     return {"recuerdo": rec, "creado": nuevo}
 
 
@@ -854,7 +857,9 @@ async def api_memoria_editar(rid: int, request: Request):
     if not isinstance(d.get("texto"), str):
         return JSONResponse({"error": "Escribe el texto del recuerdo."}, status_code=400)
     try:
-        return {"recuerdo": await asyncio.to_thread(memoria.editar, request.state.usuario["id"], rid, d["texto"])}
+        rec = await asyncio.to_thread(memoria.editar, request.state.usuario["id"], rid, d["texto"])
+        embeddings.programar(request.state.usuario["id"], rec["id"], rec["texto"])
+        return {"recuerdo": rec}
     except memoria.MemoriaError as e:
         return JSONResponse({"error": str(e)}, status_code=404 if "no encontrado" in str(e) else 400)
 

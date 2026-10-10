@@ -58,8 +58,11 @@ def iniciar() -> None:
                 user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
                 texto TEXT NOT NULL CHECK (length(texto) <= 300),
                 origen TEXT NOT NULL CHECK (origen IN ('usuario','auto')),
-                creado REAL NOT NULL, usado REAL);
+                creado REAL NOT NULL, usado REAL, confianza REAL NOT NULL DEFAULT 1.0);
             CREATE INDEX IF NOT EXISTS idx_recuerdos_user ON recuerdos(user_id, creado DESC);
+            CREATE TABLE IF NOT EXISTS memoria_vectores (
+                recuerdo_id INTEGER PRIMARY KEY REFERENCES recuerdos(id) ON DELETE CASCADE,
+                modelo TEXT NOT NULL, vector BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS diario (
                 user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
                 fecha TEXT NOT NULL, resumen TEXT NOT NULL CHECK (length(resumen) <= 600),
@@ -108,6 +111,9 @@ def iniciar() -> None:
             con.execute("ALTER TABLE memoria_ajustes ADD COLUMN modo TEXT NOT NULL DEFAULT 'amable'")
         if "discrepar" not in {r["name"] for r in con.execute("PRAGMA table_info(memoria_ajustes)")}:
             con.execute("ALTER TABLE memoria_ajustes ADD COLUMN discrepar INTEGER NOT NULL DEFAULT 0")
+        if "confianza" not in {r["name"] for r in con.execute("PRAGMA table_info(recuerdos)")}:
+            con.execute("ALTER TABLE recuerdos ADD COLUMN confianza REAL NOT NULL DEFAULT 1.0")
+            con.execute("UPDATE recuerdos SET confianza=0.6 WHERE origen='auto'")
         con.execute("CREATE INDEX IF NOT EXISTS idx_conv_user ON conversaciones(user_id, actualizada DESC)")
 
 

@@ -21,6 +21,9 @@ HOSTS = {h.strip().lower() for h in os.environ.get("ARIA_HOSTS", "").split(",") 
 HOSTS.add(LAN_IP.lower())
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://ollama:11434")
+EMBEDDINGS = os.environ.get("ARIA_EMBEDDINGS", "granite-embedding:278m")
+if EMBEDDINGS == "0":
+    EMBEDDINGS = ""
 VERSION = "2.0.0"
 MODEL_POR_DEFECTO = os.environ.get("ARIA_MODEL", "llama3.2:3b")
 NUM_CTX = _int("ARIA_NUM_CTX", 4096)

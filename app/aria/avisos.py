@@ -440,6 +440,7 @@ async def ejecutar_chequeo(c: Chequeo, ahora: float | None = None) -> list:
 
 # --- Planificador -----------------------------------------------------------------------------------------------
 _ultimo_purgado = 0.0
+_ultimas_propuestas = 0.0
 
 
 async def tick(ahora: float | None = None) -> None:
@@ -482,6 +483,14 @@ async def tick(ahora: float | None = None) -> None:
         await informes_semanales_programados()
     except Exception:  # noqa: BLE001
         log.exception("Falló el informe semanal programado")
+    global _ultimas_propuestas
+    if ahora - _ultimas_propuestas >= 300:   # proactividad con permiso: cada 5 minutos
+        _ultimas_propuestas = ahora
+        try:
+            from . import propuestas
+            await propuestas.ciclo()
+        except Exception:  # noqa: BLE001
+            log.exception("Falló el ciclo de propuestas")
     try:   # accesos de invitados caducados: se desactivan y salen del grupo de Cloudflare
         from . import api_acceso
         for uid in await api_acceso.caducar_vencidos():

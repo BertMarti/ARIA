@@ -428,6 +428,23 @@ async def avisar_solicitud(sid: int) -> int:
     return n
 
 
+async def avisar_propuesta(u: dict, p: dict) -> int:
+    """Una propuesta nueva de ARIA, con Aprobar / Rechazar, a los chats del usuario."""
+    b = bot()
+    if not b:
+        return 0
+    texto = f"💡 <b>{html.escape(p['titulo'])}</b>\n{html.escape(p['detalle'])}"
+    n = 0
+    for c in await asyncio.to_thread(chats_de, u["id"]):
+        f = lambda aprobar: asyncio.to_thread(ficha, c["chat_id"], u["id"], "propuesta", {"pid": p["id"], "si": aprobar}, 3 * 86400)
+        try:
+            await enviar_html(b, c["chat_id"], texto, teclado([boton("✅ Sí, hazlo", await f(True)), boton("No, gracias", await f(False))]))
+            n += 1
+        except TelegramError as e:
+            log.warning("Propuesta no enviada a un chat (%s)", e)
+    return n
+
+
 async def briefing_voz_a_usuario(u: dict) -> int:
     """Envía el briefing hablado a todos los chats vinculados del usuario. Devuelve a cuántos llegó."""
     b = bot()
@@ -1029,6 +1046,20 @@ async def _accion(b, cq: dict, chat_id: int, u: dict, accion: str, d: dict) -> s
                  f"No pude añadirlo en Cloudflare ({cf}). Añádelo a mano.")
         await enviar_texto(b, chat_id, f"✅ {nombre} tiene acceso con el perfil «{invitados.PERFILES[r['solicitud']['perfil']]['nombre']}». {extra}")
         return "Aprobada."
+    if accion == "propuesta":   # proactividad con permiso: se ejecuta solo si la persona dice que sí
+        from . import propuestas
+        await _quitar_botones(b, cq)
+        try:
+            p = await propuestas.decidir(u, int(d.get("pid", 0)), bool(d.get("si")))
+        except propuestas.PropuestaError as e:
+            return str(e)[:190]
+        if p["estado"] == "aprobada":
+            await enviar_texto(b, chat_id, "✅ " + (p["resultado"] or "Hecho."))
+            return "Hecho."
+        if p["estado"] == "fallida":
+            await enviar_texto(b, chat_id, "No he podido hacerlo: " + (p["resultado"] or ""))
+            return "No se pudo."
+        return "De acuerdo, no hago nada."
     if accion == "resumen_voz":
         ok = await enviar_briefing_voz(b, chat_id, u)
         return "Aquí lo tienes." if ok else "Ahora mismo no puedo hablar; prueba en un rato."

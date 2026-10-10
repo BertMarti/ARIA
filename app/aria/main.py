@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, cerebros, chat, config, control, cve, db, diario, dos_pasos, estadisticas, finanzas, informacion, invitados, mapas, memoria, modelos, modulos, permisos, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_finanzas, api_informacion, api_modulos, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, cerebros, chat, config, control, cve, db, diario, dos_pasos, estadisticas, finanzas, informacion, invitados, mapas, memoria, modelos, modulos, permisos, propuestas, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -85,6 +85,7 @@ async def _arranque():
     vpn_ubicaciones.iniciar()
     usuarios.iniciar()
     invitados.iniciar()
+    propuestas.iniciar()
     dos_pasos.iniciar()
     voz.iniciar()
     finanzas.iniciar()
@@ -354,6 +355,22 @@ async def logout(request: Request):
 
 
 # --- Paginas ---
+# --- Propuestas (proactividad con permiso): cada usuario, las suyas ---
+@app.get("/api/propuestas")
+async def api_propuestas(todas: int = 0, request: Request = None):
+    return {"propuestas": await asyncio.to_thread(propuestas.listar, request.state.usuario["id"], not todas)}
+
+
+@app.post("/api/propuestas/{pid:int}/{decision}")
+async def api_propuesta_decidir(pid: int, decision: str, request: Request):
+    if decision not in ("aprobar", "rechazar"):
+        return JSONResponse({"error": "Decisión desconocida."}, status_code=400)
+    try:
+        return {"propuesta": await propuestas.decidir(request.state.usuario, pid, decision == "aprobar")}
+    except propuestas.PropuestaError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+
 @app.get(ACCESO)
 async def pagina_acceso():
     """Página pública para pedir acceso (si hay Turnstile, la CSP deja cargar su reto)."""

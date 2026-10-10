@@ -144,6 +144,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                      ("PATCH", "/api/memoria/{rid}"), ("DELETE", "/api/memoria/{rid}"), ("DELETE", "/api/memoria"),
                      ("DELETE", "/api/diario/{fecha}"), ("GET", "/api/briefing"), ("GET", "/api/resumen-diario"),
                      ("GET", "/api/resumen-diario/hablado"), ("GET", "/api/resumen-diario/voz"),
+                     ("GET", "/api/propuestas"), ("POST", "/api/propuestas/{pid}/{decision}"),
                      ("GET", "/api/voz/voces"), ("POST", "/api/voz/preferencias"), ("POST", "/api/voz/muestra"),
                      ("GET", "/api/2fa"), ("POST", "/api/2fa/preparar"), ("POST", "/api/2fa/activar"), ("POST", "/api/2fa/desactivar"),
                      ("GET", "/api/proyectos"), ("POST", "/api/proyectos"), ("PATCH", "/api/proyectos/{pid}"),

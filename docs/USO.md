@@ -35,8 +35,9 @@ Esta guía explica qué hay en cada parte de ARIA y cómo sacarle partido en el 
 23. [Telegram](#telegram)
 24. [Notificaciones push](#notificaciones-push)
 25. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
-26. [Usuarios y roles](#usuarios-y-roles)
-27. [Cuando algo falla](#cuando-algo-falla)
+26. [Acceso por invitación](#acceso-por-invitación)
+27. [Usuarios y roles](#usuarios-y-roles)
+28. [Cuando algo falla](#cuando-algo-falla)
 
 ## Un vistazo rápido
 
@@ -452,6 +453,62 @@ Avisos en el móvil o el navegador, aunque ARIA esté cerrada. Se activan por di
 3. Se abre el chat con lo compartido y eliges **Resume esto** o **¿Qué opinas?**.
 
 Si ya tenías ARIA instalada antes, desinstálala y vuelve a instalarla para que aparezca en el menú. Safari en iPhone no permite esta opción.
+
+## Acceso por invitación
+
+ARIA permite dar acceso temporal o limitado a otras personas (amigos, familiares que no viven contigo, visitas) sin que vean la configuración de tu casa ni tus datos.
+
+### Pedir acceso
+
+Quien entra en el **Escaparate público** (`/hola`) y pulsa **Entrar** llega a la página de **Acceso** (`/acceso`), donde verá:
+
+1.  **Tres pasos**: una explicación de cómo funciona (pedir, esperar y entrar con email).
+2.  **Formulario**: nombre, email y una frase explicando quién es o para qué quiere entrar.
+3.  **Estado de su solicitud**: tras enviar el formulario, puede ver si su petición sigue **pendiente**, si ha sido **aprobada** o **rechazada** desde ese mismo navegador.
+4.  **Botón «Ya tengo acceso»**: si ya le aprobaron, le lleva al login directamente.
+
+### Gestión de invitaciones (Administradores)
+
+Cuando alguien pide acceso, recibes un aviso por **Telegram** con botones para **Aprobar** o **Rechazar**. También puedes gestionarlo en **Ajustes → Usuarios → Accesos por invitación**.
+
+Al aprobar, eliges un perfil. Los perfiles definen qué puede hacer el invitado:
+
+| Ajuste | Visita | Familiar |
+|---|---|---|
+| **Secciones** | Inicio, Chat, Información y Mapa | Todas (incluida Finanzas y Agenda) |
+| **Mensajes / día** | 20 | 200 |
+| **Imágenes / día** | 0 | 20 |
+| **Voz** | Local (sin gastar cuota de la casa) | Completa (la voz que tú uses) |
+| **Búsqueda** | Sí | Sí |
+| **Memoria** | No | Sí |
+| **Telegram** | No | Sí |
+| **Rutinas** | No | Sí |
+| **Caducidad** | 7 días | Sin límite (o lo que tú pongas) |
+
+Desde la gestión de invitados puedes:
+- **Personalizar**: cambiar cualquier límite (secciones, mensajes, voz...) para esa persona concreta.
+- **+7 días**: extender el acceso de una visita una semana más.
+- **Revocar**: quitar el acceso al momento. Sus datos se conservan por si decides volver a aprobarle más adelante.
+
+### Privacidad y seguridad
+
+Un invitado **nunca ve**:
+- La sección de **Red** ni los dispositivos de tu casa.
+- La sección de **Seguridad** ni el **Centro de control**.
+- Los anuncios bloqueados ni el estado de la **VPN**.
+- La temperatura o carga de la **Raspberry**.
+- Los datos de administración ni de otros usuarios.
+
+El acceso **caduca solo**: cuando llega la fecha, el usuario deja de tener acceso a ARIA y se le quita automáticamente de Cloudflare Access.
+
+### Probar perfiles
+
+Para ver exactamente qué verá un invitado antes de aprobarlo, usa el modo **Probar perfiles** en **Ajustes → Usuarios → Accesos por invitación**:
+
+- Pulsa **Ver ARIA como...** y elige **Usuario**, **Familiar** o **Visita**.
+- ARIA se recargará y verás una **barra ámbar** arriba avisando de que estás en una vista de prueba.
+- Navega por las secciones para comprobar qué está oculto o limitado.
+- Pulsa **Salir de la vista** en la barra ámbar para volver a tu usuario administrador.
 
 ## Usuarios y roles
 

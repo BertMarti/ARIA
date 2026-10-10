@@ -313,10 +313,32 @@ Solo se abre `/cal/<token>.ics`, de solo lectura: el token es largo, aleatorio y
 ARIA trae una página pública, `/hola`, que la presenta (con Ping y su voz pregrabada) sin datos reales ni llamadas a tu ARIA. Quien entra en `/` sin sesión acaba en ella. Para que se vea desde internet con Cloudflare Access:
 
 1. Zero Trust → Access → Applications → **Create new application** → *Self-hosted and private*.
-2. Dos destinos: `aria.tu-dominio.com` con la ruta `hola` y `aria.tu-dominio.com` con la ruta `static/escaparate`.
+2. Destinos en `aria.tu-dominio.com` con estas rutas: `hola`, `static/escaparate`, `acceso` y `static/acceso`.
 3. Política con acción **Bypass** e *Include → Everyone*.
 
-Cloudflare aplica primero la aplicación con la ruta más concreta, así que solo esas dos rutas quedan abiertas; todo lo demás (`/`, `/login`, `/api/…`) sigue pidiendo tu acceso. Como `/` sigue protegida, comparte el enlace directo a `/hola`.
+Cloudflare aplica primero la aplicación con la ruta más concreta, así que solo esas cuatro rutas quedan abiertas; todo lo demás (`/`, `/login`, `/api/…`) sigue pidiendo tu acceso. Como `/` sigue protegida, comparte el enlace directo a `/hola` o a `/acceso`.
+
+### Acceso por invitación (opcional)
+
+Si quieres que ARIA añada y quite automáticamente a los invitados de tu Cloudflare Access al aprobar o revocar una solicitud:
+
+1. **Crea un grupo de invitados**: en *Zero Trust → Access → Access groups*, crea uno llamado «Invitados ARIA». Como un grupo no puede estar vacío, añade una regla *Include* de tipo email con una dirección de relleno (por ejemplo `nadie@aria.invalid`).
+2. **Añade el grupo a ARIA**: en la configuración de tu aplicación de ARIA en Access (*Applications*), añade una política **Allow** que incluya a ese grupo.
+3. **Crea un token de API**: en Cloudflare, crea un token con el permiso **Access: Organizations, Identity Providers, and Groups · Edit**.
+4. **Configura ARIA**: en el archivo `.env` de ARIA, añade:
+   ```bash
+   ARIA_CF_API_TOKEN=tu-token-de-api
+   ARIA_CF_CUENTA=tu-account-id
+   ARIA_CF_GRUPO_INVITADOS=el-id-del-grupo
+   ```
+   El ID del grupo aparece en la barra de direcciones del navegador cuando estás editando el grupo en Cloudflare.
+5. **Cloudflare Turnstile (Anti-bots)**: opcional. Para evitar que bots rellenen el formulario de acceso, crea un sitio en *Cloudflare Turnstile* y añade en `.env`:
+   ```bash
+   ARIA_TURNSTILE_SITIO=tu-clave-de-sitio
+   ARIA_TURNSTILE_SECRETO=tu-clave-secreta
+   ```
+
+Si no configuras el token de Cloudflare, ARIA te avisará al aprobar a alguien para que añadas su email a mano en el panel de Cloudflare.
 
 ### Inicio de sesión único (SSO)
 

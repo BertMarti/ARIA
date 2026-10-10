@@ -53,6 +53,7 @@ _USUARIO = [
     ("DELETE", r"/api/diario/\d{4}-\d{2}-\d{2}"),
     ("GET", r"/api/briefing"),
     ("GET", r"/api/resumen-diario"), ("GET", r"/api/resumen-diario/(hablado|voz)"),
+    ("GET", r"/api/propuestas"), ("POST", r"/api/propuestas/\d+/(aprobar|rechazar)"),
     ("GET", r"/api/voz/voces"), ("POST", r"/api/voz/preferencias"), ("POST", r"/api/voz/muestra"),
     ("GET", r"/api/2fa"), ("POST", r"/api/2fa/(preparar|activar|desactivar)"),
     ("GET", r"/api/agenda/ics"), ("GET", r"/api/agenda/suscripcion"), ("POST", r"/api/agenda/suscripcion"),

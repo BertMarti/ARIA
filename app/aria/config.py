@@ -130,6 +130,8 @@ SPOTIFY = os.environ.get("ARIA_SPOTIFY", "0") == "1"
 NETFLIX = os.environ.get("ARIA_NETFLIX", "0") == "1"
 # Precio de la luz (PVPC de España, API pública de Red Eléctrica). ARIA_LUZ=0 lo apaga fuera de España.
 LUZ = os.environ.get("ARIA_LUZ", "1") != "0"
+# Proactividad con permiso: ARIA propone acciones (recordatorios, identificar dispositivos) que hay que aprobar
+PROPUESTAS = os.environ.get("ARIA_PROPUESTAS", "1") != "0"
 _EXTRAS = "".join(", " + x for x, si in (("controlar Spotify", SPOTIFY), ("buscar algo en Netflix", NETFLIX)) if si)
 _NOTA_NETFLIX = " Recuerda que no puedes reproducir contenido de Netflix: solo puedes dar un enlace de búsqueda." if NETFLIX else ""
 

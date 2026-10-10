@@ -367,8 +367,8 @@ const Hud = (() => {
     ManosLibres.alCambiar((on) => { $w("hud-manos").setAttribute("aria-pressed", on); });
     $w("hud-form").addEventListener("submit", async (e) => {
       e.preventDefault(); const t = $w("hud-texto").value.trim(); if (!t) return;
-      $w("hud-texto").value = ""; const r = await Chat.enviarDesdeVoz(t); location.hash = "hud";
-      if (r) { $w("hud-subtitulo").textContent = r.slice(0, 420); if (opts.voz) Voz.hablar(r); }
+      $w("hud-texto").value = ""; const r = await Chat.enviarDesdeVoz(t, opts.voz); location.hash = "hud";
+      if (r) $w("hud-subtitulo").textContent = r.slice(0, 420);
     });
   }
   return { iniciar, activar };

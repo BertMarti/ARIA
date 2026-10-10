@@ -245,6 +245,7 @@ const Chat = (() => {
   }
 
   // Envía un mensaje. Devuelve el texto de la respuesta (para leerlo en voz alta).
+  let lectura = Promise.resolve();   // lectura en voz alta de la última respuesta (streaming)
   async function enviar(texto, opciones = {}) {
     texto = (texto || "").trim();
     const img = adjunto;
@@ -256,6 +257,10 @@ const Chat = (() => {
     ponerEstado(true);
     abort = new AbortController();
     let burbuja = null, acumulado = "", ultimoChip = null, ultimoArgs = {}, todo = "", etiqueta = "", agente = "";
+    // Voz en streaming: si hay que leer la respuesta, empieza a sonar en cuanto termina la primera frase
+    const leer = opciones.leerEnVivo || (!opciones.sinLeer && Prefs.get("tts", "0") === "1");
+    let lector = leer ? Voz.lector() : null;
+    lectura = Promise.resolve();
     try {
       const cuerpo = convId ? { conversation_id: convId, message: texto }
         : { conversation_id: null, message: texto, agente: agentePendiente };
@@ -277,10 +282,12 @@ const Chat = (() => {
           pensando(true);
         } else if (ev.type === "reinicio") {
           pensando(false); acumulado = ""; if (burbuja) { burbuja.nodo.remove(); burbuja = null; }
+          if (lector) { todo = ""; lector = Voz.lector(); }   // otro cerebro vuelve a empezar: lo dicho se descarta
         } else if (ev.type === "token") {
           pensando(false);
           if (!burbuja) { burbuja = addMsg("bot", "", etiqueta, agente); }
            acumulado += ev.text; todo += ev.text; burbuja.actualizar(acumulado); abajo();
+           if (lector) lector.empujar(todo);
            window.dispatchEvent(new CustomEvent("aria:hud-texto", { detail: { texto: todo } }));
         } else if (ev.type === "herramienta") {
           pensando(false); burbuja = null; acumulado = ""; todo += "\n";
@@ -291,8 +298,9 @@ const Chat = (() => {
           if (ev.token) { caja().append(tarjetaTicket(ev)); abajo(); }
         } else if (ev.type === "aviso" || ev.type === "error") { pensando(false); addAviso(ev.text); }
       }
-      if (!opciones.sinLeer && Prefs.get("tts", "0") === "1") Voz.hablar(todo);
+      if (lector) lectura = lector.fin(todo);
     } catch (e) {
+      if (lector) Voz.parar();
       if (e.name === "AbortError") addAviso("Respuesta detenida.");
       else addAviso("Error de conexión con ARIA.");
     } finally {
@@ -422,10 +430,11 @@ const Chat = (() => {
   function preguntar(texto, agente) { nueva(); if (agente) { agentePendiente = agente; ponerSelector(agente); } enviar(texto); }
   // Desde «manos libres»: se muestra el chat y se envía como un mensaje escrito (mismo agente
   // elegido en el selector y mismo enrutado), sin el autoleer (lo lee ManosLibres).
-  async function enviarDesdeVoz(texto) {
+  // `leer`: la respuesta se lee en streaming mientras llega; Chat.lectura() se resuelve cuando termina de sonar.
+  async function enviarDesdeVoz(texto, leer = false) {
     if (location.hash !== "#chat") location.hash = "chat";
     if (enCurso) { toast("Espera a que termine la respuesta anterior."); return ""; }
-    return enviar(texto, { sinLeer: true });
+    return enviar(texto, { sinLeer: true, leerEnVivo: leer });
   }
-  return { iniciar, preguntar, refrescarCerebro, enviarDesdeVoz };
+  return { iniciar, preguntar, refrescarCerebro, enviarDesdeVoz, lectura: () => lectura };
 })();

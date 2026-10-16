@@ -49,6 +49,7 @@ TIPOS = {
     "informe_semanal": ("Informe semanal", True, True),
     "telemetria": ("Picos de CPU, temperatura o contenedores", True, True),
     "agenda": ("Eventos y cumpleaños de tu agenda", False, True),
+    "meteo": ("Avisos meteorológicos naranja o rojo de tu zona", False, True),
 }
 # Tipos que no se pueden silenciar con los interruptores (los pide el propio usuario).
 SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina", "agenda"}

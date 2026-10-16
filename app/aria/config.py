@@ -122,6 +122,8 @@ def _float(name: str):
 
 
 LAT, LON = _float("ARIA_LAT"), _float("ARIA_LON")
+GASOLINERAS = os.environ.get("ARIA_GASOLINERAS", "1") != "0"
+ZONA_METEO = os.environ.get("ARIA_ZONA_METEO", "").strip()[:120]
 # Repositorio de copias fuera de la Pi (solo se lee si está montado en el contenedor).
 COPIAS_REPO = os.environ.get("ARIA_COPIAS_REPO", "/copias-repo")
 

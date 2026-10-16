@@ -5,7 +5,7 @@ from contextlib import closing
 
 import httpx
 
-from . import avisos, cerebros, config, db, services, sistema, telemetria, vpn, vpn_ubicaciones
+from . import avisos, avisos_meteo, cerebros, config, db, services, sistema, telemetria, vpn, vpn_ubicaciones
 from .avisos import Chequeo, Problema
 
 TEMP_MAX = 75.0
@@ -200,5 +200,7 @@ def registrar() -> None:
         # telemetria.estados ya exige dos minutos de CPU y cinco de contenedor; no duplicar la confirmación aquí.
         Chequeo("telemetria", "telemetria", "aviso", telemetria_picos, intervalo_s=60, confirmaciones=1,
                  texto_ok="Los picos del sistema han vuelto a la normalidad.", enlace="control"),
+        Chequeo("meteo", "meteo", "aviso", avisos_meteo.problemas, intervalo_s=1800,
+                 evento=True, enlace="inicio", solo_admin=False),
     ):
         avisos.registrar_chequeo(c)

@@ -2,10 +2,12 @@
 // Vista cartográfica. La geolocalización solo se solicita tras pulsar el botón.
 const Mapa = (() => {
   let mapa = null, ruta = null, marcador = null, iniciado = false;
-  let modo = "2d", geometriaRuta = null, punto = null, maplibreCargando = null;
+  let modo = "2d", geometriaRuta = null, punto = null, maplibreCargando = null, ultimos = [];
   const estado = (s, error = false) => { $("mapa-estado").textContent = s; $("mapa-estado").className = "mapa-estado " + (error ? "error" : "muted"); };
   const reducido = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   const centroZoom = () => modo === "3d" ? { center: [mapa.getCenter().lng, mapa.getCenter().lat], zoom: mapa.getZoom() } : { center: [mapa.getCenter().lng, mapa.getCenter().lat], zoom: mapa.getZoom() };
+  // Inclinado solo de cerca: con todo el país a la vista, plano (inclinado se ve raro y apenas hay relieve)
+  const inclinacion = (zoom) => zoom >= 14 ? 55 : zoom >= 11 ? 40 : 0;
   function actualizarModo() {
     $("mapa-2d").setAttribute("aria-pressed", String(modo === "2d"));
     $("mapa-3d").setAttribute("aria-pressed", String(modo === "3d"));
@@ -24,11 +26,27 @@ const Mapa = (() => {
   function centrar(lat, lon, zoom = 15) {
     ponerMarcador(lat, lon);
     if (modo === "3d") {
-      const opciones = { center: [Number(lon), Number(lat)], zoom: 16, pitch: 60, bearing: -20, duration: 2500 };
+      const opciones = { center: [Number(lon), Number(lat)], zoom: zoom + 1, pitch: inclinacion(zoom + 1), bearing: -15, duration: 2500 };
       if (reducido()) mapa.jumpTo(opciones); else mapa.flyTo(opciones);
     } else mapa.setView([lat, lon], zoom);
   }
+  let marcas = [];
+  function quitarMarcas() { marcas.forEach((m) => m.remove()); marcas = []; }
+  function marcar(resultados) {   // un marcador por resultado, con su nombre al pulsarlo (2D y 3D)
+    quitarMarcas();
+    for (const r of (resultados || []).slice(0, 30)) {
+      if (r.lat == null || r.lon == null) continue;
+      const nombre = r.nombre || "Lugar";
+      if (modo === "3d") {
+        const pop = new maplibregl.Popup({ offset: 18, closeButton: false }).setText(nombre);
+        marcas.push(new maplibregl.Marker({ color: "#7c8cff", scale: .8 }).setLngLat([Number(r.lon), Number(r.lat)]).setPopup(pop).addTo(mapa));
+      } else {
+        marcas.push(L.circleMarker([r.lat, r.lon], { radius: 7, color: "#7c8cff", weight: 2, fillOpacity: .6 }).bindPopup(nombre).addTo(mapa));
+      }
+    }
+  }
   function pintarResultados(resultados) {
+    ultimos = resultados || []; marcar(ultimos);
     const caja = $("mapa-resultados"); caja.replaceChildren();
     for (const r of resultados || []) {
       const b = el("button", { type: "button", class: "mapa-resultado" }, r.nombre || "Lugar");
@@ -81,13 +99,7 @@ const Mapa = (() => {
     estado(`${r.data.resultados.length} resultados cerca del centro del mapa.`);
   }
   function ajustarEstilo() {
-    for (const capa of mapa.getStyle().layers || []) {
-      try {
-        if (capa.type === "background") mapa.setPaintProperty(capa.id, "background-color", "#070b12");
-        if (capa.type === "fill" && /water/i.test(capa.id)) mapa.setPaintProperty(capa.id, "fill-color", "#0d263b");
-        if (capa.type === "line" && /(road|street|highway)/i.test(capa.id)) mapa.setPaintProperty(capa.id, "line-color", "#334b66");
-      } catch (_) { /* algunas capas del estilo no admiten estos cambios */ }
-    }
+    // El estilo «liberty» se deja tal cual: con nombres de lugares, calles y comercios como el mapa 2D
     const edificio = mapa.getStyle().layers?.find((x) => x.type === "fill-extrusion");
     if (!edificio && mapa.getSource("openmaptiles")) mapa.addLayer({ id: "aria-edificios", type: "fill-extrusion", source: "openmaptiles", "source-layer": "building", minzoom: 15, paint: { "fill-extrusion-color": "#263d57", "fill-extrusion-height": ["coalesce", ["get", "render_height"], 10], "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0], "fill-extrusion-opacity": .82 } });
   }
@@ -109,14 +121,14 @@ const Mapa = (() => {
     const actual = centroZoom();
     if (nuevo === "3d") {
       try { await cargarMaplibre(); const lienzo = document.createElement("canvas"); if (!window.maplibregl || !(lienzo.getContext("webgl2") || lienzo.getContext("webgl"))) throw new Error("WebGL");   // MapLibre 4 ya no trae supported() maplibregl.setWorkerUrl("/static/vendor/maplibre/maplibre-gl-csp-worker.js");
-        if (marcador) marcador.remove(); if (ruta) ruta.remove(); mapa.remove();
-        modo = "3d"; mapa = new maplibregl.Map({ container: "mapa", style: "https://tiles.openfreemap.org/styles/liberty", center: actual.center, zoom: actual.zoom, pitch: 60, bearing: -20, attributionControl: false });
+        if (marcador) marcador.remove(); if (ruta) ruta.remove(); quitarMarcas(); mapa.remove();
+        modo = "3d"; mapa = new maplibregl.Map({ container: "mapa", style: "https://tiles.openfreemap.org/styles/liberty", center: actual.center, zoom: actual.zoom, pitch: inclinacion(actual.zoom), bearing: 0, attributionControl: false, maxPitch: 70 });
         mapa.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right"); mapa.addControl(new maplibregl.AttributionControl({ customAttribution: "© OpenFreeMap © OpenMapTiles © colaboradores de OpenStreetMap" }));
-        mapa.once("style.load", () => { ajustarEstilo(); dibujarRuta(); if (punto) ponerMarcador(punto[1], punto[0]); });   // en cuanto llega el estilo: sin destello claro
-        mapa.once("error", () => { if (modo === "3d") { toast("Tu navegador no puede mostrar el mapa 3D", "mal"); mapa.remove(); modo = "2d"; mapa = crearLeaflet(actual); dibujarRuta(); if (punto) ponerMarcador(punto[1], punto[0]); actualizarModo(); } });
+        mapa.once("style.load", () => { ajustarEstilo(); dibujarRuta(); if (punto) ponerMarcador(punto[1], punto[0]); marcar(ultimos); });   // en cuanto llega el estilo: sin destello claro
+        mapa.on("error", (e) => { if (modo === "3d" && /webgl/i.test(String(e?.error?.message || ""))) { toast("Tu navegador no puede mostrar el mapa 3D", "mal"); mapa.remove(); modo = "2d"; mapa = crearLeaflet(actual); dibujarRuta(); if (punto) ponerMarcador(punto[1], punto[0]); actualizarModo(); } });
       } catch (_) { toast("Tu navegador no puede mostrar el mapa 3D", "mal"); modo = "2d"; mapa = crearLeaflet(actual); dibujarRuta(); if (punto) ponerMarcador(punto[1], punto[0]); actualizarModo(); return; }
     } else {
-      if (marcador) marcador.remove(); mapa.remove(); modo = "2d"; mapa = crearLeaflet(actual); dibujarRuta(); if (punto) ponerMarcador(punto[1], punto[0]);
+      if (marcador) marcador.remove(); quitarMarcas(); mapa.remove(); modo = "2d"; mapa = crearLeaflet(actual); dibujarRuta(); if (punto) ponerMarcador(punto[1], punto[0]); marcar(ultimos);
     }
     Prefs.set("mapa_modo", modo); actualizarModo();
   }

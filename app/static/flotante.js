@@ -15,8 +15,9 @@ const Flotante = (() => {
   function color() { return estado === "escuchando" ? [52, 211, 153] : estado === "pensando" ? [167, 139, 250] : [56, 214, 255]; }
   function dibujar() {
     if (!pip) { raf = 0; return; }
+    // El reloj de animación es el de la ventana flotante: el de la pestaña de ARIA se para cuando está oculta
     const c = pip.document.querySelector(".flot-orbe"), box = c.getBoundingClientRect();
-    if (!box.width) { raf = requestAnimationFrame(dibujar); return; }
+    if (!box.width) { raf = pip.requestAnimationFrame(dibujar); return; }
     const dpr = Math.min(2, pip.devicePixelRatio || 1);
     if (c.width !== Math.round(box.width * dpr) || c.height !== Math.round(box.height * dpr)) { c.width = Math.round(box.width * dpr); c.height = Math.round(box.height * dpr); }
     const ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, box.width, box.height);
@@ -33,7 +34,7 @@ const Flotante = (() => {
     for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + t * .08; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * 1.35, Math.sin(a) * r * 1.35); ctx.lineTo(Math.cos(a) * r * 1.52, Math.sin(a) * r * 1.52); ctx.stroke(); }
     ctx.restore();
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { raf = 0; return; }
-    raf = requestAnimationFrame(dibujar);
+    raf = pip.requestAnimationFrame(dibujar);
   }
 
   function reflejar() {
@@ -42,7 +43,7 @@ const Flotante = (() => {
     d.querySelector(".flot-estado").textContent = ESTADOS[estado] || ESTADOS.reposo;
     const sub = d.querySelector(".flot-subtitulo"); sub.textContent = texto || ESTADOS[estado] || "";
     d.querySelector(".flot-hud").dataset.estado = estado;
-    if (!raf) raf = requestAnimationFrame(dibujar);
+    if (!raf) raf = pip.requestAnimationFrame(dibujar);
   }
 
   function limpiar() {

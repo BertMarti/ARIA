@@ -151,7 +151,8 @@ const Voz = (() => {
     });
     boton.addEventListener("click", (e) => { if (e.detail === 0) { if (g) terminar(true); else empezar(); } }); // teclado
     boton.addEventListener("contextmenu", (e) => e.preventDefault());
-    document.addEventListener("visibilitychange", () => { if (document.hidden && g) terminar(false); });
+    // Al ocultar la pestaña se corta la grabación… salvo si el botón está en la ventana flotante (allí la pestaña de ARIA suele estar oculta)
+    document.addEventListener("visibilitychange", () => { if (document.hidden && g && boton.ownerDocument === document) terminar(false); });
     if (!micDisponible()) { boton.disabled = true; boton.title = "El micrófono necesita HTTPS."; }
   }
 

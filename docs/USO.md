@@ -12,35 +12,37 @@ Esta guía explica qué hay en cada parte de ARIA y cómo sacarle partido en el 
 
 1. [Un vistazo rápido](#un-vistazo-rápido)
 2. [Inicio](#inicio)
-3. [Chat](#chat)
-4. [Agentes especializados](#agentes-especializados)
-5. [Voz](#voz)
-6. [Imágenes y tickets](#imágenes-y-tickets)
-7. [Memoria y diario](#memoria-y-diario)
-8. [Notas](#notas)
-9. [Resumen diario](#resumen-diario)
-10. [Propuestas de ARIA](#propuestas-de-aria)
-11. [Recordatorios](#recordatorios)
-12. [Rutinas](#rutinas)
-13. [Finanzas](#finanzas)
-14. [Red](#red)
-15. [Control parental](#control-parental)
-16. [Seguridad](#seguridad)
-17. [Centro de control](#centro-de-control)
-18. [Cerebro](#cerebro)
-19. [Modo HUD](#modo-hud)
-20. [Agenda y cumpleaños](#agenda-y-cumpleaños)
-21. [Mapa](#mapa)
-22. [Información e inversiones](#información-e-inversiones)
-23. [Precio de la luz](#precio-de-la-luz)
-24. [Ajustes](#ajustes)
-25. [Avisos](#avisos)
-26. [Telegram](#telegram)
-27. [Notificaciones push](#notificaciones-push)
-28. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
-29. [Acceso por invitación](#acceso-por-invitación)
-30. [Usuarios y roles](#usuarios-y-roles)
-31. [Cuando algo falla](#cuando-algo-falla)
+3. [Compartir](#compartir)
+4. [Enviar a la tele](#enviar-a-la-tele)
+5. [Chat](#chat)
+6. [Agentes especializados](#agentes-especializados)
+7. [Voz](#voz)
+8. [Imágenes y tickets](#imágenes-y-tickets)
+9. [Memoria y diario](#memoria-y-diario)
+10. [Notas](#notas)
+11. [Resumen diario](#resumen-diario)
+12. [Propuestas de ARIA](#propuestas-de-aria)
+13. [Recordatorios](#recordatorios)
+14. [Rutinas](#rutinas)
+15. [Finanzas](#finanzas)
+16. [Red](#red)
+17. [Control parental](#control-parental)
+18. [Seguridad](#seguridad)
+19. [Centro de control](#centro-de-control)
+20. [Cerebro](#cerebro)
+21. [Modo HUD](#modo-hud)
+22. [Agenda y cumpleaños](#agenda-y-cumpleaños)
+23. [Mapa](#mapa)
+24. [Información e inversiones](#información-e-inversiones)
+25. [Precio de la luz](#precio-de-la-luz)
+26. [Ajustes](#ajustes)
+27. [Avisos](#avisos)
+28. [Telegram](#telegram)
+29. [Notificaciones push](#notificaciones-push)
+30. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
+31. [Acceso por invitación](#acceso-por-invitación)
+32. [Usuarios y roles](#usuarios-y-roles)
+33. [Cuando algo falla](#cuando-algo-falla)
 
 ## Un vistazo rápido
 
@@ -71,6 +73,33 @@ Es la página que ves al entrar.
 - **Aplicaciones**: un mosaico por aplicación (Chat, SHIELD-DNS, HEIMDALL y los [módulos](MODULOS.md) que tengas). El punto de color dice si está **activa**, **caída** o **sin instalar**. Al pulsar, se abre en una pestaña nueva. En SHIELD-DNS y HEIMDALL, **Copiar contraseña** te ahorra teclearla en su panel (solo administradores).
 - **Acciones rápidas** (administradores): *Pausar anuncios 5 min*, *Reanudar anuncios*, *Añadir dispositivo a la VPN* y *Estado del sistema*.
 - **Sistema**: temperatura, memoria, disco y carga de la máquina.
+
+## Compartir
+
+En **Compartir** tienes un reproductor local, con controles inspirados en VLC, para ver o escuchar archivos desde el navegador.
+
+- Pulsa **Abrir carpeta** o **Abrir archivos**, o arrastra archivos y carpetas a la zona de carga. Puedes añadir varias carpetas y archivos en varias tandas; se ordenan por carpeta y por capítulo con orden natural y no se duplican.
+- Los archivos **no se suben**: se leen dentro del navegador. La Raspberry no guarda una copia.
+- Los subtítulos `.srt` y `.vtt` con el mismo nombre que el vídeo se activan automáticamente. Con **V** puedes cambiar de pista o quitarlos.
+- **Seguir viendo** reanuda los vídeos donde los dejaste. En Chrome y Edge, la lista de carpetas y archivos se puede recuperar al recargar si concedes permiso de lectura.
+- El volumen llega hasta el **200 %**. También hay velocidad, repetición, aleatorio, aspecto, bucle A-B, captura e información del archivo.
+- Pulsa **Pantalla completa** o **F**. En pantalla completa, los controles se superponen y se ocultan cuando no mueves el ratón; vuelven al moverlo.
+- Pulsa **?** para ver la lista completa de atajos de VLC: pausa, saltos de 10 segundos, velocidad, subtítulos, volumen, posición, captura y más.
+
+Los navegadores que no permiten recuperar carpetas siguen recordando la posición, pero tendrás que abrir de nuevo los archivos después de recargar.
+
+## Enviar a la tele
+
+Desde **Compartir**, reproduce un archivo y pulsa **Enviar a la tele**. ARIA descubre dispositivos Google Cast/Chromecast/Google TV y DLNA en tu red; también puedes añadir un dispositivo por IP.
+
+- **Google Cast** funciona como Chrome, incluidas teles, Chromecast, Google TV, altavoces y grupos compatibles.
+- **DLNA** funciona con muchos modelos de Samsung, LG, Sony y otras marcas.
+- Para **Apple TV** o **Fire TV**, abre el enlace con VLC o cópialo desde «¿Apple TV o Fire TV?».
+- La Raspberry hace de puente en vivo: la tele pide el vídeo a `http://192.168.1.50:8095/flujo/<token>/...` y ARIA se lo pide al navegador que tiene el archivo. No se guarda nada en la Raspberry.
+- Mantén abierta la pestaña de **Compartir** mientras ves el vídeo. Si la cierras, el canal se corta.
+- El enlace es temporal: el token se invalida al cerrar la pestaña y caduca como máximo a las 12 horas. El puerto `8095` solo está disponible en la red local.
+
+Desde el panel puedes reproducir, pausar, detener y saltar 10 segundos. La posición inicial se conserva al enviarlo.
 
 ## Chat
 
@@ -298,6 +327,10 @@ Solo para administradores. Un escaneo **defensivo** de tu red de casa:
 - **Lo más bloqueado por dispositivo** (Pi-hole, últimas 24 h).
 - O pregunta a `@seguridad`: «¿hay algo peligroso en mi red?».
 
+Cada hallazgo incluye **Cómo arreglarlo**, con pasos guiados y las acciones que correspondan: **Es mío**, **Marcar como revisado**, **Desactivar peer**, **Aceptar riesgo** indicando el motivo y durante 30, 90 o 365 días, y **Ya está, compruébalo**, que vuelve a escanear ese punto. **Arreglar lo que ARIA puede** reúne las acciones seguras que ARIA sí puede aplicar. Los hallazgos apartados aparecen en **Aceptados y revisados**, donde puedes reabrirlos.
+
+ARIA no modifica el sistema ni el router. Cuando una solución requiere cambiar una configuración, la interfaz solo te guía con los pasos.
+
 Qué **no** hace: no ataca, no prueba contraseñas, no explota fallos y no escanea fuera de `ARIA_RED_PERMITIDA`. Tampoco mira tu casa desde internet: revisa en el router que solo esté abierto el puerto de la VPN (51820/UDP) y que la gestión remota esté desactivada.
 
 ## Centro de control
@@ -323,6 +356,7 @@ Solo administradores. Muestra ARIA como una **red de nodos en 3D**, en vivo:
 - Cada vez que ARIA usa una herramienta, un **pulso de luz** recorre la red (verde si fue bien, rosa si falló). Arriba ves cuántas acciones hubo en el último minuto.
 - El **núcleo ARIA** es un orbe de energía con anillos orbitales; de él sale cada pocos segundos una onda que recorre los enlaces. Los grupos principales llevan rótulo y el resto lo muestra al pasar el ratón.
 - **Arrastra** para girar, usa la **rueda** (o pellizca) para acercar, **doble clic** para volver a la vista inicial y **clic** en un nodo para ver sus datos. Con el teclado: flechas para girar y +/− para acercar.
+- Al pulsar un nodo, la vista se centra en él y el panel explica **qué hace**, su estado, sus datos, cómo mejorarlo y sus **conexiones**. Puedes pulsar una conexión en el panel para pasar a ese nodo.
 
 ## Modo HUD
 

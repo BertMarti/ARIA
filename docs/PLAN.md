@@ -126,6 +126,8 @@ Aprobado y en curso. La idea es enseñar ARIA mejor y darle funciones de asisten
 | **Ojos y gestos en el HUD** | Cámara bajo petición («¿qué ves?») y control con la mano (MediaPipe, en el navegador) | ✅ Hecho |
 | **Mapa 3D** | MapLibre + OpenFreeMap: edificios en 3D y «vuela a…», sin claves | ✅ Hecho |
 | **ARIA flotante** | Mini-ventana siempre visible en el PC con orbe, subtítulos y micrófono | ✅ Hecho |
+| **Compartir** | Reproductor local tipo VLC: carpetas, archivos, subtítulos, «Seguir viendo», atajos y pantalla completa; los archivos no se suben | ✅ Hecho |
+| **Enviar a la tele** | Puente en directo para Google Cast/Chromecast/Google TV y DLNA; enlace para VLC en Apple TV y Fire TV | ✅ Hecho |
 
 > **Voz propia diseñada (aparcada el 16/10/2026).** Idea: crear una voz con Qwen3-TTS VoiceDesign a partir de una descripción,
 > generar con ella un corpus de frases y entrenar un modelo Piper en Google Colab (GPU gratis) para que ARIA hable en la propia

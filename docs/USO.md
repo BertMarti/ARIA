@@ -20,29 +20,30 @@ Esta guía explica qué hay en cada parte de ARIA y cómo sacarle partido en el 
 8. [Imágenes y tickets](#imágenes-y-tickets)
 9. [Memoria y diario](#memoria-y-diario)
 10. [Notas](#notas)
-11. [Resumen diario](#resumen-diario)
-12. [Propuestas de ARIA](#propuestas-de-aria)
-13. [Recordatorios](#recordatorios)
-14. [Rutinas](#rutinas)
-15. [Finanzas](#finanzas)
-16. [Red](#red)
-17. [Control parental](#control-parental)
-18. [Seguridad](#seguridad)
-19. [Centro de control](#centro-de-control)
-20. [Cerebro](#cerebro)
-21. [Modo HUD](#modo-hud)
-22. [Agenda y cumpleaños](#agenda-y-cumpleaños)
-23. [Mapa](#mapa)
-24. [Información e inversiones](#información-e-inversiones)
-25. [Precio de la luz](#precio-de-la-luz)
-26. [Ajustes](#ajustes)
-27. [Avisos](#avisos)
-28. [Telegram](#telegram)
-29. [Notificaciones push](#notificaciones-push)
-30. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
-31. [Acceso por invitación](#acceso-por-invitación)
-32. [Usuarios y roles](#usuarios-y-roles)
-33. [Cuando algo falla](#cuando-algo-falla)
+11. [Listas](#listas)
+12. [Resumen diario](#resumen-diario)
+13. [Propuestas de ARIA](#propuestas-de-aria)
+14. [Recordatorios](#recordatorios)
+15. [Rutinas](#rutinas)
+16. [Finanzas](#finanzas)
+17. [Red](#red)
+18. [Control parental](#control-parental)
+19. [Seguridad](#seguridad)
+20. [Centro de control](#centro-de-control)
+21. [Cerebro](#cerebro)
+22. [Modo HUD](#modo-hud)
+23. [Agenda y cumpleaños](#agenda-y-cumpleaños)
+24. [Mapa](#mapa)
+25. [Información e inversiones](#información-e-inversiones)
+26. [Precio de la luz](#precio-de-la-luz)
+27. [Ajustes](#ajustes)
+28. [Avisos](#avisos)
+29. [Telegram](#telegram)
+30. [Notificaciones push](#notificaciones-push)
+31. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
+32. [Acceso por invitación](#acceso-por-invitación)
+33. [Usuarios y roles](#usuarios-y-roles)
+34. [Cuando algo falla](#cuando-algo-falla)
 
 ## Un vistazo rápido
 
@@ -214,6 +215,19 @@ Para apuntar cosas sueltas: ideas, la lista de la compra o mejoras para ARIA. Es
 - Las **mejoras** de los administradores se copian solas a un plan privado de la máquina (sección «Notas y mejoras desde Telegram»), para tenerlas a mano al mejorar ARIA. No se publican en ningún sitio.
 - Cada persona ve solo las suyas. Los invitados no tienen notas.
 
+## Listas
+
+En la pestaña **Listas** de **Notas** puedes llevar la compra y otras listas de casa. Hay dos visibilidades:
+
+- **De casa**: todos los usuarios pueden verlas y editarlas. Los invitados no tienen acceso a las listas.
+- **Solo yo**: son privadas para su propietario; ni siquiera un administrador puede verlas o editarlas.
+
+**La compra** se crea automáticamente como lista de casa cuando se usan las listas por primera vez. Puedes añadir varios artículos separados por comas o por «y» («leche, pan y huevos»); los artículos pendientes repetidos no se duplican. Marca artículos como hechos y usa **Vaciar hechos** para retirarlos.
+
+También puedes gestionarlas desde el chat con `anadir_a_lista`, `ver_lista`, `marcar_en_lista` y `quitar_de_lista`. Si no indicas una lista, ARIA usa **La compra**. Por Telegram, `/compra <artículo>` añade artículos a La compra y `/lista` muestra sus pendientes; `/lista <nombre>` muestra otra lista.
+
+El resumen diario incluye una línea como **🛒 La compra: N cosas pendientes**. En **Ajustes → General → Mis datos**, el ZIP incluye tus listas propias y los artículos que has añadido en `listas.json`.
+
 ## Resumen diario
 
 Un único resumen que verás igual en tres sitios: la tarjeta **Resumen del día** de Inicio, el panel del **HUD** y un mensaje de **Telegram** bien maquetado (negritas, secciones y emojis).
@@ -227,6 +241,8 @@ Un único resumen que verás igual en tres sitios: la tarjeta **Resumen del día
 | 💶 Finanzas | Lo gastado este mes frente al mes pasado **a estas alturas**, ingresos y presupuestos | Cada uno los suyos |
 | 📈 Mis inversiones | Precio en euros y variación del día de tu lista de seguimiento | Cada uno la suya |
 | 📅 Hoy | Eventos, recordatorios y cumpleaños de la semana | Cada uno los suyos |
+| 🛒 La compra | Número de artículos pendientes de la lista de casa | Todos los usuarios |
+| 🩺 Salud del sistema | Disponibilidad de los servicios e incidentes recientes dentro de «Tus aplicaciones» | Administradores |
 
 - Por **Telegram** o **notificación** a la hora que elijas (por defecto, las 08:00): actívalo en **Ajustes → Avisos**. En Telegram llega con botones: **Abrir ARIA**, **Agenda**, **Actualizar** y, para administradores, **Pausar anuncios 30 min**. También puedes pedirlo cuando quieras con `/resumen` o diciéndole «resúmeme el día».
 - El resumen se prepara una vez cada 10 minutos como mucho; **Actualizar** lo rehace al momento.
@@ -343,6 +359,7 @@ Solo para administradores. Tarjetas que se actualizan solas cada 15 segundos:
   - **QR** vuelve a mostrar el código; **Activar/Desactivar** corta o devuelve el acceso; **Eliminar** pide confirmación.
 - **Sistema**: temperatura, memoria, disco, carga y tiempo encendida.
 - **Sistema en directo**: CPU, memoria y red de cada contenedor, actualizado cada pocos segundos (necesita el pequeño agente del sistema, ver [INSTALACION.md](INSTALACION.md)).
+- **Salud de los últimos días**: histórico de disponibilidad de ARIA, SHIELD-DNS, HEIMDALL, túnel, Ollama local, cerebros de la nube, búsqueda, voz, escáner, copias e internet. Hay un sondeo por minuto durante 30 días y agregados por hora durante un año. Puedes consultar 24 horas, 7 días o 30 días; muestra el porcentaje de cada servicio, sus caídas, la más larga y los incidentes. Solo la ven los administradores.
 - **Reiniciar la Raspberry**: pide confirmación y deja una petición firmada que el agente del sistema comprueba antes de reiniciar. También desde Telegram.
 
 Si una aplicación sale «no conectado», revisa su contraseña en `.env` (ver [Problemas frecuentes](INSTALACION.md#17-problemas-frecuentes)).
@@ -548,6 +565,9 @@ Comandos:
 | `/tunel` | Muestra el estado del túnel de Cloudflare y permite reiniciarlo (administradores) |
 | `/nuevovpn <nombre>` | Crea un dispositivo VPN y te manda el QR y el `.conf` (administradores) |
 | `/control` | Dispositivos pausados o bloqueados, con botón **Reanudar** (administradores) |
+| `/lista [nombre]` | Muestra los artículos pendientes de La compra o de la lista indicada |
+| `/compra <artículo>` | Añade uno o varios artículos a La compra; no repite los pendientes |
+| `/informe` | Informe semanal de red y, para administradores, disponibilidad de las últimas 24 horas |
 | `/nuevo` | Empieza otra conversación |
 | `/desvincular` | Desvincula este chat |
 | `/ayuda` | Ayuda |

@@ -110,11 +110,15 @@ label input { margin-top: .3rem; }
 .estado-listas { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .6rem; }
 .graficas { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin: .7rem 0; }
 .tarjeta h2 select { float: right; font-size: .75rem; }
+#card-disponibilidad h2 { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+/* El selector de periodo heredaba un tamaño genérico que lo estiraba y tapaba toda la tarjeta */
+#disponibilidad-dias { width: auto; min-width: 7.5rem; height: auto; min-height: 0; flex: 0 0 auto; position: static;
+  font: 600 .8rem var(--mono); letter-spacing: 0; text-transform: none; padding: .3rem .5rem; }
 .disponibilidad-filas { overflow-x: auto; }
-.disponibilidad-fila { display: grid; grid-template-columns: 10rem 4rem minmax(18rem, 1fr); align-items: center; gap: .7rem; min-width: 34rem; padding: .35rem 0; }
-.disponibilidad-fila b { font-size: 1.15rem; text-align: right; }
+.disponibilidad-fila { display: grid; grid-template-columns: 10rem 5.2rem minmax(18rem, 1fr); align-items: center; gap: .7rem; min-width: 34rem; padding: .35rem 0; }
+.disponibilidad-fila b { font-size: 1.15rem; text-align: right; white-space: nowrap; }
 .disponibilidad-tira { display: flex; gap: 2px; min-height: 1.1rem; }
-.disponibilidad-barra { width: 5px; min-width: 5px; border-radius: 2px; background: var(--muted); }
+.disponibilidad-barra { flex: 1 1 0; min-width: 3px; max-width: 16px; height: 1.4rem; border-radius: 2px; background: var(--muted); }
 .disponibilidad-barra.verde { background: #39c982; }
 .disponibilidad-barra.ambar { background: #e5ad42; }
 .disponibilidad-barra.rojo { background: #ef6262; }

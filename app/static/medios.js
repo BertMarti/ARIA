@@ -20,6 +20,7 @@ const Medios = (() => {
   const nombreRuta = (f) => f._ruta || f.webkitRelativePath || f.name;
   const nombreLimpio = (n) => n.replace(/\.[^.]+$/, "").replace(/[._-]+/g, " ").trim();
   const natural = (a, b) => a.localeCompare(b, "es", { numeric: true, sensitivity: "base" });
+  const rutaGrupo = (f) => nombreRuta(f).split("/").slice(0, -1).join("/") || "Archivos sueltos";
 
   function segundos(valor) {
     const n = Math.max(0, Number(valor) || 0), h = Math.floor(n / 3600);
@@ -104,35 +105,65 @@ const Medios = (() => {
     return new Promise((resolver) => {
       try {
         const peticion = indexedDB.open("aria-medios", 1);
-        peticion.onupgradeneeded = () => peticion.result.createObjectStore("carpetas");
+        peticion.onupgradeneeded = () => { if (!peticion.result.objectStoreNames.contains("carpetas")) peticion.result.createObjectStore("carpetas"); };
         peticion.onsuccess = () => resolver(peticion.result);
         peticion.onerror = () => resolver(null);
       } catch (_) { resolver(null); }
     });
   }
 
-  async function leerCarpetaGuardada() {
+  async function leerGuardado() {
     if (!db) db = await abrirDB();
     if (!db) return null;
     return new Promise((resolver) => {
-      const peticion = db.transaction("carpetas").objectStore("carpetas").get("ultima");
+      const peticion = db.transaction("carpetas").objectStore("carpetas").get("lista");
       peticion.onsuccess = () => resolver(peticion.result || null);
       peticion.onerror = () => resolver(null);
     });
   }
 
-  async function guardarCarpeta(handle) {
+  async function guardarLista() {
     if (!db) db = await abrirDB();
-    try { db?.transaction("carpetas", "readwrite").objectStore("carpetas").put(handle, "ultima"); } catch (_) { /* opcional */ }
+    if (!db || !estado.archivos.length) return;
+    try {
+      guardado = {
+        handles: guardado?.handles || [], orden: estado.archivos.map((f) => f._huella).filter(Boolean),
+        actual: estado.archivos[estado.actual]?._huella || null
+      };
+      db.transaction("carpetas", "readwrite").objectStore("carpetas").put(guardado, "lista");
+    } catch (_) { /* opcional */ }
   }
 
-  async function continuarConCarpeta() {
-    const handle = await leerCarpetaGuardada();
-    if (!handle) return;
+  async function borrarGuardado() {
+    if (!db) db = await abrirDB();
+    try { db?.transaction("carpetas", "readwrite").objectStore("carpetas").delete("lista"); } catch (_) { /* opcional */ }
+  }
+
+  async function archivosGuardados(persistido) {
+    const archivos = [];
+    for (const dato of persistido.handles || []) {
+      const handle = dato.handle || dato;
+      const ruta = dato.ruta || handle.name;
+      if (handle.kind === "file") {
+        const f = await handle.getFile();
+        Object.defineProperty(f, "_ruta", { value: ruta });
+        archivos.push(f);
+      } else archivos.push(...await archivosDeManija(handle, ruta + "/"));
+    }
+    return archivos;
+  }
+
+  async function recuperarLista(solicitar = false) {
+    const persistido = guardado || await leerGuardado();
+    if (!persistido?.handles?.length) return;
     try {
-      const permiso = await handle.queryPermission({ mode: "read" });
-      if (permiso !== "granted" && await handle.requestPermission({ mode: "read" }) !== "granted") return;
-      cargar(await archivosDeManija(handle), handle.name);
+      for (const dato of persistido.handles) {
+        const handle = dato.handle || dato;
+        const permiso = await handle.queryPermission({ mode: "read" });
+        if (permiso !== "granted" && (!solicitar || await handle.requestPermission({ mode: "read" }) !== "granted")) return;
+      }
+      await cargar(await archivosGuardados(persistido), "", persistido);
+      $m("medios-continuar").hidden = true;
     } catch (_) { toast("No se ha podido abrir esa carpeta.", "mal"); }
   }
 
@@ -143,18 +174,48 @@ const Medios = (() => {
     estado.subtitulos.clear();
   }
 
-  async function cargar(archivos, raiz = "") {
+  async function cargar(archivos, raiz = "", persistido = null, handles = []) {
     guardarProgreso();
+    const huellaActiva = estado.archivos[estado.actual]?._huella;
     liberarURLs();
-    estado.archivos = archivos.filter((f) => esMedia(f) || esSubtitulo(f));
-    estado.archivos.sort((a, b) => natural(nombreRuta(a), nombreRuta(b)));
+    const nuevos = archivos.filter((f) => esMedia(f) || esSubtitulo(f));
+    const existentes = new Set(estado.archivos.map((f) => f._huella).filter(Boolean));
+    const huellasNuevas = new Set();
+    for (const f of nuevos) {
+      f._ruta = f._ruta || (raiz ? raiz + "/" + f.name : f.name);
+      f._huella = await huella(f);
+    }
+    const añadir = nuevos.filter((f) => !existentes.has(f._huella) && !huellasNuevas.has(f._huella));
+    añadir.forEach((f) => huellasNuevas.add(f._huella));
+    estado.archivos = estado.archivos.concat(añadir);
+    if (handles.length) {
+      guardado = guardado || { handles: [], orden: [], actual: null };
+      const vistos = new Set(guardado.handles.map((dato) => (dato.handle || dato).name + ":" + (dato.handle || dato).kind));
+      guardado.handles.push(...handles.filter((dato) => {
+        const handle = dato.handle || dato;
+        const clave = handle.name + ":" + handle.kind;
+        if (vistos.has(clave)) return false;
+        vistos.add(clave);
+        return true;
+      }));
+    }
+    estado.archivos.sort((a, b) => {
+      const grupoA = rutaGrupo(a), grupoB = rutaGrupo(b);
+      if (grupoA === "Archivos sueltos" && grupoB !== grupoA) return 1;
+      if (grupoB === "Archivos sueltos" && grupoA !== grupoB) return -1;
+      return natural(nombreRuta(a), nombreRuta(b));
+    });
+    if (huellaActiva) estado.actual = estado.archivos.findIndex((f) => f._huella === huellaActiva);
     const huellas = [];
-    for (const f of estado.archivos) if (esMedia(f)) { f._huella = await huella(f); huellas.push(f._huella); }
-    const respuesta = await api("/api/medios/progreso?" + huellas.map((h) => "h=" + encodeURIComponent(h)).join("&"));
+    for (const f of estado.archivos) if (esMedia(f)) huellas.push(f._huella);
+    const consulta = huellas.map((h) => "h=" + encodeURIComponent(h)).join("&");
+    const respuesta = await api("/api/medios/progreso?" + consulta);
     estado.progreso = new Map((respuesta.data.progreso || []).map((p) => [p.huella, p]));
     pintarLista();
-    const primero = estado.archivos.findIndex(esMedia);
-    if (primero >= 0) reproducir(primero);
+    const primero = persistido?.actual ? estado.archivos.findIndex((f) => f._huella === persistido.actual) : -1;
+    if (estado.actual < 0 && primero >= 0) reproducir(primero);
+    else if (estado.actual < 0) { const indice = estado.archivos.findIndex(esMedia); if (indice >= 0) reproducir(indice); }
+    await guardarLista();
     const n = estado.archivos.filter(esMedia).length;
     $m("medios-soltar").textContent = n === 1 ? "1 archivo preparado" : `${n} archivos preparados`;
   }
@@ -201,8 +262,7 @@ const Medios = (() => {
     lista.replaceChildren();
     for (const [i, f] of estado.archivos.entries()) {
       if (!esMedia(f) || !nombreRuta(f).toLowerCase().includes(consulta)) continue;
-      const partes = nombreRuta(f).split("/");
-      const grupo = partes.slice(0, -1).join("/") || "Raíz";
+      const grupo = rutaGrupo(f);
       if (!grupos.has(grupo)) grupos.set(grupo, []);
       grupos.get(grupo).push([i, f]);
     }
@@ -228,6 +288,7 @@ const Medios = (() => {
     if (indice < 0 || !f || !esMedia(f)) return;
     guardarProgreso();
     estado.actual = indice;
+    guardarLista();
     const v = video(), escena = $m("medios-escena");
     v.pause();
     v.replaceChildren();
@@ -549,14 +610,19 @@ const Medios = (() => {
 
   function prepararArchivos() {
     $m("medios-carpeta").addEventListener("click", async () => {
-      if (!window.showDirectoryPicker) { $m("medios-input-dir").click(); return; }
+      if (!window.showDirectoryPicker) { $m("medios-input-dir").click(); avisarSinPersistencia(); return; }
       try {
         const handle = await window.showDirectoryPicker({ mode: "read" });
-        await guardarCarpeta(handle);
-        cargar(await archivosDeManija(handle), handle.name);
+        await cargar(await archivosDeManija(handle, handle.name + "/"), "", null, [{ handle, ruta: handle.name }]);
       } catch (_) { /* cancelado */ }
     });
-    $m("medios-archivos").addEventListener("click", () => $m("medios-input").click());
+    $m("medios-archivos").addEventListener("click", async () => {
+      if (!window.showOpenFilePicker) { $m("medios-input").click(); avisarSinPersistencia(); return; }
+      try {
+        const handles = await window.showOpenFilePicker({ multiple: true });
+        await cargar(await Promise.all(handles.map((handle) => handle.getFile())), "", null, handles.map((handle) => ({ handle, ruta: handle.name })));
+      } catch (_) { /* cancelado */ }
+    });
     $m("medios-input").addEventListener("change", (e) => cargar([...e.target.files]));
     $m("medios-input-dir").addEventListener("change", (e) => cargar([...e.target.files]));
     const zona = $m("medios-soltar");
@@ -566,17 +632,22 @@ const Medios = (() => {
     zona.addEventListener("dragleave", () => zona.classList.remove("arrastrando"));
     zona.addEventListener("drop", async (e) => {
       e.preventDefault(); zona.classList.remove("arrastrando");
+      // Todo SÍNCRONO antes del primer await: al esperar, el navegador vacía e.dataTransfer y solo entraba el primer elemento.
+      const items = [...e.dataTransfer.items].filter((item) => item.kind === "file");
+      const entradas = items.map((item) => item.webkitGetAsEntry?.() || null);
+      const sueltos = items.map((item) => item.getAsFile());
+      const handlePromesas = items.map((item) => item.getAsFileSystemHandle?.() || Promise.resolve(null));
       const archivos = [];
-      for (const item of e.dataTransfer.items) {
-        const entrada = item.webkitGetAsEntry?.();
+      for (const [i, entrada] of entradas.entries()) {
         if (entrada) archivos.push(...await leerEntrada(entrada));
-        else if (item.getAsFile()) archivos.push(item.getAsFile());
+        else if (sueltos[i]) archivos.push(sueltos[i]);
       }
-      cargar(archivos);
+      const handles = (await Promise.all(handlePromesas.map((p) => p.catch(() => null)))).filter(Boolean);
+      await cargar(archivos, "", null, handles.map((handle) => ({ handle, ruta: handle.name })));
     });
     $m("medios-buscar").addEventListener("input", pintarLista);
     $m("medios-vaciar").addEventListener("click", () => {
-      video().pause(); liberarURLs(); estado.archivos = []; estado.actual = -1; pintarLista();
+      video().pause(); liberarURLs(); estado.archivos = []; estado.actual = -1; guardado = null; borrarGuardado(); pintarLista();
       $m("medios-titulo").textContent = "Abre una carpeta o unos archivos para empezar";
     });
     $m("medios-enviar").addEventListener("click", enviarATele);
@@ -592,13 +663,30 @@ const Medios = (() => {
     if (!window.MediosTele) toast("Muy pronto");
   }
 
+  function avisarSinPersistencia() {
+    try {
+      if (localStorage.getItem("aria-medios-aviso")) return;
+      localStorage.setItem("aria-medios-aviso", "1");
+    } catch (_) { /* opcional */ }
+    mostrarOSD("Este navegador no permite recordar los archivos al recargar; vuelve a abrir la carpeta (la posición sí se recuerda).", 7000);
+  }
+
   async function prepararContinuar() {
-    const handle = await leerCarpetaGuardada();
-    if (!handle) return;
+    if (!window.indexedDB || !window.FileSystemHandle) { avisarSinPersistencia(); return; }
+    guardado = await leerGuardado();
+    if (!guardado?.handles?.length) return;
     const zona = $m("medios-continuar");
     zona.hidden = false;
-    const boton = el("button", { type: "button", class: "fantasma" }, `Continuar con “${handle.name}”`);
-    boton.addEventListener("click", continuarConCarpeta);
+    let concedidos = true;
+    for (const dato of guardado.handles) {
+      if (await (dato.handle || dato).queryPermission({ mode: "read" }) !== "granted") concedidos = false;
+    }
+    if (concedidos) { await recuperarLista(); return; }
+    const carpetas = guardado.handles.filter((dato) => (dato.handle || dato).kind === "directory").length;
+    const archivos = guardado.handles.filter((dato) => (dato.handle || dato).kind === "file").length;
+    const texto = `Recuperar tu lista (${carpetas} carpetas, ${archivos} archivos)`;
+    const boton = el("button", { type: "button", class: "fantasma" }, texto);
+    boton.addEventListener("click", () => recuperarLista(true));
     zona.replaceChildren(boton);
   }
 

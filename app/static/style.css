@@ -254,6 +254,20 @@ body.app.vista-prueba { padding-top: 3.35rem; }
 .sugerencias button { font-weight: 500; font-size: .9rem; border-radius: 99px; }
 .entrada { display: flex; gap: .6rem; align-items: flex-end; padding-top: .5rem; }
 .entrada textarea { resize: none; max-height: 10rem; min-height: 2.75rem; }
+/* Barra de escribir: botones de icono cuadrados e iguales, icono centrado y el texto con todo el sitio libre */
+.entrada textarea { flex: 1 1 auto; min-width: 0; }
+.entrada > button { flex: 0 0 auto; height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; }
+.entrada > button.fantasma { width: 2.75rem; padding: 0; }
+.entrada > button .svg-ico { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; }
+.entrada .ico-enviar { display: none; }
+@media (max-width: 600px) {
+  .entrada { gap: .4rem; }
+  .entrada > button { height: 2.6rem; }
+  .entrada > button.fantasma { width: 2.6rem; }
+  #enviar { width: 2.9rem; padding: 0; }
+  #enviar .ico-enviar { display: block; }
+  #enviar .txt-enviar { display: none; }
+}
 
 /* Cámara */
 .camara-dialogo { width: min(94vw, 760px); max-width: none; padding: 1rem; background: var(--panel-solido); color: var(--txt); border: 1px solid var(--borde-fuerte); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.7); }
@@ -668,9 +682,27 @@ body.modo-hud > .nav, body.modo-hud > .manos-libres, body.modo-hud .campana-zona
 .remedio ol { margin: 0; padding-left: 1.3rem; }
 .aceptados { margin-top: 1rem; }
 .aceptados summary { cursor: pointer; font-weight: 600; }
-.dialogo { max-width: 32rem; border: 1px solid var(--linea); border-radius: .7rem; background: var(--fondo); color: var(--texto); padding: 1rem; }
-.dialogo::backdrop { background: rgb(0 0 0 / .55); }
-.check-fila { display: flex; gap: .5rem; align-items: start; }
+.dialogo { width: min(92vw, 34rem); max-width: none; border: 1px solid var(--borde-fuerte); border-radius: 16px; background: var(--panel-solido); color: var(--txt); padding: 0; box-shadow: 0 20px 60px rgba(0, 0, 0, .7); animation: dialogo-entrada .18s ease-out; }
+.dialogo::backdrop { background: rgba(2, 5, 10, .72); backdrop-filter: blur(5px); }
+.dialogo-cab { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.1rem .75rem; border-bottom: 1px solid var(--borde); }
+.dialogo-cab h2 { margin: 0; }
+.dialogo-cerrar { width: 2rem; height: 2rem; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 1.7rem; line-height: 1; }
+.dialogo-cerrar:hover, .dialogo-cerrar:focus-visible { background: var(--borde); color: var(--txt); }
+.dialogo-cuerpo { display: grid; gap: .8rem; padding: 1rem 1.1rem 1.1rem; }
+.dialogo-cuerpo > p { margin: 0; }
+.dialogo-intro { color: var(--muted); }
+.dialogo-opciones { display: grid; gap: .5rem; max-height: 48vh; overflow: auto; }
+.check-fila { display: grid; grid-template-columns: 1.5rem 1fr auto; gap: .7rem; align-items: center; padding: .75rem; border: 1px solid var(--borde); border-radius: 12px; background: rgba(5, 9, 16, .35); cursor: pointer; }
+.check-fila:has(input:checked) { border-color: var(--acento); background: rgba(56, 214, 255, .08); }
+.check-fila input { width: 1.35rem; height: 1.35rem; accent-color: var(--acento); }
+.check-info { display: grid; gap: .1rem; min-width: 0; }
+.check-info .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dialogo-pie { display: flex; justify-content: flex-end; gap: .6rem; padding-top: .3rem; }
+.dialogo-pie button { min-width: 7rem; }
+.dialogo-vacio { padding: 1.2rem .5rem; text-align: center; }
+@keyframes dialogo-entrada { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (max-width: 600px) { .dialogo { width: 100vw; min-height: 100dvh; border: 0; border-radius: 0; } .dialogo-cuerpo { flex: 1; } .dialogo-opciones { max-height: none; } .dialogo-pie { margin-top: auto; } }
+@media (prefers-reduced-motion: reduce) { .dialogo { animation: none; } }
 @media (max-width: 760px) {
   .nav-btn span:not(.ico) { font-size: .62rem; }
   .agente-sel select { max-width: 8.5rem; }
@@ -1227,3 +1259,7 @@ body.app { height: 100vh; height: 100dvh; }
 .gestos-destello{animation:none}
 .hud-card.agarrada{transform:none}
 }
+.entrada > button.fantasma.mic { width: auto; min-width: 2.75rem; padding: 0 .55rem; }   /* el contador al grabar no se corta */
+#form.entrada > button .svg-ico { width: 1.3rem; height: 1.3rem; }
+.entrada textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 600px) { .entrada textarea { padding-left: .7rem; padding-right: .7rem; } }

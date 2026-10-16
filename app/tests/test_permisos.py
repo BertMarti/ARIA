@@ -405,4 +405,8 @@ def test_limite_de_intentos(monkeypatch):
 
 def test_cabeceras_csp(ana):
     r = cliente_de(ana).get("/api/info")
-    assert "script-src 'self'" in r.headers["content-security-policy"] and "unsafe" not in r.headers["content-security-policy"]
+    csp = r.headers["content-security-policy"]
+    assert "script-src 'self'" in csp
+    # Solo se permite compilar WebAssembly (gestos del HUD con MediaPipe); nada de scripts en línea ni eval de JavaScript
+    assert "'unsafe-inline'" not in csp and "'unsafe-eval'" not in csp and "'unsafe-hashes'" not in csp
+    assert csp.replace("'wasm-unsafe-eval'", "").count("unsafe") == 0

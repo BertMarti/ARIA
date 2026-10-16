@@ -1,0 +1,55 @@
+# ARIA 3: compila las APK de Android SIN FIRMAR. La llave de firma no sale nunca de la máquina de ARIA:
+# herramientas/app/publicar.sh descarga estos artefactos, los firma allí y los publica en GitHub Releases.
+name: Android
+
+on:
+  push:
+    branches: [main, aria3]
+    paths: ["movil/**", ".github/workflows/android.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: movil/aria/package-lock.json
+
+      - name: ARIA (Capacitor)
+        working-directory: movil/aria
+        run: |
+          npm ci --no-audit --no-fund
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          mkdir -p ../../../salida
+          cp app/build/outputs/apk/release/*.apk ../../../salida/aria-sin-firmar.apk
+
+      - name: ARIA Lite (TWA)
+        if: hashFiles('movil/aria-lite/build.gradle') != ''
+        working-directory: movil/aria-lite
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/*.apk ../../salida/aria-lite-sin-firmar.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-sin-firmar
+          path: salida/*.apk
+          retention-days: 14

@@ -15,6 +15,7 @@ def _int(name: str, default: int) -> int:
 USER = os.environ.get("ARIA_USER", "")
 PASSWORD = os.environ.get("ARIA_PASSWORD", "")
 SECRET = os.environ.get("ARIA_SECRET", "")
+APP_SHA256 = os.environ.get("ARIA_APP_SHA256", "").strip()
 
 LAN_IP = os.environ.get("ARIA_LAN_IP", "127.0.0.1")
 HOSTS = {h.strip().lower() for h in os.environ.get("ARIA_HOSTS", "").split(",") if h.strip()}

@@ -1,0 +1,17 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="hablar" android:enabled="true" android:icon="@drawable/ic_shortcut">
+        <shortLabel>@string/shortcut_talk</shortLabel><intent android:action="android.intent.action.VIEW" android:data="#hablar" android:targetClass="io.github.bertmarti.aria.lite.LauncherActivity" android:targetPackage="io.github.bertmarti.aria.lite" />
+    </shortcut>
+    <shortcut android:shortcutId="nota" android:enabled="true" android:icon="@drawable/ic_shortcut">
+        <shortLabel>@string/shortcut_note</shortLabel><intent android:action="android.intent.action.VIEW" android:data="#nota" android:targetClass="io.github.bertmarti.aria.lite.LauncherActivity" android:targetPackage="io.github.bertmarti.aria.lite" />
+    </shortcut>
+    <shortcut android:shortcutId="hud" android:enabled="true" android:icon="@drawable/ic_shortcut">
+        <shortLabel>@string/shortcut_hud</shortLabel><intent android:action="android.intent.action.VIEW" android:data="#hud" android:targetClass="io.github.bertmarti.aria.lite.LauncherActivity" android:targetPackage="io.github.bertmarti.aria.lite" />
+    </shortcut>
+    <shortcut android:shortcutId="compartir" android:enabled="true" android:icon="@drawable/ic_shortcut">
+        <shortLabel>@string/shortcut_share</shortLabel><intent android:action="android.intent.action.VIEW" android:data="#compartir" android:targetClass="io.github.bertmarti.aria.lite.LauncherActivity" android:targetPackage="io.github.bertmarti.aria.lite" />
+    </shortcut>
+    <shortcut android:shortcutId="cambiar" android:enabled="true" android:icon="@drawable/ic_shortcut">
+        <shortLabel>@string/shortcut_change</shortLabel><intent android:action="android.intent.action.VIEW" android:data="#cambiar" android:targetClass="io.github.bertmarti.aria.lite.LauncherActivity" android:targetPackage="io.github.bertmarti.aria.lite" />
+    </shortcut>
+</shortcuts>

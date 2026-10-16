@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">ARIA Lite</string>
+    <string name="config_title">Conecta tu ARIA</string>
+    <string name="config_address_hint">Dirección de tu ARIA (https://…)</string>
+    <string name="config_connect">Conectar</string>
+    <string name="config_invalid">Escribe una dirección HTTPS válida, sin ruta.</string>
+    <string name="config_change">Cambiar de ARIA</string>
+    <string name="shortcut_talk">Hablar</string>
+    <string name="shortcut_note">Nueva nota</string>
+    <string name="shortcut_hud">HUD</string>
+    <string name="shortcut_share">Compartir</string>
+    <string name="shortcut_change">Cambiar de ARIA</string>
+</resources>

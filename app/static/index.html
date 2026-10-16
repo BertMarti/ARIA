@@ -680,8 +680,15 @@
          <p class="muted">Puedes descargar una copia de tus datos personales o borrar tu cuenta. El borrado elimina tus conversaciones, memoria, notas, agenda, finanzas y demás datos de ARIA y no se puede deshacer.</p>
          <div class="botones"><a class="boton primario" href="/api/mis-datos/exportar">Descargar mis datos</a><button type="button" class="peligro" id="borrar-cuenta">Borrar mi cuenta</button></div>
          <p id="mis-datos-msg" class="muted" role="status"></p>
-       </article>
-       <article class="tarjeta" id="ajustes-pass">
+        </article>
+        <article class="tarjeta" id="ajustes-android">
+          <h2>App de Android</h2>
+          <p>ARIA y ARIA Lite son dos formas de abrir esta misma ARIA desde Android. La dirección se configura en la app y nunca incluye un dominio fijo.</p>
+          <div class="botones"><a class="boton primario" href="https://github.com/BertMarti/ARIA/releases/latest">Descargar ARIA</a><a class="boton fantasma" href="https://github.com/BertMarti/ARIA/releases/latest">Descargar ARIA Lite</a></div>
+          <p>Escribe esta dirección en la app: <code id="app-android-origen"></code> <button type="button" class="fantasma pequeno" id="app-android-copiar">Copiar</button></p>
+          <ol><li>Instala la APK (permite instalar desde esta fuente una vez).</li><li>Escribe esta dirección.</li><li>Inicia sesión como siempre.</li></ol>
+        </article>
+        <article class="tarjeta" id="ajustes-pass">
         <h2>Contraseña</h2>
         <form id="form-pass" class="formulario" autocomplete="off">
           <input type="text" name="usuario" autocomplete="username" hidden tabindex="-1" aria-hidden="true">

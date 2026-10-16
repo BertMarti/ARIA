@@ -446,6 +446,7 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 #ajustes-voz label:not(.interruptor) { display: grid; gap: .3rem; margin: .4rem 0; }
 #ajustes-voz input[type="range"] { width: 100%; accent-color: var(--acento); }
 #voz-nivel-zona { margin: .4rem 0; }
+.accion-hablar { display: block; width: 100%; margin-bottom: 1rem; font-size: 1.1rem; }
 @media (prefers-reduced-motion: reduce) { .mic.grabando, .ml-punto { animation: none; } }
 
 /* Modo HUD */

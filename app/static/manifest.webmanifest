@@ -4,8 +4,10 @@
   "description": "Centro de control del laboratorio doméstico",
   "lang": "es-ES",
   "start_url": "/",
+  "id": "/",
   "scope": "/",
   "display": "standalone",
+  "categories": ["productivity", "utilities"],
   "background_color": "#070b12",
   "theme_color": "#070b12",
   "share_target": {
@@ -13,6 +15,12 @@
     "method": "GET",
     "params": { "title": "title", "text": "text", "url": "url" }
   },
+  "shortcuts": [
+    { "name": "Hablar", "url": "/#hablar", "icons": [{ "src": "/static/icon.svg", "sizes": "any" }] },
+    { "name": "Nueva nota", "url": "/#nota", "icons": [{ "src": "/static/icon.svg", "sizes": "any" }] },
+    { "name": "HUD", "url": "/#hud", "icons": [{ "src": "/static/icon.svg", "sizes": "any" }] },
+    { "name": "Compartir", "url": "/#compartir", "icons": [{ "src": "/static/icon.svg", "sizes": "any" }] }
+  ],
   "icons": [
     { "src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]

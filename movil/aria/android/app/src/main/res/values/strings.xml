@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ARIA</string>
+    <string name="title_activity_main">ARIA</string>
+    <string name="package_name">io.github.bertmarti.aria</string>
+    <string name="custom_url_scheme">io.github.bertmarti.aria</string>
+    <string name="avisos_canal">Avisos de ARIA</string>
+    <string name="actualizacion_titulo">Hay una versión nueva de ARIA (%1$s)</string>
+    <string name="actualizar">Actualizar</string>
+    <string name="mas_tarde">Más tarde</string>
+    <string name="widget_hablar">Hablar</string>
+    <string name="widget_nota">Nota</string>
+    <string name="atajo_hablar">Hablar</string>
+    <string name="atajo_manos_libres">Manos libres</string>
+    <string name="atajo_nueva_nota">Nueva nota</string>
+    <string name="atajo_hud">HUD</string>
+    <string name="atajo_compartir">Compartir</string>
+    <string name="atajo_cambiar_de_aria">Cambiar de ARIA</string>
+    <string name="atajo_buscar_actualizaciones">Buscar actualizaciones</string>
+    <string name="sin_actualizaciones">Ya tienes la última versión de ARIA.</string>
+</resources>

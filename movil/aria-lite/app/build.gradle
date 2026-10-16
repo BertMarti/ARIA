@@ -1,0 +1,33 @@
+plugins { id 'com.android.application' }
+
+def ariaVersion = providers.gradleProperty('ARIA_VERSION').getOrElse('3.0.0')
+def ariaVersionCode = providers.gradleProperty('ARIA_VERSION_CODE').getOrElse('300').toInteger()
+
+android {
+    namespace 'io.github.bertmarti.aria.lite'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'io.github.bertmarti.aria.lite'
+        minSdk 23
+        targetSdk 35
+        versionCode ariaVersionCode
+        versionName ariaVersion
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}
+
+// androidbrowserhelper trae kotlin-stdlib-jdk7/jdk8 1.6.21, que duplican clases del kotlin-stdlib moderno (desde 1.8 están
+// vacíos): se fuerzan a la misma versión.
+configurations.configureEach {
+    resolutionStrategy {
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22", "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22"
+    }
+}

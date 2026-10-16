@@ -61,6 +61,7 @@ services:
     volumes:
       - ./data:/data
       - escaner:/escaner   # peticiones/resultados del escáner (sin red ni socket entre ambos)
+      - descubre:/descubre:ro   # teles y altavoces que ve aria-descubre (Enviar a la tele)
       - ./modulos:/srv/modulos:ro   # módulos enchufables (docs/MODULOS.md); solo lectura
     depends_on:
       ollama:
@@ -119,6 +120,29 @@ services:
       - escaner:/escaner
     mem_limit: 256m
 
+  # Descubre teles y altavoces como lo hace Chrome (mDNS de Google Cast y SSDP/DLNA). Necesita la red de casa para oír
+  # anuncios multicast, así que va aparte y sin nada más: usuario sin privilegios, sin capacidades, solo lectura, sin los
+  # datos de ARIA. Solo escribe la lista de dispositivos en su volumen, que la app lee.
+  descubre:
+    build:
+      context: ./app
+      dockerfile: descubre/Dockerfile
+    image: aria-descubre:local
+    container_name: aria-descubre
+    restart: unless-stopped
+    network_mode: host
+    user: "65534:${ARIA_GID:-1000}"   # nobody; grupo de la app para que pueda leer el volumen
+    cap_drop: [ALL]
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    environment:
+      ARIA_RED_PERMITIDA: ${ARIA_RED_PERMITIDA:-192.168.0.0/24}
+      TZ: ${ARIA_TZ:-Europe/Madrid}
+    volumes:
+      - descubre:/descubre
+    mem_limit: 96m
+
   caddy:
     image: caddy:2-alpine
     container_name: aria-caddy
@@ -150,6 +174,7 @@ networks:
 
 volumes:
   escaner:
+  descubre:
   ollama_data:
   caddy_data:
   caddy_config:

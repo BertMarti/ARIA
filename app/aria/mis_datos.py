@@ -4,7 +4,7 @@ import json
 import zipfile
 from contextlib import closing
 
-from . import db, listas, usuarios
+from . import db, documentos, listas, usuarios
 
 
 def _filas(con, tabla, uid):
@@ -32,6 +32,7 @@ def exportar(uid: int, perfil: dict) -> bytes:
             "memoria.json": {"recuerdos": _filas(con, "recuerdos", uid), "diario": _filas(con, "diario", uid),
                               "ajustes": _filas(con, "memoria_ajustes", uid)},
             "notas.json": _filas(con, "notas", uid),
+            "documentos.json": _filas(con, "documentos", uid),
             "listas.json": {"listas": [dict(r) for r in con.execute(
                                 "SELECT * FROM listas WHERE propietario=? ORDER BY orden, id", (uid,))],
                             "items": [dict(r) for r in con.execute(
@@ -53,6 +54,7 @@ def exportar(uid: int, perfil: dict) -> bytes:
              "conversaciones.json: tus conversaciones y mensajes.\n"
              "memoria.json: recuerdos, diario y preferencias de memoria.\n"
                "notas.json: tus notas personales.\n"
+               "documentos.json: metadatos de tus documentos, sin los archivos originales.\n"
               "listas.json: tus listas propias y los artículos que añadiste.\n"
               "medios.json: tu progreso de reproducción, sin archivos multimedia.\n"
              "agenda.json: eventos y cumpleaños.\n"
@@ -92,3 +94,4 @@ def borrar(uid: int) -> None:
             if "user_id" in columnas:
                 con.execute(f"DELETE FROM {tabla} WHERE user_id=?", (uid,))
         con.execute("DELETE FROM usuarios WHERE id=?", (uid,))
+    documentos.borrar_archivos(uid)

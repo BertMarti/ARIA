@@ -36,6 +36,11 @@ https:// {
 	# El endpoint de autorizacion solo es para Caddy, no para el exterior.
 	respond /internal/* 404
 	respond /flujo/* 404
+	# Tus documentos: tope de tamaño también para envíos sin Content-Length (la app limita a 15 MB)
+	@subidas path /api/documentos
+	request_body @subidas {
+		max_size 16MB
+	}
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000"

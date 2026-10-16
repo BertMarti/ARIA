@@ -79,6 +79,8 @@ _USUARIO = [
     ("POST", r"/api/recordatorios"),
     ("DELETE", r"/api/recordatorios/\d+"),
     ("GET", r"/api/notas"), ("POST", r"/api/notas"), ("PATCH", r"/api/notas/\d+"), ("DELETE", r"/api/notas/\d+"),
+    ("GET", r"/api/documentos"), ("POST", r"/api/documentos"), ("POST", r"/api/documentos/buscar"),
+    ("GET", r"/api/documentos/\d+/archivo"), ("DELETE", r"/api/documentos/\d+"),
     ("GET", r"/api/listas"), ("POST", r"/api/listas"), ("PATCH", r"/api/listas/\d+"), ("DELETE", r"/api/listas/\d+"),
     ("POST", r"/api/listas/\d+/items"), ("POST", r"/api/listas/\d+/vaciar"),
     ("PATCH", r"/api/lista-items/\d+"), ("DELETE", r"/api/lista-items/\d+"),

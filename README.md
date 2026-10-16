@@ -90,6 +90,7 @@ Ping se estrena en el **escaparate público** de ARIA (`/hola`): una página est
 | 🔊 | **Voz en streaming**: ARIA empieza a leer en cuanto tiene la primera frase lista mientras sigue escribiendo. Funciona en el chat, manos libres y el HUD, agrupando el resto en bloques optimizados. |
 | 📋 | **Registro de actividad**: para administradores en Ajustes → Usuarios. Historial de qué herramientas usó cada agente, desde dónde, con qué resultado y cuánto tardó (se guarda 30 días). |
 | 🧚 | **Escaparate «Conoce a ARIA»** (`/hola`) y **Ping**, su hada de luz con voz propia: ARIA se presenta con su voz y Ping la interrumpe con un «¡Eh, mira!». Página pública y estática, sin datos reales. |
+| 🆕 | **Ping compañero y compartir**: Ping pasea de vez en cuando por la app y es quien te avisa de los avisos y propuestas nuevas; comparte texto o enlaces desde Android y ARIA los resume en el chat. |
 | 🔢 | **Inicio en tarjetas numeradas**: 01 HUD · 02 Resumen del día · 03 Agenda · 04 Tu casa · 05 Información · 06 Mapa · 07 Chat · 08 Finanzas, cada una con un dato vivo y su estado (ACTIVO, AVISO, PRONTO). |
 | 🎧 | **Briefing hablado**: el resumen del día contado por ARIA en un minuto. Por Telegram cada mañana como **nota de voz** (y con el botón **🔊 Escuchar**), en el HUD (**Briefing del día**) y en Inicio (**▶ Escuchar**). Se sintetiza una vez y se guarda, así que apenas gasta cuota de voz. |
 | 🌌 | **Modo HUD** (`#hud`): escena futurista con rejilla animada, orbe que «mira» al ratón y tarjetas que se iluminan y giran en 3D al pasar por encima. **Opciones**: qué tarjetas ver, 5 colores, efectos, reloj con segundos y voz. **Modo quiosco** para una tableta (pantalla siempre encendida, controles que se esconden). |
@@ -278,13 +279,13 @@ sequenceDiagram
 |---|---|---|---|
 | **Oír «Aria»** (manos libres) | Detector de palabra clave en `aria-voz` | — | Siempre en tu máquina: el sonido no sale de casa |
 | **Entender lo que dices** | Whisper en **Groq** (gratis, muy rápido) | **faster-whisper** en `aria-voz` | Nube o tu máquina |
-| **Hablar** | **Gemini TTS**: 14 voces femeninas, con tono y acento de España | **Piper** en `aria-voz` (voz femenina española) o tu **voz propia** | Nube o tu máquina |
+| **Hablar** | **Gemini TTS**: 14 voces femeninas, con tono y acento de España | **Piper** en `aria-voz` (voz femenina española) | Nube o tu máquina |
 | **Lectura en streaming** | **Voz en streaming**: ARIA empieza a hablar en cuanto termina la primera frase mientras sigue escribiendo | — | El navegador, pidiendo el audio por partes |
 | **Notas de voz de Telegram** | La misma voz, convertida a OGG/Opus en `aria-voz` | WAV | Tu máquina |
 | **Escaparate y Ping** | Audio **pregrabado** (MP3) | Subtítulos | El navegador del visitante |
 
 - **Cuota**: la capa gratuita de Gemini da pocas síntesis al día. Por eso las muestras de voces, las frases repetidas y el **briefing hablado** se guardan, y cuando la cuota se agota ARIA habla con Piper y avisa hasta qué hora.
-- **Voz propia**: si dejas un modelo Piper (`.onnx` + `.onnx.json`) en `data/voz-propia/`, ARIA puede usarlo como voz sin internet ni cuotas. En [`herramientas/voz-propia/`](herramientas/voz-propia/) tienes cómo grabarla (siempre con el consentimiento de quien pone la voz) y un cuaderno para entrenarla gratis en Google Colab.
+- **Voz propia**: está aparcada. Las herramientas y el cuaderno de entrenamiento siguen en [`herramientas/voz-propia/`](herramientas/voz-propia/) para retomarla más adelante, siempre con el consentimiento de quien ponga la voz.
 - **Privacidad**: el audio que grabas no se guarda nunca; solo se transcribe y se descarta.
 
 <p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
@@ -432,6 +433,8 @@ docker compose up -d
 ## 🔌 Añade tus propias aplicaciones (módulos)
 
 <p align="left"><img src="docs/img/ping/ping-modulos.svg" alt="Ping: «Más apps, más cosas que vigilar. ¡Me encanta!»"></p>
+
+<p align="left"><img src="docs/img/ping/ping-novedades.svg" alt="Ping: «¡Eh, mira! Hay cosas nuevas por aquí.»"></p>
 
 Un módulo es una carpeta en `modulos/`. ARIA lo carga al arrancar y lo enchufa en varios sitios a la vez:
 
@@ -660,7 +663,9 @@ Deja vacía `ARIA_URL_PUBLICA` en `.env` y `docker compose up -d`.
 
 ## 🗺️ Hoja de ruta
 
-Ideas de nuevas aplicaciones (Home Assistant, Jellyfin, gasolineras…) y mejoras del núcleo en **[docs/PLAN.md](docs/PLAN.md)**. La mayoría se pueden hacer como módulos.
+La hoja de ruta distingue lo que ya está hecho de lo que queda pendiente. Ya están disponibles la búsqueda global con **Ctrl+K**, **Mis datos**, las gasolineras más baratas, los avisos de Meteoalarm, la ubicación opcional, Ping compañero, el briefing hablado, la memoria semántica, el Cerebro 3D, la cámara y los gestos, ARIA flotante, el mapa 3D y el acceso por invitación con perfiles. La voz propia diseñada continúa **aparcada**.
+
+Lo siguiente prioriza listas compartidas, salud histórica del sistema, CalDAV, Home Assistant, Uptime Kuma y documentos propios. Consulta el detalle, el esfuerzo y el consumo estimado en **[docs/PLAN.md](docs/PLAN.md)**; la mayoría de integraciones pueden ser módulos.
 
 ## 🌐 El ecosistema ARIA
 

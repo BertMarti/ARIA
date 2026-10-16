@@ -7,3 +7,4 @@ PyJWT[crypto]>=2.8,<3
 websockets>=13,<16
 qrcode>=7.4,<9
 pypng>=0.20220715
+pychromecast>=14.0,<15

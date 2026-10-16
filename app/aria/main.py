@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_cerebro, api_finanzas, api_informacion, api_modulos, api_notas, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, mapas, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_cerebro, api_finanzas, api_informacion, api_modulos, api_notas, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, mapas, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -187,7 +187,7 @@ async def seguridad(request: Request, call_next):
     nueva = None          # usuario para el que hay que emitir cookie de sesión
     pendiente = False     # SSO: Cloudflare no respondió, hay que reintentar
     usuario = None
-    if not _libre(path) and not (path.startswith("/cal/") and request.method == "GET"):
+    if not (_libre(path) or (path.startswith("/flujo/") and request.method in ("GET", "HEAD"))) and not (path.startswith("/cal/") and request.method == "GET"):
         usuario = auth.sesion_usuario(request.cookies.get(auth.COOKIE))
         token = request.headers.get(sso.CABECERA)
         if token and sso.habilitado():
@@ -472,6 +472,7 @@ app.include_router(api_rutinas.router)
 app.include_router(api_automatizaciones.router)
 app.include_router(api_agenda.router)
 app.include_router(api_notas.router)
+app.include_router(api_tele.router)
 app.include_router(api_acceso.router)
 app.include_router(api_modulos.router)
 app.include_router(api_cerebro.router)
@@ -816,6 +817,17 @@ async def ws_despertar(ws: WebSocket):
         voz._escuchas[u["id"]] -= 1
         if not voz._escuchas[u["id"]]:
             voz._escuchas.pop(u["id"], None)
+
+
+@app.websocket("/api/tele/canal")
+async def ws_tele(ws: WebSocket):
+    u = auth.sesion_usuario(ws.cookies.get(auth.COOKIE))
+    if (not voz.origen_ws_permitido(ws.headers.get("origin"), ws.headers.get("host")) or u is None
+            or ws.cookies.get(VISTA_COOKIE) or await asyncio.to_thread(invitados.de, u["id"])
+            or not permisos.permitido(u["rol"], "GET", ws.url.path)):
+        await ws.close(code=1008)
+        return
+    await api_tele.tele.canal(ws, u)
 
 
 # --- Memoria (cada usuario, solo la suya; la identidad sale de la sesión, nunca de la petición) ---

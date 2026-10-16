@@ -9,7 +9,7 @@ from . import db
 
 log = logging.getLogger("aria.registro")
 ORIGEN = contextvars.ContextVar("aria_origen", default="chat")
-_ORIGENES = {"chat", "telegram", "rutina", "automatizacion", "propuesta", "seguridad", "otro"}
+_ORIGENES = {"chat", "telegram", "rutina", "automatizacion", "propuesta", "seguridad", "tele", "otro"}
 _SECRETOS = ("password", "clave", "secret", "token", "pin", "codigo")
 
 
@@ -19,19 +19,19 @@ def iniciar() -> None:
             CREATE TABLE IF NOT EXISTS registro_herramientas (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL,
                 user_id INTEGER,
-                rol TEXT NOT NULL, agente TEXT, origen TEXT NOT NULL CHECK (origen IN ('chat','telegram','rutina','automatizacion','propuesta','seguridad','otro')),
+                rol TEXT NOT NULL, agente TEXT, origen TEXT NOT NULL CHECK (origen IN ('chat','telegram','rutina','automatizacion','propuesta','seguridad','tele','otro')),
                 herramienta TEXT NOT NULL, args TEXT NOT NULL, ok INTEGER NOT NULL,
                 resultado TEXT NOT NULL, ms INTEGER NOT NULL);
             CREATE INDEX IF NOT EXISTS idx_registro_ts ON registro_herramientas(ts DESC);
             CREATE INDEX IF NOT EXISTS idx_registro_usuario_ts ON registro_herramientas(user_id, ts DESC);
         """)
         sql = con.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='registro_herramientas'").fetchone()[0]
-        if "seguridad" not in sql:
+        if "tele" not in sql:
             con.execute("ALTER TABLE registro_herramientas RENAME TO registro_herramientas_antiguo")
             con.execute("""CREATE TABLE registro_herramientas (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, user_id INTEGER,
                 rol TEXT NOT NULL, agente TEXT, origen TEXT NOT NULL CHECK (origen IN
-                ('chat','telegram','rutina','automatizacion','propuesta','seguridad','otro')),
+                ('chat','telegram','rutina','automatizacion','propuesta','seguridad','tele','otro')),
                 herramienta TEXT NOT NULL, args TEXT NOT NULL, ok INTEGER NOT NULL,
                 resultado TEXT NOT NULL, ms INTEGER NOT NULL)""")
             con.execute("INSERT INTO registro_herramientas SELECT * FROM registro_herramientas_antiguo")

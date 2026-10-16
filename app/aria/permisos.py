@@ -31,6 +31,9 @@ _USUARIO = [
     ("POST", r"/api/voz/transcribir"),
     ("POST", r"/api/voz/hablar"),
     ("GET", r"/api/voz/despertar"),  # WebSocket (se comprueba en el propio endpoint)
+    ("GET", r"/api/tele/canal"),
+    ("GET", r"/api/tele/dispositivos"), ("POST", r"/api/tele/dispositivos"),
+    ("POST", r"/api/tele/(enviar|control)"), ("GET", r"/api/tele/estado"),
     # Agentes: la lista ya viene filtrada por rol; el chat rechaza @seguridad a un usuario.
     ("GET", r"/api/agentes"),
     ("GET", r"/api/buscar"),

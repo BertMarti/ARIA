@@ -302,6 +302,7 @@ const Inicio = (() => {
       return tarjeta;
     }));
     zona.hidden = !propuestas.length;
+    window.dispatchEvent(new CustomEvent("aria:propuestas", { detail: propuestas }));
   }
   async function propuestas() {
     const zona = $("propuestas");

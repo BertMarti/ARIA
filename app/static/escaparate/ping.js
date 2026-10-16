@@ -13,7 +13,7 @@ const Ping = (() => {
       this.lienzo = lienzo; this.ctx = lienzo.getContext("2d");
       this.opc = { sigue: false, escala: 1, zona: { x: .5, y: .48, ax: .26, ay: .12 }, ...opciones };
       this.destino = null;   // {x, y} en px del lienzo: vuela allí y se queda revoloteando
-      this.col = [...COLORES.ok]; this.obj = COLORES.ok;
+      this.col = [...(COLORES[this.opc.tono] || COLORES.ok)]; this.obj = COLORES[this.opc.tono] || COLORES.ok;
       this.p = { x: 0, y: 0, vx: 0, vy: 0 }; this.raton = null; this.estela = []; this.raf = 0; this.t0 = performance.now();
       this._dibujar = this._dibujar.bind(this);
       if (this.opc.sigue) {
@@ -39,6 +39,7 @@ const Ping = (() => {
       this.iniciar();
     }
     estado(nombre) { this.obj = COLORES[nombre] || COLORES.ok; }
+    tono(nombre) { this.obj = COLORES[nombre] || COLORES.ok; }
     _caducado() {   // sigueMs: sigue al ratón solo durante los primeros ms desde que lo ve; luego vuela por libre
       if (!this.opc.sigueMs) return false;
       if (this.sigueHasta === undefined) { this.sigueHasta = performance.now() + this.opc.sigueMs; setTimeout(() => { this.raton = null; }, this.opc.sigueMs); }

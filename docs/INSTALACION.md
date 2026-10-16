@@ -43,6 +43,16 @@ En los ejemplos usamos estas direcciones inventadas. Cámbialas por las tuyas:
 - **SHIELD-DNS** (opcional): bloquea anuncios y rastreadores en todos los dispositivos de casa. ARIA lo usa también para el inventario de red y el control parental.
 - **HEIMDALL** (opcional): una VPN para entrar en tu casa desde fuera y llevarte el bloqueo de anuncios en el móvil.
 
+ARIA incluye también el descubrimiento de dispositivos para **Enviar a la tele**:
+
+| Contenedor | Función | Puertos publicados |
+|---|---|---|
+| `aria-app` | Aplicación web y puente de control | ninguno |
+| `aria-caddy` | HTTPS y flujo temporal hacia la tele | 80, 443 y `8095` solo en la LAN |
+| `aria-descubre` | Descubre teles y altavoces como Chrome mediante mDNS y SSDP/DLNA | ninguno |
+
+`aria-descubre` usa la red del host para recibir anuncios multicast, pero se ejecuta con un usuario sin privilegios, sin capacidades y con el sistema de archivos en solo lectura. Solo escribe la lista de dispositivos que lee ARIA.
+
 Las tres pueden convivir en la misma máquina: cada una usa sus propios puertos.
 
 ```mermaid
@@ -543,6 +553,8 @@ Para quitar los servicios del sistema: `sudo systemctl disable --now homelab-cop
 | `install.sh` dice «No puedo hablar con Docker» | Tu usuario aún no está en el grupo `docker`. Cierra sesión, vuelve a entrar y repite. |
 | Un contenedor «no está sano» al instalar | Mira sus registros: `docker compose logs app` (o `voz`, `ollama`…). Vuelve a ejecutar `./install.sh`. |
 | La página no carga | `docker compose ps` y `docker compose logs caddy app`. Comprueba que nada más usa los puertos 80 y 443 (`sudo ss -tlnp \| grep -E ':80 \|:443 '`). |
+| El puerto `8095` no funciona desde fuera | Es intencionado: `8095` solo sirve para el puente de **Enviar a la tele** dentro de la red local. No lo publiques en el router ni lo uses a través de Cloudflare. |
+| La tele no aparece en **Enviar a la tele** | Comprueba que la tele está encendida y el móvil/ordenador y la Raspberry están en la misma red. Desactiva en el Wi-Fi el aislamiento de clientes (también llamado *AP isolation* o «aislamiento de dispositivos»). Si sigue sin aparecer, añade la tele por su IP local, por ejemplo `192.168.1.20`. |
 | `aria.local` no carga | Usa la IP (`https://192.168.1.50`). Algunos Android y Windows no resuelven `.local`. |
 | Error de certificado al entrar con otro nombre | Añade ese nombre a `ARIA_HOSTS` en `.env` y ejecuta `docker compose up -d`. |
 | Olvidé la contraseña de `admin` | Si nunca la cambiaste en Ajustes, está en `.env` (`ARIA_PASSWORD`). Si la cambiaste, otro administrador puede ponerte una nueva en Ajustes → Usuarios. |

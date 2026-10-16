@@ -31,6 +31,7 @@ def exportar(uid: int, perfil: dict) -> bytes:
             "memoria.json": {"recuerdos": _filas(con, "recuerdos", uid), "diario": _filas(con, "diario", uid),
                               "ajustes": _filas(con, "memoria_ajustes", uid)},
             "notas.json": _filas(con, "notas", uid),
+            "medios.json": _filas(con, "medios_progreso", uid),
             "agenda.json": {"eventos": _filas(con, "agenda_eventos", uid),
                             "cumpleanos": _filas(con, "agenda_cumpleanos", uid)},
             "recordatorios.json": _filas(con, "recordatorios", uid),
@@ -46,7 +47,8 @@ def exportar(uid: int, perfil: dict) -> bytes:
              "perfil.json: datos básicos de tu cuenta, sin contraseña ni secretos.\n"
              "conversaciones.json: tus conversaciones y mensajes.\n"
              "memoria.json: recuerdos, diario y preferencias de memoria.\n"
-             "notas.json: tus notas personales.\n"
+              "notas.json: tus notas personales.\n"
+              "medios.json: tu progreso de reproducción, sin archivos multimedia.\n"
              "agenda.json: eventos y cumpleaños.\n"
              "recordatorios.json: tus recordatorios.\n"
              "rutinas.json: tus rutinas programadas.\n"

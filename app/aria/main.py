@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_cerebro, api_finanzas, api_informacion, api_modulos, api_notas, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, mapas, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_cerebro, api_finanzas, api_informacion, api_medios, api_modulos, api_notas, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, mapas, memoria, medios, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -52,6 +52,7 @@ _ser_2p = URLSafeTimedSerializer(config.SECRET or "sin-secreto", salt="aria-dos-
 # Gestos del HUD (MediaPipe, alojado en /static/vendor): 'wasm-unsafe-eval' solo permite compilar WebAssembly, no eval de JavaScript.
 CSP = ("default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org https://tiles.openfreemap.org; "
        "connect-src 'self' https://tiles.openfreemap.org; style-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; "
+       "media-src 'self' blob:; "  # Compartir: vídeos y subtítulos locales (object URL) que nunca salen del navegador
        "frame-ancestors 'none'")
 # Micrófono y cámara solo para ARIA (ni iframes ni otros orígenes). La cámara se abre únicamente al pulsar «¿Qué ves?» y se
 # apaga tras la foto (P5); geolocalización para el botón «Mi ubicación» del mapa.
@@ -105,6 +106,7 @@ async def _arranque():
     avisos.iniciar()
     recordatorios.iniciar()
     notas.iniciar()
+    medios.iniciar()
     agenda.iniciar()
     rutinas.iniciar()
     automatizaciones.iniciar()
@@ -471,6 +473,7 @@ app.include_router(api_rutinas.router)
 app.include_router(api_automatizaciones.router)
 app.include_router(api_agenda.router)
 app.include_router(api_notas.router)
+app.include_router(api_medios.router)
 app.include_router(api_acceso.router)
 app.include_router(api_modulos.router)
 app.include_router(api_cerebro.router)

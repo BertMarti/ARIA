@@ -39,6 +39,7 @@ const Avisos = (() => {
       li.append(acc);
       ul.append(li);
     }
+    window.dispatchEvent(new CustomEvent("aria:avisos", { detail: data.avisos.filter((a) => !a.leido) }));
   }
   async function leer(a) {
     if (a.leido) return;

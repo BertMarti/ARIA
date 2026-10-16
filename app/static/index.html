@@ -515,6 +515,14 @@
         <div class="botones"><button type="button" class="primario" id="av-probar">Probar avisos</button></div>
         <p id="av-msg" class="muted" role="status"></p>
       </article>
+      <article class="tarjeta ancha" id="ajustes-ping">
+        <h2>Ping</h2>
+        <p class="muted">El hada de luz puede pasear por la pantalla y avisarte de novedades.</p>
+        <label>Comportamiento
+          <select id="ping-modo"><option value="pasea">Pasea y avisa</option><option value="avisos">Solo avisos</option><option value="nunca">Nunca</option></select>
+        </label>
+        <label class="interruptor"><input type="checkbox" id="ping-voz"><span>Voz de Ping al avisar</span></label>
+      </article>
       <article class="tarjeta" id="ajustes-recordatorios">
         <h2>Recordatorios</h2>
         <p class="muted">También puedes pedírselos a ARIA en el chat o por Telegram: «recuérdame mañana a las 9 llamar al taller».</p>
@@ -827,6 +835,8 @@
 </dialog>
 
 <script src="/static/util.js"></script>
+<script src="/static/escaparate/ping.js"></script>
+<script src="/static/ping-compa.js"></script>
 <script src="/static/md.js"></script>
 <script src="/static/camara.js"></script>
 <script src="/static/voz.js"></script>

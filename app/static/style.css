@@ -39,6 +39,17 @@ code { font-family: var(--mono); font-size: .9em; background: rgba(0, 0, 0, .35)
 .aviso-txt { color: var(--warn); }
 [hidden] { display: none !important; }
 
+/* Ping compañero: el canvas no intercepta la interfaz; el bocadillo sí. */
+.ping-compa-lienzo { position: fixed; inset: 0; z-index: 18; width: 100vw; height: 100vh; pointer-events: none; opacity: 0; transition: opacity .8s ease; }
+.ping-compa-lienzo.ping-visible { opacity: 1; }
+.ping-compa-bocadillo { position: fixed; z-index: 28; max-width: min(310px, calc(100vw - 2rem)); padding: .7rem .8rem; border: 1px solid var(--acento); border-radius: 12px; background: rgba(7, 11, 18, .95); box-shadow: 0 8px 28px rgba(0, 0, 0, .45); pointer-events: auto; }
+.ping-compa-bocadillo.alerta { border-color: var(--warn); box-shadow: 0 0 18px rgba(245, 184, 75, .3); }
+.ping-compa-texto { margin: 0 0 .55rem; }
+.ping-compa-acciones { display: flex; gap: .4rem; justify-content: end; }
+.ping-compa-campana { animation: ping-campana 1s ease-in-out 3; }
+@keyframes ping-campana { 50% { transform: scale(1.13) rotate(5deg); } }
+@media (prefers-reduced-motion: reduce) { .ping-compa-lienzo { transition: opacity .2s ease; } .ping-compa-campana { animation: none; } }
+
 /* Ventana Document Picture-in-Picture: estas reglas se clonan junto con style.css. */
 .flot-hud { min-height: 100vh; padding: .7rem .8rem .8rem; background: radial-gradient(circle at 50% 30%, rgba(56, 214, 255, .14), transparent 48%), #070b12; color: var(--txt); display: flex; flex-direction: column; align-items: center; gap: .25rem; }
 .flot-titulo { margin: 0; color: var(--acento); font: 650 .8rem var(--mono); letter-spacing: .2em; }

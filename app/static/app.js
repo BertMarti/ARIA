@@ -29,7 +29,7 @@
   (async () => {
     await cargarSesion();
     ManosLibres.iniciarUI(); Chat.iniciar(); Control.iniciar(); Cerebro.iniciar(); Finanzas.iniciar(); Informacion.iniciar(); Agenda.iniciar(); Notas.iniciar(); Red.iniciar(); Seguridad.iniciar(); Inicio.iniciar(); Ajustes.iniciar(); Usuarios.iniciar(); Memoria.iniciar(); Avisos.iniciar(); Rutinas.iniciar(); Registro.iniciar(); Paleta.iniciar(); Mapa.iniciar(); Hud.iniciar();
-    Chat.refrescarCerebro();
+    Chat.refrescarCerebro(); PingCompa.iniciar();
     if (new URLSearchParams(location.search).get("spotify")) history.replaceState(null, "", "/#ajustes");
     Compartir.revisar(); // «Compartir con ARIA» desde otra app del móvil (Web Share Target)
     // Invitados: fuera de la barra lo que su acceso no incluye

@@ -32,6 +32,14 @@ def test_admin_recibe_grafo_coherente(admin):
     assert all(e["origen"] in ids and e["destino"] in ids for e in d["enlaces"])
 
 
+def test_nodos_tienen_descripcion_y_mejoras_sin_ips(admin):
+    nodos = cliente_de(admin).get("/api/cerebro").json()["nodos"]
+    textos = [n["que_hace"] for n in nodos] + [m for n in nodos for m in n["mejoras"]]
+    assert all(isinstance(n["que_hace"], str) and n["que_hace"] for n in nodos)
+    assert all(isinstance(n["mejoras"], list) and n["mejoras"] for n in nodos)
+    assert not any(__import__("re").search(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", texto) for texto in textos)
+
+
 def test_usuario_no_ve_el_mapa(ana):
     assert cliente_de(ana).get("/api/cerebro").status_code == 403
 

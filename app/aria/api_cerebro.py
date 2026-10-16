@@ -22,10 +22,77 @@ _FAMILIAS = {
     "módulos": ("modulo",),
 }
 
+_QUE_HACE = {
+    "núcleo": "Coordina ARIA, sus datos y las tareas que mantienen el laboratorio disponible.",
+    "cerebros": "Procesa las conversaciones y elige el proveedor de IA disponible para cada respuesta.",
+    "agentes": "Agrupa las capacidades de ARIA por oficio para responder con herramientas adecuadas.",
+    "herramientas": "Reúne herramientas relacionadas y muestra cuánto se han utilizado recientemente.",
+    "módulos": "Añade extensiones opcionales a ARIA sin mezclar su código con el núcleo.",
+    "servicios": "Es un servicio que ARIA necesita para ofrecer una parte de sus funciones.",
+    "canales": "Permite recibir avisos o conversar con ARIA desde ese medio.",
+    "datos": "Guarda o consulta información de ARIA respetando el usuario que la solicita.",
+    "túnel": "Conecta de forma segura con la red privada para acceder a servicios autorizados.",
+    "copias": "Resume el estado de las copias de seguridad de los datos de ARIA.",
+}
+
+_QUE_HACE_ID = {
+    "aria": "Es el núcleo de ARIA: coordina conversaciones, agentes, herramientas y avisos.",
+    "servicio-aria-voz": "Transcribe audio y prepara la respuesta hablada para la interacción por voz.",
+    "servicio-ollama": "Ofrece inferencia local cuando se configura un modelo compatible.",
+    "servicio-searxng": "Busca información en Internet sin exponer directamente el navegador de ARIA.",
+    "shield-dns": "Filtra consultas DNS y ayuda a proteger y ordenar la red doméstica.",
+    "heimdall": "Proporciona el túnel privado para acceder a la red doméstica de forma segura.",
+    "canal-telegram": "Envía avisos y permite consultar ARIA desde Telegram.",
+    "canal-push": "Entrega avisos del navegador en los dispositivos que el usuario ha vinculado.",
+    "canal-web": "Es la interfaz web para conversar, consultar datos y administrar ARIA.",
+    "datos-memoria": "Conserva recuerdos autorizados para personalizar futuras conversaciones.",
+    "datos-notas": "Organiza notas y decisiones que el usuario quiere conservar.",
+    "datos-db": "Almacena el estado estructurado de ARIA y sus registros internos.",
+    "tunel": "Mantiene la conexión privada disponible para los servicios que la necesitan.",
+    "copias": "Comprueba cuándo se hizo la última copia de seguridad conocida.",
+}
+
+
+def _contenido(ident, nombre, grupo, estado, datos):
+    """Genera texto útil sin incluir valores de configuración ni datos privados."""
+    clave = ident.lower()
+    que_hace = _QUE_HACE_ID.get(clave)
+    if not que_hace:
+        que_hace = next((texto for clave_id, texto in _QUE_HACE_ID.items() if clave_id in clave or clave_id in nombre.lower()), None)
+    que_hace = que_hace or _QUE_HACE.get(grupo, "Forma parte de la arquitectura de ARIA.")
+    mejoras = []
+    if estado == "mal" and grupo == "cerebros":
+        mejoras.append("Revisa la clave o el cupo en Ajustes → Cerebros.")
+    elif estado == "mal" and grupo == "servicios":
+        mejoras.append("Comprueba el servicio desde Centro de control y reinícialo si procede.")
+    elif estado == "mal":
+        mejoras.append("Consulta el detalle y revisa la configuración de esta capacidad.")
+    if grupo == "herramientas" and not datos.get("usos"):
+        mejoras.append("Prueba una herramienta de esta familia en el chat con una petición sencilla.")
+    if grupo == "copias" and estado in ("aviso", "apagado", "mal"):
+        mejoras.append("Lanza una copia y comprueba su estado desde Telegram con /copia.")
+    if not mejoras:
+        ideas = {
+            "cerebros": "Usa este cerebro para comparar respuestas y repartir la carga.",
+            "agentes": "Pídele una tarea de su especialidad desde el chat para aprovechar sus herramientas.",
+            "herramientas": "Consulta esta familia en el chat cuando necesites datos actualizados.",
+            "servicios": "Revisa periódicamente su estado para detectar cortes antes de que afecten al chat.",
+            "canales": "Activa avisos en este canal para recibir información importante a tiempo.",
+            "datos": "Mantén solo la información útil y revisa periódicamente sus registros.",
+            "módulos": "Activa únicamente las extensiones que aporten una función que uses.",
+            "copias": "Comprueba con regularidad que la última copia sigue siendo reciente.",
+        }
+        mejoras.append(ideas.get(grupo, "Revisa este nodo desde el mapa cuando quieras comprobar su estado."))
+    return que_hace, mejoras[:3]
+
 
 def _nodo(nodos, ident, nombre, grupo, estado="ok", detalle="", datos=None):
-    nodos.append({"id": ident, "nombre": str(nombre), "grupo": grupo, "estado": estado if estado in ("ok", "aviso", "mal", "apagado") else "mal",
-                  "detalle": str(detalle)[:180], "datos": datos or {}})
+    datos = datos or {}
+    estado = estado if estado in ("ok", "aviso", "mal", "apagado") else "mal"
+    que_hace, mejoras = _contenido(ident, nombre, grupo, estado, datos)
+    nodos.append({"id": ident, "nombre": str(nombre), "grupo": grupo, "estado": estado,
+                  "detalle": str(detalle)[:180], "datos": datos, "que_hace": que_hace,
+                  "mejoras": mejoras})
 
 
 def _familia(nombre):

@@ -77,12 +77,13 @@ const PingCompa = (() => {
     if (!nuevos.length || !mostrar()) return;
     nuevos.forEach((a) => guardarAnunciados(String(a.id)));
     const grave = nuevos.some((a) => a.severidad === "grave" || a.prioridad === "alta" || a.prioridad === "high");
-    clearInterval(vuelta); ping.tono(grave ? "aviso" : "ok"); juntoCampana();
+    clearInterval(vuelta); ping.tono(grave ? "aviso" : "ok"); juntoCampana(); // crea el bocadillo
     burbuja.classList.toggle("alerta", grave); burbuja.replaceChildren(
       el("p", { class: "ping-compa-texto" }, textoAviso(nuevos)),
       el("div", { class: "ping-compa-acciones" },
         el("button", { type: "button", class: "primario pequeno" }, "Ver"),
         el("button", { type: "button", class: "fantasma pequeno" }, "Luego")));
+    juntoCampana();   // recolocar ya con su tamaño real
     burbuja.querySelector("button").addEventListener("click", () => { $("campana")?.click(); ocultar(); });
     burbuja.querySelectorAll("button")[1].addEventListener("click", ocultar);
     $("campana")?.classList.add("ping-compa-campana"); setTimeout(() => $("campana")?.classList.remove("ping-compa-campana"), 3200);
@@ -94,7 +95,7 @@ const PingCompa = (() => {
     if (!p.length || !mostrar()) return;
     p.forEach((x) => guardarAnunciados("propuesta:" + x.id)); clearInterval(vuelta); ping.tono("pensando"); juntoCampana();
     burbuja.replaceChildren(el("p", { class: "ping-compa-texto" }, "¡Eh, mira! Tienes una propuesta nueva."), el("div", { class: "ping-compa-acciones" }, el("button", { type: "button", class: "fantasma pequeno" }, "Luego")));
-    burbuja.querySelector("button").addEventListener("click", ocultar); sonido(); clearTimeout(salida); salida = setTimeout(ocultar, 20000);
+    juntoCampana(); burbuja.querySelector("button").addEventListener("click", ocultar); sonido(); clearTimeout(salida); salida = setTimeout(ocultar, 20000);
   }
   function iniciar() {
     if (iniciado) return; iniciado = true;

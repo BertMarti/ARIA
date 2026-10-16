@@ -234,6 +234,17 @@ body.app.vista-prueba { padding-top: 3.35rem; }
 .entrada { display: flex; gap: .6rem; align-items: flex-end; padding-top: .5rem; }
 .entrada textarea { resize: none; max-height: 10rem; min-height: 2.75rem; }
 
+/* Cámara */
+.camara-dialogo { width: min(94vw, 760px); max-width: none; padding: 1rem; background: var(--panel-solido); color: var(--txt); border: 1px solid var(--borde-fuerte); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.7); }
+.camara-dialogo::backdrop { background: rgba(0,0,0,.82); }
+.camara-dialogo h2 { margin: 0 0 .5rem; }
+.camara-encendida { margin: 0 0 .6rem; color: var(--mal); font-weight: 700; }
+.camara-video { display: block; width: 100%; max-height: 68vh; object-fit: contain; background: #000; border-radius: 10px; }
+.camara-acciones { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; margin-top: .8rem; }
+.camara-foto { min-height: 3.4rem; min-width: 12rem; font-size: 1.15rem; }
+@media (max-width: 600px) { .camara-dialogo { width: 100vw; min-height: 100dvh; border: 0; border-radius: 0; padding: .8rem; } .camara-video { max-height: calc(100dvh - 190px); height: calc(100dvh - 190px); } .camara-acciones button { flex: 1 1 100%; } .camara-foto { order: -1; } }
+@media (prefers-reduced-motion: reduce) { .camara-dialogo * { animation: none !important; transition: none !important; } }
+
 /* Modales y avisos */
 .modal { background: var(--panel-solido); color: var(--txt); border: 1px solid var(--borde-fuerte); border-radius: 16px; padding: 1.3rem; width: min(92vw, 420px); box-shadow: 0 20px 60px rgba(0, 0, 0, .6); }
 .modal::backdrop { background: rgba(2, 5, 10, .72); backdrop-filter: blur(3px); }

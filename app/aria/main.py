@@ -52,8 +52,9 @@ _ser_2p = URLSafeTimedSerializer(config.SECRET or "sin-secreto", salt="aria-dos-
 CSP = ("default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org https://tiles.openfreemap.org; "
        "connect-src 'self' https://tiles.openfreemap.org; style-src 'self'; script-src 'self'; worker-src 'self'; "
        "frame-ancestors 'none'")
-# El micrófono solo para ARIA (ni iframes ni otros orígenes); cámara y ubicación, para nadie.
-PERMISOS_NAVEGADOR = "microphone=(self), camera=(), geolocation=(self)"  # geolocalización: botón «Mi ubicación» del mapa
+# Micrófono y cámara solo para ARIA (ni iframes ni otros orígenes). La cámara se abre únicamente al pulsar «¿Qué ves?» y se
+# apaga tras la foto (P5); geolocalización para el botón «Mi ubicación» del mapa.
+PERMISOS_NAVEGADOR = "microphone=(self), camera=(self), geolocation=(self)"
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 

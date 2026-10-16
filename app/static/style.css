@@ -42,7 +42,7 @@ code { font-family: var(--mono); font-size: .9em; background: rgba(0, 0, 0, .35)
 /* Ventana Document Picture-in-Picture: estas reglas se clonan junto con style.css. */
 .flot-hud { min-height: 100vh; padding: .7rem .8rem .8rem; background: radial-gradient(circle at 50% 30%, rgba(56, 214, 255, .14), transparent 48%), #070b12; color: var(--txt); display: flex; flex-direction: column; align-items: center; gap: .25rem; }
 .flot-titulo { margin: 0; color: var(--acento); font: 650 .8rem var(--mono); letter-spacing: .2em; }
-.flot-orbe { width: 170px; height: 170px; display: block; }
+.flot-orbe { width: min(170px, calc(100vh - 200px)); height: min(170px, calc(100vh - 200px)); min-width: 70px; min-height: 70px; display: block; }   /* se adapta al alto de la ventana */
 .flot-estado { margin: -.35rem 0 0; color: var(--muted); font: 600 .75rem var(--mono); }
 .flot-subtitulo { width: 100%; min-height: 2.8em; margin: .15rem 0 .25rem; overflow: hidden; color: var(--txt); font-size: .82rem; line-height: 1.3; text-align: center; }
 .flot-form { width: 100%; display: grid; grid-template-columns: 1fr auto auto; gap: .35rem; }
@@ -1034,7 +1034,7 @@ a.mi-carta:hover, a.mi-carta:focus-visible { border-color: rgba(56, 214, 255, .6
 
 /* Tableta / iPad */
 body.app { height: 100vh; height: 100dvh; }
-.flot-hud { min-height: 100vh; min-height: 100dvh; }
+.flot-hud { height: 100vh; height: 100dvh; overflow: hidden; box-sizing: border-box; }   /* todo dentro de la ventana flotante, sin scroll */
 
 @media (max-width: 1366px), (max-height: 900px) {
   .nav { overflow-y: auto; scrollbar-width: none; padding-bottom: calc(.9rem + env(safe-area-inset-bottom)); }

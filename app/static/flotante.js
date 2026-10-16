@@ -55,8 +55,8 @@ const Flotante = (() => {
   async function abrir() {
     if (!disponible()) return false;
     if (pip && !pip.closed) { pip.focus(); return true; }
-    try { pip = await document.documentPictureInPicture.requestWindow({ width: 320, height: 360 }); }
-    catch (_) { return false; }
+    try { pip = await window.documentPictureInPicture.requestWindow({ width: 320, height: 360 }); }   // la API está en window, no en document
+    catch (e) { pip = null; toast("No se pudo abrir la ventana flotante" + (e?.name === "NotAllowedError" ? ": pulsa el botón otra vez." : "."), "mal"); return false; }
     const d = pip.document, body = d.body;
     for (const sheet of document.styleSheets) {
       const link = sheet.ownerNode;

@@ -1289,3 +1289,19 @@ body.app { height: 100vh; height: 100dvh; }
 #form.entrada > button .svg-ico { width: 1.3rem; height: 1.3rem; }
 .entrada textarea::placeholder { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 600px) { .entrada textarea { padding-left: .7rem; padding-right: .7rem; } }
+
+/* Barra de escribir del chat: todos los botones del mismo tamaño y el icono centrado sin recortes
+   (.adjuntar y .mic traían min-height/min-width y relleno propios que chocaban con el tamaño de .entrada en el móvil). */
+#form.entrada { align-items: flex-end; }
+#form.entrada > button { box-sizing: border-box; height: 2.75rem; min-height: 2.75rem; line-height: 1; }
+#form.entrada > button.fantasma { width: 2.75rem; min-width: 2.75rem; padding: 0; }
+#form.entrada > button.fantasma.mic { width: auto; padding: 0 .55rem; }
+#form.entrada > button .svg-ico { width: 1.3rem; height: 1.3rem; overflow: visible; }
+#form.entrada textarea { box-sizing: border-box; min-height: 2.75rem; }
+@media (max-width: 600px) {
+  #form.entrada > button { height: 2.6rem; min-height: 2.6rem; }
+  #form.entrada > button.fantasma { width: 2.6rem; min-width: 2.6rem; }
+  #form.entrada > button.fantasma.mic { width: auto; min-width: 2.6rem; }
+  #form.entrada textarea { min-height: 2.6rem; }
+  #enviar { width: 2.9rem; min-width: 2.9rem; }
+}

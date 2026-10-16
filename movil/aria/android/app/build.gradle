@@ -1,6 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
+    buildFeatures { buildConfig true }
     namespace "io.github.bertmarti.aria"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {

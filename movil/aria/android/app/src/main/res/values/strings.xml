@@ -17,4 +17,5 @@
     <string name="atajo_compartir">Compartir</string>
     <string name="atajo_cambiar_de_aria">Cambiar de ARIA</string>
     <string name="atajo_buscar_actualizaciones">Buscar actualizaciones</string>
+    <string name="sin_actualizaciones">Ya tienes la última versión de ARIA.</string>
 </resources>

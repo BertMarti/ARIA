@@ -247,6 +247,17 @@ const Ajustes = (() => {
     });
   }
 
+  function misDatos() {
+    $("borrar-cuenta").addEventListener("click", async () => {
+      if (!(await confirmar("Borrar mi cuenta", "Se eliminarán todos tus datos de ARIA y no se puede deshacer.", "Continuar"))) return;
+      const texto = window.prompt("Escribe BORRAR para confirmar la eliminación definitiva:");
+      if (texto !== "BORRAR") { toast("La cuenta no se ha borrado.", "mal"); return; }
+      const r = await api("/api/mis-datos/borrar-cuenta", { method: "POST", json: { confirmacion: texto } });
+      if (!r.ok) { $("mis-datos-msg").textContent = r.data.error || "No se pudo borrar la cuenta."; return; }
+      location.href = "/hola";
+    });
+  }
+
   // --- Spotify ---
   async function spotify() {
     const c = $("ajustes-spotify").querySelector(".cuerpo");
@@ -320,7 +331,7 @@ const Ajustes = (() => {
 
   // --- Secciones: menú lateral (pestañas en el móvil) y buscador; cada tarjeta pertenece a una sección ---
   const SECCIONES = [
-    { id: "general", nombre: "General", desc: "Voz, contraseña, verificación en dos pasos y versión.", ico: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 12h2M19 12h2M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4", tarjetas: ["ajustes-voz", "ajustes-pass", "ajustes-2fa", "ajustes-acerca"] },
+    { id: "general", nombre: "General", desc: "Voz, contraseña, tus datos, verificación en dos pasos y versión.", ico: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 12h2M19 12h2M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4", tarjetas: ["ajustes-voz", "ajustes-pass", "ajustes-2fa", "ajustes-mis-datos", "ajustes-acerca"] },
     { id: "avisos", nombre: "Avisos", desc: "Campana, Telegram, notificaciones, resumen diario y recordatorios.", ico: "M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0", tarjetas: ["ajustes-avisos", "ajustes-recordatorios"] },
     { id: "automatizar", nombre: "Automatización", desc: "Rutinas programadas y reglas «si pasa esto, haz aquello».", ico: "M13 3 4 14h7l-1 7 9-11h-7z", tarjetas: ["ajustes-rutinas", "ajustes-automatizaciones"] },
     { id: "memoria", nombre: "Memoria", desc: "Lo que ARIA recuerda de ti, tu diario y tus proyectos.", ico: "M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4.5A3 3 0 0 0 9 4zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1", tarjetas: ["ajustes-memoria"] },
@@ -358,7 +369,7 @@ const Ajustes = (() => {
     $("ajustes-vacio").hidden = alguna;
   }
   function iniciar() {
-    voz(); contrasena();
+    voz(); contrasena(); misDatos();
     $("ajustes-buscar").addEventListener("input", pintarSecciones);
     pintarSecciones();
   }

@@ -52,6 +52,8 @@ CAPTURAS = {
     "captura-ping": ("/hola", 1280, 820, False, "document.querySelector('[data-demo=demo-casa]').click()", 5),
     "captura-movil-escaparate": ("/hola", 390, 844, True, "", 4),
     "captura-acceso": ("/acceso", 1280, 1000, False, "", 4),
+    "captura-cerebro": ("cerebro", 1280, 860, False, "", 8),
+    "captura-cerebro-panel": ("cerebro", 1280, 860, False, "document.getElementById('cerebro-lienzo')?.dispatchEvent(new MouseEvent('click', {clientX: 640, clientY: 430, bubbles: true}))", 4),
     # iPad (Air 11": 820×1180 vertical, 1180×820 horizontal; Pro 13": 1032×1376)
     "ipad-v-inicio": ("inicio", 820, 1180, False, "", 6),
     "ipad-v-hud": ("hud", 820, 1180, False, "", 6),

@@ -196,10 +196,10 @@ const Chat = (() => {
     return new Promise((ok, mal) => { const f = new FileReader(); f.onload = () => ok(f.result); f.onerror = mal; f.readAsDataURL(blob); });
   }
   async function prepararImagen(file) {
-    if (!file || !TIPOS_IMG.includes(file.type)) { toast("Solo puedo ver imágenes JPEG, PNG o WebP.", "mal"); return; }
-    if (file.size > 40 * 1024 * 1024) { toast("La imagen es demasiado grande.", "mal"); return; }
+    if (!file || !TIPOS_IMG.includes(file.type)) { toast("Solo puedo ver imágenes JPEG, PNG o WebP.", "mal"); return false; }
+    if (file.size > 40 * 1024 * 1024) { toast("La imagen es demasiado grande.", "mal"); return false; }
     let bmp;
-    try { bmp = await createImageBitmap(file); } catch (_) { toast("No pude leer esa imagen.", "mal"); return; }
+    try { bmp = await createImageBitmap(file); } catch (_) { toast("No pude leer esa imagen.", "mal"); return false; }
     try {
       const c = lienzo(bmp, MAX_LADO);
       let blob = null;
@@ -207,12 +207,13 @@ const Chat = (() => {
         blob = await new Promise((ok) => c.toBlob(ok, "image/jpeg", q));   // recodificar quita EXIF/GPS
         if (blob && blob.size <= MAX_BYTES) break;
       }
-      if (!blob || blob.size > MAX_BYTES) { toast("La imagen es demasiado grande (máximo 5 MB).", "mal"); return; }
+      if (!blob || blob.size > MAX_BYTES) { toast("La imagen es demasiado grande (máximo 5 MB).", "mal"); return false; }
       adjunto = { datos: await aDataUrl(blob), miniatura: lienzo(bmp, 240).toDataURL("image/jpeg", 0.7) };
       $("adjunto-img").src = adjunto.miniatura;
       $("adjunto-info").textContent = c.width + "×" + c.height + " · " + fmtBytes(blob.size);
       $("adjunto").hidden = false;
       $("texto").focus();
+      return true;
     } finally { if (bmp.close) bmp.close(); }
   }
   function quitarAdjunto() { adjunto = null; $("adjunto").hidden = true; $("adjunto-img").removeAttribute("src"); $("imagen-input").value = ""; }
@@ -392,8 +393,9 @@ const Chat = (() => {
   function iniciar() {
     $("form").addEventListener("submit", (e) => { e.preventDefault(); const t = $("texto").value; if ((t.trim() || adjunto) && !enCurso) { $("texto").value = ""; autoajustar(); enviar(t); } });
     // Imagen: botón, pegar (Ctrl+V) y arrastrar y soltar.
-    if (Sesion.funciones && Sesion.funciones.vision === false) $("adjuntar").hidden = true;
+    if (Sesion.funciones && Sesion.funciones.vision === false) { $("adjuntar").hidden = true; $("camara").hidden = true; }
     $("adjuntar").addEventListener("click", () => $("imagen-input").click());
+    $("camara").addEventListener("click", async () => { const b = await Camara.capturar(); if (b) { await prepararImagen(b); if (!$("texto").value.trim()) { $("texto").value = "¿Qué ves?"; autoajustar(); } } });
     $("imagen-input").addEventListener("change", (e) => { const f = e.target.files && e.target.files[0]; if (f) prepararImagen(f); });
     $("adjunto-quitar").addEventListener("click", quitarAdjunto);
     $("texto").addEventListener("paste", (e) => {
@@ -436,5 +438,9 @@ const Chat = (() => {
     if (enCurso) { toast("Espera a que termine la respuesta anterior."); return ""; }
     return enviar(texto, { sinLeer: true, leerEnVivo: leer });
   }
-  return { iniciar, preguntar, refrescarCerebro, enviarDesdeVoz, lectura: () => lectura };
+  async function enviarImagen(blob, texto = "¿Qué ves?", leer = false) {
+    if (!(await prepararImagen(blob))) return "";
+    return enviar(texto, { sinLeer: true, leerEnVivo: leer });
+  }
+  return { iniciar, preguntar, refrescarCerebro, enviarDesdeVoz, enviarImagen, lectura: () => lectura };
 })();

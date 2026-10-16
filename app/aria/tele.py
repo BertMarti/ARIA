@@ -11,7 +11,7 @@ import time
 import uuid
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 import httpx
 
@@ -122,6 +122,32 @@ async def trozo(dato: Token, inicio: int, fin: int) -> bytes:
     finally:
         s.inflight -= 1
         s.pendientes.pop(ident, None)
+
+
+def url_flujo(dato: Token) -> str:
+    """URL que pide la tele (nombre codificado: espacios y tildes rompen la URL)."""
+    return f"http://{config.LAN_IP}:8095/flujo/{dato.valor}/{quote(dato.nombre)}"
+
+
+RECEPTOR_CAST = "CC1AD845"   # Default Media Receiver de Google Cast (el que usa Chrome para vídeos)
+
+
+def abrir_receptor(cast, espera=15) -> None:
+    """Síncrono (va en un hilo): lanza el receptor estándar y espera a que esté activo."""
+    if cast.app_id != RECEPTOR_CAST:
+        cast.start_app(RECEPTOR_CAST)
+        limite = time.time() + espera
+        while cast.app_id != RECEPTOR_CAST and time.time() < limite:
+            time.sleep(.3)
+    if cast.app_id != RECEPTOR_CAST:
+        raise TeleError("La tele no ha abierto el reproductor de Cast.")
+
+
+def mime_cast(dato: Token) -> str:
+    """El receptor de Google Cast no acepta video/x-matroska ni tipos vacíos: MKV y desconocidos van como MP4."""
+    if dato.mime.startswith(("video/mp4", "video/webm", "audio/", "application/x-mpegurl")):
+        return dato.mime
+    return "video/mp4"
 
 
 def validar_token(valor: str) -> Token | None:

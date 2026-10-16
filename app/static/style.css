@@ -719,6 +719,8 @@ body.modo-hud > .nav, body.modo-hud > .manos-libres, body.modo-hud .campana-zona
 .modal.paleta { width: min(94vw, 560px); padding: .8rem; margin-top: 12vh; }
 .paleta input { width: 100%; font-size: 1.05rem; }
 .paleta-lista { list-style: none; margin: .6rem 0 0; padding: 0; max-height: 50vh; overflow-y: auto; display: grid; gap: .15rem; }
+.paleta-grupo { padding: .55rem .7rem .2rem; font-size: .78rem; font-weight: 700; color: var(--muted); }
+.paleta-op svg { width: 1.2rem; height: 1.2rem; flex: 0 0 auto; }
 .paleta-op { display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: .55rem .7rem; border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
 .paleta-op:hover { background: rgba(56, 214, 255, .06); }
 .paleta-op.activa { background: rgba(56, 214, 255, .12); border-color: var(--acento); }

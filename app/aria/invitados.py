@@ -36,7 +36,7 @@ RETENCION_SOLICITUDES_DIAS = 30
 _EMAIL = re.compile(r"[^@\s]{1,64}@[^@\s]{1,190}\.[A-Za-z]{2,24}")
 
 # Rutas que un invitado puede usar siempre (además de las de sus secciones). El resto: según sus límites.
-_SIEMPRE = [r"/", r"/logout", r"/static/.*", r"/api/info", r"/api/certificado", r"/api/voz/estado",
+_SIEMPRE = [r"/", r"/logout", r"/static/.*", r"/api/info", r"/api/certificado", r"/api/voz/estado", r"/api/buscar",
             r"/api/avisos.*", r"/api/recordatorios.*", r"/api/push/.*", r"/api/2fa.*", r"/api/agentes"]
 _POR_SECCION = {
     "inicio": [r"/api/resumen-diario.*"],   # /api/briefing no: cuenta datos de la casa

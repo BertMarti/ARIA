@@ -4,7 +4,8 @@
   const VISTAS = ["inicio", "chat", "finanzas", "informacion", "red", "seguridad", "cerebro", "control", "ajustes", "agenda", "notas", "mapa", "hud"];
   const SOLO_ADMIN = ["control", "red", "seguridad", "cerebro"];
   function mostrar() {
-    let v = location.hash.replace("#", "");
+    const hash = location.hash.replace("#", "");
+    let [v, parametros] = hash.split("?");
     if (!VISTAS.includes(v) || (SOLO_ADMIN.includes(v) && !Sesion.esAdmin) || (v !== "ajustes" && !puede(v))) v = "inicio";
     for (const n of VISTAS) $("v-" + n).hidden = n !== v;
     document.body.classList.toggle("modo-hud", v === "hud");
@@ -23,6 +24,7 @@
     Hud.activar(v === "hud");
     if (v === "ajustes") { Ajustes.activar(); Usuarios.activar(); Memoria.activar(); Avisos.activar(); Rutinas.activar(); if (Sesion.esAdmin) { Modulos.pintarAjustes(); Automatizaciones.activar(); Accesos.activar(); Registro.activar(); } }
     document.title = "ARIA · " + { inicio: "Inicio", chat: "Chat", finanzas: "Finanzas", informacion: "Información", agenda: "Agenda", notas: "Notas", red: "Red", seguridad: "Seguridad", cerebro: "Cerebro", control: "Centro de control", ajustes: "Ajustes", mapa: "Mapa", hud: "HUD" }[v];
+    if (v === "chat" && parametros) { const id = new URLSearchParams(parametros).get("c"); if (id) Chat.abrir(id, true); }
   }
   document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => b.addEventListener("click", () => { location.hash = b.dataset.vista; }));
   window.addEventListener("hashchange", mostrar);

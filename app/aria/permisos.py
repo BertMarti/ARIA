@@ -28,6 +28,7 @@ _USUARIO = [
     ("GET", r"/api/voz/despertar"),  # WebSocket (se comprueba en el propio endpoint)
     # Agentes: la lista ya viene filtrada por rol; el chat rechaza @seguridad a un usuario.
     ("GET", r"/api/agentes"),
+    ("GET", r"/api/buscar"),
     # Finanzas: cada usuario solo sus datos (las funciones filtran por user_id de la sesión).
     ("GET", r"/api/finanzas/(resumen|movimientos|reglas)"),
     ("POST", r"/api/finanzas/(movimientos|presupuestos|reglas|importar|importar/previa|sugerir)"),

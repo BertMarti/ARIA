@@ -20,6 +20,7 @@ const Paleta = (() => {
       { t: "Ir al Centro de control", g: "Ir a", a: ir("control"), admin: true },
       { t: "Ir a Ajustes", g: "Ir a", a: ir("ajustes") },
       { t: "Abrir modo HUD", g: "Ir a", a: ir("hud") },
+      ...(Flotante.disponible() ? [{ t: "ARIA flotante", g: "Voz", a: () => Flotante.abrir() }] : []),
       { t: "Ir a Rutinas (Ajustes)", g: "Ir a", a: () => irA("ajustes-rutinas") },
       { t: "Ir a Recordatorios (Ajustes)", g: "Ir a", a: () => irA("ajustes-recordatorios") },
       { t: "Ir a Avisos (Ajustes)", g: "Ir a", a: () => irA("ajustes-avisos") },

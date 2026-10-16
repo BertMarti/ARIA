@@ -136,6 +136,7 @@ const Hud = (() => {
       b("Briefing del día", () => Voz.briefing((t) => { $w("hud-subtitulo").textContent = t; })),
       b("Silenciar", () => Voz.parar()),
       b("Agenda", () => { location.hash = "agenda"; }),
+      Flotante.disponible() ? b("ARIA flotante", () => Flotante.abrir()) : null,
       b("Pausar anuncios 30 min", async () => {
         if (!(await confirmar("Pausar anuncios", "El bloqueador de anuncios se pausará 30 minutos.", "Pausar"))) return;
         const r = await api("/api/shield/pause", { method: "POST", json: { minutos: 30 } });

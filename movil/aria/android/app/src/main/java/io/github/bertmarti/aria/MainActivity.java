@@ -47,14 +47,11 @@ public class MainActivity extends BridgeActivity {
                 Uri pagina = Uri.parse(url);
                 if (esPaginaDeCasa(pagina)) {
                     DispositivoApp.vincularEnSegundoPlano(MainActivity.this, ariaUrl);
+                    pedirNotificacionesUnaVez();   // ya dentro de ARIA: ahora el permiso tiene sentido
                 }
             }
         });
         crearCanal();
-        if (Build.VERSION.SDK_INT >= 33
-                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 20);
-        }
         WorkManager.getInstance(this).enqueueUniquePeriodicWork("avisos-aria", ExistingPeriodicWorkPolicy.UPDATE,
                 new PeriodicWorkRequest.Builder(AvisosWorker.class, 15, TimeUnit.MINUTES)
                         .setConstraints(new Constraints.Builder()
@@ -162,6 +159,18 @@ public class MainActivity extends BridgeActivity {
         super.onRequestPermissionsResult(codigo, permisos, resultados);
         if (codigo == 31 && resultados.length > 0 && resultados[0] == PackageManager.PERMISSION_GRANTED) {
             EscuchaService.iniciar(this);
+        }
+    }
+
+    private boolean notificacionesPedidas;
+
+    private void pedirNotificacionesUnaVez() {
+        if (notificacionesPedidas || Build.VERSION.SDK_INT < 33) {
+            return;
+        }
+        notificacionesPedidas = true;
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 20);
         }
     }
 

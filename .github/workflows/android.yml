@@ -99,7 +99,18 @@ jobs:
             adb shell am start -n io.github.bertmarti.aria/.MainActivity
             sleep 15
             adb exec-out screencap -p > capturas/aria-inicio.png
-            adb shell am start -n io.github.bertmarti.aria.lite/.ConfigActivity || true
+            # Otros caminos de entrada: atajos con acción, compartir texto y abrirla como asistente
+            for accion in hablar nota hud compartir cambiar; do
+              adb shell am start -n io.github.bertmarti.aria/.MainActivity --es accion $accion
+              sleep 3
+            done
+            adb shell am start -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT "Prueba compartida" \
+              -n io.github.bertmarti.aria/.MainActivity
+            sleep 3
+            adb shell am start -a android.intent.action.ASSIST -p io.github.bertmarti.aria || true
+            sleep 4
+            adb exec-out screencap -p > capturas/aria-asistente.png
+            adb shell monkey -p io.github.bertmarti.aria.lite -c android.intent.category.LAUNCHER 1
             sleep 8
             adb exec-out screencap -p > capturas/aria-lite-config.png
             adb shell cmd statusbar expand-settings || true

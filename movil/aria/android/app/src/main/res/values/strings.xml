@@ -10,4 +10,11 @@
     <string name="mas_tarde">Más tarde</string>
     <string name="widget_hablar">Hablar</string>
     <string name="widget_nota">Nota</string>
+    <string name="atajo_hablar">Hablar</string>
+    <string name="atajo_manos_libres">Manos libres</string>
+    <string name="atajo_nueva_nota">Nueva nota</string>
+    <string name="atajo_hud">HUD</string>
+    <string name="atajo_compartir">Compartir</string>
+    <string name="atajo_cambiar_de_aria">Cambiar de ARIA</string>
+    <string name="atajo_buscar_actualizaciones">Buscar actualizaciones</string>
 </resources>

@@ -97,6 +97,18 @@ body.app.vista-prueba { padding-top: 3.35rem; }
 .contenido { min-width: 0; min-height: 0; position: relative; }
 .vista { height: 100%; overflow-y: auto; padding: 1.3rem 1.5rem 2rem; }
 .vista-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.1rem; }
+/* Cerebro: HUD de arquitectura en perspectiva. */
+.cerebro-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 1rem; min-height: calc(100dvh - 150px); }
+.cerebro-escena { position: relative; min-height: 560px; overflow: hidden; border: 1px solid var(--borde); border-radius: var(--radio); background: radial-gradient(circle at 50% 45%, rgba(30, 64, 100, .2), transparent 55%), #050a13; box-shadow: inset 0 0 70px rgba(56, 214, 255, .06); }
+.cerebro-escena canvas { display: block; width: 100%; height: 100%; min-height: 560px; cursor: grab; touch-action: none; outline: none; }
+.cerebro-escena canvas:active { cursor: grabbing; }
+.cerebro-ayuda { position: absolute; left: 1rem; bottom: .5rem; margin: 0; color: var(--muted); font: .7rem var(--mono); }
+.cerebro-leyenda { position: absolute; top: .8rem; left: .8rem; display: flex; flex-wrap: wrap; gap: .35rem .7rem; max-width: 85%; color: var(--muted); font: .68rem var(--mono); }
+.cerebro-leyenda-item::before { content: ""; display: inline-block; width: .55rem; height: .55rem; margin-right: .3rem; border-radius: 50%; background: var(--acento); box-shadow: 0 0 7px currentColor; }
+.grupo-cerebros::before, .grupo-núcleo::before { background: var(--acento-2); }.grupo-agentes::before { background: var(--ok); }.grupo-herramientas::before { background: var(--warn); }.grupo-módulos::before { background: #c084fc; }.grupo-servicios::before { background: #67e8f9; }.grupo-canales::before { background: #a78bfa; }.grupo-datos::before { background: #94a3b8; }
+.cerebro-panel { align-self: start; min-height: 220px; padding: 1.1rem; border: 1px solid var(--borde); border-radius: var(--radio); background: var(--panel); box-shadow: var(--sombra); }
+.cerebro-panel h2 { margin-bottom: .35rem; color: var(--txt); }.cerebro-meta { color: var(--acento); font: .75rem var(--mono); text-transform: uppercase; }.cerebro-datos { display: grid; grid-template-columns: 1fr auto; gap: .3rem .7rem; margin-top: 1rem; font-size: .82rem; }.cerebro-datos dt { color: var(--muted); }.cerebro-datos dd { margin: 0; font-family: var(--mono); text-align: right; overflow-wrap: anywhere; }.cerebro-contador { color: var(--acento); font: .75rem var(--mono); }
+@media (max-width: 760px) { .cerebro-layout { display: flex; flex-direction: column; min-height: 0; }.cerebro-escena, .cerebro-escena canvas { min-height: 58dvh; }.cerebro-panel { order: 2; }.cerebro-ayuda { font-size: .62rem; } }
 .vista-mapa { display: flex; flex-direction: column; }
 .mapa-controles { display: flex; flex-wrap: wrap; align-items: end; gap: .6rem; margin-bottom: .5rem; }
 .mapa-modos { display: flex; gap: .2rem; padding: .2rem; border: 1px solid var(--borde); border-radius: 10px; }

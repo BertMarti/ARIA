@@ -393,7 +393,9 @@ const ManosLibres = (() => {
       enviando = false;
       if (!ev.text) { if (ev.aviso) toast(ev.aviso, "mal"); escuchar(); return; }
       estado("«" + ev.text + "»", "pensando");
-      const respuesta = await Chat.enviarDesdeVoz(ev.text, true);   // la lee mientras llega
+      const texto = ev.text.trim(), clave = texto.toLocaleLowerCase("es-ES").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const foto = /^(que ves|que tengo aqui|leeme esto|lee esto|mira esto)\b/.test(clave);
+      const respuesta = foto ? await (async () => { const b = await Camara.capturar(); return b ? Chat.enviarImagen(b, texto, true) : ""; })() : await Chat.enviarDesdeVoz(ev.text, true);
       if (!activa) return;
       if (respuesta) { estado("Respondiendo… (di «Aria» al terminar)", "hablando"); await Chat.lectura(); }
       escuchar();

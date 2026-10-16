@@ -134,6 +134,7 @@ const Hud = (() => {
     const b = (txt, fn, solo) => { if (solo && !Sesion.esAdmin) return null; const x = el("button", { type: "button", class: "hud-rapida" }, txt); x.addEventListener("click", fn); return x; };
     $w("hud-rapidas").replaceChildren(...[
       b("Briefing del día", () => Voz.briefing((t) => { $w("hud-subtitulo").textContent = t; })),
+      b("¿Qué ves?", async () => { const foto = await Camara.capturar(); if (!foto) return; const r = await Chat.enviarImagen(foto, "¿Qué ves?", opts.voz); if (r) $w("hud-subtitulo").textContent = r.slice(0, 420); }),
       b("Silenciar", () => Voz.parar()),
       b("Agenda", () => { location.hash = "agenda"; }),
       Flotante.disponible() ? b("ARIA flotante", () => Flotante.abrir()) : null,

@@ -5,6 +5,8 @@ import re
 _USUARIO = [
     ("GET", r"/"),
     ("POST", r"/logout"),
+    ("GET", r"/api/mis-datos/exportar"),
+    ("POST", r"/api/mis-datos/borrar-cuenta"),
     ("GET", r"/static/.*"),
     ("GET", r"/api/info"),
     ("GET", r"/api/services"),

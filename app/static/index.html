@@ -643,7 +643,13 @@
         <p class="muted">Además de la contraseña, ARIA te pedirá un código de 6 cifras de una app como Google Authenticator, Aegis o 1Password. Si entras por tu dominio con Cloudflare Access, se usa el de Access.</p>
         <div id="dosp-cuerpo" class="dosp-cuerpo">Cargando…</div>
       </article>
-      <article class="tarjeta" id="ajustes-pass">
+       <article class="tarjeta" id="ajustes-mis-datos">
+         <h2>Mis datos</h2>
+         <p class="muted">Puedes descargar una copia de tus datos personales o borrar tu cuenta. El borrado elimina tus conversaciones, memoria, notas, agenda, finanzas y demás datos de ARIA y no se puede deshacer.</p>
+         <div class="botones"><a class="boton primario" href="/api/mis-datos/exportar">Descargar mis datos</a><button type="button" class="peligro" id="borrar-cuenta">Borrar mi cuenta</button></div>
+         <p id="mis-datos-msg" class="muted" role="status"></p>
+       </article>
+       <article class="tarjeta" id="ajustes-pass">
         <h2>Contraseña</h2>
         <form id="form-pass" class="formulario" autocomplete="off">
           <input type="text" name="usuario" autocomplete="username" hidden tabindex="-1" aria-hidden="true">

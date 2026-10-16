@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_cerebro, api_finanzas, api_informacion, api_modulos, api_notas, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, mapas, memoria, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_cerebro, api_finanzas, api_informacion, api_modulos, api_notas, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, mapas, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -357,6 +357,43 @@ async def logout(request: Request):
     # Por el dominio público hay que cerrar también la sesión de Cloudflare Access.
     destino = sso.url_salida() if sso.habilitado() and _es_publico(request) else "/login"
     resp = RedirectResponse(destino, status_code=303)
+    resp.delete_cookie(auth.COOKIE, path="/")
+    return resp
+
+
+_lim_exportar_datos = voz.Limitador(1, 60)
+
+
+@app.get("/api/mis-datos/exportar")
+async def api_mis_datos_exportar(request: Request):
+    uid = request.state.usuario["id"]
+    if (resto := _lim_exportar_datos.esperar(uid)):
+        return JSONResponse({"error": f"Ya has descargado tus datos hace poco. Espera {resto} s."}, status_code=429,
+                            headers={"Retry-After": str(resto)})
+    contenido = await asyncio.to_thread(mis_datos.exportar, uid, request.state.usuario)
+    nombre = f"aria-mis-datos-{date.today().isoformat()}.zip"
+    return Response(contenido, media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{nombre}"'})
+
+
+@app.post("/api/mis-datos/borrar-cuenta")
+async def api_mis_datos_borrar(request: Request):
+    d = await _json(request)
+    if d.get("confirmacion") != "BORRAR":
+        return JSONResponse({"error": 'Escribe «BORRAR» para confirmar la eliminación de tu cuenta.'}, status_code=400)
+    if getattr(request.state, "vista", None):   # «Probar perfiles»: la cuenta es la del administrador real
+        return JSONResponse({"error": "Sal de la vista de prueba antes de borrar una cuenta."}, status_code=403)
+    u = request.state.usuario
+    invitado = await asyncio.to_thread(invitados.de, u["id"])
+    if invitado:
+        cf = await api_acceso._cf("quitar", u["email"])
+        if cf not in ("hecho", "manual"):
+            return JSONResponse({"error": "No se ha podido quitar tu cuenta del grupo de Cloudflare. No se ha borrado nada."}, status_code=502)
+    try:
+        await asyncio.to_thread(mis_datos.borrar, u["id"])
+    except usuarios.UsuarioError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    resp = JSONResponse({"ok": True})
     resp.delete_cookie(auth.COOKIE, path="/")
     return resp
 

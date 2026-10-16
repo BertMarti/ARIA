@@ -136,7 +136,8 @@ def test_toda_ruta_registrada_esta_cubierta():
         for m in r.methods - {"HEAD", "OPTIONS"}:
             if permisos.permitido("usuario", m, ruta):
                 assert (m, camino) in {
-                    ("GET", "/"), ("POST", "/logout"), ("GET", "/api/info"), ("GET", "/api/services"),
+                    ("GET", "/"), ("POST", "/logout"), ("GET", "/api/mis-datos/exportar"),
+                    ("POST", "/api/mis-datos/borrar-cuenta"), ("GET", "/api/info"), ("GET", "/api/services"),
                     ("GET", "/api/shield"), ("GET", "/api/system"), ("GET", "/api/vpn/clients"),
                     ("GET", "/api/spotify/status"), ("GET", "/api/certificado"), ("POST", "/api/password"),
                     ("POST", "/api/chat"), ("GET", "/api/conversations"), ("GET", "/api/conversations/{cid}"),

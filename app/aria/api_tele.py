@@ -124,23 +124,24 @@ async def enviar(request: Request):
                                             dispositivo.get("modelo"), dispositivo.get("nombre")))
             await asyncio.to_thread(cast.wait, 10)
             tele._chromecasts[identificador] = (cast, asyncio.get_running_loop().time())
+            # Como Chrome: abrir el reproductor estándar de Cast; si la tele tiene otra app (Spotify, YouTube…),
+            # la orden de reproducir iría a esa app y no pasaría nada.
+            await asyncio.to_thread(tele.abrir_receptor, cast)
             mc = cast.media_controller
             subtitulo = next((x for x in dato.sesion.tokens.values()
                               if x.huella == dato.huella and x.mime == "text/vtt"), None)
-            await asyncio.to_thread(mc.play_media,
-                                    f"http://{config.LAN_IP}:8095/flujo/{dato.valor}/{dato.nombre}",
-                                    dato.mime, d.get("titulo", dato.nombre), current_time=pos,
-                                    subtitles=(f"http://{config.LAN_IP}:8095/flujo/{subtitulo.valor}/"
-                                               f"{subtitulo.nombre}" if subtitulo else None),
+            # pychromecast 14: todo salvo la URL y el tipo va con nombre (title=…); con posición daba TypeError
+            await asyncio.to_thread(mc.play_media, tele.url_flujo(dato), tele.mime_cast(dato),
+                                    title=str(d.get("titulo") or dato.nombre)[:200], current_time=pos,
+                                    subtitles=tele.url_flujo(subtitulo) if subtitulo else None,
                                     subtitles_lang="es-ES")
             await asyncio.to_thread(mc.block_until_active, 10)
         else:
             control = dispositivo.get("control")
             if not control or not tele._url_de_tele(control, dispositivo.get("ip")):
                 return _json_error("La tele DLNA no ofrece AVTransport", 400)
-            uri = f"http://{config.LAN_IP}:8095/flujo/{dato.valor}/{dato.nombre}"
-            meta = (f"<DIDL-Lite><item><res protocolInfo=\"http-get:*:{html.escape(dato.mime)}:*\">"
-                    f"{html.escape(uri)}</res></item></DIDL-Lite>")
+            uri = tele.url_flujo(dato)
+            meta = tele.didl(dato, uri, str(d.get("titulo") or dato.nombre))
             argumentos = (f"<InstanceID>0</InstanceID><CurrentURI>{html.escape(uri)}</CurrentURI>"
                           f"<CurrentURIMetaData>{html.escape(meta)}</CurrentURIMetaData>")
             await tele.dlna(control, "SetAVTransportURI", argumentos)

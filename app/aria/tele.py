@@ -11,7 +11,7 @@ import time
 import uuid
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 import httpx
 
@@ -122,6 +122,44 @@ async def trozo(dato: Token, inicio: int, fin: int) -> bytes:
     finally:
         s.inflight -= 1
         s.pendientes.pop(ident, None)
+
+
+def url_flujo(dato: Token) -> str:
+    """URL que pide la tele (nombre codificado: espacios y tildes rompen la URL)."""
+    return f"http://{config.LAN_IP}:8095/flujo/{dato.valor}/{quote(dato.nombre)}"
+
+
+def didl(dato: Token, uri: str, titulo: str) -> str:
+    """Metadatos DIDL-Lite completos: muchas teles (Android TV, Samsung, LG) rechazan con 500 los mínimos."""
+    mime = mime_cast(dato) if dato.mime in ("", "application/octet-stream", "video/x-matroska") else dato.mime
+    clase = "object.item.audioItem.musicTrack" if mime.startswith("audio/") else "object.item.videoItem"
+    flags = "DLNA.ORG_OP=01;DLNA.ORG_CI=0;DLNA.ORG_FLAGS=01700000000000000000000000000000"
+    return ('<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/" '
+            'xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"><item id="0" parentID="-1" restricted="1">'
+            f"<dc:title>{html.escape(titulo[:200])}</dc:title><upnp:class>{clase}</upnp:class>"
+            f'<res protocolInfo="http-get:*:{html.escape(mime)}:{flags}" size="{dato.tamano}">{html.escape(uri)}</res>'
+            "</item></DIDL-Lite>")
+
+
+RECEPTOR_CAST = "CC1AD845"   # Default Media Receiver de Google Cast (el que usa Chrome para vídeos)
+
+
+def abrir_receptor(cast, espera=15) -> None:
+    """Síncrono (va en un hilo): lanza el receptor estándar y espera a que esté activo."""
+    if cast.app_id != RECEPTOR_CAST:
+        cast.start_app(RECEPTOR_CAST)
+        limite = time.time() + espera
+        while cast.app_id != RECEPTOR_CAST and time.time() < limite:
+            time.sleep(.3)
+    if cast.app_id != RECEPTOR_CAST:
+        raise TeleError("La tele no ha abierto el reproductor de Cast.")
+
+
+def mime_cast(dato: Token) -> str:
+    """El receptor de Google Cast no acepta video/x-matroska ni tipos vacíos: MKV y desconocidos van como MP4."""
+    if dato.mime.startswith(("video/mp4", "video/webm", "audio/", "application/x-mpegurl")):
+        return dato.mime
+    return "video/mp4"
 
 
 def validar_token(valor: str) -> Token | None:
@@ -315,7 +353,8 @@ def soap(control, accion, argumentos=""):
     if accion not in acciones:
         raise TeleError("Acción no válida")
     cuerpo = f'<{acciones[accion]} xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">{argumentos}</{acciones[accion]}>'
-    return ('<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">'
+    return ('<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" '
+            's:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">'
             f"<s:Body>{cuerpo}</s:Body></s:Envelope>")
 
 

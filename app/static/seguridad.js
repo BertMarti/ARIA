@@ -4,7 +4,16 @@ const Seguridad = (() => {
   let iniciado = false, sondeo = null, ultimo = null;
   const GRAVEDAD = { alta: "Alta", media: "Media", baja: "Baja", info: "Info" };
   const fmtHora = (ts) => (ts ? new Date(ts * 1000).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
-  const dialogo = (titulo, contenido) => { const d = el("dialog", { class: "dialogo" }, el("h2", null, titulo), contenido); document.body.append(d); d.addEventListener("close", () => d.remove()); d.showModal(); return d; };
+  const dialogo = (titulo, ...contenido) => {
+    const cerrar = el("button", { type: "button", class: "dialogo-cerrar", ariaLabel: "Cerrar" }, "×");
+    const cabecera = el("header", { class: "dialogo-cab" }, el("h2", null, titulo), cerrar);
+    const d = el("dialog", { class: "dialogo" }, cabecera, el("div", { class: "dialogo-cuerpo" }, ...contenido));
+    cerrar.addEventListener("click", () => d.close());
+    document.body.append(d);
+    d.addEventListener("close", () => d.remove());
+    d.showModal();
+    return d;
+  };
   function aceptar(h, accion) {
     const motivo = el("textarea", { required: "", maxlength: "200", placeholder: "Por qué lo aceptas o revisas" });
     const dias = el("select", null, ...[30, 90, 365].map((n) => el("option", { value: String(n) }, `${n} días`)));
@@ -14,7 +23,13 @@ const Seguridad = (() => {
   }
   async function accion(h, a) {
     if (a.id === "aceptar" || a.id === "revisado") return aceptar(h, a.id);
-    if (a.peligro) { const d = dialogo("Confirmar acción", el("p", null, "Esta acción cambiará la configuración de red."), el("button", { type: "button", class: "peligro" }, "Continuar")); d.querySelector("button").addEventListener("click", () => { d.close(); accion(h, { ...a, peligro: false }); }); return; }
+    if (a.peligro) {
+      const aviso = el("p", null, "Esta acción cambiará la configuración de red.");
+      const continuar = el("button", { type: "button", class: "peligro" }, "Continuar");
+      const d = dialogo("Confirmar acción", aviso, continuar);
+      continuar.addEventListener("click", () => { d.close(); accion(h, { ...a, peligro: false }); });
+      return;
+    }
     const r = await api(`/api/seguridad/hallazgos/${h.clave}/accion`, { method: "POST", json: { accion: a.id } }); toast(r.ok ? r.data.mensaje : (r.data.error || "No se pudo aplicar."), r.ok ? "" : "mal"); if (r.ok) informe();
   }
   function bloqueRemedio(h) {
@@ -94,8 +109,19 @@ const Seguridad = (() => {
     $("seg-arreglar").addEventListener("click", () => {
       if (!ultimo) return;
       const opciones = ultimo.hallazgos.flatMap((h) => (h.remedio?.acciones || []).filter((a) => a.id === "revisado" || a.id.startsWith("conocido:")).map((a) => ({ h, a })));
-      const checks = opciones.map(({ h, a }) => { const c = el("input", { type: "checkbox" }); return el("label", { class: "check-fila" }, c, `${a.texto}: ${h.titulo}`); });
-      const d = dialogo("Arreglar lo que ARIA puede", el("form", { class: "formulario" }, ...checks, el("button", { type: "submit", class: "primario" }, "Aplicar")));
+       const checks = opciones.map(({ h, a }) => {
+         const c = el("input", { type: "checkbox" });
+         const aplicar = () => { const n = checks.filter((fila) => fila.querySelector("input").checked).length; boton.disabled = !n; boton.textContent = `Aplicar (${n})`; };
+         c.addEventListener("change", aplicar);
+         return el("label", { class: "check-fila" }, c, el("span", { class: "check-info" }, el("strong", null, a.texto), el("span", { class: "muted" }, h.titulo)), el("span", { class: "pildora gravedad g-" + h.gravedad }, GRAVEDAD[h.gravedad]));
+       });
+       const boton = el("button", { type: "submit", class: "primario" }, "Aplicar (0)");
+       boton.disabled = true;
+       const pie = el("div", { class: "dialogo-pie" }, el("button", { type: "button", class: "fantasma" }, "Cancelar"), boton);
+       const vacio = el("p", { class: "dialogo-vacio muted" }, "No hay nada que ARIA pueda arreglar sola ahora mismo");
+       const contenido = el("form", { class: "dialogo-formulario" }, el("p", { class: "dialogo-intro" }, "Selecciona las acciones seguras que quieres aplicar."), opciones.length ? el("div", { class: "dialogo-opciones" }, ...checks) : vacio, pie);
+       const d = dialogo("Arreglar lo que ARIA puede", contenido);
+       pie.firstChild.addEventListener("click", () => d.close());
       d.querySelector("form").addEventListener("submit", async (e) => { e.preventDefault(); for (let i = 0; i < checks.length; i++) if (checks[i].querySelector("input").checked) await accion(opciones[i].h, opciones[i].a); d.close(); });
     });
   }

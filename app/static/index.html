@@ -689,9 +689,29 @@
            <ol><li>Instala la APK (permite instalar desde esta fuente una vez).</li><li>Escribe esta dirección.</li><li>Inicia sesión como siempre.</li></ol>
            <h3>Móviles vinculados</h3>
            <p class="muted">Estos móviles pueden leer tus avisos y un resumen. El token solo se muestra al vincularlos.</p>
-           <ul id="app-dispositivos" class="filas"></ul>
-           <dialog id="app-revocar-dialog"><form method="dialog"><p id="app-revocar-texto"></p><div class="botones"><button value="cancel" class="fantasma">Cancelar</button><button value="ok" class="peligro">Revocar</button></div></form></dialog>
-         </article>
+            <ul id="app-dispositivos" class="filas"></ul>
+            <section class="app-siri">
+              <h3>Atajos de iPhone y iPad (Siri)</h3>
+              <p class="muted">Crea un token de solo lectura para pedir a Siri el resumen de ARIA.</p>
+              <button type="button" class="primario" id="app-siri-crear">Crear token para Atajos</button>
+            </section>
+            <dialog id="app-revocar-dialog"><form method="dialog"><p id="app-revocar-texto"></p><div class="botones"><button value="cancel" class="fantasma">Cancelar</button><button value="ok" class="peligro">Revocar</button></div></form></dialog>
+            <dialog id="app-siri-dialog" class="modal app-siri-dialog"><form method="dialog">
+              <h2>Token para Atajos</h2>
+              <label>Token de solo lectura <input id="app-siri-token" type="text" readonly></label>
+              <button type="button" class="fantasma pequeno" id="app-siri-copiar">Copiar</button>
+              <p class="aviso-txt">Solo se muestra ahora; si lo pierdes, crea otro y revoca este.</p>
+              <ol>
+                <li>Abre la app Atajos y crea un atajo nuevo.</li>
+                <li>Añade «Obtener contenido de URL» con la URL <code id="app-siri-url"></code> y método GET.</li>
+                <li>En Cabeceras, añade Authorization con el valor <code id="app-siri-auth"></code>.</li>
+                <li>Añade «Leer texto» o «Mostrar resultado».</li>
+                <li>Llámalo «Resumen de ARIA» y dile a Siri «Resumen de ARIA».</li>
+              </ol>
+              <p class="muted">Desde fuera de casa, Cloudflare debe dejar pasar /api/app/resumen.</p>
+              <button value="ok" class="primario">Cerrar</button>
+            </form></dialog>
+          </article>
         <article class="tarjeta" id="ajustes-pass">
         <h2>Contraseña</h2>
         <form id="form-pass" class="formulario" autocomplete="off">

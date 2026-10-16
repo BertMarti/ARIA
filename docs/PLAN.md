@@ -179,4 +179,4 @@ Antes de añadir contenedores pesados (Frigate, Paperless, Jellyfin), mira la RA
 | **3.2** | Asistente predeterminado; palabra «Aria» experimental | ✅ Hecho |
 | **3.3** | Enviar a la tele: cubierto por Compartir dentro de la app; la Pi hace de puente y nativo no hace falta por ahora | Cubierto |
 | **3.4** | Widget con tiempo, próximo evento y avisos | ✅ Hecho |
-| **3.5** | Atajos de Siri (iPhone) con el mismo token | Pendiente |
+| **3.5** | Atajos de Siri (iPhone) con el mismo token | ✅ Hecho |

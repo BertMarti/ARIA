@@ -47,6 +47,18 @@ El token se guarda en el móvil y caduca a los 180 días. En el servidor nunca s
 
 Si vas a usarlo desde fuera de casa, Cloudflare Access debe dejar pasar **solo** la ruta `/api/app/resumen` para este uso. Esa ruta solo acepta el token de dispositivo y no sustituye al inicio de sesión para el resto de ARIA. No abras el resto de la aplicación sin autenticación.
 
+## Siri en iPhone y iPad
+
+1. En ARIA, abre **Ajustes → General → App de Android → Atajos de iPhone y iPad (Siri)**.
+2. Pulsa **Crear token para Atajos** y conserva el token que aparece. Solo se muestra una vez; si lo pierdes, crea otro y revoca el anterior.
+3. Abre la app **Atajos**, pulsa **Nuevo atajo** y añade la acción **Obtener contenido de URL**.
+4. Usa `https://aria.ejemplo.es/api/app/resumen?formato=texto` con método **GET**.
+5. En **Cabeceras**, añade `Authorization` con el valor `Bearer <token>` usando el token creado en ARIA.
+6. Añade **Leer texto** o **Mostrar resultado**.
+7. Llama al atajo **Resumen de ARIA** y dile a Siri: «Resumen de ARIA».
+
+El token solo permite leer el resumen personal y caduca como los demás tokens de dispositivo. Si lo usas desde fuera de casa, Cloudflare Access debe dejar pasar `/api/app/resumen`.
+
 ## Qué añade ARIA
 
 La aplicación completa añade:

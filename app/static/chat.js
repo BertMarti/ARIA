@@ -386,8 +386,8 @@ const Chat = (() => {
   }
   function localStorageConv(id) { Prefs.set("conv", id || ""); }
 
-  function abrirLista() { $("convs").classList.add("abierto"); $("convs-fondo").hidden = false; }
-  function cerrarLista() { $("convs").classList.remove("abierto"); $("convs-fondo").hidden = true; }
+  function abrirLista() { $("convs").classList.add("abierto"); $("convs-fondo").hidden = false; $("btn-convs").setAttribute("aria-expanded", "true"); }
+  function cerrarLista() { $("convs").classList.remove("abierto"); $("convs-fondo").hidden = true; $("btn-convs").setAttribute("aria-expanded", "false"); }
 
   function iniciar() {
     $("form").addEventListener("submit", (e) => { e.preventDefault(); const t = $("texto").value; if ((t.trim() || adjunto) && !enCurso) { $("texto").value = ""; autoajustar(); enviar(t); } });

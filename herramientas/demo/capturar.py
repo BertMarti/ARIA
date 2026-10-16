@@ -51,6 +51,17 @@ CAPTURAS = {
     "captura-ping": ("/hola", 1280, 820, False, "document.querySelector('[data-demo=demo-casa]').click()", 5),
     "captura-movil-escaparate": ("/hola", 390, 844, True, "", 4),
     "captura-acceso": ("/acceso", 1280, 1000, False, "", 4),
+    # iPad (Air 11": 820×1180 vertical, 1180×820 horizontal; Pro 13": 1032×1376)
+    "ipad-v-inicio": ("inicio", 820, 1180, False, "", 6),
+    "ipad-v-hud": ("hud", 820, 1180, False, "", 6),
+    "ipad-v-chat": ("chat", 820, 1180, False, "", 5),
+    "ipad-v-ajustes": ("ajustes", 820, 1180, False, "", 5),
+    "ipad-v-agenda": ("agenda", 820, 1180, False, "", 5),
+    "ipad-h-inicio": ("inicio", 1180, 820, False, "", 6),
+    "ipad-h-hud": ("hud", 1180, 820, False, "", 6),
+    "ipad-h-informacion": ("informacion", 1180, 820, False, "", 6),
+    "ipad-pro-hud": ("hud", 1032, 1376, False, "", 6),
+    "ipad-v-hud-final": ("hud", 820, 1180, False, "document.querySelectorAll('#v-hud, #v-hud *').forEach((e) => { if (e.scrollHeight > e.clientHeight + 20) e.scrollTop = e.scrollHeight; })", 6),
     # Va la última: deja la sesión en «Probar como Visita» (la siguiente ejecución vuelve a entrar desde cero)
     "captura-probar-visita": ("inicio", 1280, 900, False, VER_COMO_VISITA, 5),
 }

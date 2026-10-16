@@ -167,6 +167,18 @@ Cómo instalarla y configurarla: **[docs/APP-ANDROID.md](docs/APP-ANDROID.md)**.
 
 <table>
   <tr>
+    <td width="50%"><img alt="Compartir: reproductor tipo VLC con lista de capítulos y botón Enviar a la tele" src="docs/img/captura-compartir.png"><p align="center"><sub><b>Compartir</b>: tus vídeos como en VLC, sin subirlos, y a la tele con un clic</sub></p></td>
+    <td width="50%"><img alt="Seguridad: hallazgos con pasos para arreglarlos y botones" src="docs/img/captura-seguridad.png"><p align="center"><sub><b>Seguridad</b>: cada hallazgo con «Cómo arreglarlo»</sub></p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img alt="Centro de control: disponibilidad de cada servicio en barras por hora" src="docs/img/captura-salud.png"><p align="center"><sub><b>Salud del sistema</b>: qué se cayó y cuándo</sub></p></td>
+    <td width="50%"><img alt="Notas, pestaña Listas: la compra de casa y una lista privada" src="docs/img/captura-listas.png"><p align="center"><sub><b>Listas</b>: la compra de toda la casa</sub></p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img alt="Notas, pestaña Documentos: subir PDF y preguntar a tus documentos" src="docs/img/captura-documentos.png"><p align="center"><sub><b>Tus documentos</b>: pregúntale a tus PDF, con citas</sub></p></td>
+    <td width="50%"><img alt="Cerebro de ARIA: red de nodos en 3D con el núcleo y el panel de un nodo" src="docs/img/captura-cerebro-panel.png"><p align="center"><sub><b>Cerebro</b>: ARIA por dentro, en vivo</sub></p></td>
+  </tr>
+  <tr>
     <td width="50%"><img alt="Panel de opciones del HUD: tarjetas visibles, colores, efectos y modo quiosco" src="docs/img/captura-hud-opciones.png"><p align="center"><sub><b>HUD → Opciones</b>: tarjetas, 5 colores, efectos y modo quiosco</sub></p></td>
     <td width="50%"><img alt="Ajustes organizados por secciones, con buscador" src="docs/img/captura-ajustes.png"><p align="center"><sub><b>Ajustes</b>: por secciones y con buscador</sub></p></td>
   </tr>

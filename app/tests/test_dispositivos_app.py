@@ -198,3 +198,14 @@ def test_no_se_revoca_el_dispositivo_ajeno_y_la_lista_no_enseña_secretos():
         for d in lista:
             assert "token" not in d and "huella" not in d
     assert len(cliente(duena).get("/api/app/dispositivos").json()["dispositivos"]) == 1
+
+
+def test_verificar_anota_el_ultimo_uso(admin):
+    """El UPDATE de ultimo_uso debe confirmarse (antes se perdía al cerrar la conexión)."""
+    from contextlib import closing
+    from aria import db, dispositivos_app
+    creado = dispositivos_app.crear(admin["id"], "Móvil de prueba")
+    assert dispositivos_app.verificar(creado["token"])["id"] == admin["id"]
+    with closing(db._con()) as con:
+        fila = con.execute("SELECT ultimo_uso FROM app_dispositivos WHERE id=?", (creado["id"],)).fetchone()
+    assert fila["ultimo_uso"] is not None

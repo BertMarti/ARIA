@@ -49,7 +49,7 @@ def verificar(token: str) -> dict | None:
         return None
     huella = hashlib.sha256(token.encode()).hexdigest()
     ahora = time.time()
-    with closing(db._con()) as con:
+    with closing(db._con()) as con, con:   # «, con»: confirma el UPDATE de ultimo_uso
         fila = con.execute("SELECT * FROM app_dispositivos WHERE huella=?", (huella,)).fetchone()
         if not fila or not hmac.compare_digest(fila["huella"], huella) or fila["caduca"] <= ahora:
             return None

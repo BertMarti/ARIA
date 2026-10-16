@@ -1,13 +1,15 @@
 """Datos INVENTADOS para la ARIA de demostración (capturas del README y pruebas visuales). Nada real.
 
 Se ejecuta dentro del contenedor de la demo (lo hace `arrancar.sh --sembrar`)."""
+import asyncio
 import json
+import random
 import time
 from contextlib import closing
 from datetime import datetime, timedelta
 
-from aria import (agenda, automatizaciones, avisos, config, db, finanzas, informacion, memoria, proyectos,
-                  recordatorios, red, rutinas, usuarios)
+from aria import (agenda, automatizaciones, avisos, config, db, disponibilidad, documentos, finanzas, informacion, listas,
+                  memoria, proyectos, recordatorios, red, rutinas, usuarios)
 
 for m in (db, usuarios, finanzas, red, avisos, recordatorios, agenda):
     getattr(m, "iniciar", lambda: None)()
@@ -109,3 +111,33 @@ _id = time.strftime("%Y%m%d-%H%M%S", time.localtime(_t)) + "-demo01"
             {"proto": "tcp", "puerto": 5900, "servicio": "vnc", "producto": "WayVNC"}]},
         {"ip": "192.168.1.31", "puertos": [{"proto": "tcp", "puerto": 21, "servicio": "ftp", "producto": "HP ftpd"}]}],
     "udp_router": [{"puerto": 1900, "estado": "open"}, {"puerto": 5351, "estado": "open"}]}))
+
+# Listas compartidas: la compra de casa y una lista privada
+listas.iniciar()
+_compra = next(x for x in listas.listar(uid) if x["nombre"] == "La compra")
+listas.anadir_items(uid, _compra["id"], "leche, pan, huevos, tomates, café y papel de cocina")
+for _it in listas.obtener(uid, _compra["id"])["items"][:2]:
+    listas.marcar(uid, _it["id"], True)
+_viaje = listas.crear(uid, "Maleta Lisboa", "🧳", "solo_yo")
+listas.anadir_items(uid, _viaje["id"], "pasaporte, cargador, gafas de sol y bañador")
+
+# Salud del sistema: una semana de muestras inventadas (una caída del túnel y otra de internet)
+disponibilidad.iniciar()
+_ahora = int(time.time()) // 60 * 60
+_rnd = random.Random(7)
+for _servicio in ("ARIA", "SHIELD-DNS", "HEIMDALL", "túnel", "Ollama local", "cerebros de la nube", "búsqueda", "voz",
+                  "escáner", "copias", "internet"):
+    for _m in range(0, 7 * 24 * 60, 20):
+        _ts = _ahora - _m * 60
+        _caido = (_servicio == "túnel" and 2 * 1440 + 300 <= _m <= 2 * 1440 + 360) or \
+                 (_servicio == "internet" and 5 * 1440 + 90 <= _m <= 5 * 1440 + 100)
+        disponibilidad.registrar(_servicio, _ts, not _caido, None if _caido else _rnd.randint(8, 60),
+                                 "Sin respuesta" if _caido else "")
+
+# Tus documentos: un manual de ejemplo ya procesado
+documentos.iniciar()
+_txt = ("Manual de la caldera ACME 24\n\nMantenimiento: revisar la presión cada mes; debe estar entre 1 y 1,5 bar.\n"
+        "Si aparece el código E10, falta presión: abre la llave de llenado hasta 1,2 bar.\n"
+        "Garantía: 2 años desde la instalación. Teléfono del servicio técnico en la etiqueta lateral.\n")
+_doc = documentos.crear(uid, "Manual caldera.txt", _txt.encode())
+asyncio.run(documentos._procesar(uid, _doc["id"], documentos._ruta(uid, _doc["id"], "txt"), "txt"))

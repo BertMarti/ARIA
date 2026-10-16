@@ -28,6 +28,18 @@ ESCUCHANDO = ("document.body.classList.add('escuchando'); const s = document.get
               "s.textContent = 'Ah, y esa lucecita nerviosa es Ping. No le hagas mucho caso.'; s.classList.add('visible');")
 VER_COMO_VISITA = ("fetch('/api/vista', {method: 'POST', headers: {'Content-Type': 'application/json'},"
                    " body: JSON.stringify({perfil: 'visita'})}).then(() => location.reload())")
+def _soltar_video(nombre="Serie Demo - Capítulo 2.webm"):
+    """JS que «suelta» en Compartir el vídeo de demostración (barras de colores propias) y lo deja en el segundo 3."""
+    b64 = base64.b64encode((AQUI / "video-demo.webm").read_bytes()).decode()
+    return ("(async () => { const b = Uint8Array.from(atob('" + b64 + "'), c => c.charCodeAt(0)); const dt = new DataTransfer();"
+            " for (const n of ['" + nombre + "', 'Serie Demo - Capítulo 10.webm', 'Serie Demo - Capítulo 1.webm'])"
+            " dt.items.add(new File([b], n, {type: 'video/webm', lastModified: 1700000000000}));"
+            " document.getElementById('medios-soltar').dispatchEvent(new DragEvent('drop', {dataTransfer: dt, bubbles: true}));"
+            " setTimeout(() => { const v = document.getElementById('medios-video'); v.currentTime = 3; v.pause(); }, 1500); })()")
+
+
+PULSAR = "[...document.querySelectorAll('#v-notas button')].find(b => b.textContent.trim() === '{}')?.click()"
+
 CAPTURAS = {
     "captura-inicio": ("inicio", 1280, 1400, False, "", 6),
     "captura-hud": ("hud", 1440, 900, False, HABLAR, 6),
@@ -53,9 +65,13 @@ CAPTURAS = {
     "captura-movil-escaparate": ("/hola", 390, 844, True, "", 4),
     "captura-acceso": ("/acceso", 1280, 1000, False, "", 4),
     "captura-cerebro": ("cerebro", 1280, 860, False, "", 8),
+    "captura-compartir": ("compartir", 1280, 820, False, _soltar_video(), 5),
+    "captura-salud": ("control", 1280, 1300, False, "", 7),
+    "captura-listas": ("notas", 1280, 860, False, PULSAR.format("Listas"), 5),
+    "captura-documentos": ("notas", 1280, 860, False, PULSAR.format("Documentos"), 5),
     "captura-seguridad": ("seguridad", 1280, 1500, False, "", 8),
-    "captura-ping-aviso": ("inicio", 1280, 800, False, "window.dispatchEvent(new CustomEvent('aria:avisos', {detail: [{id: 'demo-ping', texto: 'Aviso naranja por lluvia en Madrid esta tarde', severidad: 'grave'}]}))", 4),
-    "captura-movil-ping": ("inicio", 390, 844, True, "window.dispatchEvent(new CustomEvent('aria:avisos', {detail: [{id: 'demo-ping-2', texto: 'Tienes cita con el dentista mañana a las 10:00'}, {id: 'demo-ping-3', texto: 'Copia de seguridad hecha'}]}))", 4),
+    "captura-ping-aviso": ("inicio", 1280, 800, False, "localStorage.setItem('aria_ping_modo', 'pasea'); window.dispatchEvent(new CustomEvent('aria:avisos', {detail: [{id: 'demo-ping', texto: 'Aviso naranja por lluvia en Madrid esta tarde', severidad: 'grave'}]}))", 4),
+    "captura-movil-ping": ("inicio", 390, 844, True, "localStorage.setItem('aria_ping_modo', 'pasea'); window.dispatchEvent(new CustomEvent('aria:avisos', {detail: [{id: 'demo-ping-2', texto: 'Tienes cita con el dentista mañana a las 10:00'}, {id: 'demo-ping-3', texto: 'Copia de seguridad hecha'}]}))", 4),
     "captura-cerebro-panel": ("cerebro", 1280, 860, False, "document.getElementById('cerebro-lienzo')?.dispatchEvent(new MouseEvent('click', {clientX: 640, clientY: 430, bubbles: true}))", 4),
     # iPad (Air 11": 820×1180 vertical, 1180×820 horizontal; Pro 13": 1032×1376)
     "ipad-v-inicio": ("inicio", 820, 1180, False, "", 6),
@@ -125,6 +141,7 @@ async def main(salida: Path, nombres):
                            "const set = (el, v) => { el.value = v; el.dispatchEvent(new Event('input', {bubbles: true})); }; "
                            f"set(i[0], 'demo'); set(i[1], {json.dumps(clave())}); document.querySelector('form').requestSubmit(); }})()")
                 await asyncio.sleep(4)
+            await c.js("try { localStorage.setItem('aria_ping_modo', 'nunca') } catch (_) {}")   # Ping no tapa las capturas
             for nombre in nombres:
                 h, an, al, movil, previo, espera = CAPTURAS[nombre]
                 await c("Emulation.setDeviceMetricsOverride", width=an, height=al, deviceScaleFactor=2 if movil else 1, mobile=movil)

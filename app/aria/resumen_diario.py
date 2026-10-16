@@ -10,7 +10,7 @@ import html
 import time
 from datetime import date, timedelta
 
-from . import (agenda, briefing, cerebros, estadisticas, finanzas, informacion, luz, memoria, proyectos, red,
+from . import (agenda, avisos_meteo, briefing, cerebros, estadisticas, finanzas, informacion, luz, memoria, proyectos, red,
                recordatorios, sistema, tiempo, vpn)
 
 CACHE_S = 600
@@ -142,9 +142,10 @@ async def construir_resumen_diario(usuario: dict, refrescar: bool = False) -> di
     c = _cache.get(clave)
     if c and not refrescar and time.monotonic() - c[0] < CACHE_S and c[1]["fecha"] == hoy.isoformat():
         return c[1]
-    tiempo_d, mercados, prevision, luz_d = await asyncio.gather(
+    tiempo_d, mercados, prevision, luz_d, meteo_d = await asyncio.gather(
         _async_seguro(briefing._tiempo), _async_seguro(lambda: informacion.mercados(uid)),
-        _async_seguro(lambda: briefing.prevision(2)), _async_seguro(luz.hoy) if luz.activo() else _nada())
+        _async_seguro(lambda: briefing.prevision(2)), _async_seguro(luz.hoy) if luz.activo() else _nada(),
+        _async_seguro(avisos_meteo.avisos, []))
     if tiempo_d and prevision and len(prevision.get("dias", [])) > 1:
         manana = prevision["dias"][1]
         if abs(manana.get("max", 0) - tiempo_d.get("max", 0)) >= 5 or abs(manana.get("min", 0) - tiempo_d.get("min", 0)) >= 5:
@@ -158,7 +159,8 @@ async def construir_resumen_diario(usuario: dict, refrescar: bool = False) -> di
              "inversiones": _inversiones(mercados),
              "agenda": await asyncio.to_thread(_seguro, lambda: _agenda(uid, hoy),
                                                {"eventos": [], "cumpleanos": [], "proyectos": []}),
-             "recordatorios": await asyncio.to_thread(_seguro, lambda: _recordatorios_hoy(uid, hoy), [])}
+              "recordatorios": await asyncio.to_thread(_seguro, lambda: _recordatorios_hoy(uid, hoy), [])}
+    datos["avisos"] = meteo_d or []
     if admin:
         datos["aplicaciones"] = await _aplicaciones()
         datos["red"] = await _async_seguro(_red)
@@ -306,6 +308,8 @@ def secciones(d: dict, e=str) -> list[tuple[str, str, list[str]]]:
         if inv.get("total_posiciones"):
             lineas.append(f"Total de tus posiciones: {_euros(inv['total_posiciones'])}")
         out.append(("📈", "Mis inversiones", lineas))
+    if d.get("avisos"):
+        out.append(("⚠️", "Avisos meteorológicos", [f"{a['nivel'].capitalize()}: {e(a['evento'])} · {e(a['area'])}" for a in d["avisos"]]))
     ag = d.get("agenda") or {}
     hoy = date.fromisoformat(d["fecha"]) if d.get("fecha") else tiempo.hoy()
     lineas = []

@@ -256,7 +256,7 @@ LECTURA = {"fecha_hora", "resumen_diario", "precio_luz", "estado_servicios", "es
            "resumir_enlace",  # leer una web pública (anti-SSRF en enlaces.py)
            "crear_rutina", "mis_rutinas", "borrar_rutina",  # y sus rutinas
            "crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos",  # y su agenda
-            "mapa_ir", "ruta", "sitios_cerca",
+            "mapa_ir", "ruta", "sitios_cerca", "gasolineras",
            "resumen_noticias", "precio", "mis_mercados", "mis_inversiones"} | tools.PROYECTOS  # mapas y proyectos personales
 
 

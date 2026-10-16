@@ -54,7 +54,7 @@ SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador",
                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
                           "resumir_enlace", "resumen_noticias", "precio", "mis_mercados", "mis_inversiones",
                            "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
-                           "resumir_enlace", "mapa_ir", "ruta", "sitios_cerca"})
+                           "resumir_enlace", "mapa_ir", "ruta", "sitios_cerca", "gasolineras"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
 PROYECTOS = frozenset({"nuevo_proyecto", "mis_proyectos", "estado_proyecto", "registrar_decision", "decisiones", "actualizar_proyecto", "cambiar_personalidad"})
@@ -117,7 +117,8 @@ _CUANDO = (r"\b(en \d+ ?(min\w*|h|horas?|d[ií]as?)|en (media|una) hora|dentro d
 _INTENCIONES = [
     ((r"\b(agenda|calendario|evento|eventos|cita|cumplea[nñ]os|qué tengo|que tengo)\b",), set(AGENDA)),
     ((r"\b(mapa|mapas|ubicaci[oó]n|sitios? cerca|farmacia|gasolinera|supermercado|restaurante|cajero)\b",),
-     {"mapa_ir", "sitios_cerca"}),
+      {"mapa_ir", "sitios_cerca"}),
+    ((r"\b(gasolinera|gasolina|di[eé]sel|diesel|repostar|echar gasolina|combustible)\b",), {"gasolineras"}),
     ((r"\b(luz|electricidad|pvpc|kwh|tarifa el[eé]ctrica|poner la lavadora|hora m[aá]s barata)\b",), {"precio_luz"}),
     ((r"\b(ruta|c[oó]mo llego|cu[aá]nto se tarda|indicaciones|ir desde|llevarme)\b",), {"ruta"}),
     ((r"\b(tiempo|llover[aá]?|llueve|lluvia|calor|fr[ií]o|previsi[oó]n|nublado|soleado|tormenta|grados)\b",
@@ -268,6 +269,23 @@ async def buscar_en_internet(consulta: str) -> str:
         return busqueda.formatear(str(consulta), await busqueda.buscar(str(consulta), "general", 5))
     except busqueda.BusquedaError as e:
         return str(e)
+
+
+@tool("gasolineras", "Busca las gasolineras más baratas cercanas según los precios oficiales del Ministerio.",
+      {"combustible": ("string", "gasolina95 o diesel"), "radio_km": ("number", "Radio máximo en kilómetros")})
+async def gasolineras(combustible="gasolina95", radio_km=10, **_ignorado) -> str:
+    from . import gasolineras as fuente
+    if not fuente.activo():
+        return "La consulta de gasolineras está desactivada (ARIA_GASOLINERAS=0)."
+    try:
+        filas = await fuente.cerca(combustible=combustible, radio_km=radio_km)
+    except ValueError:
+        return "El combustible indicado no es válido. Usa gasolina95 o diesel."
+    if not filas:
+        return "No hay gasolineras con precio dentro del radio indicado o faltan las coordenadas de ARIA."
+    nombre = "gasolina 95" if combustible == "gasolina95" else "diésel"
+    return f"Gasolineras más baratas de {nombre}: " + "; ".join(
+        f"{x['nombre'] or 'Sin rótulo'}: {x['precio']:.3f} €/l, a {x['distancia_km']:.1f} km ({x['direccion']})" for x in filas)
 
 
 @tool("noticias",

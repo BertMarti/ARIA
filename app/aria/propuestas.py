@@ -225,6 +225,11 @@ async def generar(ahora: datetime | None = None) -> list:
             except Exception:  # noqa: BLE001 - una fuente caída no para a las demás
                 log.exception("Falló el generador de propuestas %s", gen.__name__)
         try:
+            from . import avisos_meteo
+            candidatas += await avisos_meteo.propuestas(ahora)
+        except Exception:  # noqa: BLE001
+            log.exception("Falló el generador de propuestas meteorológicas")
+        try:
             candidatas += await asyncio.to_thread(_citas, u, ahora)
         except Exception:  # noqa: BLE001
             log.exception("Falló el generador de propuestas de citas")

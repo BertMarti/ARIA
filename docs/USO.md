@@ -321,6 +321,7 @@ Solo administradores. Muestra ARIA como una **red de nodos en 3D**, en vivo:
 - Arriba, los **cerebros de IA**; en el centro, el **núcleo** con los **agentes** y sus familias de **herramientas**; abajo, los **servicios** (contenedores); a los lados, los **módulos**, los **canales** (web, Telegram, notificaciones) y los **datos** (base de datos, memoria, notas). También el túnel y las copias.
 - Cada tipo tiene su color y un **anillo** que dice su estado: verde (bien), ámbar (aviso), rojo (falla) o gris (apagado).
 - Cada vez que ARIA usa una herramienta, un **pulso de luz** recorre la red (verde si fue bien, rosa si falló). Arriba ves cuántas acciones hubo en el último minuto.
+- El **núcleo ARIA** es un orbe de energía con anillos orbitales; de él sale cada pocos segundos una onda que recorre los enlaces. Los grupos principales llevan rótulo y el resto lo muestra al pasar el ratón.
 - **Arrastra** para girar, usa la **rueda** (o pellizca) para acercar, **doble clic** para volver a la vista inicial y **clic** en un nodo para ver sus datos. Con el teclado: flechas para girar y +/− para acercar.
 
 ## Modo HUD
@@ -411,6 +412,19 @@ Si vives en España, ARIA consulta cada día el precio de la tarifa regulada (**
 
 Fuera de España, apágalo con `ARIA_LUZ=0` en `.env`.
 
+## Gasolineras y avisos meteorológicos
+
+- **Gasolineras**: pregunta «¿dónde echo gasolina más barata?» o «diésel barato cerca». ARIA usa los precios oficiales del Ministerio (se actualizan dos veces al día, sin claves) y te da las más baratas en un radio de 10 km (puedes pedir otro, hasta 50).
+- **Avisos meteorológicos**: ARIA lee los avisos oficiales de Meteoalarm (AEMET) de tu provincia. Los amarillos salen en el resumen diario y el HUD; los **naranja y rojo** también llegan como aviso (campana, Telegram o notificación) y, si son de lluvia o viento para hoy, ARIA te propone un recordatorio para recoger la ropa o cerrar ventanas.
+
+## Ubicación para el tiempo
+
+Por defecto, el tiempo, los avisos y las gasolineras son los de **casa** (`ARIA_CIUDAD`). Si activas **Ajustes → Ubicación → Usar mi ubicación para el tiempo**, el navegador te pedirá permiso y, mientras ARIA esté abierta, enviará tu posición cada 15 minutos:
+
+- Si abres ARIA en el móvil en Burgos, el resumen, el HUD, el briefing hablado y el chat te dan **el tiempo de Burgos** y los avisos de su provincia. Verás «📍 Burgos»; en casa, «🏠 Casa».
+- La posición se **redondea a ~1 km** y **se borra sola a las 12 horas**. Pasado ese tiempo, vuelve a ser la de casa. **Olvidar mi ubicación** la borra al momento.
+- La web nunca recibe coordenadas, solo el nombre del sitio. Los avisos automáticos de fondo siguen siendo los de casa.
+
 ## Ajustes
 
 Los ajustes están organizados por **secciones** (a la izquierda; en el móvil, pestañas arriba) y tienen un **buscador**: escribe «telegram», «contraseña» o «voz» y verás solo las tarjetas que lo mencionan.
@@ -419,13 +433,31 @@ Los ajustes están organizados por **secciones** (a la izquierda; en el móvil, 
 
 | Sección | Tarjetas | Quién |
 |---|---|---|
-| **General** | **Voz** (micrófono, leer en voz alta, manos libres, velocidad), **Verificación en dos pasos**, **Contraseña** y **Acerca de** | Todos (Acerca de: administradores) |
+| **General** | **Voz** (micrófono, leer en voz alta, manos libres, velocidad), **Ping**, **Verificación en dos pasos**, **Contraseña**, **Mis datos** y **Acerca de** | Todos (Acerca de: administradores) |
+| **Ubicación** | Usar tu ubicación para el tiempo y olvidarla | Todos |
 | **Avisos** | Tipos de aviso, canales, horas de silencio, resumen diario, Telegram, notificaciones y **Recordatorios** | Todos |
 | **Automatización** | **Rutinas** y **Automatizaciones** («si pasa esto, haz aquello») | Todos (automatizaciones: administradores) |
 | **Memoria** | Recuerdos, aprendizaje automático, diario y proyectos | Todos |
 | **Inteligencia artificial** | **Cerebros** (orden, activar, Probar) y **Modelos locales** | Administradores |
 | **Usuarios** | Invitar, cambiar rol, activar/desactivar, contraseña para casa, eliminar | Administradores |
 | **Aplicaciones** | **Módulos**, integraciones y **Certificado** | Administradores |
+
+### Ping
+
+**Ping**, el hada de luz, te acompaña por ARIA. En **Ajustes → General → Ping** eliges:
+
+- **Pasea y avisa** (por defecto): cada pocos minutos aparece, da unas vueltas por los bordes y se va volando. Si llega un aviso o una propuesta nueva, vuela hasta la campana con un bocadillo («¡Eh, mira! …») y los botones **Ver** y **Luego**; si es grave, se pone ámbar.
+- **Solo avisos**: no pasea; solo aparece para avisarte.
+- **Nunca**.
+
+**Voz de Ping al avisar** reproduce su «¡Eh, mira!» (desactivada por defecto). No aparece en el Cerebro ni en el mapa, ni cuando la pestaña está oculta; con «reducir movimiento» no pasea.
+
+### Mis datos
+
+En **Ajustes → General → Mis datos**:
+
+- **Descargar mis datos**: un ZIP con tus conversaciones, memoria, diario, notas, agenda, recordatorios, rutinas, finanzas, propuestas, avisos y ubicación, en JSON y con un `LEEME.txt`. No incluye contraseñas, secretos de dos pasos ni tokens.
+- **Borrar mi cuenta**: escribe «BORRAR» para confirmar. Se elimina todo lo tuyo y, si eras invitado, se te quita del acceso de Cloudflare. No se puede borrar al último administrador ni hacerlo desde «Probar perfiles».
 
 ### Verificación en dos pasos
 
@@ -504,7 +536,7 @@ Avisos en el móvil o el navegador, aunque ARIA esté cerrada. Se activan por di
 
 ### Paleta de órdenes
 
-**Ctrl+K** (⌘K en Mac) abre una paleta para: ir a cualquier sección, abrir Rutinas, Recordatorios o Avisos, empezar una conversación nueva, activar o desactivar manos libres y ejecutar una rutina. Escribe para filtrar, ↑/↓ para moverte, Intro para elegir y Esc para cerrar.
+**Ctrl+K** (⌘K en Mac) abre una paleta que también **busca en tus datos**: escribe dos letras o más y verás tus notas, eventos, cumpleaños, recordatorios, conversaciones y recuerdos que coinciden (sin importar tildes ni mayúsculas), agrupados por tipo. Los invitados solo buscan en lo que su acceso permite. Además sirve para: ir a cualquier sección, abrir Rutinas, Recordatorios o Avisos, empezar una conversación nueva, activar o desactivar manos libres y ejecutar una rutina. Escribe para filtrar, ↑/↓ para moverte, Intro para elegir y Esc para cerrar.
 
 ### Compartir con ARIA desde Android
 

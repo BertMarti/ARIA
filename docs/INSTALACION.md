@@ -223,6 +223,9 @@ Opcional:
 
 ```bash
 ARIA_CIUDAD="Madrid"      # el tiempo en el resumen de buenos días
+ARIA_PROVINCIA=28         # provincia de casa (código INE) para los avisos de Meteoalarm; sin ella, se deduce de ARIA_LAT/ARIA_LON
+ARIA_ZONA_METEO=          # opcional: solo los avisos cuya zona contenga este texto (p. ej. "Sierra")
+ARIA_GASOLINERAS=1        # 0 = sin consulta de gasolineras
 ARIA_NOMBRE_USUARIO=Ana   # cómo te llama ARIA
 ```
 

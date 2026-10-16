@@ -141,15 +141,17 @@ Lo que aún no tiene ARIA y más aportaría (gratis, privado y viable en la Pi),
 
 | # | Mejora | Qué aporta | Esfuerzo | Estado |
 |---|---|---|---|---|
-| 1 | **Búsqueda global** (Ctrl+K) en notas, agenda, recordatorios, conversaciones y memoria | Encontrar cualquier cosa al momento | S | En curso |
+| 1 | **Búsqueda global** (Ctrl+K) en notas, agenda, recordatorios, conversaciones y memoria | Encontrar cualquier cosa al momento | S | ✅ Hecho |
 | 2 | **Listas compartidas** (la compra de la familia) | Lo más usado en casa | S | Pendiente |
-| 3 | **Mis datos**: descargar todo lo mío (ZIP) y borrar mi cuenta | Privacidad de verdad | S | En curso |
-| 4 | **Avisos meteorológicos oficiales** (Meteoalarm, sin clave) con propuestas | Útil y proactivo | S | En curso |
-| 5 | **Gasolineras más baratas** cerca (datos del Ministerio, sin clave) | Ahorro diario | S | En curso |
+| 3 | **Mis datos**: descargar todo lo mío (ZIP) y borrar mi cuenta | Privacidad de verdad | S | ✅ Hecho |
+| 4 | **Avisos meteorológicos oficiales** (Meteoalarm, sin clave) con propuestas | Útil y proactivo | S | ✅ Hecho |
+| 5 | **Gasolineras más baratas** cerca (datos del Ministerio, sin clave) | Ahorro diario | S | ✅ Hecho |
 | 6 | **Salud del sistema**: historial de disponibilidad de cada servicio y del túnel | Saber qué falló y cuándo | S | Pendiente |
 | 7 | **Atajos de Siri y Android** con tokens personales limitados | ARIA desde cualquier sitio | M | Pendiente |
 | 8 | **Tus documentos**: subir PDF y preguntar sobre ellos (búsqueda local) | Un cerebro para tus papeles | M/L | Pendiente |
 | 9 | **Hogar con Home Assistant** (si se instala) | Luces y enchufes | M | Pendiente |
+| 10 | **Ubicación para el tiempo** (opcional, ~1 km, 12 h) | El tiempo y los avisos de donde estés | S | ✅ Hecho |
+| 11 | **Ping compañero** por toda la app, avisando de novedades | ARIA con más vida | S | ✅ Hecho |
 
 No conviene: reconocimiento facial (privacidad de las visitas), leer el correo (demasiado riesgo) ni agentes que actúen sin pedir permiso.
 

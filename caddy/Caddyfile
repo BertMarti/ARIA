@@ -15,12 +15,27 @@ http:// {
 	redir https://{host}{uri} permanent
 }
 
+# Compartir → «Enviar a la tele»: las teles de casa no aceptan el certificado propio, así que leen el vídeo que emite
+# el navegador por HTTP en este puerto. Solo /flujo/<token>/… (el token lo valida la app y caduca) y solo desde la red local;
+# por HTTPS (y por tanto por Cloudflare) /flujo no existe.
+http://:8095 {
+	@fuera not remote_ip private_ranges
+	respond @fuera 403
+	handle /flujo/* {
+		reverse_proxy app:8000 {
+			flush_interval -1
+		}
+	}
+	respond 404
+}
+
 https:// {
 	tls internal {
 		on_demand
 	}
 	# El endpoint de autorizacion solo es para Caddy, no para el exterior.
 	respond /internal/* 404
+	respond /flujo/* 404
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000"

@@ -126,6 +126,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8095:8095"   # Compartir → Enviar a la tele (solo red local; ver caddy/Caddyfile)
     environment:
       ARIA_LAN_IP: ${ARIA_LAN_IP:-127.0.0.1}
     volumes:

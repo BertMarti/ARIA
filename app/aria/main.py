@@ -47,7 +47,10 @@ def _libre(path: str) -> bool:
 
 COOKIE_2P = "aria_2p"
 _ser_2p = URLSafeTimedSerializer(config.SECRET or "sin-secreto", salt="aria-dos-pasos")
-CSP = ("default-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self'; script-src 'self'; worker-src 'self'; "
+# Mapa 3D (MapLibre + OpenFreeMap): estilo, teselas, sprites y fuentes de tiles.openfreemap.org; la compilación CSP de MapLibre
+# usa su «worker» desde /static (worker-src 'self') e imágenes blob: para las teselas ya descodificadas.
+CSP = ("default-src 'self'; img-src 'self' data: blob: https://tile.openstreetmap.org https://tiles.openfreemap.org; "
+       "connect-src 'self' https://tiles.openfreemap.org; style-src 'self'; script-src 'self'; worker-src 'self'; "
        "frame-ancestors 'none'")
 # El micrófono solo para ARIA (ni iframes ni otros orígenes); cámara y ubicación, para nadie.
 PERMISOS_NAVEGADOR = "microphone=(self), camera=(), geolocation=(self)"  # geolocalización: botón «Mi ubicación» del mapa

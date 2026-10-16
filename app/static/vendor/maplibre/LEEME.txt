@@ -1,0 +1,1 @@
+MapLibre GL JS 4.7.1 (BSD-3-Clause), compilación CSP de npm (maplibre-gl@4.7.1, sha1 06a52443…). Sin mapas de código fuente.

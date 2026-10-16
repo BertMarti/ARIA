@@ -1,7 +1,7 @@
 """Código común de la app y del contenedor `aria-escaner` (solo biblioteca estándar, sin imports de aria).
 
 - `validar_objetivos`: guardia de red. Solo se aceptan IPv4 o CIDR DENTRO de la red permitida
-  (por defecto 192.168.0.0/24, fijada en la configuración). Nada de nombres de host, IPv6,
+  (por defecto 192.168.1.0/24, fijada en la configuración). Nada de nombres de host, IPv6,
   rangos con guion ni redes públicas.
 - `parsear_nmap_xml`: salida `nmap -oX -` -> lista de hosts con puertos abiertos.
 """
@@ -9,7 +9,7 @@ import ipaddress
 import re
 import xml.etree.ElementTree as ET
 
-RED_DEFECTO = "192.168.0.0/24"
+RED_DEFECTO = "192.168.1.0/24"
 PERFILES = {
     # nombre -> argumentos de nmap (fijos; nunca se concatenan cadenas del usuario)
     "rapido": ["-sS", "-sV", "--version-light", "--top-ports", "100", "-T4", "--max-retries", "2",
@@ -34,7 +34,7 @@ def red_permitida(texto: str | None) -> ipaddress.IPv4Network:
 
 
 def validar_objetivos(objetivos, permitida: str | None = None) -> list:
-    """Devuelve los objetivos normalizados ('192.168.0.0/24', '192.168.0.10') o lanza ObjetivoNoPermitido."""
+    """Devuelve los objetivos normalizados ('192.168.1.0/24', '192.168.1.10') o lanza ObjetivoNoPermitido."""
     red = red_permitida(permitida)
     if isinstance(objetivos, str):
         objetivos = [objetivos]

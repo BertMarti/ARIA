@@ -17,7 +17,7 @@ from urllib.parse import urljoin, urlparse
 from zeroconf import ServiceBrowser, ServiceListener, Zeroconf
 
 
-RED = ipaddress.ip_network(os.environ.get("ARIA_RED_PERMITIDA", "192.168.0.0/24"), strict=False)
+RED = ipaddress.ip_network(os.environ.get("ARIA_RED_PERMITIDA", "192.168.1.0/24"), strict=False)
 SALIDA = Path("/descubre/dispositivos.json")
 CAST = "_googlecast._tcp.local."
 VISTO = {}

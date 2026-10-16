@@ -3,7 +3,7 @@
 - Dispositivos: tabla de red de Pi-hole (`GET /api/network/devices`: hwaddr, interface, firstSeen,
   lastQuery, numQueries, macVendor, ips[{ip, name, lastSeen}]) combinada con el último escaneo de
   `aria-escaner` (que sí ve las MAC y el fabricante por ARP). Pi-hole corre en Docker y no ve las MAC
-  de la LAN: sus «dispositivos» suelen llegar como `ip-192.168.0.x`.
+  de la LAN: sus «dispositivos» suelen llegar como `ip-192.168.1.x`.
 - Inventario en `red_inventario` (data/aria.db): lo nuevo se marca como «no conocido» hasta que el
   administrador lo marque como conocido.
 - Latencia: ICMP sin privilegios (socket de datagrama; Docker permite ping_group_range) y, si no se

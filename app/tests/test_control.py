@@ -111,7 +111,7 @@ def inventario(clave, ip, alias=None, nombre=None):
 
 @pytest.fixture
 def ipad():
-    return inventario("AA:BB:CC:00:00:01", "192.168.0.50", "iPad")
+    return inventario("AA:BB:CC:00:00:01", "192.168.1.50", "iPad")
 
 
 def correr(c):
@@ -185,7 +185,7 @@ def test_deseado_se_recalcula_desde_los_horarios(ipad):
 # --- Protecciones --------------------------------------------------------------------------------------------------------
 def test_no_se_puede_pausar_router_ni_raspberry_ni_desconocidos():
     router = inventario("AA:00:00:00:00:01", config.ROUTER_IP, "Router")
-    pi = inventario("AA:00:00:00:00:02", "192.168.1.50", "Pi")
+    pi = inventario("AA:00:00:00:00:02", "192.168.2.50", "Pi")
     fuera = inventario("AA:00:00:00:00:03", "8.8.8.8", "Fuera")
     for clave in (router, pi, fuera, "no-existe", "", None):
         with pytest.raises(control.ControlError):
@@ -196,17 +196,17 @@ def test_no_se_puede_pausar_router_ni_raspberry_ni_desconocidos():
 
 
 def test_protegidas_por_entorno(monkeypatch):
-    monkeypatch.setattr(config, "CONTROL_PROTEGIDOS", {"192.168.0.77"})
-    x = inventario("AA:00:00:00:00:09", "192.168.0.77", "NAS")
+    monkeypatch.setattr(config, "CONTROL_PROTEGIDOS", {"192.168.1.77"})
+    x = inventario("AA:00:00:00:00:09", "192.168.1.77", "NAS")
     with pytest.raises(control.ControlError):
         control.pausar(x)
 
 
 def test_resolver_por_alias_ip_mac_y_parcial(ipad):
-    inventario("AA:BB:CC:00:00:02", "192.168.0.51", "Fire TV salón")
-    inventario("AA:BB:CC:00:00:03", "192.168.0.52", "Fire TV cuarto")
+    inventario("AA:BB:CC:00:00:02", "192.168.1.51", "Fire TV salón")
+    inventario("AA:BB:CC:00:00:03", "192.168.1.52", "Fire TV cuarto")
     assert control.resolver("iPad") == control.resolver("ipad") == control.resolver("el iPad") == ipad
-    assert control.resolver("192.168.0.50") == control.resolver("aa:bb:cc:00:00:01") == ipad
+    assert control.resolver("192.168.1.50") == control.resolver("aa:bb:cc:00:00:01") == ipad
     assert control.resolver("fire tv salon") == "AA:BB:CC:00:00:02"      # sin tildes
     with pytest.raises(control.ControlError, match="varios"):
         control.resolver("fire tv")
@@ -223,7 +223,7 @@ def test_pausa_crea_grupo_regla_y_cliente(ph, ipad):
     assert gid != 0
     d = ph.dominios[0]
     assert d["domain"] == ".*" and d["groups"] == [gid] and d["enabled"] and d["comment"].startswith(control.MARCA)
-    assert ph.propios() == {"192.168.0.50": sorted([0, gid])}       # conserva Default (anuncios)
+    assert ph.propios() == {"192.168.1.50": sorted([0, gid])}       # conserva Default (anuncios)
     assert ph.clientes[0]["comment"] == control.MARCA + ipad
     # la regla .* se creó desactivada y solo después se activó
     assert ph.escrituras.index(("POST", "/api/domains/deny/regex")) < ph.escrituras.index(("PUT", "/api/domains/deny/regex/.*"))
@@ -242,11 +242,11 @@ def test_servicio_y_pausa_se_combinan_y_se_quitan(ph, ipad):
     control.bloquear_servicio(ipad, "TikTok")
     correr(control.reconciliar())
     g_tt = ph.gid("ARIA-svc-tiktok")
-    assert ph.propios() == {"192.168.0.50": sorted([0, g_tt])}
+    assert ph.propios() == {"192.168.1.50": sorted([0, g_tt])}
     assert ph.dominios[0]["domain"] == control.regex_servicio("tiktok") and ph.dominios[0]["groups"] == [g_tt]
     control.pausar(ipad)
     correr(control.reconciliar())
-    assert ph.propios()["192.168.0.50"] == sorted([0, g_tt, ph.gid(control.GRUPO_PAUSA)])
+    assert ph.propios()["192.168.1.50"] == sorted([0, g_tt, ph.gid(control.GRUPO_PAUSA)])
     control.reanudar(ipad)
     control.desbloquear_servicio(ipad, "tiktok")
     r = correr(control.reconciliar())
@@ -268,19 +268,19 @@ def test_pausa_con_duracion_caduca(ph, ipad):
 def test_cambio_de_ip_mueve_el_cliente(ph, ipad):
     control.pausar(ipad)
     correr(control.reconciliar())
-    inventario(ipad, "192.168.0.99", "iPad")
+    inventario(ipad, "192.168.1.99", "iPad")
     r = correr(control.reconciliar())
-    assert r["ok"] and list(ph.propios()) == ["192.168.0.99"]
+    assert r["ok"] and list(ph.propios()) == ["192.168.1.99"]
 
 
 def test_no_toca_clientes_ni_reglas_ajenos(ph, ipad):
     ph.grupos.append({"name": "Niños", "id": 1, "enabled": True})
-    ph.clientes.append({"client": "192.168.0.50", "comment": "a mano", "groups": [0, 1]})
-    ph.clientes.append({"client": "192.168.0.60", "comment": "otro", "groups": [0]})
+    ph.clientes.append({"client": "192.168.1.50", "comment": "a mano", "groups": [0, 1]})
+    ph.clientes.append({"client": "192.168.1.60", "comment": "otro", "groups": [0]})
     control.pausar(ipad)
     r = correr(control.reconciliar())
     assert not r["ok"] and "a mano" in r["error"] + "a mano"
-    assert {c["client"]: c["comment"] for c in ph.clientes} == {"192.168.0.50": "a mano", "192.168.0.60": "otro"}
+    assert {c["client"]: c["comment"] for c in ph.clientes} == {"192.168.1.50": "a mano", "192.168.1.60": "otro"}
     assert ph.clientes[0]["groups"] == [0, 1]
     # sin pausas, tampoco borra lo ajeno
     control.reanudar(ipad)
@@ -320,7 +320,7 @@ def test_arranque_limpio_converge(ph, ipad):
     correr(control.reconciliar(LUNES_23))
     assert len(ph.clientes) == 1
     # queda un cliente propio huérfano de una versión anterior
-    ph.clientes.append({"client": "192.168.0.200", "comment": control.MARCA + "ip-192.168.0.200", "groups": [0, 5]})
+    ph.clientes.append({"client": "192.168.1.200", "comment": control.MARCA + "ip-192.168.1.200", "groups": [0, 5]})
     correr(control.reconciliar(MARTES_09))
     assert ph.clientes == []
 
@@ -333,11 +333,11 @@ def test_sin_shield_o_desactivado(monkeypatch, ipad):
 
 
 def test_la_clave_sigue_al_dispositivo_cuando_se_descubre_su_mac(ipad):
-    inventario("ip-192.168.0.70", "192.168.0.70", "Switch")
-    control.pausar("ip-192.168.0.70")
-    control.bloquear_servicio("ip-192.168.0.70", "roblox")
-    control.crear_horario("ip-192.168.0.70", None, [0], "10:00", "11:00")
-    red._sincronizar([{"ip": "192.168.0.70", "mac": "AA:BB:CC:00:00:70", "nombre": None, "fabricante": None,
+    inventario("ip-192.168.1.70", "192.168.1.70", "Switch")
+    control.pausar("ip-192.168.1.70")
+    control.bloquear_servicio("ip-192.168.1.70", "roblox")
+    control.crear_horario("ip-192.168.1.70", None, [0], "10:00", "11:00")
+    red._sincronizar([{"ip": "192.168.1.70", "mac": "AA:BB:CC:00:00:70", "nombre": None, "fabricante": None,
                        "clave": "AA:BB:CC:00:00:70"}])
     d = control.calcular_deseado(LUNES_23)
     assert list(d) == ["AA:BB:CC:00:00:70"] and d["AA:BB:CC:00:00:70"]["servicios"] == {"roblox"}
@@ -392,13 +392,13 @@ def test_herramientas_servicios(herramientas, ph, ipad):
 
 
 def test_herramientas_rechazan_router_pi_y_minutos_raros(herramientas, ph, monkeypatch):
-    monkeypatch.setattr(config, "LAN_IP", "192.168.0.50")  # la Pi se protege por ARIA_LAN_IP
+    monkeypatch.setattr(config, "LAN_IP", "192.168.1.50")  # la Pi se protege por ARIA_LAN_IP
     inventario("AA:00:00:00:00:01", config.ROUTER_IP, "Router")
-    inventario("AA:00:00:00:00:02", "192.168.0.50", "Pi")
-    for d in ("Router", "192.168.0.50", "Pi"):
+    inventario("AA:00:00:00:00:02", "192.168.1.50", "Pi")
+    for d in ("Router", "192.168.1.50", "Pi"):
         assert "infraestructura" in correr(tools.ejecutar("pausar_internet", {"dispositivo": d, "minutos": 5}))
     assert ph.escrituras == []
-    inventario("AA:00:00:00:00:03", "192.168.0.53", "Tablet")
+    inventario("AA:00:00:00:00:03", "192.168.1.53", "Tablet")
     assert "número" in correr(tools.ejecutar("pausar_internet", {"dispositivo": "Tablet", "minutos": "mucho"}))
     assert "No encuentro" in correr(tools.ejecutar("pausar_internet", {"dispositivo": "todos"}))
 

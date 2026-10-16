@@ -92,7 +92,7 @@ def test_claves_se_generan_una_vez(tmp_path):
 @pytest.mark.parametrize("ep,ok", [
     (EP, True), ("https://updates.push.services.mozilla.com/wpush/v2/x", True),
     ("https://web.push.apple.com/QGx", True), ("https://wns2-db5p.notify.windows.com/w/?token=x", True),
-    ("http://fcm.googleapis.com/x", False), ("https://192.168.0.1/x", False), ("https://evil.com/fcm.googleapis.com", False),
+    ("http://fcm.googleapis.com/x", False), ("https://192.168.1.1/x", False), ("https://evil.com/fcm.googleapis.com", False),
     ("https://fcm.googleapis.com.evil.com/x", False), ("https://user@fcm.googleapis.com/x", False),
     ("https://fcm.googleapis.com:8443/x", False), ("https://localhost/x", False), (None, False),
 ])

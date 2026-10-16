@@ -12,35 +12,38 @@ Esta guía explica qué hay en cada parte de ARIA y cómo sacarle partido en el 
 
 1. [Un vistazo rápido](#un-vistazo-rápido)
 2. [Inicio](#inicio)
-3. [Chat](#chat)
-4. [Agentes especializados](#agentes-especializados)
-5. [Voz](#voz)
-6. [Imágenes y tickets](#imágenes-y-tickets)
-7. [Memoria y diario](#memoria-y-diario)
-8. [Notas](#notas)
-9. [Resumen diario](#resumen-diario)
-10. [Propuestas de ARIA](#propuestas-de-aria)
-11. [Recordatorios](#recordatorios)
-12. [Rutinas](#rutinas)
-13. [Finanzas](#finanzas)
-14. [Red](#red)
-15. [Control parental](#control-parental)
-16. [Seguridad](#seguridad)
-17. [Centro de control](#centro-de-control)
-18. [Cerebro](#cerebro)
-19. [Modo HUD](#modo-hud)
-20. [Agenda y cumpleaños](#agenda-y-cumpleaños)
-21. [Mapa](#mapa)
-22. [Información e inversiones](#información-e-inversiones)
-23. [Precio de la luz](#precio-de-la-luz)
-24. [Ajustes](#ajustes)
-25. [Avisos](#avisos)
-26. [Telegram](#telegram)
-27. [Notificaciones push](#notificaciones-push)
-28. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
-29. [Acceso por invitación](#acceso-por-invitación)
-30. [Usuarios y roles](#usuarios-y-roles)
-31. [Cuando algo falla](#cuando-algo-falla)
+3. [Compartir](#compartir)
+4. [Enviar a la tele](#enviar-a-la-tele)
+5. [Chat](#chat)
+6. [Agentes especializados](#agentes-especializados)
+7. [Voz](#voz)
+8. [Imágenes y tickets](#imágenes-y-tickets)
+9. [Memoria y diario](#memoria-y-diario)
+10. [Notas](#notas)
+11. [Listas](#listas)
+12. [Resumen diario](#resumen-diario)
+13. [Propuestas de ARIA](#propuestas-de-aria)
+14. [Recordatorios](#recordatorios)
+15. [Rutinas](#rutinas)
+16. [Finanzas](#finanzas)
+17. [Red](#red)
+18. [Control parental](#control-parental)
+19. [Seguridad](#seguridad)
+20. [Centro de control](#centro-de-control)
+21. [Cerebro](#cerebro)
+22. [Modo HUD](#modo-hud)
+23. [Agenda y cumpleaños](#agenda-y-cumpleaños)
+24. [Mapa](#mapa)
+25. [Información e inversiones](#información-e-inversiones)
+26. [Precio de la luz](#precio-de-la-luz)
+27. [Ajustes](#ajustes)
+28. [Avisos](#avisos)
+29. [Telegram](#telegram)
+30. [Notificaciones push](#notificaciones-push)
+31. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
+32. [Acceso por invitación](#acceso-por-invitación)
+33. [Usuarios y roles](#usuarios-y-roles)
+34. [Cuando algo falla](#cuando-algo-falla)
 
 ## Un vistazo rápido
 
@@ -71,6 +74,33 @@ Es la página que ves al entrar.
 - **Aplicaciones**: un mosaico por aplicación (Chat, SHIELD-DNS, HEIMDALL y los [módulos](MODULOS.md) que tengas). El punto de color dice si está **activa**, **caída** o **sin instalar**. Al pulsar, se abre en una pestaña nueva. En SHIELD-DNS y HEIMDALL, **Copiar contraseña** te ahorra teclearla en su panel (solo administradores).
 - **Acciones rápidas** (administradores): *Pausar anuncios 5 min*, *Reanudar anuncios*, *Añadir dispositivo a la VPN* y *Estado del sistema*.
 - **Sistema**: temperatura, memoria, disco y carga de la máquina.
+
+## Compartir
+
+En **Compartir** tienes un reproductor local, con controles inspirados en VLC, para ver o escuchar archivos desde el navegador.
+
+- Pulsa **Abrir carpeta** o **Abrir archivos**, o arrastra archivos y carpetas a la zona de carga. Puedes añadir varias carpetas y archivos en varias tandas; se ordenan por carpeta y por capítulo con orden natural y no se duplican.
+- Los archivos **no se suben**: se leen dentro del navegador. La Raspberry no guarda una copia.
+- Los subtítulos `.srt` y `.vtt` con el mismo nombre que el vídeo se activan automáticamente. Con **V** puedes cambiar de pista o quitarlos.
+- **Seguir viendo** reanuda los vídeos donde los dejaste. En Chrome y Edge, la lista de carpetas y archivos se puede recuperar al recargar si concedes permiso de lectura.
+- El volumen llega hasta el **200 %**. También hay velocidad, repetición, aleatorio, aspecto, bucle A-B, captura e información del archivo.
+- Pulsa **Pantalla completa** o **F**. En pantalla completa, los controles se superponen y se ocultan cuando no mueves el ratón; vuelven al moverlo.
+- Pulsa **?** para ver la lista completa de atajos de VLC: pausa, saltos de 10 segundos, velocidad, subtítulos, volumen, posición, captura y más.
+
+Los navegadores que no permiten recuperar carpetas siguen recordando la posición, pero tendrás que abrir de nuevo los archivos después de recargar.
+
+## Enviar a la tele
+
+Desde **Compartir**, reproduce un archivo y pulsa **Enviar a la tele**. ARIA descubre dispositivos Google Cast/Chromecast/Google TV y DLNA en tu red; también puedes añadir un dispositivo por IP.
+
+- **Google Cast** funciona como Chrome, incluidas teles, Chromecast, Google TV, altavoces y grupos compatibles.
+- **DLNA** funciona con muchos modelos de Samsung, LG, Sony y otras marcas.
+- Para **Apple TV** o **Fire TV**, abre el enlace con VLC o cópialo desde «¿Apple TV o Fire TV?».
+- La Raspberry hace de puente en vivo: la tele pide el vídeo a `http://192.168.1.50:8095/flujo/<token>/...` y ARIA se lo pide al navegador que tiene el archivo. No se guarda nada en la Raspberry.
+- Mantén abierta la pestaña de **Compartir** mientras ves el vídeo. Si la cierras, el canal se corta.
+- El enlace es temporal: el token se invalida al cerrar la pestaña y caduca como máximo a las 12 horas. El puerto `8095` solo está disponible en la red local.
+
+Desde el panel puedes reproducir, pausar, detener y saltar 10 segundos. La posición inicial se conserva al enviarlo.
 
 ## Chat
 
@@ -185,6 +215,19 @@ Para apuntar cosas sueltas: ideas, la lista de la compra o mejoras para ARIA. Es
 - Las **mejoras** de los administradores se copian solas a un plan privado de la máquina (sección «Notas y mejoras desde Telegram»), para tenerlas a mano al mejorar ARIA. No se publican en ningún sitio.
 - Cada persona ve solo las suyas. Los invitados no tienen notas.
 
+## Listas
+
+En la pestaña **Listas** de **Notas** puedes llevar la compra y otras listas de casa. Hay dos visibilidades:
+
+- **De casa**: todos los usuarios pueden verlas y editarlas. Los invitados no tienen acceso a las listas.
+- **Solo yo**: son privadas para su propietario; ni siquiera un administrador puede verlas o editarlas.
+
+**La compra** se crea automáticamente como lista de casa cuando se usan las listas por primera vez. Puedes añadir varios artículos separados por comas o por «y» («leche, pan y huevos»); los artículos pendientes repetidos no se duplican. Marca artículos como hechos y usa **Vaciar hechos** para retirarlos.
+
+También puedes gestionarlas desde el chat con `anadir_a_lista`, `ver_lista`, `marcar_en_lista` y `quitar_de_lista`. Si no indicas una lista, ARIA usa **La compra**. Por Telegram, `/compra <artículo>` añade artículos a La compra y `/lista` muestra sus pendientes; `/lista <nombre>` muestra otra lista.
+
+El resumen diario incluye una línea como **🛒 La compra: N cosas pendientes**. En **Ajustes → General → Mis datos**, el ZIP incluye tus listas propias y los artículos que has añadido en `listas.json`.
+
 ## Resumen diario
 
 Un único resumen que verás igual en tres sitios: la tarjeta **Resumen del día** de Inicio, el panel del **HUD** y un mensaje de **Telegram** bien maquetado (negritas, secciones y emojis).
@@ -198,6 +241,8 @@ Un único resumen que verás igual en tres sitios: la tarjeta **Resumen del día
 | 💶 Finanzas | Lo gastado este mes frente al mes pasado **a estas alturas**, ingresos y presupuestos | Cada uno los suyos |
 | 📈 Mis inversiones | Precio en euros y variación del día de tu lista de seguimiento | Cada uno la suya |
 | 📅 Hoy | Eventos, recordatorios y cumpleaños de la semana | Cada uno los suyos |
+| 🛒 La compra | Número de artículos pendientes de la lista de casa | Todos los usuarios |
+| 🩺 Salud del sistema | Disponibilidad de los servicios e incidentes recientes dentro de «Tus aplicaciones» | Administradores |
 
 - Por **Telegram** o **notificación** a la hora que elijas (por defecto, las 08:00): actívalo en **Ajustes → Avisos**. En Telegram llega con botones: **Abrir ARIA**, **Agenda**, **Actualizar** y, para administradores, **Pausar anuncios 30 min**. También puedes pedirlo cuando quieras con `/resumen` o diciéndole «resúmeme el día».
 - El resumen se prepara una vez cada 10 minutos como mucho; **Actualizar** lo rehace al momento.
@@ -298,6 +343,10 @@ Solo para administradores. Un escaneo **defensivo** de tu red de casa:
 - **Lo más bloqueado por dispositivo** (Pi-hole, últimas 24 h).
 - O pregunta a `@seguridad`: «¿hay algo peligroso en mi red?».
 
+Cada hallazgo incluye **Cómo arreglarlo**, con pasos guiados y las acciones que correspondan: **Es mío**, **Marcar como revisado**, **Desactivar peer**, **Aceptar riesgo** indicando el motivo y durante 30, 90 o 365 días, y **Ya está, compruébalo**, que vuelve a escanear ese punto. **Arreglar lo que ARIA puede** reúne las acciones seguras que ARIA sí puede aplicar. Los hallazgos apartados aparecen en **Aceptados y revisados**, donde puedes reabrirlos.
+
+ARIA no modifica el sistema ni el router. Cuando una solución requiere cambiar una configuración, la interfaz solo te guía con los pasos.
+
 Qué **no** hace: no ataca, no prueba contraseñas, no explota fallos y no escanea fuera de `ARIA_RED_PERMITIDA`. Tampoco mira tu casa desde internet: revisa en el router que solo esté abierto el puerto de la VPN (51820/UDP) y que la gestión remota esté desactivada.
 
 ## Centro de control
@@ -310,6 +359,7 @@ Solo para administradores. Tarjetas que se actualizan solas cada 15 segundos:
   - **QR** vuelve a mostrar el código; **Activar/Desactivar** corta o devuelve el acceso; **Eliminar** pide confirmación.
 - **Sistema**: temperatura, memoria, disco, carga y tiempo encendida.
 - **Sistema en directo**: CPU, memoria y red de cada contenedor, actualizado cada pocos segundos (necesita el pequeño agente del sistema, ver [INSTALACION.md](INSTALACION.md)).
+- **Salud de los últimos días**: histórico de disponibilidad de ARIA, SHIELD-DNS, HEIMDALL, túnel, Ollama local, cerebros de la nube, búsqueda, voz, escáner, copias e internet. Hay un sondeo por minuto durante 30 días y agregados por hora durante un año. Puedes consultar 24 horas, 7 días o 30 días; muestra el porcentaje de cada servicio, sus caídas, la más larga y los incidentes. Solo la ven los administradores.
 - **Reiniciar la Raspberry**: pide confirmación y deja una petición firmada que el agente del sistema comprueba antes de reiniciar. También desde Telegram.
 
 Si una aplicación sale «no conectado», revisa su contraseña en `.env` (ver [Problemas frecuentes](INSTALACION.md#17-problemas-frecuentes)).
@@ -323,6 +373,7 @@ Solo administradores. Muestra ARIA como una **red de nodos en 3D**, en vivo:
 - Cada vez que ARIA usa una herramienta, un **pulso de luz** recorre la red (verde si fue bien, rosa si falló). Arriba ves cuántas acciones hubo en el último minuto.
 - El **núcleo ARIA** es un orbe de energía con anillos orbitales; de él sale cada pocos segundos una onda que recorre los enlaces. Los grupos principales llevan rótulo y el resto lo muestra al pasar el ratón.
 - **Arrastra** para girar, usa la **rueda** (o pellizca) para acercar, **doble clic** para volver a la vista inicial y **clic** en un nodo para ver sus datos. Con el teclado: flechas para girar y +/− para acercar.
+- Al pulsar un nodo, la vista se centra en él y el panel explica **qué hace**, su estado, sus datos, cómo mejorarlo y sus **conexiones**. Puedes pulsar una conexión en el panel para pasar a ese nodo.
 
 ## Modo HUD
 
@@ -514,6 +565,9 @@ Comandos:
 | `/tunel` | Muestra el estado del túnel de Cloudflare y permite reiniciarlo (administradores) |
 | `/nuevovpn <nombre>` | Crea un dispositivo VPN y te manda el QR y el `.conf` (administradores) |
 | `/control` | Dispositivos pausados o bloqueados, con botón **Reanudar** (administradores) |
+| `/lista [nombre]` | Muestra los artículos pendientes de La compra o de la lista indicada |
+| `/compra <artículo>` | Añade uno o varios artículos a La compra; no repite los pendientes |
+| `/informe` | Informe semanal de red y, para administradores, disponibilidad de las últimas 24 horas |
 | `/nuevo` | Empieza otra conversación |
 | `/desvincular` | Desvincula este chat |
 | `/ayuda` | Ayuda |

@@ -91,6 +91,7 @@ Ping se estrena en el **escaparate público** de ARIA (`/hola`): una página est
 | 📋 | **Registro de actividad**: para administradores en Ajustes → Usuarios. Historial de qué herramientas usó cada agente, desde dónde, con qué resultado y cuánto tardó (se guarda 30 días). |
 | 🧚 | **Escaparate «Conoce a ARIA»** (`/hola`) y **Ping**, su hada de luz con voz propia: ARIA se presenta con su voz y Ping la interrumpe con un «¡Eh, mira!». Página pública y estática, sin datos reales. |
 | 🆕 | **Ping compañero y compartir**: Ping pasea de vez en cuando por la app y es quien te avisa de los avisos y propuestas nuevas; comparte texto o enlaces desde Android y ARIA los resume en el chat. |
+| 📺 | **Compartir y enviar a la tele**: reproductor local tipo VLC, carpetas y archivos sin subirlos, subtítulos automáticos, «Seguir viendo» y envío en directo a teles Google Cast y DLNA. |
 | 🔢 | **Inicio en tarjetas numeradas**: 01 HUD · 02 Resumen del día · 03 Agenda · 04 Tu casa · 05 Información · 06 Mapa · 07 Chat · 08 Finanzas, cada una con un dato vivo y su estado (ACTIVO, AVISO, PRONTO). |
 | 🎧 | **Briefing hablado**: el resumen del día contado por ARIA en un minuto. Por Telegram cada mañana como **nota de voz** (y con el botón **🔊 Escuchar**), en el HUD (**Briefing del día**) y en Inicio (**▶ Escuchar**). Se sintetiza una vez y se guarda, así que apenas gasta cuota de voz. |
 | 🌌 | **Modo HUD** (`#hud`): escena futurista con rejilla animada, orbe que «mira» al ratón y tarjetas que se iluminan y giran en 3D al pasar por encima. **Opciones**: qué tarjetas ver, 5 colores, efectos, reloj con segundos y voz. **Modo quiosco** para una tableta (pantalla siempre encendida, controles que se esconden). |
@@ -109,6 +110,7 @@ Ping se estrena en el **escaparate público** de ARIA (`/hola`): una página est
 ## 📑 Índice
 
 - [✨ Qué puede hacer](#-qué-puede-hacer)
+- [📱 App de Android (ARIA 3)](#-app-de-android-aria-3)
 - [📸 Capturas](#-capturas)
 - [🧚 Conoce a Ping](#-conoce-a-ping)
 - [🧩 Cómo está hecha](#-cómo-está-hecha)
@@ -133,14 +135,28 @@ Ping se estrena en el **escaparate público** de ARIA (`/hola`): una página est
 |:---:|---|---|
 | 💬 | **Asistente y chat** | Chat con conversaciones guardadas, respuestas en directo, botón Detener, copiar y Markdown.<br>**Agentes especializados**: ARIA (general), `@finanzas`, `@redes` y `@seguridad`. ARIA elige el adecuado sola o lo eliges tú.<br>**Búsqueda en internet y noticias** con un metabuscador propio (SearXNG), citando las fuentes.<br>**Resumir enlaces** que pegas o compartes desde el móvil.<br>**Visión**: mándale una foto o pídele «**Aria, ¿qué ves?**» o «**léeme esto**»; si es un ticket, te propone apuntar el gasto. |
 | 🎙️ | **Voz** | Micrófono (pulsar para hablar), botón **Leer** en cada respuesta y modo **manos libres**: dices «Aria» y tu pregunta.<br>**ARIA flotante**: ventana siempre encima (Chrome/Edge) para hablar sin cambiar de pestaña.<br>**Voz en streaming**: empieza a hablar en cuanto termina la primera frase de la respuesta.<br>**Briefing hablado** del día (un minuto) en Telegram, el HUD e Inicio.<br>Voz natural en la nube con respaldo local en tu máquina; transcripción en la nube con respaldo local. Ver [cómo funciona la voz](#-cómo-funciona-la-voz). |
-| 🧠 | **Memoria y automatización** | **Memoria**: recuerda datos tuyos («recuerda que…») y escribe un **diario** de cada día.<br>**Notas**: apunta con `/nota`, `/mejora` o por voz y gestiónalas en la web.<br>**Propuestas de ARIA**: sugerencias proactivas (luz, citas, red) que requieren tu aprobación.<br>**Resumen de buenos días** en Inicio, en el chat y, si quieres, por Telegram o notificación.<br>**Recordatorios** en lenguaje natural («recuérdame mañana a las 9…») y **rutinas** programadas («cada mañana a las 8, dime el tiempo y tres titulares»). |
-| 🔔 | **Avisos y canales** | Campana de avisos en la web, **bot de Telegram** propio y **notificaciones push** en el móvil o el navegador.<br>Vigila la casa sola: servicios caídos, dispositivos desconocidos, temperatura, disco, copias atrasadas… |
+| 🧠 | **Memoria y automatización** | **Memoria**: recuerda datos tuyos («recuerda que…») y escribe un **diario** de cada día.<br>**Notas**: apunta con `/nota`, `/mejora` o por voz y gestiónalas en la web.<br>**Listas**: listas de casa compartidas y listas privadas «solo yo», con La compra, artículos sin duplicados y vaciado de hechos.<br>**Propuestas de ARIA**: sugerencias proactivas (luz, citas, red) que requieren tu aprobación.<br>**Resumen de buenos días** en Inicio, en el chat y, si quieres, por Telegram o notificación.<br>**Recordatorios** en lenguaje natural («recuérdame mañana a las 9…») y **rutinas** programadas («cada mañana a las 8, dime el tiempo y tres titulares»). |
+| 🔔 | **Avisos y canales** | Campana de avisos en la web, **bot de Telegram** propio y **notificaciones push** en el móvil o el navegador.<br>Vigila la casa sola: servicios caídos, dispositivos desconocidos, temperatura, disco, copias atrasadas…<br>**Salud del sistema** para administradores: sondeos por minuto, porcentajes por servicio, caídas, incidentes y su duración. |
 | 🏡 | **Tu casa y tu red** | **Finanzas personales**: movimientos, categorías, presupuestos e importación del CSV del banco.<br>**Inventario de red**: dispositivos de la LAN, latencia, test de velocidad e historial.<br>**Seguridad**: escaneo defensivo de puertos de tu red y búsqueda de vulnerabilidades conocidas.<br>**Control parental** por dispositivo (pausar internet, bloquear TikTok, YouTube…, horarios), mediante SHIELD-DNS. |
+| 🎬 | **Compartir** | Reproductor local tipo VLC para carpetas, archivos y subtítulos, con orden natural, «Seguir viendo», atajos, volumen hasta 200 % y pantalla completa.<br>**Enviar a la tele**: puente en directo para Google Cast/Chromecast/Google TV y DLNA; Apple TV y Fire TV pueden abrir el enlace con VLC. Los archivos nunca se suben ni se guardan. |
 | 🧩 | **Aplicaciones (módulos)** | **SHIELD-DNS**: estadísticas, pausar y reanudar el bloqueo de anuncios.<br>**HEIMDALL**: ver, crear, activar y desactivar dispositivos de la VPN con su código QR.<br>**Uptime web** (módulo de ejemplo): «¿responde example.org?» y avisos si una web se cae.<br>**Las tuyas**: un mosaico en Inicio, herramientas en el chat, avisos y endpoints propios. Ver [docs/MODULOS.md](docs/MODULOS.md).<br>Spotify y Netflix existen en el código pero están **aparcados** (desactivados por defecto, `ARIA_SPOTIFY=0` / `ARIA_NETFLIX=0`). |
 | 📅 | **Agenda, mapa e información** | **Agenda** con calendario (mes, semana, lista), eventos repetidos y **cumpleaños** con aviso; **suscripción** desde el calendario del móvil.<br>**Mapa 3D** (OpenFreeMap): edificios, inclinación, rutas y búsqueda de lugares cercanos sin claves.<br>**Información**: noticias por temas y **Mis inversiones** con gráficas en euros.<br>**Gasolineras más baratas** cerca (precios oficiales del Ministerio) y **avisos meteorológicos oficiales** (Meteoalarm) de tu provincia.<br>**Ubicación opcional**: si estás fuera de casa, el tiempo, los avisos y las gasolineras son los de donde estás. |
 | 🌌 | **HUD y resumen diario** | **Modo HUD** futurista con tarjetas interactivas, control por **gestos**, opciones y modo quiosco.<br>**Resumen diario** en Inicio, HUD y Telegram (HTML bien maquetado, con botones).<br>**Precio de la luz** por horas (PVPC). |
 | 🖥️ | **Sistema** | Telemetría en directo por contenedor, **Cerebro 3D** con la red de nodos en vivo (admin), **reinicio seguro** firmado (HMAC) y **vigilante del túnel**. HEIMDALL admite accesos **temporales** y avisa si una VPN conecta desde un país u operador nuevo. |
 | 🔑 | **Acceso y usuarios** | HTTPS automático en tu red (`https://aria.local`, la IP o `https://aria.lan`).<br>Opcional: tu dominio con **Cloudflare Tunnel + Access**, sin abrir puertos y con inicio de sesión único.<br>Varios usuarios con rol **administrador** o **usuario**; permisos comprobados en el servidor; **verificación en dos pasos** opcional.<br>Paleta de órdenes **Ctrl+K** con **búsqueda global** en tus notas, agenda, recordatorios, conversaciones y recuerdos; app instalable (PWA) y menú **Compartir** de Android.<br>**Mis datos**: descarga todo lo tuyo en un ZIP o borra tu cuenta. |
+
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
+
+## 📱 App de Android (ARIA 3)
+
+ARIA también tiene **app para Android**, en dos sabores. Las dos se descargan de las [Releases de GitHub](https://github.com/BertMarti/ARIA/releases) y se mantienen al día con [Obtainium](https://obtainium.imranr.dev/):
+
+| | App | Qué es |
+|:---:|---|---|
+| ⚡ | **ARIA Lite** | La misma web de ARIA a pantalla completa, como una app (TWA): siempre actualizada y muy ligera. |
+| 🤖 | **ARIA** | App híbrida con piezas nativas: acceso con un token por dispositivo que puedes revocar, notificaciones, accesos rápidos (hablar, manos libres, nota, HUD, compartir) y más. |
+
+Cómo instalarla y configurarla: **[docs/APP-ANDROID.md](docs/APP-ANDROID.md)**.
 
 <p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
 
@@ -547,7 +563,7 @@ flowchart TB
 <p align="left"><img src="docs/img/ping/ping-seguridad.svg" alt="Ping: «Yo vigilo la red. Tú duerme tranquilo.»"></p>
 
 - **Lo que sale de casa.** Con el cerebro local no sale nada. Con Ollama Cloud, Groq o Gemini, tus mensajes, parte de tu memoria y los resultados de las herramientas (estado de la máquina, anuncios bloqueados, nombres de dispositivos…) se envían a esas empresas. En el plan gratuito de Google, Google puede usarlos para mejorar sus productos. Si no quieres, desactiva esos cerebros en Ajustes → Cerebros.
-- **Voz e imágenes.** El audio y las fotos se procesan en memoria y **no se guardan nunca**; solo queda el texto. Al hablar, el audio va a Groq (o se transcribe en tu máquina si no hay clave). Las fotos van a Gemini o Groq, sin metadatos (GPS, cámara…).
+- **Voz, imágenes y vídeos.** El audio y las fotos se procesan en memoria y **no se guardan nunca**; solo queda el texto. Al hablar, el audio va a Groq (o se transcribe en tu máquina si no hay clave). Las fotos van a Gemini o Groq, sin metadatos (GPS, cámara…). Los vídeos de **Compartir** no se suben: permanecen en el navegador y, al enviarlos a la tele, solo pasan en directo por la Raspberry.
 - **Acceso.** HTTPS siempre, contraseñas cifradas (scrypt), 5 intentos fallidos bloquean la IP 5 minutos, protección CSRF y permisos por rol comprobados en el servidor. **Verificación en dos pasos** opcional (TOTP) por usuario, con el secreto cifrado y códigos de recuperación de un solo uso.
 - **Calendario suscrito.** El enlace `/cal/<token>.ics` no necesita sesión: el token es largo, aleatorio y revocable (ARIA solo guarda su huella). No lo compartas; si se filtra, crea uno nuevo en Agenda → Sincronizar.
 - **Secretos.** `.env` y `data/` no se suben a git. Las claves de las IA nunca se muestran en la web. Las claves privadas de WireGuard solo llegan al navegador cuando descargas un `.conf`.
@@ -569,8 +585,9 @@ flowchart TB
 | `aria-searxng` | Búsqueda en internet | ninguno |
 | `aria-voz` | Voz local (Whisper, Piper, Vosk), sin salida a internet | ninguno |
 | `aria-escaner` | Escaneo de red (nmap) | ninguno |
+| `aria-descubre` | Descubrimiento de teles y altavoces por mDNS y SSDP/DLNA; usuario sin privilegios, sin capacidades y solo lectura | ninguno |
 
-Las otras aplicaciones usan: SHIELD-DNS 53, 8080 y 8443; HEIMDALL 51820/udp y 51843. Si las instalas en la misma máquina no hay choques.
+ARIA usa además el puerto `8095` para **Enviar a la tele**, solo en la red local. Las otras aplicaciones usan: SHIELD-DNS 53, 8080 y 8443; HEIMDALL 51820/udp y 51843. Si las instalas en la misma máquina no hay choques.
 
 Comandos útiles (desde la carpeta de ARIA):
 
@@ -665,7 +682,7 @@ Deja vacía `ARIA_URL_PUBLICA` en `.env` y `docker compose up -d`.
 
 La hoja de ruta distingue lo que ya está hecho de lo que queda pendiente. Ya están disponibles la búsqueda global con **Ctrl+K**, **Mis datos**, las gasolineras más baratas, los avisos de Meteoalarm, la ubicación opcional, Ping compañero, el briefing hablado, la memoria semántica, el Cerebro 3D, la cámara y los gestos, ARIA flotante, el mapa 3D y el acceso por invitación con perfiles. La voz propia diseñada continúa **aparcada**.
 
-Lo siguiente prioriza listas compartidas, salud histórica del sistema, CalDAV, Home Assistant, Uptime Kuma y documentos propios. Consulta el detalle, el esfuerzo y el consumo estimado en **[docs/PLAN.md](docs/PLAN.md)**; la mayoría de integraciones pueden ser módulos.
+Lo siguiente prioriza CalDAV, Home Assistant, Uptime Kuma y documentos propios. Las listas compartidas y la salud histórica del sistema ya están disponibles; consulta el detalle, el esfuerzo y el consumo estimado en **[docs/PLAN.md](docs/PLAN.md)**.
 
 ## 🌐 El ecosistema ARIA
 

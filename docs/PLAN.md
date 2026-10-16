@@ -56,7 +56,7 @@ Cómo leer las tablas:
 | **Paperless-ngx** | Documentos escaneados con búsqueda: «¿cuándo caduca el seguro del coche?» | Módulo + contenedor | L | ~700 MB |
 | **Nextcloud / archivos** | Buscar y resumir documentos propios | Módulo + contenedor | L | ~500 MB |
 | **Correo (IMAP, solo lectura)** | Resumen de correos importantes en el resumen de buenos días | Módulo | M | — |
-| **Notas y listas de la compra** | Listas compartidas en la familia («añade leche a la compra») | Módulo | S | — |
+| **Notas y listas de la compra** | Listas compartidas en la familia («añade leche a la compra») | Núcleo | S | — |
 | **Vaultwarden** | Gestor de contraseñas propio. ARIA solo mostraría su estado: **nunca leería contraseñas** | Módulo + contenedor | S | ~50 MB |
 
 ### 1.4 Red y seguridad
@@ -126,6 +126,8 @@ Aprobado y en curso. La idea es enseñar ARIA mejor y darle funciones de asisten
 | **Ojos y gestos en el HUD** | Cámara bajo petición («¿qué ves?») y control con la mano (MediaPipe, en el navegador) | ✅ Hecho |
 | **Mapa 3D** | MapLibre + OpenFreeMap: edificios en 3D y «vuela a…», sin claves | ✅ Hecho |
 | **ARIA flotante** | Mini-ventana siempre visible en el PC con orbe, subtítulos y micrófono | ✅ Hecho |
+| **Compartir** | Reproductor local tipo VLC: carpetas, archivos, subtítulos, «Seguir viendo», atajos y pantalla completa; los archivos no se suben | ✅ Hecho |
+| **Enviar a la tele** | Puente en directo para Google Cast/Chromecast/Google TV y DLNA; enlace para VLC en Apple TV y Fire TV | ✅ Hecho |
 
 > **Voz propia diseñada (aparcada el 16/10/2026).** Idea: crear una voz con Qwen3-TTS VoiceDesign a partir de una descripción,
 > generar con ella un corpus de frases y entrenar un modelo Piper en Google Colab (GPU gratis) para que ARIA hable en la propia
@@ -142,11 +144,11 @@ Lo que aún no tiene ARIA y más aportaría (gratis, privado y viable en la Pi),
 | # | Mejora | Qué aporta | Esfuerzo | Estado |
 |---|---|---|---|---|
 | 1 | **Búsqueda global** (Ctrl+K) en notas, agenda, recordatorios, conversaciones y memoria | Encontrar cualquier cosa al momento | S | ✅ Hecho |
-| 2 | **Listas compartidas** (la compra de la familia) | Lo más usado en casa | S | Pendiente |
+| 2 | **Listas compartidas** (la compra de la familia) | Lo más usado en casa | S | ✅ Hecho |
 | 3 | **Mis datos**: descargar todo lo mío (ZIP) y borrar mi cuenta | Privacidad de verdad | S | ✅ Hecho |
 | 4 | **Avisos meteorológicos oficiales** (Meteoalarm, sin clave) con propuestas | Útil y proactivo | S | ✅ Hecho |
 | 5 | **Gasolineras más baratas** cerca (datos del Ministerio, sin clave) | Ahorro diario | S | ✅ Hecho |
-| 6 | **Salud del sistema**: historial de disponibilidad de cada servicio y del túnel | Saber qué falló y cuándo | S | Pendiente |
+| 6 | **Salud del sistema**: historial de disponibilidad de cada servicio y del túnel | Saber qué falló y cuándo | S | ✅ Hecho |
 | 7 | **Atajos de Siri y Android** con tokens personales limitados | ARIA desde cualquier sitio | M | Pendiente |
 | 8 | **Tus documentos**: subir PDF y preguntar sobre ellos (búsqueda local) | Un cerebro para tus papeles | M/L | Pendiente |
 | 9 | **Hogar con Home Assistant** (si se instala) | Luces y enchufes | M | Pendiente |

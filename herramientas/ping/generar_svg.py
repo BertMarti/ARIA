@@ -5,7 +5,12 @@ en sentidos opuestos, marcas de mira, cuatro alas holográficas que baten y una 
 dentro del SVG (GitHub lo anima al mostrarlo como imagen) y se queda quieto con «reducir movimiento».
 
 Uso: python3 herramientas/ping/generar_svg.py   → docs/img/ping/*.svg
+Para otro repositorio (SHIELD-DNS, HEIMDALL…), con sus propias frases:
+  python3 herramientas/ping/generar_svg.py --salida ../SHIELD-DNS/docs/img/ping \
+      --ping "ping-hola|ok|izq|¡Eh, mira! Aquí atrapo los anuncios." --ping "ping-adios|ok|der|¡Hasta luego!"
+  (estado: ok, aviso, alerta o pensando; «der» pone a Ping a la derecha y el bocadillo a la izquierda)
 """
+import argparse
 import math
 from html import escape
 from pathlib import Path
@@ -120,10 +125,22 @@ def svg(estado: str, frase: str | None, voltear: bool) -> str:
 '''
 
 
+def _propio(texto: str) -> tuple[str, tuple]:
+    nombre, estado, lado, frase = (texto.split("|", 3) + ["", "", ""])[:4]
+    if not nombre.replace("-", "").isalnum() or estado not in COLORES or lado not in ("izq", "der"):
+        raise SystemExit(f"--ping no válido: {texto!r} (formato «nombre|estado|izq o der|frase»)")
+    return nombre, (estado, frase or None, lado == "der")
+
+
 def main():
-    SALIDA.mkdir(parents=True, exist_ok=True)
-    for nombre, (estado, frase, voltear) in PINGS.items():
-        (SALIDA / f"{nombre}.svg").write_text(svg(estado, frase, voltear), encoding="utf-8")
+    a = argparse.ArgumentParser(description="Ping en SVG animado")
+    a.add_argument("--salida", type=Path, default=SALIDA, help="carpeta de destino")
+    a.add_argument("--ping", action="append", default=[], help="«nombre|estado|izq o der|frase» (sustituye a los de ARIA)")
+    args = a.parse_args()
+    pings = dict(_propio(p) for p in args.ping) if args.ping else PINGS
+    args.salida.mkdir(parents=True, exist_ok=True)
+    for nombre, (estado, frase, voltear) in pings.items():
+        (args.salida / f"{nombre}.svg").write_text(svg(estado, frase, voltear), encoding="utf-8")
         print(nombre)
 
 

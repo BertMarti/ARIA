@@ -258,6 +258,15 @@ const Ajustes = (() => {
     });
   }
 
+  function appAndroid() {
+    const origen = $("app-android-origen");
+    origen.textContent = location.origin;
+    $("app-android-copiar").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(location.origin); toast("Dirección copiada."); }
+      catch (_) { toast("No se pudo copiar la dirección.", "mal"); }
+    });
+  }
+
   // --- Spotify ---
   async function spotify() {
     const c = $("ajustes-spotify").querySelector(".cuerpo");
@@ -331,7 +340,7 @@ const Ajustes = (() => {
 
   // --- Secciones: menú lateral (pestañas en el móvil) y buscador; cada tarjeta pertenece a una sección ---
   const SECCIONES = [
-    { id: "general", nombre: "General", desc: "Voz, contraseña, Ping, tus datos, verificación en dos pasos y versión.", ico: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 12h2M19 12h2M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4", tarjetas: ["ajustes-voz", "ajustes-ping", "ajustes-pass", "ajustes-2fa", "ajustes-mis-datos", "ajustes-acerca"] },
+    { id: "general", nombre: "General", desc: "Voz, contraseña, Ping, tus datos, la app de Android, verificación en dos pasos y versión.", ico: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 12h2M19 12h2M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4", tarjetas: ["ajustes-voz", "ajustes-ping", "ajustes-pass", "ajustes-2fa", "ajustes-mis-datos", "ajustes-android", "ajustes-acerca"] },
     { id: "ubicacion", nombre: "Ubicación", desc: "Elige si ARIA puede usar tu ubicación temporal para el tiempo.", ico: "M12 2a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM12 19v3M8 22h8", tarjetas: ["ajustes-ubicacion"] },
     { id: "avisos", nombre: "Avisos", desc: "Campana, Telegram, notificaciones, resumen diario y recordatorios.", ico: "M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0", tarjetas: ["ajustes-avisos", "ajustes-recordatorios"] },
     { id: "automatizar", nombre: "Automatización", desc: "Rutinas programadas y reglas «si pasa esto, haz aquello».", ico: "M13 3 4 14h7l-1 7 9-11h-7z", tarjetas: ["ajustes-rutinas", "ajustes-automatizaciones"] },
@@ -371,7 +380,7 @@ const Ajustes = (() => {
   }
   function iniciar() {
     Ubicacion.iniciar();
-    voz(); contrasena(); misDatos();
+    voz(); contrasena(); misDatos(); appAndroid();
     const modo = $("ping-modo"), vozPing = $("ping-voz");
     modo.value = Prefs.get("ping_modo", "pasea"); vozPing.checked = Prefs.get("ping_voz", "0") === "1";
     modo.addEventListener("change", () => { Prefs.set("ping_modo", modo.value); window.dispatchEvent(new CustomEvent("aria:ping-ajustes")); });

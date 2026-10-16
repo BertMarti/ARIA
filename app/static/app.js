@@ -3,9 +3,26 @@
 (() => {
   const VISTAS = ["inicio", "chat", "finanzas", "informacion", "red", "seguridad", "cerebro", "control", "ajustes", "agenda", "notas", "compartir", "mapa", "hud"];
   const SOLO_ADMIN = ["control", "red", "seguridad", "cerebro"];
+  const ACCIONES = { hablar: "chat", "manos-libres": "inicio", nota: "notas", hud: "hud", compartir: "compartir" };
+  let accionEjecutada = false;
+  function prepararHablar() {
+    let boton = $("accion-hablar");
+    if (boton) return boton;
+    boton = el("button", { id: "accion-hablar", type: "button", class: "primario accion-hablar" }, "Toca para hablar");
+    boton.addEventListener("click", () => { $("mic")?.click(); boton.remove(); });
+    $("v-chat").prepend(boton);
+    return boton;
+  }
+  function ejecutarAccion(accion) {
+    if (accion === "hablar") { $("mic")?.click(); prepararHablar(); }
+    else if (accion === "manos-libres") ManosLibres.iniciar();
+    else if (accion === "nota") $("notas-texto")?.focus();
+  }
   function mostrar() {
-    const hash = location.hash.replace("#", "");
+    const hash = location.hash.replace(/^#/, "");
     let [v, parametros] = hash.split("?");
+    const accion = ACCIONES[v];
+    if (accion) v = accion;
     if (!VISTAS.includes(v) || (SOLO_ADMIN.includes(v) && !Sesion.esAdmin) || (v !== "ajustes" && !puede(v))) v = "inicio";
     for (const n of VISTAS) $("v-" + n).hidden = n !== v;
     document.body.classList.toggle("modo-hud", v === "hud");
@@ -26,6 +43,7 @@
     if (v === "ajustes") { Ajustes.activar(); Usuarios.activar(); Memoria.activar(); Avisos.activar(); Rutinas.activar(); if (Sesion.esAdmin) { Modulos.pintarAjustes(); Automatizaciones.activar(); Accesos.activar(); Registro.activar(); } }
     document.title = "ARIA · " + { inicio: "Inicio", chat: "Chat", finanzas: "Finanzas", informacion: "Información", agenda: "Agenda", notas: "Notas", compartir: "Compartir", red: "Red", seguridad: "Seguridad", cerebro: "Cerebro", control: "Centro de control", ajustes: "Ajustes", mapa: "Mapa", hud: "HUD" }[v];
     if (v === "chat" && parametros) { const id = new URLSearchParams(parametros).get("c"); if (id) Chat.abrir(id, true); }
+    if (accion && !accionEjecutada) { accionEjecutada = true; ejecutarAccion(hash.split("?")[0]); }
   }
   document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => b.addEventListener("click", () => { location.hash = b.dataset.vista; }));
   window.addEventListener("hashchange", mostrar);

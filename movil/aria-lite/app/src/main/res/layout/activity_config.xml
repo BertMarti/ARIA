@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center_vertical"
+    android:padding="28dp" android:background="@color/aria_dark">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="@string/config_title" android:textColor="@color/aria_cyan"
+        android:textSize="28sp" android:textStyle="bold" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" android:text="Tu dirección se guarda solo en este dispositivo."
+        android:textColor="#b4c1d1" android:textSize="15sp" />
+    <EditText android:id="@+id/address" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="28dp" android:hint="@string/config_address_hint"
+        android:inputType="textUri" android:singleLine="true" android:textColor="#ffffff"
+        android:textColorHint="#718096" />
+    <Button android:id="@+id/connect" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="20dp" android:text="@string/config_connect" android:textColor="#070b12"
+        android:backgroundTint="@color/aria_cyan" />
+</LinearLayout>

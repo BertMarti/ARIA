@@ -24,7 +24,7 @@ log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
 # Rutas accesibles sin sesion.
-LIBRES = {"/health", "/internal/tls-ask", "/static/style.css", "/static/login.js",
+LIBRES = {"/health", "/internal/tls-ask", "/.well-known/assetlinks.json", "/static/style.css", "/static/login.js",
           "/static/manifest.webmanifest", "/static/icon.svg", "/sw.js"}
 PUBLICAS = LIBRES | {"/login", "/login/codigo"}
 # Escaparate público «Conoce a ARIA»: estático, con datos inventados y sin llamadas a la API.
@@ -254,6 +254,20 @@ async def seguridad(request: Request, call_next):
 @app.get("/health")
 async def health():
     return PlainTextResponse("ok")
+
+
+@app.get("/.well-known/assetlinks.json")
+async def assetlinks():
+    huellas = []
+    for huella in config.APP_SHA256.split(","):
+        huella = huella.strip().upper()
+        if re.fullmatch(r"(?:[0-9A-F]{2}:){31}[0-9A-F]{2}", huella):
+            huellas.append(huella)
+    datos = [] if not huellas else [{"relation": ["delegate_permission/common.handle_all_urls"],
+                                    "target": {"namespace": "android_app", "package_name": paquete,
+                                               "sha256_cert_fingerprints": huellas}}
+                                   for paquete in ("io.github.bertmarti.aria", "io.github.bertmarti.aria.lite")]
+    return JSONResponse(datos, headers={"Cache-Control": "public, max-age=3600"})
 
 
 @app.get("/internal/tls-ask")

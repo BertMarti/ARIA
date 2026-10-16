@@ -7,8 +7,8 @@ android {
         applicationId "io.github.bertmarti.aria"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode (project.findProperty('ARIA_VERSION_CODE') ?: '300') as int
+        versionName project.findProperty('ARIA_VERSION') ?: '3.0.0'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -40,6 +40,7 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    implementation 'androidx.work:work-runtime:2.10.0'
 }
 
 apply from: 'capacitor.build.gradle'

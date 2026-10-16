@@ -21,6 +21,7 @@
   <button type="button" class="nav-btn" data-vista="informacion"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 9h10M7 13h7"/></svg></span><span>Información</span></button>
   <button type="button" class="nav-btn" data-vista="agenda"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M7 14h3M14 14h3M7 18h3"/></svg></span><span>Agenda</span></button>
   <button type="button" class="nav-btn" data-vista="notas"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span><span>Notas</span></button>
+  <button type="button" class="nav-btn" data-vista="compartir"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/><path d="M4 5v14"/></svg></span><span>Compartir</span></button>
   <button type="button" class="nav-btn" data-vista="mapa"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="m4 6 6-3 6 3 4-2v14l-6 3-6-3-4 2z"/><path d="M10 3v15M16 6v15"/></svg></span><span>Mapa</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="red"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v5M12 12 6.5 17.5M12 12l5.5 5.5"/></svg></span><span>Red</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="seguridad"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span>Seguridad</span></button>
@@ -102,6 +103,22 @@
     </form>
     <div class="notas-filtros"><div id="notas-pestanas" class="pestanas" role="tablist"></div><label><input id="notas-hechas" type="checkbox"> Ver hechas</label></div>
     <ul id="notas-lista" class="notas-lista"></ul>
+  </section>
+  <section id="v-compartir" class="vista vista-medios" hidden>
+    <header class="vista-cab"><div><h1>Compartir</h1><p class="muted">Tus vídeos, aquí y en la tele</p></div>
+      <div class="medios-abrir"><button type="button" class="primario" id="medios-carpeta">Abrir carpeta</button><button type="button" class="fantasma" id="medios-archivos">Abrir archivos</button><button type="button" class="fantasma" id="medios-enviar" aria-label="Enviar el vídeo a la tele">◉ Enviar a la tele</button></div>
+      <input id="medios-input" type="file" multiple accept="video/*,audio/*,.srt,.vtt" hidden><input id="medios-input-dir" type="file" webkitdirectory multiple hidden>
+    </header>
+    <div id="medios-continuar" class="medios-continuar" hidden></div>
+    <div id="medios-soltar" class="medios-soltar" role="status">Arrastra aquí vídeos, audio o carpetas</div>
+    <div class="medios-layout">
+      <article class="tarjeta medios-reproductor" id="medios-escena">
+        <video id="medios-video" preload="metadata" playsinline></video><div id="medios-osd" class="medios-osd" aria-live="polite"></div><div id="medios-error" class="medios-error" role="alert" hidden></div>
+        <div class="medios-controles" id="medios-controles"><input id="medios-progreso" type="range" min="0" max="1000" value="0" aria-label="Progreso"><div class="medios-botones"><button type="button" id="medios-play" aria-label="Reproducir o pausar">▶</button><button type="button" id="medios-stop" aria-label="Detener">■</button><button type="button" id="medios-prev" aria-label="Anterior">◀◀</button><button type="button" id="medios-next" aria-label="Siguiente">▶▶</button><button type="button" id="medios-mute" aria-label="Silenciar">🔊</button><label class="medios-vol">Vol <input id="medios-volumen" type="range" min="0" max="200" value="100" aria-label="Volumen"></label><select id="medios-velocidad" aria-label="Velocidad"><option value="0.5">0,5x</option><option value="0.75">0,75x</option><option value="1" selected>1x</option><option value="1.25">1,25x</option><option value="1.5">1,5x</option><option value="2">2x</option></select><button type="button" id="medios-repetir" aria-label="Modo de repetición">↻ no</button><button type="button" id="medios-bucle" aria-label="Bucle A-B">A-B</button><button type="button" id="medios-aspecto" aria-label="Relación de aspecto">Original</button><button type="button" id="medios-subtitulos" aria-label="Subtítulos">CC</button><button type="button" id="medios-captura" aria-label="Capturar fotograma">▣</button><button type="button" id="medios-info" aria-label="Información">ⓘ</button><button type="button" id="medios-full" aria-label="Pantalla completa">⛶</button><button type="button" id="medios-ayuda" aria-label="Mostrar atajos">?</button><button type="button" id="medios-tiempo" aria-label="Cambiar vista del tiempo">0:00 / 0:00</button></div></div>
+        <p id="medios-titulo" class="medios-titulo muted">Abre una carpeta o unos archivos para empezar</p>
+      </article>
+      <aside class="tarjeta medios-lista"><div class="medios-lista-cab"><h2>Lista de reproducción</h2><button type="button" id="medios-aleatorio" aria-label="Aleatorio" title="Aleatorio (R)">⇄</button><button type="button" id="medios-vaciar" aria-label="Vaciar lista">Vaciar</button></div><input id="medios-buscar" placeholder="Buscar en la lista…" aria-label="Buscar en la lista"><h3 id="medios-seguir-titulo" hidden>Seguir viendo</h3><ul id="medios-seguir"></ul><ul id="medios-lista-items"></ul></aside>
+    </div>
   </section>
   <!-- CAMPANA DE AVISOS -->
   <div class="campana-zona">
@@ -870,6 +887,7 @@
 <script src="/static/automatizaciones.js"></script>
 <script src="/static/agenda.js"></script>
 <script src="/static/notas.js"></script>
+<script src="/static/medios.js"></script>
 <script src="/static/paleta.js"></script>
 <script src="/static/compartir.js"></script>
 <script src="/static/vendor/leaflet/leaflet.js"></script>

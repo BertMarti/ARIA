@@ -757,6 +757,52 @@ body.modo-hud > .nav, body.modo-hud > .manos-libres, body.modo-hud .campana-zona
 kbd { font-family: var(--mono); font-size: .8em; border: 1px solid var(--borde-fuerte); border-bottom-width: 2px; border-radius: 5px; padding: 0 .35rem; color: var(--txt); }
 
 /* Compartir con ARIA */
+.vista-medios { min-height: 0; }
+.medios-abrir { display: flex; flex-wrap: wrap; gap: .45rem; }
+.medios-soltar { margin: .7rem 0; padding: .7rem; border: 1px dashed var(--borde-fuerte); border-radius: 10px; color: var(--muted); text-align: center; }
+.medios-soltar.arrastrando { border-color: var(--acento); color: var(--acento); background: rgba(56,214,255,.08); }
+.medios-continuar { margin-bottom: .7rem; }
+.medios-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 1rem; min-height: 0; }
+.medios-reproductor { display: flex; min-height: 0; flex-direction: column; padding: .7rem; background: #03060b; }
+#medios-video { width: 100%; min-height: 280px; max-height: 65dvh; flex: 1; background: #000; object-fit: contain; }
+#medios-video.aspecto-0 { object-fit: contain; }
+#medios-video.aspecto-1 { aspect-ratio: 16 / 9; }
+#medios-video.aspecto-2 { aspect-ratio: 4 / 3; }
+#medios-video.aspecto-3 { aspect-ratio: 2.35 / 1; }
+#medios-video.aspecto-4 { object-fit: cover; }
+.medios-reproductor.controles-ocultos .medios-controles { opacity: 0; pointer-events: none; }
+.medios-controles { transition: opacity .2s ease; }
+.medios-osd { display: flex; align-items: center; gap: .5rem; max-width: min(90%, 42rem); }
+.medios-osd:empty { display: none; }
+.medios-ayuda-panel { max-width: 44rem; }
+.medios-ayuda-panel p { line-height: 1.6; }
+.medios-controles { position: relative; padding-top: .35rem; }
+.medios-controles > input { accent-color: var(--acento); padding: 0; }
+.medios-botones { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem; }
+.medios-botones button, .medios-botones select { min-height: 34px; padding: .25rem .45rem; font-size: .8rem; }
+.medios-vol { display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap; color: var(--muted); font-size: .8rem; }
+.medios-vol input { width: 110px; }
+#medios-velocidad { width: auto; min-width: 5.5rem; }
+.medios-lista-cab button { white-space: nowrap; }
+.medios-lista-cab h2 { flex: 1; margin: 0; }
+.medios-vol input { padding: 0; accent-color: var(--acento); }
+.medios-tiempo { margin-left: auto; color: var(--muted); font: .78rem var(--mono); }
+.medios-osd { position: absolute; top: 1rem; right: 1rem; color: var(--txt); background: rgba(0,0,0,.75); padding: .4rem .7rem; border-radius: 6px; }
+.medios-error { margin-top: .5rem; padding: .7rem; color: #201706; background: var(--warn); border-radius: 8px; }
+.medios-titulo { overflow: hidden; margin: .45rem 0 0; text-overflow: ellipsis; white-space: nowrap; }
+.medios-lista { min-height: 0; overflow: auto; }
+.medios-lista-cab { display: flex; align-items: center; gap: .35rem; }
+.medios-lista-cab h2 { margin-right: auto; }
+.medios-lista > input { margin-bottom: .7rem; }
+.medios-lista ul { padding: 0; margin: 0; list-style: none; }
+.medios-grupo { margin: .8rem 0 .25rem; color: var(--acento); font: .72rem var(--mono); text-transform: uppercase; }
+.medios-item, .medios-seguir-item { position: relative; display: block; overflow: hidden; padding: .5rem .55rem; margin: .2rem 0; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
+.medios-item:hover, .medios-item.activo, .medios-seguir-item:hover { border-color: var(--borde-fuerte); background: rgba(56,214,255,.08); }
+.medios-item-nombre { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.medios-item-meta { display: block; color: var(--muted); font-size: .75rem; }
+.medios-item-barra { display: block; width: var(--avance, 0%); height: 2px; margin-top: .3rem; background: var(--acento); }
+.medios-seguir-item { color: var(--warn); font-size: .85rem; }
+@media (max-width: 800px) { #v-compartir .vista-cab { flex-direction: column; align-items: stretch; gap: .6rem; } .medios-abrir button { flex: 1 1 auto; } .medios-layout { display: flex; flex-direction: column; } .medios-lista { order: 2; max-height: 45dvh; } #medios-video { min-height: 190px; } .medios-tiempo { margin-left: .3rem; } }
 .compartir-contenido { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto; background: rgba(5, 9, 16, .35);
   border: 1px solid var(--borde); border-radius: 10px; padding: .6rem .8rem; margin: 0 0 .6rem; }
 /* Visión: imagen adjunta, miniatura en la burbuja y propuesta de ticket */

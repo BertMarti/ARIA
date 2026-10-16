@@ -79,7 +79,7 @@ async def _mapa(request: Request):
         try:
             hs = agentes.herramientas(a, "admin")
             ident = "agente-" + a.id
-            _nodo(nodos, ident, a.nombre, "agentes", "ok", f"{len(hs)} herramientas", {"herramientas": len(hs)})
+            _nodo(nodos, ident, "Agente " + a.nombre if a.nombre == "ARIA" else a.nombre, "agentes", "ok", f"{len(hs)} herramientas", {"herramientas": len(hs)})
             enlaces.append({"origen": "aria", "destino": ident})
             for familia in {_familia(h) for h in hs}:
                 destino = "herramientas-" + familia.replace("/", "-")

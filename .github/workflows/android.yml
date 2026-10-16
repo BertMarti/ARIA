@@ -61,6 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: apk-sin-firmar
@@ -91,22 +92,7 @@ jobs:
           target: default
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: |
-            mkdir -p capturas
-            adb install -r apk/aria-prueba.apk
-            adb install -r apk/aria-lite-prueba.apk || true
-            adb logcat -c
-            adb shell am start -n io.github.bertmarti.aria/.MainActivity
-            sleep 15
-            adb exec-out screencap -p > capturas/aria-inicio.png
-            adb shell am start -n io.github.bertmarti.aria.lite/.ConfigActivity || true
-            sleep 8
-            adb exec-out screencap -p > capturas/aria-lite-config.png
-            adb shell cmd statusbar expand-settings || true
-            sleep 3
-            adb exec-out screencap -p > capturas/ajustes-rapidos.png
-            adb logcat -d > capturas/logcat.txt
-            if grep -E "FATAL EXCEPTION|AndroidRuntime: Process: io.github.bertmarti" capturas/logcat.txt; then echo "La app se ha cerrado"; exit 1; fi
+          script: sh movil/prueba-emulador.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:

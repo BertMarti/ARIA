@@ -10,16 +10,26 @@ public class LauncherActivity extends com.google.androidbrowserhelper.trusted.La
     private static final String ADDRESS = "address";
     private String launchingUrl;
 
+    private boolean sinDireccion;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         SharedPreferences preferences = getSharedPreferences(PREFS, MODE_PRIVATE);
-        if (preferences.getString(ADDRESS, null) == null) {
+        sinDireccion = preferences.getString(ADDRESS, null) == null;
+        if (!sinDireccion) {
+            launchingUrl = buildUrl(preferences.getString(ADDRESS, ""), getIntent());
+        }
+        // Android exige llamar SIEMPRE a super.onCreate(); si aún no hay dirección, shouldLaunchImmediately() evita abrir Chrome.
+        super.onCreate(savedInstanceState);
+        if (sinDireccion) {
             startActivity(new Intent(this, ConfigActivity.class));
             finish();
-            return;
         }
-        launchingUrl = buildUrl(preferences.getString(ADDRESS, ""), getIntent());
-        super.onCreate(savedInstanceState);
+    }
+
+    @Override
+    protected boolean shouldLaunchImmediately() {
+        return !sinDireccion;
     }
 
     @Override

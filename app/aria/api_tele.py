@@ -139,8 +139,7 @@ async def enviar(request: Request):
             control = dispositivo.get("control")
             if not control: return _json_error("La tele DLNA no ofrece AVTransport", 400)
             uri = tele.url_flujo(dato)
-            meta = (f"<DIDL-Lite><item><res protocolInfo=\"http-get:*:{html.escape(dato.mime)}:*\">"
-                    f"{html.escape(uri)}</res></item></DIDL-Lite>")
+            meta = tele.didl(dato, uri, str(d.get("titulo") or dato.nombre))
             argumentos = (f"<InstanceID>0</InstanceID><CurrentURI>{html.escape(uri)}</CurrentURI>"
                           f"<CurrentURIMetaData>{html.escape(meta)}</CurrentURIMetaData>")
             await tele.dlna(control, "SetAVTransportURI", argumentos)

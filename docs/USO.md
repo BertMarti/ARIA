@@ -18,26 +18,27 @@ Esta guía explica qué hay en cada parte de ARIA y cómo sacarle partido en el 
 6. [Imágenes y tickets](#imágenes-y-tickets)
 7. [Memoria y diario](#memoria-y-diario)
 8. [Resumen diario](#resumen-diario)
-9. [Recordatorios](#recordatorios)
-10. [Rutinas](#rutinas)
-11. [Finanzas](#finanzas)
-12. [Red](#red)
-13. [Control parental](#control-parental)
-14. [Seguridad](#seguridad)
-15. [Centro de control](#centro-de-control)
-16. [Modo HUD](#modo-hud)
-17. [Agenda y cumpleaños](#agenda-y-cumpleaños)
-18. [Mapa](#mapa)
-19. [Información e inversiones](#información-e-inversiones)
-20. [Precio de la luz](#precio-de-la-luz)
-21. [Ajustes](#ajustes)
-22. [Avisos](#avisos)
-23. [Telegram](#telegram)
-24. [Notificaciones push](#notificaciones-push)
-25. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
-26. [Acceso por invitación](#acceso-por-invitación)
-27. [Usuarios y roles](#usuarios-y-roles)
-28. [Cuando algo falla](#cuando-algo-falla)
+9. [Propuestas de ARIA](#propuestas-de-aria)
+10. [Recordatorios](#recordatorios)
+11. [Rutinas](#rutinas)
+12. [Finanzas](#finanzas)
+13. [Red](#red)
+14. [Control parental](#control-parental)
+15. [Seguridad](#seguridad)
+16. [Centro de control](#centro-de-control)
+17. [Modo HUD](#modo-hud)
+18. [Agenda y cumpleaños](#agenda-y-cumpleaños)
+19. [Mapa](#mapa)
+20. [Información e inversiones](#información-e-inversiones)
+21. [Precio de la luz](#precio-de-la-luz)
+22. [Ajustes](#ajustes)
+23. [Avisos](#avisos)
+24. [Telegram](#telegram)
+25. [Notificaciones push](#notificaciones-push)
+26. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
+27. [Acceso por invitación](#acceso-por-invitación)
+28. [Usuarios y roles](#usuarios-y-roles)
+29. [Cuando algo falla](#cuando-algo-falla)
 
 ## Un vistazo rápido
 
@@ -119,6 +120,7 @@ Cómo elegir:
 
 - **Pulsar para hablar**: mantén pulsado el micrófono mientras hablas y suelta (o toca una vez para empezar y otra para terminar). Máximo 30 segundos. El texto se envía solo.
 - **Leer**: el botón de cada respuesta la lee en voz alta. En **Ajustes → Voz** puedes hacer que lea todas las respuestas y cambiar la velocidad.
+- **Lectura en streaming**: ARIA empieza a hablar en cuanto termina la primera frase. Funciona en el chat con «Leer respuestas», en manos libres y en el HUD. El resto del texto se agrupa en trozos grandes para no agotar la cuota de voz.
 - **Manos libres**: pulsa **Manos libres** en el chat (o actívalo en Ajustes → Voz o con Ctrl+K). Aparece un aviso «escuchando "Aria"» con el botón **Dejar de escuchar**. Di «**Aria**» y tu pregunta («Aria, ¿qué hora es?»), o «Aria», una pausa corta y la pregunta. Suena un pitido, ARIA escucha hasta que te callas, responde y lo lee.
   - «Aria» solo cuenta al principio de una frase: «María» o «esta aria de ópera» no la activan.
   - El micrófono se apaga al cambiar de pestaña o bloquear el móvil.
@@ -157,6 +159,16 @@ Privacidad: para detectar «Aria», el sonido va a tu máquina (nunca fuera). Lo
 - **Diario**: cada madrugada ARIA resume en unas viñetas lo que hiciste ese día. En Ajustes → Memoria ves los últimos 14 días y puedes borrar cualquiera.
 - **«Borrar toda mi memoria»** elimina recuerdos y diario.
 
+### Memoria semántica
+
+ARIA elige qué recuerdos usar según su significado, no solo por coincidencia de palabras. Para esto usa un modelo que corre en tu propia máquina (Ollama con `granite-embedding`), por lo que no envía tus recuerdos fuera para buscarlos. Si este modelo no está disponible, utiliza el método de búsqueda tradicional.
+
+### Fuente y confianza
+
+En **Ajustes → Memoria** puedes ver el origen y la fiabilidad de cada dato:
+- **Tú lo dijiste**: tiene una confianza del 100 % y nunca se borra solo.
+- **Aprendizaje automático**: ARIA le asigna un 60 % de confianza inicial, que sube cada vez que se usa el recuerdo. Los datos aprendidos solos que no se utilicen en 90 días se olvidan automáticamente.
+
 La memoria se envía a los cerebros de la nube junto con tus preguntas para darte contexto. Al cerebro local solo le llega un trozo pequeño.
 
 ## Resumen diario
@@ -184,6 +196,15 @@ El resumen del día, **contado por ARIA en un minuto** y con la voz que elegiste
 - **HUD**: acción rápida **Briefing del día**, con el texto en subtítulos.
 - **Inicio**: **▶ Escuchar** en la tarjeta del resumen (y **■ Parar**).
 - Se prepara una vez por la mañana, otra por la tarde y otra por la noche, y se guarda: escucharlo otra vez no gasta cuota de voz. Si la cuota de Gemini está agotada, lo lee la voz local y se vuelve a intentar con tu voz más tarde.
+
+## Propuestas de ARIA
+
+ARIA puede sugerir acciones útiles, pero nunca las realiza sin tu aprobación explícita («Sí, hazlo»). Las propuestas aparecen en **Inicio** y en **Telegram** con botones para aceptar o rechazar.
+
+- **Qué propone**: recordatorios para la hora más barata de la luz (por la mañana), avisos 30 minutos antes de una cita que empiece pronto (en 1 a 3 horas) y, solo para administradores, marcar como conocido un dispositivo nuevo que aún no está identificado en la red.
+- **Funcionamiento**: las propuestas caducan solas si no las atiendes. Nunca verás más de 10 pendientes.
+- **Invitados**: los usuarios con acceso por invitación no reciben propuestas.
+- **Desactivar**: se pueden apagar por completo con `ARIA_PROPUESTAS=0` en el archivo `.env`.
 
 ## Recordatorios
 
@@ -526,6 +547,15 @@ ARIA admite varias personas, cada una con sus conversaciones, memoria, finanzas,
 Los permisos se comprueban **en el servidor**, no solo ocultando botones.
 
 **Invitar a alguien**: **Ajustes → Usuarios → Invitar usuario** (email, nombre y rol). Para que entre desde casa, pulsa **Poner contraseña para casa**. Si usas Cloudflare Access, añade también su email a la política de ARIA en Cloudflare para que pueda entrar desde fuera. Desde Usuarios puedes cambiar el rol, desactivar (sus sesiones se cierran al momento) o eliminar a alguien. Nunca se puede quitar al último administrador activo.
+
+
+### Registro de actividad
+
+Solo para administradores, en **Ajustes → Usuarios → Registro de actividad**: qué herramienta usó cada agente, para quién, desde dónde (chat, Telegram, rutina, automatización o propuesta), con qué resultado y cuánto tardó.
+
+- Filtros por usuario, por herramienta y **Solo errores**.
+- Las contraseñas, claves y códigos que aparezcan en los datos se guardan como «***».
+- Se guarda 30 días.
 
 ## Cuando algo falla
 

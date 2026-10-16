@@ -29,6 +29,20 @@ code { font-family: var(--mono); font-size: .9em; background: rgba(0, 0, 0, .35)
 .aviso-txt { color: var(--warn); }
 [hidden] { display: none !important; }
 
+/* Ventana Document Picture-in-Picture: estas reglas se clonan junto con style.css. */
+.flot-hud { min-height: 100vh; padding: .7rem .8rem .8rem; background: radial-gradient(circle at 50% 30%, rgba(56, 214, 255, .14), transparent 48%), #070b12; color: var(--txt); display: flex; flex-direction: column; align-items: center; gap: .25rem; }
+.flot-titulo { margin: 0; color: var(--acento); font: 650 .8rem var(--mono); letter-spacing: .2em; }
+.flot-orbe { width: 170px; height: 170px; display: block; }
+.flot-estado { margin: -.35rem 0 0; color: var(--muted); font: 600 .75rem var(--mono); }
+.flot-subtitulo { width: 100%; min-height: 2.8em; margin: .15rem 0 .25rem; overflow: hidden; color: var(--txt); font-size: .82rem; line-height: 1.3; text-align: center; }
+.flot-form { width: 100%; display: grid; grid-template-columns: 1fr auto auto; gap: .35rem; }
+.flot-texto { min-width: 0; width: 100%; padding: .55rem; border: 1px solid var(--borde-fuerte); border-radius: 8px; background: var(--bg2); color: var(--txt); font: inherit; }
+.flot-form button, .flot-cerrar { min-height: 42px; padding: .45rem .6rem; }
+.flot-mic { font-size: 0; }
+.flot-mic::before { content: "\1F399"; font-size: 1.15rem; }
+.flot-cerrar { margin-top: .2rem; align-self: stretch; }
+@media (prefers-reduced-motion: reduce) { .flot-orbe { opacity: .98; } }
+
 /* Botones y campos */
 button, .boton { font: inherit; font-weight: 600; border-radius: 10px; padding: .55rem 1rem; border: 1px solid var(--borde-fuerte);
   background: transparent; color: var(--txt); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: .4rem;

@@ -36,6 +36,7 @@ CAPTURAS = {
     "captura-agenda-semana": ("agenda", 1280, 760, False, "document.querySelector('.agenda-tab[data-modo=semana]').click()", 4),
     "captura-informacion": ("informacion", 1280, 900, False, "", 6),
     "captura-mapa": ("mapa", 1280, 800, False, "", 8),
+    "captura-mapa-3d": ("mapa", 1280, 800, False, "localStorage.setItem('aria_mapa_modo', '3d'); location.reload()", 40),
     "captura-red": ("red", 1280, 1000, False, "", 5),
     "captura-centro-control": ("control", 1280, 1100, False, "", 6),
     "captura-ajustes": ("ajustes", 1280, 900, False, "localStorage.setItem('aria_ajustes_seccion','ia'); location.reload()", 5),
@@ -95,7 +96,7 @@ class CDP:
 
 async def main(salida: Path, nombres):
     perfil = DATOS / "perfil-chromium"
-    proc = subprocess.Popen(["chromium", "--headless=new", f"--remote-debugging-port={PUERTO}", "--no-first-run",
+    proc = subprocess.Popen(["chromium", "--headless=new", "--enable-unsafe-swiftshader", "--use-angle=swiftshader", f"--remote-debugging-port={PUERTO}", "--no-first-run",
                              "--hide-scrollbars", "--force-color-profile=srgb", f"--user-data-dir={perfil}", "about:blank"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:

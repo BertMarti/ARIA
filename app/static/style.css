@@ -99,12 +99,18 @@ body.app.vista-prueba { padding-top: 3.35rem; }
 .vista-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.1rem; }
 .vista-mapa { display: flex; flex-direction: column; }
 .mapa-controles { display: flex; flex-wrap: wrap; align-items: end; gap: .6rem; margin-bottom: .5rem; }
+.mapa-modos { display: flex; gap: .2rem; padding: .2rem; border: 1px solid var(--borde); border-radius: 10px; }
+.mapa-modos button[aria-pressed="true"] { color: var(--acento); background: rgba(56, 214, 255, .12); border-color: var(--acento); }
 .mapa-form { display: flex; flex: 1 1 320px; gap: .5rem; }
 .mapa-form input { min-width: 0; }
 .mapa-tipo { display: flex; align-items: center; gap: .4rem; white-space: nowrap; }
 .mapa-tipo select { width: auto; }
 .mapa { min-height: 55dvh; flex: 1; border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; background: #dce5e8; }
 .mapa .leaflet-control a { color: #333; }
+.mapa .maplibregl-ctrl-group { background: var(--panel-solido); }
+.mapa .maplibregl-ctrl-group button { color: var(--txt); }
+.mapa .maplibregl-ctrl-attrib { background: rgba(7, 11, 18, .82); color: var(--muted); }
+.mapa .maplibregl-ctrl-attrib a { color: var(--acento); }
 .mapa-estado { min-height: 1.4em; margin: .2rem 0; }
 .mapa-resultados { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
 .mapa-resultado { padding: .5rem .7rem; border: 1px solid var(--borde); border-radius: 8px; background: var(--panel); cursor: pointer; color: var(--txt); }

@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_cerebro, api_control, api_finanzas, api_informacion, api_listas, api_medios, api_modulos, api_notas, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, listas, mapas, medios, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_cerebro, api_control, api_disponibilidad, api_finanzas, api_informacion, api_listas, api_medios, api_modulos, api_notas, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, disponibilidad, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, listas, mapas, medios, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -105,6 +105,7 @@ async def _arranque():
     app.state.diario = asyncio.create_task(diario.bucle())
     # Avisos: tablas, chequeos, canales y planificador (recordatorios, resumen programado). Telegram con long polling.
     avisos.iniciar()
+    disponibilidad.iniciar()
     recordatorios.iniciar()
     notas.iniciar()
     listas.iniciar()
@@ -471,6 +472,7 @@ app.include_router(api_finanzas.router)
 app.include_router(api_red.router)
 app.include_router(api_control.router)
 app.include_router(api_avisos.router)
+app.include_router(api_disponibilidad.router)
 app.include_router(api_rutinas.router)
 app.include_router(api_automatizaciones.router)
 app.include_router(api_agenda.router)

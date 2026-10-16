@@ -803,9 +803,10 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
         if not admin:
             await enviar("Eso solo lo puede hacer un administrador.")
             return
-        from . import estadisticas
+        from . import disponibilidad, estadisticas
         try:
-            await enviar(await estadisticas.construir_informe_semanal())
+            informe = await estadisticas.construir_informe_semanal()
+            await enviar(informe + "\n\n" + await asyncio.to_thread(disponibilidad.texto_24h))
         except Exception:
             await enviar("No he podido preparar el informe semanal ahora mismo.")
     elif cmd == "rutinas":

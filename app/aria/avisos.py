@@ -458,6 +458,11 @@ async def tick(ahora: float | None = None) -> None:
         except Exception:  # noqa: BLE001 - un chequeo roto no para a los demás
             log.exception("Falló el chequeo %s", c.id)
     try:
+        from . import disponibilidad
+        await disponibilidad.ciclo(ahora)
+    except Exception:  # noqa: BLE001 - el histórico nunca debe parar los avisos
+        log.exception("Falló el registro de disponibilidad")
+    try:
         await recordatorios.disparar_vencidos(ahora)
     except Exception:  # noqa: BLE001
         log.exception("Falló el disparo de recordatorios")
@@ -501,6 +506,11 @@ async def tick(ahora: float | None = None) -> None:
     if ahora - _ultimo_purgado > 86400:
         _ultimo_purgado = ahora
         await asyncio.to_thread(purgar)
+        try:
+            from . import disponibilidad
+            await asyncio.to_thread(disponibilidad.purgar, ahora)
+        except Exception:  # noqa: BLE001
+            log.exception("Falló la purga de disponibilidad")
         try:
             from . import embeddings, memoria
             await asyncio.gather(asyncio.to_thread(memoria.purgar_automaticos, ahora), embeddings.rellenar())

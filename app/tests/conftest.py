@@ -11,7 +11,7 @@ os.environ["ARIA_MODULOS_DIR"] = str(Path(__file__).resolve().parent / "modulos_
 os.environ.pop("ARIA_MODULOS", None)
 import pytest
 
-from aria import agenda, auth, avisos, cerebros, config, control, cve, db, finanzas, notas, push, recordatorios, red, registro, remedios, sso, telegram, usuarios
+from aria import agenda, auth, avisos, cerebros, config, control, cve, db, disponibilidad, finanzas, notas, push, recordatorios, red, registro, remedios, sso, telegram, usuarios
 
 
 @pytest.fixture(autouse=True)
@@ -50,6 +50,7 @@ def entorno(tmp_path, monkeypatch):
     monkeypatch.setattr(control, "_ult_refresco", 0.0)
     cve.iniciar()
     avisos.iniciar()
+    disponibilidad.iniciar()
     recordatorios.iniciar()
     notas.iniciar()
     agenda.iniciar()

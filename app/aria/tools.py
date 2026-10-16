@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import agenda, busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, informacion, listas, mapas, memoria, notas, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
+from . import agenda, busqueda, config, control, disponibilidad, enlaces, escaneo, estadisticas, finanzas, informacion, listas, mapas, memoria, notas, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -54,7 +54,7 @@ SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador",
                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
                           "resumir_enlace", "resumen_noticias", "precio", "mis_mercados", "mis_inversiones",
                            "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
-                           "resumir_enlace", "mapa_ir", "ruta", "sitios_cerca", "gasolineras"})
+                            "resumir_enlace", "mapa_ir", "ruta", "sitios_cerca", "gasolineras"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
 PROYECTOS = frozenset({"nuevo_proyecto", "mis_proyectos", "estado_proyecto", "registrar_decision", "decisiones", "actualizar_proyecto", "cambiar_personalidad"})
@@ -968,6 +968,17 @@ async def estado_red() -> str:
     return f"Latencia: {_lat_texto(s['latencia'])}. DNS: {s['dns']}. {vpn_t} {vel}"
 
 
+@tool("salud_sistema", "Historial de disponibilidad de los servicios de ARIA y sus incidentes. Solo administradores.")
+async def salud_sistema() -> str:
+    d = await asyncio.to_thread(disponibilidad.resumen, 7)
+    inc = await asyncio.to_thread(disponibilidad.incidentes, 7)
+    vals = [x["porcentaje"] for x in d["servicios"] if x["porcentaje"] is not None]
+    if not vals:
+        return "No hay datos de disponibilidad de esta semana."
+    texto = f"Disponibilidad media de los últimos 7 días: {sum(vals) / len(vals):.1f} %."
+    return texto.replace(".", ",", 1) + (f" Incidentes: {len(inc)}." if inc else " No se han registrado caídas.")
+
+
 @tool("dispositivos_red", "Lista los dispositivos de la red de casa (nombre, IP, fabricante, si es conocido).",
       especialista=True)
 async def dispositivos_red() -> str:
@@ -1070,6 +1081,7 @@ async def estadisticas_dispositivo(dispositivo=None, horas=24) -> str:
 
 # Palabras clave para el cerebro local (los de la nube reciben todas las del agente).
 _INTENCIONES += [
+    ((r"\b(salud|disponibilidad|ca[ií]d[oa]|ca[ií]das?|incidentes?)\b", r"\b(sistema|servicios?|semana|d[ií]as?|algo)\b"), {"salud_sistema"}),
     ((r"\b(estad[ií]stic\w*|qu[eé] consulta|cu[aá]nto navega|qu[eé] bloquea|consultas por dispositivo)\b",),
      {"estadisticas_dispositivo"}),
     ((r"\b(gast\w*|pagu[eé]|pagado|compr[eé])\b", r"\b(apunta|anota|registra|a[ñn]ade|he gastado|pagu[eé])\b"),

@@ -7,8 +7,8 @@ android {
         applicationId "io.github.bertmarti.aria"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (project.findProperty('ARIA_VERSION_CODE') ?: '300') as int
-        versionName project.findProperty('ARIA_VERSION') ?: '3.0.0'
+        versionCode Integer.parseInt((project.findProperty('ARIA_VERSION_CODE') ?: '300').toString())
+        versionName((project.findProperty('ARIA_VERSION') ?: '3.0.0').toString())
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

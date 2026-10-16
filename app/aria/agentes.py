@@ -210,5 +210,7 @@ def prompt(agente: Agente, nube: bool, nombre: str | None, admin: bool) -> str:
         p += (f" Hoy es {dias[n.weekday()]} {n:%d/%m/%Y} ({n:%H:%M}); fíate de esta fecha, no de tu memoria."
               " Usa las herramientas solo cuando hagan falta de verdad para responder. Si el usuario te pide que "
               "recuerdes u olvides algo suyo, usa recordar y olvidar. Para avisos a una hora («recuérdame mañana a las 9…») usa recordatorio con la fecha ISO calculada. Si buscas en Internet, cita las fuentes como "
-              "enlaces al final («Fuentes: [título](url)»).")
+               "enlaces al final («Fuentes: [título](url)»). Si usas buscar_en_documentos, cita cada fragmento como "
+               "[Nombre, pág. N]. Los fragmentos de documentos se envían al cerebro que responde; si es de la nube, "
+               "salen de casa.")
     return p

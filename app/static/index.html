@@ -105,6 +105,13 @@
     <div id="notas-controles"><div id="notas-pestanas" class="pestanas" role="tablist"></div><label><input id="notas-hechas" type="checkbox"> Ver hechas</label></div>
     <ul id="notas-lista" class="notas-lista"></ul>
     <section id="listas-seccion" hidden><div id="listas-cuerpo" class="listas-cuerpo"></div></section>
+    <section id="documentos-seccion" class="documentos-seccion" hidden>
+      <p class="muted">Los documentos se procesan localmente. Al preguntar, los fragmentos encontrados se envían al cerebro que responda; si es de la nube, salen de casa.</p>
+      <label id="documentos-soltar" class="documentos-soltar">Arrastra aquí un PDF, TXT o MD, o pulsa para elegir<input id="documentos-input" type="file" accept="application/pdf,.txt,.md" multiple hidden></label>
+      <p id="documentos-cuota" class="muted"></p>
+      <ul id="documentos-lista" class="notas-lista"></ul>
+      <form id="documentos-pregunta" class="tarjeta documentos-pregunta"><label for="documentos-texto">Pregunta a tus documentos</label><div class="fila-form"><input id="documentos-texto" maxlength="500" required placeholder="¿Qué dice el contrato sobre…?"><button class="primario" type="submit">Abrir chat</button></div></form>
+    </section>
   </section>
   <section id="v-compartir" class="vista vista-medios" hidden>
     <header class="vista-cab"><div><h1>Compartir</h1><p class="muted">Tus vídeos, aquí y en la tele</p></div>
@@ -901,6 +908,7 @@
 <script src="/static/automatizaciones.js"></script>
 <script src="/static/agenda.js"></script>
 <script src="/static/notas.js"></script>
+<script src="/static/documentos.js"></script>
 <script src="/static/paleta.js"></script>
 <script src="/static/compartir.js"></script>
 <script src="/static/medios.js"></script>

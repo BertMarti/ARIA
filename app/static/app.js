@@ -35,6 +35,7 @@
     Informacion.activar(v === "informacion");
     Agenda.activar(v === "agenda");
     Notas.activar(v === "notas");
+    Documentos.activar(v === "notas");
     Medios.activar(v === "compartir");
     Red.activar(v === "red");
     Seguridad.activar(v === "seguridad");
@@ -42,14 +43,24 @@
     Hud.activar(v === "hud");
     if (v === "ajustes") { Ajustes.activar(); Usuarios.activar(); Memoria.activar(); Avisos.activar(); Rutinas.activar(); if (Sesion.esAdmin) { Modulos.pintarAjustes(); Automatizaciones.activar(); Accesos.activar(); Registro.activar(); } }
     document.title = "ARIA · " + { inicio: "Inicio", chat: "Chat", finanzas: "Finanzas", informacion: "Información", agenda: "Agenda", notas: "Notas", compartir: "Compartir", red: "Red", seguridad: "Seguridad", cerebro: "Cerebro", control: "Centro de control", ajustes: "Ajustes", mapa: "Mapa", hud: "HUD" }[v];
-    if (v === "chat" && parametros) { const id = new URLSearchParams(parametros).get("c"); if (id) Chat.abrir(id, true); }
+    if (v === "chat" && parametros) {
+      const params = new URLSearchParams(parametros);
+      const id = params.get("c");
+      if (id) Chat.abrir(id, true);
+      const pregunta = params.get("q");
+      if (pregunta) {
+        $("agente-sel").value = "aria";
+        $("texto").value = pregunta;
+        $("texto").focus();
+      }
+    }
     if (accion && !accionEjecutada) { accionEjecutada = true; ejecutarAccion(hash.split("?")[0]); }
   }
   document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => b.addEventListener("click", () => { location.hash = b.dataset.vista; }));
   window.addEventListener("hashchange", mostrar);
   (async () => {
     await cargarSesion();
-    ManosLibres.iniciarUI(); Chat.iniciar(); Control.iniciar(); Cerebro.iniciar(); Finanzas.iniciar(); Informacion.iniciar(); Agenda.iniciar(); Notas.iniciar(); Medios.iniciar(); Red.iniciar(); Seguridad.iniciar(); Inicio.iniciar(); Ajustes.iniciar(); Usuarios.iniciar(); Memoria.iniciar(); Avisos.iniciar(); Rutinas.iniciar(); Registro.iniciar(); Paleta.iniciar(); Mapa.iniciar(); Hud.iniciar();
+    ManosLibres.iniciarUI(); Chat.iniciar(); Control.iniciar(); Cerebro.iniciar(); Finanzas.iniciar(); Informacion.iniciar(); Agenda.iniciar(); Notas.iniciar(); Documentos.iniciar(); Medios.iniciar(); Red.iniciar(); Seguridad.iniciar(); Inicio.iniciar(); Ajustes.iniciar(); Usuarios.iniciar(); Memoria.iniciar(); Avisos.iniciar(); Rutinas.iniciar(); Registro.iniciar(); Paleta.iniciar(); Mapa.iniciar(); Hud.iniciar();
     Chat.refrescarCerebro(); PingCompa.iniciar();
     if (new URLSearchParams(location.search).get("spotify")) history.replaceState(null, "", "/#ajustes");
     Compartir.revisar(); // «Compartir con ARIA» desde otra app del móvil (Web Share Target)

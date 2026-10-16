@@ -39,6 +39,11 @@ h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: .01em; }
 .nota-meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .35rem; }
 .nota-acciones { display: flex; gap: .4rem; flex-wrap: wrap; }
 .nota-edicion { width: 100%; }
+.documentos-seccion { display: grid; gap: .8rem; margin-top: 1rem; max-width: 900px; }
+.documentos-soltar { display: block; padding: 2rem; border: 1px dashed var(--acento); border-radius: var(--radio); text-align: center; cursor: pointer; background: rgba(56, 214, 255, .05); }
+.documentos-soltar.arrastrando { background: rgba(56, 214, 255, .16); }
+.documentos-pregunta { display: grid; gap: .6rem; }
+.documentos-pregunta input { min-width: 0; flex: 1; }
 @media (max-width: 600px) { .nota-item { flex-wrap: wrap; } .nota-acciones { width: 100%; margin-left: 1.7rem; } }
 h1 { font-size: 1.35rem; }
 h2 { font-size: .8rem; color: var(--acento); text-transform: uppercase; letter-spacing: .14em; margin-bottom: .75rem; }

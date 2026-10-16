@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import agenda, busqueda, config, control, disponibilidad, enlaces, escaneo, estadisticas, finanzas, informacion, listas, mapas, memoria, notas, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
+from . import agenda, busqueda, config, control, disponibilidad, documentos, enlaces, escaneo, estadisticas, finanzas, informacion, listas, mapas, memoria, notas, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -54,7 +54,7 @@ SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador",
                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
                           "resumir_enlace", "resumen_noticias", "precio", "mis_mercados", "mis_inversiones",
                            "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
-                            "resumir_enlace", "mapa_ir", "ruta", "sitios_cerca", "gasolineras"})
+                             "resumir_enlace", "mapa_ir", "ruta", "sitios_cerca", "gasolineras", "buscar_en_documentos"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
 PROYECTOS = frozenset({"nuevo_proyecto", "mis_proyectos", "estado_proyecto", "registrar_decision", "decisiones", "actualizar_proyecto", "cambiar_personalidad"})
@@ -156,6 +156,7 @@ _INTENCIONES = [
      {"spotify_play", "spotify_pause", "spotify_siguiente", "spotify_anterior", "spotify_actual",
       "spotify_buscar_y_reproducir"}),
     ((_BUSCAR, r"!\b(netflix|spotify)\b"), {"buscar_en_internet"}),
+    ((r"\b(seg[uú]n mi contrato|en mis documentos|en el pdf|manual|document\w*)\b",), {"buscar_en_documentos"}),
     ((_NOTICIAS,), {"noticias"}),
     ((_DATO_ACTUAL, r"!" + _BLOQUEADOR, r"!" + _SISTEMA, r"!\b(vpn|wireguard|heimdall|spotify)\b", _EXPLICAR),
      {"buscar_en_internet"}),
@@ -272,6 +273,19 @@ async def buscar_en_internet(consulta: str) -> str:
         return busqueda.formatear(str(consulta), await busqueda.buscar(str(consulta), "general", 5))
     except busqueda.BusquedaError as e:
         return str(e)
+
+
+@tool("buscar_en_documentos", "Busca en tus documentos personales por significado y palabras exactas. "
+      "Usa los resultados para responder y cita cada fuente como [Nombre, pág. N]. "
+      "Los fragmentos pueden enviarse al cerebro remoto.",
+      {"pregunta": ("string", "Qué quieres saber de tus documentos"),
+       "documento": ("string", "Nombre o identificador opcional del documento")}, ("pregunta",), usa_uid=True)
+async def buscar_en_documentos(pregunta: str, documento: str = "", uid: int | None = None) -> str:
+    doc_id = int(documento) if str(documento).isdigit() else None
+    filas = await documentos.buscar(uid, pregunta, 6, doc_id)
+    if not filas:
+        return "No he encontrado fragmentos relevantes en tus documentos."
+    return "\n".join(f"[{x['nombre']}, pág. {x['pagina']}] {x['texto']}" for x in filas)
 
 
 @tool("gasolineras", "Busca las gasolineras más baratas cercanas según los precios oficiales del Ministerio.",

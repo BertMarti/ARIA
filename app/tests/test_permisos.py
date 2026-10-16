@@ -132,7 +132,7 @@ def test_toda_ruta_registrada_esta_cubierta():
         ruta = camino.replace("{cid}", "abc").replace("{uid}", "1").replace("{app_id}", "x") \
                      .replace("{accion}", "x").replace("{mid}", "1").replace("{rid}", "1").replace("{fecha}", "2026-10-06") \
                       .replace("{aid}", "1").replace("{chat_id}", "1").replace("{sid}", "1").replace("{hid}", "1").replace("{identificador}", "1").replace("{eid}", "1").replace("{nid}", "1") \
-                     .replace("{lista_id}", "1").replace("{item_id}", "1") \
+                     .replace("{lista_id}", "1").replace("{item_id}", "1").replace("{doc_id}", "1") \
                      .replace("{token}", "a" * 24).replace("{ident}", "1").replace("{n}", "1")
         for m in r.methods - {"HEAD", "OPTIONS"}:
             if permisos.permitido("usuario", m, ruta):
@@ -145,6 +145,8 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("DELETE", "/api/listas/{lista_id}"), ("POST", "/api/listas/{lista_id}/items"),
                     ("POST", "/api/listas/{lista_id}/vaciar"), ("PATCH", "/api/lista-items/{item_id}"),
                     ("DELETE", "/api/lista-items/{item_id}"),
+                    ("GET", "/api/documentos"), ("POST", "/api/documentos"), ("GET", "/api/documentos/{doc_id}/archivo"),
+                    ("DELETE", "/api/documentos/{doc_id}"), ("POST", "/api/documentos/buscar"),
                     ("DELETE", "/api/ubicacion"), ("GET", "/api/info"), ("GET", "/api/services"),
                     ("GET", "/api/shield"), ("GET", "/api/system"), ("GET", "/api/vpn/clients"),
                     ("GET", "/api/spotify/status"), ("GET", "/api/certificado"), ("POST", "/api/password"),
@@ -265,6 +267,7 @@ LECTURA = {"fecha_hora", "resumen_diario", "precio_luz", "estado_servicios", "es
            "recordatorio", "mis_recordatorios", "borrar_recordatorio",  # y los recordatorios (los suyos)
            "apuntar_nota", "mis_notas", "marcar_nota_hecha",  # y sus notas
            "anadir_a_lista", "ver_lista", "marcar_en_lista", "quitar_de_lista",  # y las listas (de casa o suyas)
+           "buscar_en_documentos",  # y sus documentos
            "resumir_enlace",  # leer una web pública (anti-SSRF en enlaces.py)
            "crear_rutina", "mis_rutinas", "borrar_rutina",  # y sus rutinas
            "crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos",  # y su agenda

@@ -11,14 +11,15 @@ const Notas = (() => {
   }
   function pintar() {
     const vistas = $("notas-vistas");
-    vistas.replaceChildren(...[["notas", "Notas"], ["listas", "Listas"]].map(([id, nombre]) => {
+    vistas.replaceChildren(...[["notas", "Notas"], ["listas", "Listas"], ["documentos", "Documentos"]].map(([id, nombre]) => {
       const b = el("button", { type: "button", class: "pestana" + (modo === id ? " activo" : ""), "aria-selected": String(modo === id) }, nombre);
-      b.addEventListener("click", () => { modo = id; pintar(); if (modo === "listas") cargarListas(); }); return b;
+      b.addEventListener("click", () => { modo = id; pintar(); if (modo === "listas") cargarListas(); if (modo === "documentos") Documentos.activar(true); }); return b;
     }));
     $("notas-form").hidden = modo !== "notas";
     $("notas-controles").hidden = modo !== "notas";
     $("notas-lista").hidden = modo !== "notas";
     $("listas-seccion").hidden = modo !== "listas";
+    $("documentos-seccion").hidden = modo !== "documentos";
     if (modo !== "notas") return;
     const tabs = $("notas-pestanas");
     tabs.replaceChildren(...Object.entries(nombres).map(([id, nombre]) => {

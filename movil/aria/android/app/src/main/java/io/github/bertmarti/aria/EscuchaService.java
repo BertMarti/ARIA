@@ -29,7 +29,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.vosk.KaldiRecognizer;
+import org.vosk.Recognizer;
 import org.vosk.Model;
 
 public class EscuchaService extends Service {
@@ -143,7 +143,7 @@ public class EscuchaService extends Service {
                 AudioFormat.ENCODING_PCM_16BIT);
         grabadora = new AudioRecord(MediaRecorder.AudioSource.MIC, 16000, AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT, Math.max(tamaño, 8192));
-        try (KaldiRecognizer reconocedor = new KaldiRecognizer(modelo, 16000, "[\"aria\", \"[unk]\"]")) {
+        try (Recognizer reconocedor = new Recognizer(modelo, 16000, "[\"aria\", \"[unk]\"]")) {
             byte[] buffer = new byte[4096];
             grabadora.startRecording();
             while (ejecutando && !bateriaBaja() && !ahorroDeBateria()) {

@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import agenda, busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, informacion, mapas, memoria, notas, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
+from . import agenda, busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, informacion, listas, mapas, memoria, notas, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -61,6 +61,7 @@ PROYECTOS = frozenset({"nuevo_proyecto", "mis_proyectos", "estado_proyecto", "re
 # Recordatorios: todo rol, siempre los del usuario que habla.
 RECORDATORIOS = frozenset({"recordatorio", "mis_recordatorios", "borrar_recordatorio"})
 NOTAS = frozenset({"apuntar_nota", "mis_notas", "marcar_nota_hecha"})
+LISTAS = frozenset({"anadir_a_lista", "ver_lista", "marcar_en_lista", "quitar_de_lista"})
 AGENDA = frozenset({"crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos"})
 # Rutinas (gestión desde el chat): todo rol, siempre las del usuario que habla.
 GESTION_RUTINAS = frozenset({"crear_rutina", "mis_rutinas", "borrar_rutina"})
@@ -84,7 +85,7 @@ def permitidas(rol: str) -> set:
         return set(_REGISTRO)
     if rol == "usuario":
         de_modulos = {n for n, i in _DE_MODULOS.items() if i["usuario"]}
-    return set(SOLO_LECTURA | MEMORIA | PROYECTOS | RECORDATORIOS | NOTAS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
+    return set(SOLO_LECTURA | MEMORIA | PROYECTOS | RECORDATORIOS | NOTAS | LISTAS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
     return set()
 
 
@@ -166,6 +167,7 @@ _INTENCIONES = [
     # Memoria personal: «recuerda que…», «apunta que…» / «olvida que…», «no recuerdes…»
     ((r"\b(recuerda|acu[eé]rdate|ac[eé]rdate|apunta|anota|memoriza|ten en cuenta)\b",), {"recordar"}),
     ((r"\b(nota|notas|apunta|anota|ap[uú]ntame|mejoras|lista)\b",), NOTAS),
+    ((r"\b(compra|lista|listas|art[ií]culos?|productos?)\b",), LISTAS),
     ((r"\brecu[eé]rdame\b", r"!" + _CUANDO), {"recordar", "recordatorio"}),
     # Recordatorios: «recuérdame mañana a las 9…», «avísame en 20 minutos», «ponme un recordatorio».
     ((r"\b(recu[eé]rdame|av[ií]same|recordatorio|alarma)\b", r"!\b(mis|qu[eé]|cu[aá]les|borra\w*|quita\w*|elimina\w*|cancela\w*)\b"),
@@ -210,7 +212,7 @@ def rescatar_llamada(texto: str, permitidas: set) -> dict | None:
 
 
 _ERRORES_LEGIBLES = (spotify.SpotifyError, shield.ShieldError, vpn.VpnError, finanzas.FinanzasError,
-                     red.RedError, escaneo.EscaneoError, control.ControlError, notas.NotaError)
+                     red.RedError, escaneo.EscaneoError, control.ControlError, notas.NotaError, listas.ListaError)
 
 
 def registrar_errores(*clases) -> None:
@@ -656,6 +658,67 @@ async def marcar_nota_hecha(id_o_texto: str, uid: int = None) -> str:
     if len(elegidas) > 1 and not q.isdigit(): return "Encajan varias notas: " + "; ".join(f"{x['id']}: {x['texto']}" for x in elegidas[:5])
     notas.editar(uid, elegidas[0]["id"], estado="hecha")
     return f"Nota n.º {elegidas[0]['id']} marcada como hecha."
+
+
+def _lista_elegida(uid, nombre):
+    todas = listas.listar(uid)
+    q = memoria.normalizar(nombre or "La compra")
+    encajan = [x for x in todas if memoria.normalizar(x["nombre"]) == q]
+    return encajan[0] if encajan else next((x for x in todas if q in memoria.normalizar(x["nombre"])), None)
+
+
+@tool("anadir_a_lista", "Añade uno o varios artículos a una lista compartida o privada. Por defecto usa La compra.",
+      {"texto": ("string", "Artículos separados por comas o por y"), "lista": ("string", "Nombre opcional de la lista")}, ("texto",), usa_uid=True)
+async def anadir_a_lista(texto: str, lista: str = None, uid: int = None) -> str:
+    try:
+        destino = _lista_elegida(uid, lista)
+        if not destino:
+            return "No encuentro esa lista."
+        creados = listas.anadir_items(uid, destino["id"], texto)
+    except listas.ListaError as e:
+        return str(e)
+    return "Añadido a «{}»: {}.".format(destino["nombre"], ", ".join(x["texto"] for x in creados) or "ya estaba apuntado")
+
+
+@tool("ver_lista", "Muestra los artículos pendientes de una lista. Por defecto usa La compra.",
+      {"lista": ("string", "Nombre opcional de la lista")}, usa_uid=True)
+async def ver_lista(lista: str = None, uid: int = None) -> str:
+    try:
+        destino = _lista_elegida(uid, lista)
+    except listas.ListaError as e:
+        return str(e)
+    if not destino:
+        return "No encuentro esa lista."
+    pendientes = [x["texto"] for x in destino["items"] if not x["hecho"]]
+    return "«{}»: {}".format(destino["nombre"], ", ".join(pendientes) if pendientes else "no falta nada")
+
+
+@tool("marcar_en_lista", "Marca como comprado un artículo por texto aproximado en una lista.",
+      {"texto": ("string", "Texto del artículo"), "lista": ("string", "Nombre opcional de la lista")}, ("texto",), usa_uid=True)
+async def marcar_en_lista(texto: str, lista: str = None, uid: int = None) -> str:
+    destino = _lista_elegida(uid, lista)
+    if not destino:
+        return "No encuentro esa lista."
+    q = memoria.normalizar(texto)
+    encajan = [x for x in destino["items"] if not x["hecho"] and (q in memoria.normalizar(x["texto"]) or memoria.normalizar(x["texto"]) in q)]
+    if len(encajan) != 1:
+        return "No encuentro un único artículo que encaje." if not encajan else "Encajan varios artículos: " + ", ".join(x["texto"] for x in encajan[:5])
+    listas.marcar(uid, encajan[0]["id"], True)
+    return f"«{encajan[0]['texto']}» marcado como comprado."
+
+
+@tool("quitar_de_lista", "Quita un artículo de una lista por texto aproximado.",
+      {"texto": ("string", "Texto del artículo"), "lista": ("string", "Nombre opcional de la lista")}, ("texto",), usa_uid=True)
+async def quitar_de_lista(texto: str, lista: str = None, uid: int = None) -> str:
+    destino = _lista_elegida(uid, lista)
+    if not destino:
+        return "No encuentro esa lista."
+    q = memoria.normalizar(texto)
+    encajan = [x for x in destino["items"] if q in memoria.normalizar(x["texto"])]
+    if len(encajan) != 1:
+        return "No encuentro un único artículo que encaje."
+    listas.borrar_item(uid, encajan[0]["id"])
+    return f"«{encajan[0]['texto']}» quitado de la lista."
 
 
 @tool("olvidar",

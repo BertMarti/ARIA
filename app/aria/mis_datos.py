@@ -4,7 +4,7 @@ import json
 import zipfile
 from contextlib import closing
 
-from . import db, usuarios
+from . import db, listas, usuarios
 
 
 def _filas(con, tabla, uid):
@@ -18,6 +18,7 @@ def _json(valor):
 
 
 def exportar(uid: int, perfil: dict) -> bytes:
+    listas.iniciar()   # crea sus tablas si aún no existen (exportación de una cuenta que nunca usó listas)
     with closing(db._con()) as con:
         convs = []
         for c in con.execute("SELECT * FROM conversaciones WHERE user_id=? ORDER BY creada, id", (uid,)):
@@ -31,6 +32,10 @@ def exportar(uid: int, perfil: dict) -> bytes:
             "memoria.json": {"recuerdos": _filas(con, "recuerdos", uid), "diario": _filas(con, "diario", uid),
                               "ajustes": _filas(con, "memoria_ajustes", uid)},
             "notas.json": _filas(con, "notas", uid),
+            "listas.json": {"listas": [dict(r) for r in con.execute(
+                                "SELECT * FROM listas WHERE propietario=? ORDER BY orden, id", (uid,))],
+                            "items": [dict(r) for r in con.execute(
+                                "SELECT i.* FROM lista_items i JOIN listas l ON l.id=i.lista_id WHERE i.autor=? ORDER BY i.creado", (uid,))]},
             "medios.json": _filas(con, "medios_progreso", uid),
             "agenda.json": {"eventos": _filas(con, "agenda_eventos", uid),
                             "cumpleanos": _filas(con, "agenda_cumpleanos", uid)},
@@ -47,7 +52,8 @@ def exportar(uid: int, perfil: dict) -> bytes:
              "perfil.json: datos básicos de tu cuenta, sin contraseña ni secretos.\n"
              "conversaciones.json: tus conversaciones y mensajes.\n"
              "memoria.json: recuerdos, diario y preferencias de memoria.\n"
-              "notas.json: tus notas personales.\n"
+               "notas.json: tus notas personales.\n"
+              "listas.json: tus listas propias y los artículos que añadiste.\n"
               "medios.json: tu progreso de reproducción, sin archivos multimedia.\n"
              "agenda.json: eventos y cumpleaños.\n"
              "recordatorios.json: tus recordatorios.\n"

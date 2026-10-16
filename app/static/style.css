@@ -21,6 +21,18 @@ h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: .01em; }
 .notas-nueva { display: grid; gap: .6rem; max-width: 760px; }
 .notas-nueva textarea { width: 100%; resize: vertical; }
 .notas-filtros { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; }
+.listas-cuerpo { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .8rem; margin-top: 1rem; }
+.lista-tarjeta header { display: flex; align-items: center; gap: .6rem; }
+.lista-tarjeta header h2 { flex: 1; margin: 0; }
+.lista-icono { font-size: 1.6rem; }
+.lista-anadir { display: flex; gap: .4rem; margin: .7rem 0; }
+.lista-anadir input { min-width: 0; flex: 1; }
+.lista-items { list-style: none; padding: 0; margin: 0; display: grid; gap: .35rem; }
+.lista-item { display: flex; align-items: center; gap: .6rem; min-height: 2.7rem; }
+.lista-item span { flex: 1; }
+.lista-item.hecho { color: var(--muted); text-decoration: line-through; }
+.lista-check { width: 1.35rem; height: 1.35rem; flex: 0 0 auto; }
+.lista-separador { border-top: 1px solid var(--borde); padding-top: .5rem; margin-top: .3rem; }
 .notas-lista { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
 .nota-item { display: flex; align-items: flex-start; gap: .8rem; padding: 1rem; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); }
 .nota-cuerpo { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }

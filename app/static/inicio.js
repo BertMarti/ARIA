@@ -154,6 +154,7 @@ const Inicio = (() => {
         cuerpo.push(el("div", { class: "rd-medidor" }, el("span", { class: "muted" }, p.categoria + " · " + Math.round(p.porcentaje) + " %"), barra(p.porcentaje, p.superado)));
       c.append(tarjetaR("dinero", "Finanzas", "rd-fin", ...cuerpo));
     }
+    if (d.compra?.pendientes) c.append(tarjetaR("agenda", "La compra", "rd-hoy", el("p", { class: "rd-grande" }, "🛒 " + d.compra.pendientes), el("p", { class: "rd-sub" }, "cosas pendientes"), el("a", { class: "rd-enlace", href: "#notas" }, "Abrir listas →")));
     const inv = d.inversiones;
     if (inv) {
       const lista = el("ul", { class: "rd-inv" }, ...inv.valores.map((v) => el("li", null,

@@ -11,7 +11,7 @@ import time
 from datetime import date, timedelta
 
 from . import (agenda, avisos_meteo, briefing, cerebros, estadisticas, finanzas, informacion, luz, memoria, proyectos, red,
-               recordatorios, sistema, tiempo, ubicacion, vpn)
+               recordatorios, sistema, tiempo, ubicacion, vpn, listas)
 
 CACHE_S = 600
 _cache: dict = {}
@@ -66,6 +66,12 @@ def _recordatorios_hoy(uid: int, hoy: date) -> list:
     manana = (hoy + timedelta(days=1)).isoformat()
     return [{"texto": r["texto"], "cuando": r["cuando"], "descripcion": r.get("descripcion")}
             for r in recordatorios.listar(uid) if str(r.get("cuando", "")) < manana][:8]
+
+
+def _compra(uid: int) -> dict:
+    compra = next((x for x in listas.listar(uid) if x["nombre"].casefold() == "la compra"), None)
+    pendientes = [x for x in (compra or {}).get("items", []) if not x["hecho"]]
+    return {"pendientes": len(pendientes)}
 
 
 async def _aplicaciones() -> dict:
@@ -161,7 +167,8 @@ async def construir_resumen_diario(usuario: dict, refrescar: bool = False) -> di
              "inversiones": _inversiones(mercados),
              "agenda": await asyncio.to_thread(_seguro, lambda: _agenda(uid, hoy),
                                                {"eventos": [], "cumpleanos": [], "proyectos": []}),
-              "recordatorios": await asyncio.to_thread(_seguro, lambda: _recordatorios_hoy(uid, hoy), [])}
+               "recordatorios": await asyncio.to_thread(_seguro, lambda: _recordatorios_hoy(uid, hoy), []),
+               "compra": await asyncio.to_thread(_seguro, lambda: _compra(uid), {"pendientes": 0})}
     datos["avisos"] = meteo_d or []
     if admin:
         datos["aplicaciones"] = await _aplicaciones()
@@ -297,6 +304,9 @@ def secciones(d: dict, e=str) -> list[tuple[str, str, list[str]]]:
             lineas.append(f"{_barra(p['porcentaje'])} {e(p['categoria'])} {round(p['porcentaje'])} %"
                           + (" ⚠️" if p.get("superado") else ""))
         out.append(("💶", f"Finanzas · {f['mes_texto']}", lineas))
+    compra = d.get("compra") or {}
+    if compra.get("pendientes"):
+        out.append(("🛒", "La compra", [f"🛒 La compra: {compra['pendientes']} cosas pendientes"]))
     inv = d.get("inversiones")
     if inv:
         lineas = []

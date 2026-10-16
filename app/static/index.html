@@ -101,8 +101,10 @@
       <label for="notas-texto">Nueva nota</label><textarea id="notas-texto" maxlength="1000" rows="3" required placeholder="Escribe una nota…"></textarea>
       <div class="fila-form"><select id="notas-categoria" aria-label="Categoría"><option value="general">General</option><option value="mejora">Mejora</option><option value="idea">Idea</option><option value="compra">Compra</option></select><button class="primario" type="submit">Añadir</button></div>
     </form>
-    <div class="notas-filtros"><div id="notas-pestanas" class="pestanas" role="tablist"></div><label><input id="notas-hechas" type="checkbox"> Ver hechas</label></div>
+    <div id="notas-vistas" class="pestanas" role="tablist"></div>
+    <div id="notas-controles"><div id="notas-pestanas" class="pestanas" role="tablist"></div><label><input id="notas-hechas" type="checkbox"> Ver hechas</label></div>
     <ul id="notas-lista" class="notas-lista"></ul>
+    <section id="listas-seccion" hidden><div id="listas-cuerpo" class="listas-cuerpo"></div></section>
   </section>
   <section id="v-compartir" class="vista vista-medios" hidden>
     <header class="vista-cab"><div><h1>Compartir</h1><p class="muted">Tus vídeos, aquí y en la tele</p></div>

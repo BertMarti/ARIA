@@ -26,7 +26,7 @@ from contextlib import closing
 
 import httpx
 
-from . import avisos, config, db, enlaces, notas, recordatorios, registro, resumen_diario, rutinas, telemetria, usuarios
+from . import avisos, config, db, enlaces, listas, notas, recordatorios, registro, resumen_diario, rutinas, telemetria, usuarios
 
 log = logging.getLogger("aria.telegram")
 
@@ -42,6 +42,7 @@ COMANDOS = [
     ("estado", "Resumen de la casa"), ("resumen", "Resumen de buenos días"), ("tiempo", "Previsión del tiempo"),
     ("recordatorios", "Tus recordatorios"), ("rutinas", "Tus rutinas programadas"), ("gastos", "Gastos de este mes"),
     ("nota", "Apuntar una nota"), ("mejora", "Apuntar una mejora"), ("notas", "Tus notas abiertas"),
+    ("lista", "Ver una lista"), ("compra", "Añadir a La compra"),
     ("red", "Salud de la red y dispositivos nuevos"), ("vpn", "Dispositivos de la VPN"),
     ("bloqueo", "Bloqueador de anuncios (SHIELD)"), ("informe", "Informe semanal (admin)"),
     ("nuevovpn", "Nuevo dispositivo VPN (admin)"),
@@ -685,6 +686,26 @@ async def _foto(b, chat_id: int, u: dict, fotos: list, pie) -> None:
 
 
 # --- Comandos ---------------------------------------------------------------------------------------------------------
+async def _enviar_lista(b, chat_id: int, u: dict, nombre: str = "") -> None:
+    try:
+        q = nombre.strip().casefold() or "la compra"
+        lista = next((x for x in await asyncio.to_thread(listas.listar, u["id"]) if x["nombre"].casefold() == q), None)
+    except listas.ListaError as e:
+        await enviar_texto(b, chat_id, str(e))
+        return
+    if not lista:
+        await enviar_texto(b, chat_id, "No encuentro esa lista.")
+        return
+    pendientes = [x for x in lista["items"] if not x["hecho"]]
+    hechos = [x for x in lista["items"] if x["hecho"]]
+    texto = "**{}**\n{}".format(lista["icono"] + " " + lista["nombre"],
+                                 "\n".join("- " + (x["cantidad"] + " " if x["cantidad"] else "") + x["texto"] for x in pendientes) or "No falta nada.")
+    if hechos:
+        texto += "\n\nHechos: " + ", ".join(x["texto"] for x in hechos[:20])
+    fichas = [boton("✓ " + x["texto"][:32], await asyncio.to_thread(ficha, chat_id, u["id"], "lista_hecho", {"item": x["id"]})) for x in pendientes[:20]]
+    await enviar_texto(b, chat_id, texto, teclado(*([fichas[i:i + 2] for i in range(0, len(fichas), 2)] if fichas else [])))
+
+
 def _ayuda(admin: bool) -> str:
     lineas = ["Escríbeme, mándame una nota de voz o una foto (por ejemplo, de un ticket) y te respondo como en la web. "
               "Comandos:"]
@@ -755,6 +776,21 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
     elif cmd == "notas":
         abiertas = await asyncio.to_thread(notas.listar, u["id"], "abierta")
         await enviar("**Tus notas**\n" + "\n".join(f"- {n['id']}: {n['texto']}" for n in abiertas[:30]) if abiertas else "No tienes notas abiertas.")
+    elif cmd == "compra":
+        if not arg:
+            await enviar("Uso: /compra <artículo>")
+            return
+        try:
+            compra = next((x for x in await asyncio.to_thread(listas.listar, u["id"]) if x["nombre"].casefold() == "la compra"), None)
+            if not compra:
+                await enviar("No existe la lista La compra.")
+                return
+            creados = await asyncio.to_thread(listas.anadir_items, u["id"], compra["id"], arg[:120])
+            await enviar("🛒 Añadido: " + (", ".join(x["texto"] for x in creados) or "ya estaba apuntado") + ".")
+        except listas.ListaError as e:
+            await enviar(str(e))
+    elif cmd == "lista":
+        await _enviar_lista(b, chat_id, u, arg)
     elif cmd == "gastos":
         await enviar(await asyncio.to_thread(_texto_gastos, u["id"]))
     elif cmd == "vpn":
@@ -992,6 +1028,10 @@ async def _callback(b, cq: dict) -> None:
 
 async def _accion(b, cq: dict, chat_id: int, u: dict, accion: str, d: dict) -> str:
     admin = u["rol"] == "admin"
+    if accion == "lista_hecho":
+        ok = await asyncio.to_thread(listas.marcar, u["id"], int(d.get("item", 0)), True, admin)
+        await _quitar_botones(b, cq)
+        return "Marcado." if ok else "Ese artículo ya no existe."
     if accion == "leido":
         await asyncio.to_thread(avisos.marcar_leido, u["id"], int(d.get("aviso", 0)))
         await _quitar_botones(b, cq)

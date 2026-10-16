@@ -13,3 +13,7 @@ INFORME.md
 
 # Datos de la demo (contraseña aleatoria, base de datos de ejemplo)
 herramientas/demo/.demo/
+
+# MediaPipe: archivos grandes, los descarga herramientas/vendor/descargar-mediapipe.sh (versión y huella fijas)
+app/static/vendor/mediapipe/wasm/*.wasm
+app/static/vendor/mediapipe/*.task

@@ -1,0 +1,3 @@
+MediaPipe Tasks Vision 1.0.1 (Apache-2.0), de npm (@mediapipe/tasks-vision@1.0.1, sha1 7ab992e2415d…).
+Modelo hand_landmarker.task (float16, v1) de storage.googleapis.com/mediapipe-models (sha256 fbc2a30080c3c557…).
+Todo se ejecuta en el navegador: la imagen de la cámara no sale del dispositivo.

@@ -26,6 +26,7 @@ info "Actualizando las imágenes base (ollama, searxng, caddy)"
 docker compose pull
 
 info "Reconstruyendo y reiniciando los contenedores"
+sh herramientas/vendor/descargar-mediapipe.sh || echo "⚠ No se pudo descargar MediaPipe: los gestos del HUD no estarán disponibles."
 docker compose up -d --build --remove-orphans
 
 info "Limpiando imágenes sin usar"

@@ -129,6 +129,7 @@ rellenar VPN_PASSWORD "$(leer_ajeno ../HEIMDALL/.env WG_ADMIN_PASSWORD)"
 
 # --- 3. Arranque ---
 info "Construyendo y arrancando los contenedores"
+sh herramientas/vendor/descargar-mediapipe.sh || echo "⚠ No se pudo descargar MediaPipe: los gestos del HUD no estarán disponibles."
 docker compose up -d --build
 
 info "Esperando a que los servicios estén sanos"

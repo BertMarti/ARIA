@@ -1003,4 +1003,80 @@ a.mi-carta:hover, a.mi-carta:focus-visible { border-color: rgba(56, 214, 255, .6
 .prueba-perfiles-lista { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
 .prueba-perfil { display: flex; flex-direction: column; align-items: flex-start; gap: .45rem; padding: .7rem; border: 1px solid var(--borde); border-radius: 10px; background: rgba(5, 9, 16, .35); }
 .prueba-perfil p { flex: 1; margin: 0; }
+
+/* Tableta / iPad */
+body.app { height: 100vh; height: 100dvh; }
+.flot-hud { min-height: 100vh; min-height: 100dvh; }
+
+@media (max-width: 1366px), (max-height: 900px) {
+  .nav { overflow-y: auto; scrollbar-width: none; padding-bottom: calc(.9rem + env(safe-area-inset-bottom)); }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-btn { min-height: 44px; padding: .4rem .15rem; font-size: .68rem; }
+  .nav-btn .ico { font-size: 1.15rem; }
+}
+
+@media (max-width: 1366px), (max-height: 900px) {
+  /* En columna (no en rejilla): así cada bloque mide lo que necesita y la vista hace scroll entera */
+  .hud.vista { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+  .hud.vista > .hud-escena { flex: none; height: auto; }
+  .hud.vista > .hud-cab { flex: none; }
+  .hud-cab { gap: .5rem; }
+  .hud-acciones { flex-wrap: nowrap; gap: .25rem; }
+  .hud-boton { min-height: 44px; padding: .4rem .55rem; font-size: .64rem; letter-spacing: .06em; white-space: nowrap; }
+  .hud-escena { min-height: max-content; overflow: visible; }
+  .hud-col { overflow: visible; mask-image: none; }
+  .hud-centro { min-height: max-content; }
+  .hud-orbe-zona { width: min(100%, 50vh, 520px); }
+  .hud-entrada { position: sticky; bottom: calc(.6rem + env(safe-area-inset-bottom)); z-index: 5; margin-bottom: env(safe-area-inset-bottom); }
+}
+
+@media (max-width: 1100px) {
+  #v-chat { position: relative; grid-template-columns: 1fr; }
+  #v-chat .convs { position: absolute; z-index: 30; top: 0; bottom: 0; left: 0; width: min(84vw, 320px); transform: translateX(-102%); transition: transform .2s; background: var(--bg2); box-shadow: 12px 0 30px rgba(0, 0, 0, .35); }
+  #v-chat .convs.abierto { transform: none; }
+  #v-chat .convs-fondo { position: absolute; inset: 0; z-index: 29; background: rgba(0, 0, 0, .55); }
+  #btn-convs { display: inline-flex; flex: 0 0 auto; }
+  .chat-cab { gap: .45rem; padding-right: 3.8rem; }
+  .chat-cab h1 { font-size: .95rem; }
+  .agente-sel { min-width: 0; }
+  .agente-sel select { max-width: 10rem; }
+  .chat-cab #modelo-activo { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; }
+}
+
+@media (max-width: 1100px) and (orientation: portrait) {
+  .hud-escena { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
+  .hud-centro { grid-column: 1 / -1; order: -1; }
+  .hud-orbe-zona { width: min(100%, 36vh, 380px); }
+  .hud-izq, .hud-der { min-width: 0; }
+}
+
+@media (max-width: 1366px) and (max-height: 900px) and (orientation: landscape) {
+  .hud-escena { grid-template-columns: minmax(190px, 1fr) minmax(260px, 1.4fr) minmax(190px, 1fr); }
+  .hud-orbe-zona { width: min(100%, 50vh, 480px); }
+  .hud-col { min-height: max-content; }
+}
+
+@media (max-width: 760px) {
+  .nav { padding-bottom: calc(.3rem + env(safe-area-inset-bottom)); }
+  .hud-cab { grid-template-columns: 1fr auto; }
+  .hud-reloj { order: 3; grid-column: 1 / -1; }
+}
+
+@media (max-width: 900px) {
+  .ajustes-nav { scroll-behavior: smooth; mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 2rem), transparent 100%); }
+}
+
+.campana-zona { top: calc(.7rem + env(safe-area-inset-top)); right: calc(1rem + env(safe-area-inset-right)); }
+.hud-entrada { padding-bottom: calc(.45rem + env(safe-area-inset-bottom)); }
+
+@media (pointer: coarse) {
+  input, textarea, select { font-size: 16px; }
+  button, .boton, .nav-btn, .hud-boton { min-width: 44px; min-height: 44px; }
+  .hud-card.foco, .app-tile:hover, a.mi-carta:hover { transform: none; }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .hud-card.foco::before, .hud-card.foco::after { opacity: 0; }
+  .app-tile:hover, a.mi-carta:hover { box-shadow: var(--sombra); border-color: var(--borde); }
+}
 @media (max-width: 700px) { .banner-vista-prueba { justify-content: space-between; font-size: .85rem; } .banner-vista-prueba span { min-width: 0; } .prueba-perfiles-lista { grid-template-columns: 1fr; } }

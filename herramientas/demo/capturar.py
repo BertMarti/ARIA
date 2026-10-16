@@ -61,6 +61,7 @@ CAPTURAS = {
     "ipad-h-hud": ("hud", 1180, 820, False, "", 6),
     "ipad-h-informacion": ("informacion", 1180, 820, False, "", 6),
     "ipad-pro-hud": ("hud", 1032, 1376, False, "", 6),
+    "ipad-v-hud-final": ("hud", 820, 1180, False, "document.querySelectorAll('#v-hud, #v-hud *').forEach((e) => { if (e.scrollHeight > e.clientHeight + 20) e.scrollTop = e.scrollHeight; })", 6),
     # Va la última: deja la sesión en «Probar como Visita» (la siguiente ejecución vuelve a entrar desde cero)
     "captura-probar-visita": ("inicio", 1280, 900, False, VER_COMO_VISITA, 5),
 }

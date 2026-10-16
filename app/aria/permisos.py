@@ -15,6 +15,9 @@ _USUARIO = [
     ("GET", r"/api/vpn/clients"),
     ("GET", r"/api/spotify/status"),
     ("GET", r"/api/certificado"),
+    ("GET", r"/api/ubicacion"),
+    ("POST", r"/api/ubicacion"),
+    ("DELETE", r"/api/ubicacion"),
     ("POST", r"/api/password"),
     ("POST", r"/api/chat"),  # también con imagen (visión); límite por usuario en el propio endpoint
     # Tickets leídos de una foto: confirmar o descartar la propuesta propia (ligada al usuario en el servidor).

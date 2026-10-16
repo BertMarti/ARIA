@@ -40,6 +40,7 @@ def exportar(uid: int, perfil: dict) -> bytes:
             "propuestas.json": _filas(con, "propuestas", uid),
             "voz.json": _filas(con, "voz_preferencias", uid),
             "avisos.json": {"avisos": _filas(con, "avisos", uid), "ajustes": _filas(con, "avisos_ajustes", uid)},
+            "ubicacion.json": _filas(con, "ubicaciones", uid),
         }
     leeme = ("Exportación de tus datos de ARIA\n\n"
              "perfil.json: datos básicos de tu cuenta, sin contraseña ni secretos.\n"
@@ -52,7 +53,8 @@ def exportar(uid: int, perfil: dict) -> bytes:
              "finanzas.json: movimientos, categorías, presupuestos y reglas.\n"
              "propuestas.json: propuestas de ARIA y su estado.\n"
              "voz.json: preferencias de voz.\n"
-             "avisos.json: avisos y ajustes de avisos.\n\n"
+              "avisos.json: avisos y ajustes de avisos.\n\n"
+              "ubicacion.json: tu última ubicación temporal, si la has usado.\n\n"
              "La exportación no incluye contraseñas, secretos de dos pasos, tokens ni claves.\n")
     salida = io.BytesIO()
     with zipfile.ZipFile(salida, "w", zipfile.ZIP_DEFLATED) as z:

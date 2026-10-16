@@ -422,6 +422,10 @@
     <div class="ajustes-layout">
       <nav id="ajustes-nav" class="ajustes-nav" aria-label="Secciones de ajustes"></nav>
       <div class="rejilla ajustes" id="ajustes-cont">
+      <article class="tarjeta" id="ajustes-ubicacion"><h2>Ubicación para el tiempo</h2>
+        <label class="interruptor"><input type="checkbox" id="ubicacion-activar"><span>Usar mi ubicación para el tiempo</span></label>
+        <p class="muted pequeno-txt">Se redondea a aproximadamente 1 km y se borra automáticamente a las 12 horas. Solo se usa para el tiempo, avisos y gasolineras.</p>
+        <p id="ubicacion-estado" class="muted" role="status"></p><button type="button" class="peligro pequeno" id="ubicacion-olvidar">Olvidar mi ubicación</button></article>
       <article class="tarjeta ancha solo-admin" id="ajustes-usuarios">
         <h2>Usuarios</h2>
         <p class="muted usuario-nota">Para que pueda entrar desde fuera, su email también debe estar autorizado en Cloudflare Access (Zero Trust → Access → Applications → ARIA → Policies). Desde casa puede entrar con la contraseña que le pongas.</p>
@@ -840,6 +844,7 @@
 <script src="/static/control.js"></script>
 <script src="/static/modulos.js"></script>
 <script src="/static/accesos.js"></script>
+<script src="/static/ubicacion.js"></script>
 <script src="/static/inicio.js"></script>
 <script src="/static/ajustes.js"></script>
 <script src="/static/registro.js"></script>

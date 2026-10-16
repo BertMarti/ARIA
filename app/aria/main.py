@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_cerebro, api_finanzas, api_informacion, api_modulos, api_notas, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, mapas, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_cerebro, api_finanzas, api_informacion, api_modulos, api_notas, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, mapas, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -89,6 +89,7 @@ async def _arranque():
     telemetria.iniciar()
     vpn_ubicaciones.iniciar()
     usuarios.iniciar()
+    ubicacion.iniciar()
     invitados.iniciar()
     propuestas.iniciar()
     dos_pasos.iniciar()
@@ -362,6 +363,32 @@ async def logout(request: Request):
 
 
 _lim_exportar_datos = voz.Limitador(1, 60)
+_lim_ubicacion = voz.Limitador(1, 60)
+
+
+@app.get("/api/ubicacion")
+async def api_ubicacion(request: Request):
+    return ubicacion.publico(ubicacion.actual(request.state.usuario["id"]))
+
+
+@app.post("/api/ubicacion")
+async def api_ubicacion_fijar(request: Request):
+    uid = request.state.usuario["id"]
+    if _lim_ubicacion.esperar(uid) or getattr(request.state, "vista", None):   # «Probar perfiles»: no se guarda
+        return ubicacion.publico(ubicacion.actual(uid))
+    d = await _json(request)
+    try:
+        return ubicacion.publico(await ubicacion.fijar(uid, d.get("lat"), d.get("lon")))
+    except ubicacion.UbicacionError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    except mapas.MapasError as e:
+        return JSONResponse({"error": str(e)}, status_code=502)
+
+
+@app.delete("/api/ubicacion")
+async def api_ubicacion_borrar(request: Request):
+    await asyncio.to_thread(ubicacion.olvidar, request.state.usuario["id"])
+    return {"ok": True, "ubicacion": ubicacion.publico(None)}
 
 
 @app.get("/api/mis-datos/exportar")

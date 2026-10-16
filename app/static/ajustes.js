@@ -331,6 +331,7 @@ const Ajustes = (() => {
 
   // --- Secciones: menú lateral (pestañas en el móvil) y buscador; cada tarjeta pertenece a una sección ---
   const SECCIONES = [
+    { id: "ubicacion", nombre: "Ubicación", desc: "Elige si ARIA puede usar tu ubicación temporal para el tiempo.", ico: "M12 2a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM12 19v3M8 22h8", tarjetas: ["ajustes-ubicacion"] },
     { id: "general", nombre: "General", desc: "Voz, contraseña, tus datos, verificación en dos pasos y versión.", ico: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM3 12h2M19 12h2M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4", tarjetas: ["ajustes-voz", "ajustes-pass", "ajustes-2fa", "ajustes-mis-datos", "ajustes-acerca"] },
     { id: "avisos", nombre: "Avisos", desc: "Campana, Telegram, notificaciones, resumen diario y recordatorios.", ico: "M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0", tarjetas: ["ajustes-avisos", "ajustes-recordatorios"] },
     { id: "automatizar", nombre: "Automatización", desc: "Rutinas programadas y reglas «si pasa esto, haz aquello».", ico: "M13 3 4 14h7l-1 7 9-11h-7z", tarjetas: ["ajustes-rutinas", "ajustes-automatizaciones"] },
@@ -369,7 +370,8 @@ const Ajustes = (() => {
     $("ajustes-vacio").hidden = alguna;
   }
   function iniciar() {
-    voz(); contrasena(); misDatos();
+     Ubicacion.iniciar();
+     voz(); contrasena(); misDatos();
     $("ajustes-buscar").addEventListener("input", pintarSecciones);
     pintarSecciones();
   }

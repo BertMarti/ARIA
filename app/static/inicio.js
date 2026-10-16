@@ -96,7 +96,7 @@ const Inicio = (() => {
   function pintarResumen(d) {
     const c = $("resumen-cuerpo"); c.replaceChildren();
     const t = d.tiempo;
-    if (t) c.append(tarjetaR("tiempo", "El tiempo · " + t.ciudad, "rd-tiempo",
+    if (t) c.append(tarjetaR("tiempo", "El tiempo · " + (t.origen === "dispositivo" ? "📍 " : "🏠 ") + t.ciudad, "rd-tiempo",
       el("div", { class: "rd-grande" }, (t.actual ?? t.max) + " °C"), el("p", { class: "rd-sub" }, t.cielo.charAt(0).toUpperCase() + t.cielo.slice(1)),
       el("div", { class: "rd-mini" }, el("span", null, "↓ " + t.min + " °C"), el("span", null, "↑ " + t.max + " °C"), el("span", null, "Lluvia " + (t.lluvia ?? "—") + " %")),
       t.aviso_manana ? el("p", { class: "rd-alerta" }, "⚠ " + t.aviso_manana) : null));
@@ -324,6 +324,7 @@ const Inicio = (() => {
   }
 
   async function iniciar() {
+    window.addEventListener("aria:ubicacion", () => resumen(true));
     const { data } = await api("/api/info");
     if (data.puertos) puertos = data.puertos;
     usuario = Sesion.nombre || data.usuario || ""; saludo();

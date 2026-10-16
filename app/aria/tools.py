@@ -238,9 +238,10 @@ async def ejecutar(nombre: str, args: dict | None, rol: str = "admin", uid: int 
         return fin("No tienes permiso para esa acción: pídesela al administrador.", False)
     args = {k: v for k, v in (args or {}).items() if k != "uid"} if isinstance(args, dict) else {}
     if t["uid"]:
-        if uid is None:
+        if uid is None and nombre not in ("tiempo", "gasolineras"):
             return fin("No sé qué usuario eres; vuelve a entrar en ARIA.", False)
-        args["uid"] = uid
+        if uid is not None:
+            args["uid"] = uid
     try:
         res = await t["fn"](**args)
     except _ERRORES_LEGIBLES as e:
@@ -272,19 +273,22 @@ async def buscar_en_internet(consulta: str) -> str:
 
 
 @tool("gasolineras", "Busca las gasolineras más baratas cercanas según los precios oficiales del Ministerio.",
-      {"combustible": ("string", "gasolina95 o diesel"), "radio_km": ("number", "Radio máximo en kilómetros")})
+      {"combustible": ("string", "gasolina95 o diesel"), "radio_km": ("number", "Radio máximo en kilómetros")}, usa_uid=True)
 async def gasolineras(combustible="gasolina95", radio_km=10, **_ignorado) -> str:
     from . import gasolineras as fuente
+    from . import ubicacion
     if not fuente.activo():
         return "La consulta de gasolineras está desactivada (ARIA_GASOLINERAS=0)."
     try:
-        filas = await fuente.cerca(combustible=combustible, radio_km=radio_km)
+        lugar = ubicacion.actual(_ignorado.get("uid")) if _ignorado.get("uid") else None
+        filas = await fuente.cerca(lat=(lugar or {}).get("lat"), lon=(lugar or {}).get("lon"), combustible=combustible, radio_km=radio_km)
     except ValueError:
         return "El combustible indicado no es válido. Usa gasolina95 o diesel."
     if not filas:
         return "No hay gasolineras con precio dentro del radio indicado o faltan las coordenadas de ARIA."
     nombre = "gasolina 95" if combustible == "gasolina95" else "diésel"
-    return f"Gasolineras más baratas de {nombre}: " + "; ".join(
+    lugar_txt = (" en " + str(lugar.get("nombre"))) if lugar and lugar.get("nombre") else ""
+    return f"Gasolineras más baratas de {nombre}{lugar_txt}: " + "; ".join(
         f"{x['nombre'] or 'Sin rótulo'}: {x['precio']:.3f} €/l, a {x['distancia_km']:.1f} km ({x['direccion']})" for x in filas)
 
 
@@ -456,10 +460,12 @@ async def precio_luz(**_ignorado) -> str:
 
 @tool("tiempo", "Previsión del tiempo por días (cielo, máxima, mínima y probabilidad de lluvia). Úsala para "
       "cualquier pregunta sobre el tiempo, la lluvia o la temperatura exterior, también de fin de semana o próximos días.",
-      {"ciudad": ("string", "Ciudad (opcional; por defecto la del usuario)")})
+      {"ciudad": ("string", "Ciudad (opcional; por defecto la del usuario)")}, usa_uid=True)
 async def tiempo(ciudad: str = "", **_ignorado) -> str:
     from . import briefing
-    p = await briefing.prevision(7, ciudad or None)  # siempre 7 días: el modelo no elige un rango corto por error
+    from . import ubicacion
+    lugar = ubicacion.actual(_ignorado.get("uid")) if _ignorado.get("uid") and not ciudad else None
+    p = await briefing.prevision(7, ciudad or None, lugar=lugar)  # siempre 7 días
     if not p:
         return "No hay previsión disponible (falta ARIA_CIUDAD o no responde el servicio del tiempo)."
     etiqueta = {0: "HOY ", 1: "MAÑANA "}

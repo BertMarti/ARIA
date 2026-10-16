@@ -265,7 +265,7 @@ const Ajustes = (() => {
       try { await navigator.clipboard.writeText(location.origin); toast("Dirección copiada."); }
       catch (_) { toast("No se pudo copiar la dirección.", "mal"); }
     });
-    const lista = $("app-dispositivos"), dialog = $("app-revocar-dialog");
+    const lista = $("app-dispositivos"), dialog = $("app-revocar-dialog"), siri = $("app-siri-dialog");
     async function pintar() {
       const r = await api("/api/app/dispositivos");
       lista.replaceChildren();
@@ -286,6 +286,25 @@ const Ajustes = (() => {
           el("span", { class: "muted" }, "Creado: " + fecha(d.creado) + " · Último uso: " + fecha(d.ultimo_uso))), boton));
       }
     }
+    $("app-siri-crear").addEventListener("click", async () => {
+      const r = await api("/api/app/dispositivos", { method: "POST", json: { nombre: "Atajos de iPhone" } });
+      if (!r.ok) { toast(r.data.error || "No se pudo crear el token.", "mal"); return; }
+      $("app-siri-token").value = r.data.token;
+      $("app-siri-url").textContent = location.origin + "/api/app/resumen?formato=texto";
+      $("app-siri-auth").textContent = "Bearer " + r.data.token;
+      siri.showModal();
+      $("app-siri-token").select();
+      pintar();
+    });
+    $("app-siri-copiar").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText($("app-siri-token").value); toast("Token copiado."); }
+      catch (_) { toast("No se pudo copiar el token.", "mal"); }
+    });
+    siri.addEventListener("close", () => {
+      $("app-siri-token").value = "";
+      $("app-siri-auth").textContent = "";
+      $("app-siri-url").textContent = "";
+    });
     pintar();
   }
 

@@ -433,6 +433,11 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 .msg.pensando { animation: pulso 1.4s ease-in-out infinite; }
 @keyframes pulso { 50% { opacity: .4; } }
 .fila .estado { margin: 0; font-weight: 400; font-size: .9rem; }
+.app-siri { margin-top: 1rem; padding-top: .8rem; border-top: 1px solid var(--borde); }
+.app-siri-dialog { width: min(92vw, 620px); max-width: none; }
+.app-siri-dialog form { display: grid; gap: .7rem; }
+.app-siri-dialog ol { margin: 0; padding-left: 1.4rem; }
+.app-siri-dialog code { overflow-wrap: anywhere; }
 
 /* --- Voz --- */
 .mic { flex: 0 0 auto; display: inline-flex; align-items: center; gap: .3rem; min-width: 2.75rem; min-height: 2.75rem; justify-content: center; padding: .4rem .6rem; touch-action: none; user-select: none; -webkit-user-select: none; }

@@ -2,10 +2,10 @@
 import asyncio
 import hashlib
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from . import agenda, avisos, briefing, dispositivos_app, invitados, ubicacion
 
@@ -52,6 +52,13 @@ async def resumen(request: Request):
     token = request.state.app_token
     if not _lim_resumen.permitir(hashlib.sha256(token.encode()).hexdigest()):
         return JSONResponse({"error": "Demasiadas peticiones seguidas; espera un poco."}, status_code=429)
+    datos = await _datos_resumen(u)
+    if request.query_params.get("formato") == "texto":
+        return PlainTextResponse(_texto_resumen(datos), media_type="text/plain; charset=utf-8")
+    return datos
+
+
+async def _datos_resumen(u: dict) -> dict:
     lim = await asyncio.to_thread(invitados.de, u["id"]) if u["rol"] != "admin" else None
     avisos_d = await asyncio.to_thread(avisos.listar, u["id"], 100)
     ahora = time.time()
@@ -72,3 +79,26 @@ async def resumen(request: Request):
         if futuro:
             proximo = {"titulo": futuro[0].get("titulo"), "inicio": futuro[0].get("inicio")}
     return {"avisos": pendientes, "tiempo": tiempo_mini, "proximo": proximo, "generado": ahora}
+
+
+def _texto_resumen(datos: dict) -> str:
+    partes = []
+    pendientes = datos["avisos"]
+    if pendientes:
+        primero = pendientes[0]["texto"].replace("\n", " ").strip()[:120]
+        if len(pendientes[0]["texto"].replace("\n", " ").strip()) > 120:
+            primero += "…"
+        unidad = "aviso" if len(pendientes) == 1 else "avisos"
+        partes.append(f"Tienes {len(pendientes)} {unidad} sin leer: {primero}{'' if primero.endswith(('.', '!', '?', '…')) else '.'}")
+    tiempo_d = datos.get("tiempo")
+    if tiempo_d:
+        cielo = tiempo_d.get("cielo") or "sin descripción"
+        partes.append(f"En {tiempo_d.get('lugar') or 'casa'} hace {tiempo_d.get('actual')} grados, {cielo}; máxima de {tiempo_d.get('max')}.")
+    proximo = datos.get("proximo")
+    if proximo:
+        inicio = datetime.fromisoformat(proximo["inicio"].replace("Z", "+00:00")).astimezone(briefing.tiempo.zona())
+        ahora = briefing.tiempo.ahora()
+        dias = (inicio.date() - ahora.date()).days
+        cuando = "hoy" if dias == 0 else "mañana" if dias == 1 else f"el {briefing.tiempo.DIAS[inicio.weekday()]}"
+        partes.append(f"Tu próximo evento: {proximo.get('titulo') or 'sin título'}, {cuando} a las {inicio:%H:%M}.")
+    return " ".join(partes) if partes else "Todo tranquilo: no tienes avisos."

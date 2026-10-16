@@ -1,6 +1,7 @@
 """Tokens de lectura para dispositivos nativos."""
 import time
 from contextlib import closing
+from datetime import datetime
 
 from fastapi.testclient import TestClient
 import pytest
@@ -59,6 +60,34 @@ def test_bearer_solo_abre_el_resumen(admin, monkeypatch):
     assert r.status_code == 200
     assert set(r.json()) == {"avisos", "tiempo", "proximo", "generado"}
     assert c.get("/api/avisos", headers={"Authorization": "Bearer " + token}).status_code in (303, 401)
+
+
+def test_resumen_en_texto_para_siri(admin, monkeypatch):
+    _sin_red(monkeypatch)
+    token = dispositivos_app.crear(admin["id"], "Atajos de iPhone")["token"]
+    ahora = datetime(2026, 10, 17, 10, 0, tzinfo=main.briefing.tiempo.zona())
+    monkeypatch.setattr(main.briefing.tiempo, "ahora", lambda: ahora)
+    monkeypatch.setattr(main.avisos, "listar", lambda _uid, _limite: {"avisos": [
+        {"id": 1, "texto": "Revisar la copia de seguridad antes de salir.", "severidad": "aviso", "creado": 1, "leido": False}
+    ]})
+    monkeypatch.setattr(main.agenda, "listar_eventos", lambda *_: [{"titulo": "Dentista", "inicio": "2026-10-18T17:30:00+02:00"}])
+    r = anonimo().get("/api/app/resumen?formato=texto", headers={"Authorization": "Bearer " + token})
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "text/plain; charset=utf-8"
+    assert r.text == "Tienes 1 aviso sin leer: Revisar la copia de seguridad antes de salir. En Villarriba de Arriba hace 21 grados, despejado; máxima de 27. Tu próximo evento: Dentista, mañana a las 17:30."
+
+
+def test_resumen_en_texto_vacio_dice_todo_tranquilo(admin, monkeypatch):
+    _sin_red(monkeypatch)
+    token = dispositivos_app.crear(admin["id"], "Atajos de iPhone")["token"]
+    monkeypatch.setattr(main.avisos, "listar", lambda _uid, _limite: {"avisos": []})
+    async def sin_tiempo(*_):
+        return None
+    monkeypatch.setattr(main.briefing, "_tiempo", sin_tiempo)   # es asíncrona: el doble también
+    monkeypatch.setattr(main.agenda, "listar_eventos", lambda *_: [])
+    r = anonimo().get("/api/app/resumen?formato=texto", headers={"Authorization": "Bearer " + token})
+    assert r.status_code == 200
+    assert r.text == "Todo tranquilo: no tienes avisos."
 
 
 def test_maximo_diez_y_revocacion(admin):

@@ -4,10 +4,19 @@
 // incluido), la lista es un listbox con aria-activedescendant, ↑/↓/Inicio/Fin para moverse, Intro para
 // elegir y Esc para cerrar (devuelve el foco a donde estaba).
 const Paleta = (() => {
-  let opciones = [], visibles = [], activa = 0, previo = null;
+  let opciones = [], datos = [], visibles = [], activa = 0, previo = null, temporizador = null, peticion = null;
 
   const norm = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const ir = (v) => () => { location.hash = v; };
+  const ICONOS = { nota: "M5 5h14v14H5z M8 9h8 M8 12h8 M8 15h5", evento: "M5 6h14v13H5z M8 3v6 M16 3v6 M5 10h14", cumpleanos: "M12 4a3 3 0 0 1 3 3v2h2a2 2 0 0 1 2 2v7H5v-7a2 2 0 0 1 2-2h2V7a3 3 0 0 1 3-3z", recordatorio: "M6 5h12v14H6z M9 3v4 M15 3v4 M8 11h8 M8 15h5", conversacion: "M4 5h16v11H9l-5 4z M8 9h8 M8 12h5", recuerdo: "M12 4l2.2 4.5 4.8.7-3.5 3.5.8 4.8-4.3-2.3-4.3 2.3.8-4.8L5 9.2l4.8-.7z" };
+  function icono(tipo) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", ICONOS[tipo] || ICONOS.nota); path.setAttribute("fill", "none"); path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "1.7"); path.setAttribute("stroke-linecap", "round"); path.setAttribute("stroke-linejoin", "round");
+    svg.append(path); return svg;
+  }
 
   function base() {
     const ops = [
@@ -37,17 +46,22 @@ const Paleta = (() => {
 
   function pintar() {
     const q = norm($("paleta-texto").value).trim().split(/\s+/).filter(Boolean);
-    visibles = opciones.filter((o) => q.every((p) => norm(o.t + " " + o.g).includes(p)));
+    const ordenes = opciones.filter((o) => q.every((p) => norm(o.t + " " + o.g).includes(p)));
+    const encontrados = datos.filter((o) => q.every((p) => norm(o.t + " " + o.detalle).includes(p)));
+    visibles = ordenes.concat(encontrados);
     if (activa >= visibles.length) activa = Math.max(0, visibles.length - 1);
     const ul = $("paleta-lista");
     ul.replaceChildren();
+    if (encontrados.length) ul.append(el("li", { class: "paleta-grupo", role: "presentation" }, "En tus datos"));
     if (!visibles.length) {
       const li = el("li", { class: "muted paleta-vacia" }, "Ninguna orden coincide.");
       ul.append(li);
     }
     visibles.forEach((o, i) => {
+      const esDato = i >= ordenes.length;
       const li = el("li", { id: "paleta-op-" + i, class: "paleta-op" + (i === activa ? " activa" : "") },
-        el("span", null, o.t), el("span", { class: "muted pequeno-txt" }, o.g));
+        esDato ? icono(o.tipo) : null, el("span", null, o.t),
+        el("span", { class: "muted pequeno-txt" }, esDato ? o.detalle : o.g));
       li.setAttribute("role", "option");
       li.setAttribute("aria-selected", i === activa ? "true" : "false");
       li.addEventListener("mousedown", (e) => e.preventDefault()); // el foco se queda en el cuadro de texto
@@ -71,7 +85,7 @@ const Paleta = (() => {
     const o = visibles[i];
     if (!o) return;
     cerrar();
-    try { o.a(); } catch (_) { toast("No se pudo hacer eso.", "mal"); }
+    try { o.a ? o.a() : (location.hash = o.enlace); } catch (_) { toast("No se pudo hacer eso.", "mal"); }
   }
 
   async function abrir() {
@@ -105,7 +119,20 @@ const Paleta = (() => {
         if (d.open) cerrar(); else if (!document.querySelector("dialog[open]")) abrir();
       }
     });
-    t.addEventListener("input", () => { activa = 0; pintar(); });
+    t.addEventListener("input", () => {
+      activa = 0; datos = []; pintar();
+      if (temporizador) clearTimeout(temporizador);
+      if (peticion) peticion.abort();
+      const q = t.value.trim();
+      if (q.length < 2) return;
+      temporizador = setTimeout(async () => {
+        peticion = new AbortController();
+        try {
+          const r = await api("/api/buscar?q=" + encodeURIComponent(q), { signal: peticion.signal });
+          if (r.ok && t.value.trim() === q) { datos = (r.data.resultados || []).map((x) => ({ ...x, t: x.titulo, g: "En tus datos" })); pintar(); }
+        } catch (_) { /* se cancela al seguir escribiendo */ }
+      }, 250);
+    });
     d.addEventListener("keydown", (e) => {
       if (e.key === "ArrowDown") { e.preventDefault(); mover(1); }
       else if (e.key === "ArrowUp") { e.preventDefault(); mover(-1); }

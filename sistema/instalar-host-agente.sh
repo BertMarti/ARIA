@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 ARIA_DIR="$(pwd)"
 sudo tee /etc/systemd/system/aria-host-agente.service >/dev/null <<UNIT
 [Unit]
-Description=Agente de ARIA en el sistema (telemetría y reinicio bajo petición firmada)
+Description=Agente de ARIA en el sistema (telemetría, reinicio, copia y túnel bajo petición firmada; vigilante del túnel)
 After=docker.service
 Wants=docker.service
 
@@ -18,6 +18,7 @@ RestartSec=10
 NoNewPrivileges=yes
 ProtectHome=read-only
 ReadWritePaths=$ARIA_DIR/data/host
+ReadWritePaths=-$(dirname "$ARIA_DIR")/PLAN-DE-TRABAJO.md
 PrivateTmp=yes
 
 [Install]

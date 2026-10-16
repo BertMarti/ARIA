@@ -1,5 +1,6 @@
 """Pruebas unitarias del puente de medios, sin descubrir ni conectar equipos reales."""
 import asyncio
+import json
 import time
 
 import pytest
@@ -44,3 +45,23 @@ def test_xml_rechaza_doctype(monkeypatch):
     monkeypatch.setattr(tele.httpx, "AsyncClient", lambda **kwargs: Cliente())
     with pytest.raises(tele.TeleError):
         asyncio.run(tele._xml("http://192.168.1.20/device.xml"))
+
+
+def test_descubrir_prefiere_json_fresco(monkeypatch, tmp_path):
+    monkeypatch.setattr(tele, "_cache_dispositivos", (0, []))
+    archivo = tmp_path / "dispositivos.json"
+    archivo.write_text(json.dumps({"ts": time.time(), "dispositivos": [{"id": "cast:abc", "ip": "192.168.1.20"}]}))
+    monkeypatch.setattr(config, "DESCUBRE_DIR", tmp_path)
+    monkeypatch.setattr(tele.red, "dispositivos", lambda: pytest.fail("no debe usar el respaldo"))
+    assert asyncio.run(tele.descubrir())[0]["id"] == "cast:abc"
+
+
+def test_descubrir_usa_respaldo_si_json_viejo(monkeypatch, tmp_path):
+    monkeypatch.setattr(tele, "_cache_dispositivos", (0, []))
+    archivo = tmp_path / "dispositivos.json"
+    archivo.write_text(json.dumps({"ts": 0, "dispositivos": []}))
+    monkeypatch.setattr(config, "DESCUBRE_DIR", tmp_path)
+    monkeypatch.setattr(tele, "_chromecast", lambda _ip: asyncio.sleep(0, result=None))
+    monkeypatch.setattr(tele, "_dlna", lambda _ip: asyncio.sleep(0, result=None))
+    monkeypatch.setattr(tele.red, "dispositivos", lambda: [{"ip": "192.168.1.20"}])
+    assert asyncio.run(tele.descubrir()) == []

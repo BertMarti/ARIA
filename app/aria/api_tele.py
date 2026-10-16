@@ -120,7 +120,8 @@ async def enviar(request: Request):
             import pychromecast
             identificador = dispositivo["id"]
             cast = await asyncio.to_thread(pychromecast.get_chromecast_from_host,
-                                           (dispositivo["ip"], 8009, None, None, None))
+                                           (dispositivo["ip"], dispositivo.get("puerto", 8009), None,
+                                            dispositivo.get("modelo"), dispositivo.get("nombre")))
             await asyncio.to_thread(cast.wait, 10)
             tele._chromecasts[identificador] = (cast, asyncio.get_running_loop().time())
             mc = cast.media_controller
@@ -135,7 +136,8 @@ async def enviar(request: Request):
             await asyncio.to_thread(mc.block_until_active, 10)
         else:
             control = dispositivo.get("control")
-            if not control: return _json_error("La tele DLNA no ofrece AVTransport", 400)
+            if not control or not tele._url_de_tele(control, dispositivo.get("ip")):
+                return _json_error("La tele DLNA no ofrece AVTransport", 400)
             uri = f"http://{config.LAN_IP}:8095/flujo/{dato.valor}/{dato.nombre}"
             meta = (f"<DIDL-Lite><item><res protocolInfo=\"http-get:*:{html.escape(dato.mime)}:*\">"
                     f"{html.escape(uri)}</res></item></DIDL-Lite>")
@@ -187,6 +189,8 @@ async def control(request: Request):
         return _json_error("Segundos no válidos")
     reloj = f"{segundos // 3600:02d}:{segundos % 3600 // 60:02d}:{segundos % 60:02d}"
     args = f"<InstanceID>0</InstanceID><Unit>REL_TIME</Unit><Target>{reloj}</Target>" if accion == "buscar" else "<InstanceID>0</InstanceID>"
+    if not tele._url_de_tele(disp.get("control"), disp.get("ip")):
+        return _json_error("Control DLNA no válido", 400)
     try: await tele.dlna(disp.get("control"), acciones[accion], args)
     except Exception as e: return _json_error(str(e), 502)
     tele.registrar(request.state.usuario["id"], request.state.usuario["rol"], accion)
@@ -211,6 +215,8 @@ async def estado(dispositivo: str, request: Request):
         except Exception:
             return {"estado": "desconocido", "posicion": 0, "duracion": 0}
     try:
+        if not tele._url_de_tele(disp.get("control"), disp.get("ip")):
+            return _json_error("Control DLNA no válido", 400)
         xml = await tele.dlna(disp.get("control"), "GetPositionInfo", "<InstanceID>0</InstanceID>")
         return {"estado": "reproduciendo", "posicion": _segundos(xml, "RelTime"), "duracion": _segundos(xml, "TrackDuration")}
     except Exception: return {"estado": "desconocido", "posicion": 0, "duracion": 0}

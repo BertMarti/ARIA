@@ -68,6 +68,7 @@ ROUTER_IP = (os.environ.get("ARIA_ROUTER_IP") or "192.168.0.1").strip()
 CONTROL = os.environ.get("ARIA_CONTROL", "1").strip().lower() not in ("0", "false", "no", "off")
 CONTROL_PROTEGIDOS = {i.strip() for i in os.environ.get("ARIA_CONTROL_PROTEGIDOS", "").split(",") if i.strip()}
 ESCANER_DIR = Path(os.environ.get("ARIA_ESCANER_DIR", "/escaner"))
+DESCUBRE_DIR = Path(os.environ.get("ARIA_DESCUBRE_DIR", "/descubre"))
 SPEEDTEST_URL = os.environ.get("ARIA_SPEEDTEST_URL", "https://speed.cloudflare.com").rstrip("/")
 
 def _url_publica() -> str:

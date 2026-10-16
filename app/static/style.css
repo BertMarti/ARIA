@@ -336,6 +336,31 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 .ico-cast { width: 1.2rem; height: 1.2rem; }
 .inicio-cab p { text-transform: none; }
 
+.medios-tele-dialogo { width: min(92vw, 30rem); max-width: none; padding: 0; overflow: hidden; background: var(--panel-solido); color: var(--txt); border: 1px solid var(--borde-fuerte); border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.7); animation: tele-entrada .18s ease-out; }
+.medios-tele-dialogo::backdrop { background: rgba(0,0,0,.78); }
+.medios-tele-cabecera { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .75rem; padding: 1rem 1.1rem; border-bottom: 1px solid var(--borde); }
+.medios-tele-marca { color: var(--acento); }
+.medios-tele-cabecera h2, .medios-tele-video { margin: 0; }
+.medios-tele-video, .medios-tele-datos small { color: var(--muted); overflow-wrap: anywhere; }
+.medios-tele-cerrar { border: 0; background: none; color: var(--muted); font-size: 1.7rem; line-height: 1; cursor: pointer; }
+.medios-tele-lista { display: grid; gap: .55rem; padding: 1rem; }
+.medios-tele-dispositivo { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .75rem; width: 100%; padding: .85rem; text-align: left; color: var(--txt); background: var(--panel); border: 1px solid var(--borde); border-radius: 12px; cursor: pointer; }
+.medios-tele-dispositivo:hover, .medios-tele-dispositivo:focus-visible { border-color: var(--acento); }
+.medios-tele-datos { display: grid; gap: .15rem; min-width: 0; }
+.medios-tele-etiqueta { color: var(--acento); font-size: .72rem; }
+.medios-tele-buscando::after { content: ""; display: inline-block; width: .8rem; height: .8rem; margin-left: .4rem; border: 2px solid var(--borde); border-top-color: var(--acento); border-radius: 50%; animation: tele-giro .8s linear infinite; }
+.medios-tele-añadir, .medios-tele-controles { display: flex; flex-wrap: wrap; gap: .5rem; }
+.medios-tele-añadir input { min-width: 0; flex: 1; }
+.medios-tele-portada { display: grid; justify-items: center; gap: .7rem; padding: 1.5rem 1rem; background: #050912; border-radius: 12px; text-align: center; }
+.medios-tele-controles button { flex: 1 1 auto; }
+.medios-tele-aviso { position: fixed; right: 1rem; bottom: 1rem; z-index: 60; max-width: 22rem; margin: 0; padding: .65rem .9rem; color: var(--txt); background: var(--panel-solido); border: 1px solid var(--borde-fuerte); border-radius: 10px; box-shadow: var(--sombra); }
+.medios-tele-pie { padding: 0 1rem 1rem; color: var(--muted); }
+.medios-tele-vlc { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .6rem; }
+@keyframes tele-entrada { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes tele-giro { to { transform: rotate(360deg); } }
+@media (max-width: 600px) { .medios-tele-dialogo { width: 100vw; min-height: 100dvh; border: 0; border-radius: 0; } .medios-tele-aviso { right: .7rem; bottom: 4.8rem; left: .7rem; max-width: none; } }
+@media (prefers-reduced-motion: reduce) { .medios-tele-dialogo, .medios-tele-buscando::after { animation: none; } }
+
 /* Propuestas pendientes: acciones domésticas que requieren confirmación explícita. */
 .propuestas { margin: 1.2rem 0 1.4rem; }
 .propuestas > .mi-indice { margin-bottom: .7rem; }

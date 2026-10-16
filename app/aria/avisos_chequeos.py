@@ -47,8 +47,14 @@ async def tunel() -> list | None:
         estado = type(e).__name__
     if estado in (200, 302):
         return []
+    from . import telemetria
+    v = telemetria.estado_tunel() or {}
+    reinicios = len(v.get("reinicios") or [])
+    extra = (f" La Pi ya lo ha reiniciado sola {reinicios} vez(es) en la última hora." if reinicios else
+             " La Pi lo reiniciará sola si sigue caído.")
     return [Problema("caido", f"No se puede entrar en ARIA desde fuera ({config.URL_PUBLICA.split('//')[-1]} "
-                              f"responde {estado}). Revisa el túnel de Cloudflare (contenedor cloudflared).")]
+                              f"responde {estado}).{extra} Mientras tanto: entra por la VPN HEIMDALL (https://aria.local) "
+                              f"o usa /tunel en Telegram para reiniciarlo.")]
 
 
 # --- Red y seguridad --------------------------------------------------------------------------------

@@ -120,22 +120,52 @@ def directo() -> dict:
     return {**d, "umbrales": estados(d)}
 
 
-def solicitar_reinicio() -> dict:
-    global _ultima_peticion
+# Peticiones firmadas al agente de la Pi (sistema/host-agente.py): acción -> (archivo, segundos entre peticiones, texto)
+PETICIONES = {"reiniciar": ("reinicio.json", 600, "un reinicio"), "copia": ("copia.json", 600, "una copia de seguridad"),
+              "tunel": ("tunel.json", 120, "un reinicio del túnel")}
+_ultimas: dict = {}
+
+
+def solicitar(accion: str) -> float:
+    """Deja la petición firmada (HMAC con ARIA_SECRET y el nombre de la acción) para el agente. Devuelve su instante."""
+    archivo, espera, texto = PETICIONES[accion]
     ahora = time.time()
-    if ahora - _ultima_peticion < 600:
-        raise RuntimeError("Solo se puede solicitar un reinicio cada 10 minutos.")
+    if ahora - _ultimas.get(accion, 0) < espera:
+        raise RuntimeError(f"Solo se puede pedir {texto} cada {espera // 60} minutos." if espera >= 60 else f"Espera un poco antes de pedir {texto}.")
     ts = int(ahora)
     nonce = secrets.token_hex(16)
-    firma = hmac.new(config.SECRET.encode(), f"reiniciar:{ts}:{nonce}".encode(), hashlib.sha256).hexdigest()
-    destino = _host() / "peticiones" / "reinicio.json"
+    firma = hmac.new(config.SECRET.encode(), f"{accion}:{ts}:{nonce}".encode(), hashlib.sha256).hexdigest()
+    destino = _host() / "peticiones" / archivo
     destino.parent.mkdir(parents=True, exist_ok=True)
     temporal = destino.with_suffix(".tmp")
     temporal.write_text(json.dumps({"ts": ts, "nonce": nonce, "firma": firma}), encoding="utf-8")
     os.chmod(temporal, 0o660)
     temporal.replace(destino)
-    _ultima_peticion = ahora
+    _ultimas[accion] = ahora
+    return ahora
+
+
+def solicitar_reinicio() -> dict:
+    solicitar("reiniciar")
     return {"programado": True, "segundos": 15}
+
+
+def resultado(accion: str, desde: float = 0) -> dict | None:
+    """Lo último que el agente dejó escrito para esa acción (solo si es posterior a `desde`)."""
+    try:
+        d = json.loads((_host() / "resultados" / f"{accion}.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return d if isinstance(d, dict) and d.get("ts", 0) >= desde else None
+
+
+def estado_tunel() -> dict | None:
+    """Lo que ve el vigilante del túnel del agente (ok, caido, reiniciando, sin_internet)."""
+    try:
+        d = json.loads((_host() / "tunel.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return d if isinstance(d, dict) else None
 
 
 def texto() -> str:

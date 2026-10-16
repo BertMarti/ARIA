@@ -46,10 +46,12 @@ COMANDOS = [
     ("bloqueo", "Bloqueador de anuncios (SHIELD)"), ("informe", "Informe semanal (admin)"),
     ("nuevovpn", "Nuevo dispositivo VPN (admin)"),
     ("reiniciar", "Reiniciar la Raspberry (admin)"),
+    ("copia", "Hacer ya la copia de seguridad (admin)"),
+    ("tunel", "Estado y reinicio del túnel de Cloudflare (admin)"),
     ("control", "Control parental: dispositivos pausados o bloqueados (admin)"),
     ("nuevo", "Empezar otra conversación"), ("desvincular", "Desvincular este chat"), ("ayuda", "Ayuda"),
 ]
-OPS_ADMIN = {"pausar", "reanudar", "nuevovpn", "reiniciar"}
+OPS_ADMIN = {"pausar", "reanudar", "nuevovpn", "reiniciar", "copia", "tunel"}
 
 NO_TE_CONOZCO = "No te conozco. Vincula este chat desde ARIA → Ajustes → Avisos."
 
@@ -687,7 +689,7 @@ def _ayuda(admin: bool) -> str:
     lineas = ["Escríbeme, mándame una nota de voz o una foto (por ejemplo, de un ticket) y te respondo como en la web. "
               "Comandos:"]
     for c, d in COMANDOS:
-        if c in ("nuevovpn", "control", "informe", "reiniciar") and not admin:
+        if c in ("nuevovpn", "control", "informe", "reiniciar", "copia", "tunel") and not admin:
             continue
         lineas.append(f"/{c} — {d}")
     return "\n".join(lineas)
@@ -805,6 +807,22 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
         f_no = await asyncio.to_thread(ficha, chat_id, u["id"], "cancelar")
         await enviar("¿Reiniciar la Raspberry? Se apagará en 15 segundos y ARIA volverá cuando termine.",
                      teclado([boton("✅ Sí, reiniciar", f_ok), boton("Cancelar", f_no)]))
+    elif cmd in ("copia", "tunel"):
+        if not admin:
+            await enviar("Eso solo lo puede hacer un administrador.")
+            return
+        f_ok = await asyncio.to_thread(ficha, chat_id, u["id"], "confirmar", {"op": cmd})
+        f_no = await asyncio.to_thread(ficha, chat_id, u["id"], "cancelar")
+        if cmd == "copia":
+            await enviar("¿Hago ya la copia de seguridad cifrada? Tarda unos minutos; te aviso al terminar.",
+                         teclado([boton("✅ Sí, copia ya", f_ok), boton("Cancelar", f_no)]))
+        else:
+            v = await asyncio.to_thread(telemetria.estado_tunel) or {}
+            estados = {"ok": "✅ accesible desde fuera", "caido": "🔴 caído", "reiniciando": "🔄 reiniciándose",
+                       "sin_internet": "📡 la Pi no tiene internet"}
+            await enviar(f"Túnel de Cloudflare: {estados.get(v.get('estado'), 'sin datos del vigilante')}. "
+                         f"Reinicios automáticos en la última hora: {len(v.get('reinicios') or [])}. ¿Lo reinicio ahora?",
+                         teclado([boton("🔄 Reiniciar túnel", f_ok), boton("Cancelar", f_no)]))
     elif cmd == "desvincular":
         f_ok = await asyncio.to_thread(ficha, chat_id, u["id"], "confirmar", {"op": "desvincular"})
         f_no = await asyncio.to_thread(ficha, chat_id, u["id"], "cancelar")
@@ -1121,11 +1139,38 @@ async def _accion(b, cq: dict, chat_id: int, u: dict, accion: str, d: dict) -> s
             await avisos.emitir("sistema", "aviso", f"🔄 Reiniciando la Raspberry a petición de {u['nombre']}…", "control")
             await enviar_texto(b, chat_id, "Reinicio programado. ARIA volverá en unos instantes.")
             return f"Programado en {resultado['segundos']} s."
+        if op in ("copia", "tunel"):
+            try:
+                desde = await asyncio.to_thread(telemetria.solicitar, op)
+            except RuntimeError as e:
+                return str(e)
+            await enviar_texto(b, chat_id, "Copia en marcha: te aviso al terminar." if op == "copia" else "Reiniciando el túnel…")
+            t = asyncio.create_task(_esperar_resultado(b, chat_id, op, desde))
+            _tareas_host.add(t)
+            t.add_done_callback(_tareas_host.discard)
+            return "En marcha."
         if op == "desvincular":
             await asyncio.to_thread(desvincular, u["id"], chat_id)
             await b.llamar("sendMessage", chat_id=chat_id, text="Chat desvinculado. ¡Hasta pronto!")
             return "Desvinculado."
     return "Acción desconocida."
+
+
+_tareas_host: set = set()
+
+
+async def _esperar_resultado(b, chat_id: int, accion: str, desde: float) -> None:
+    """Espera a que el agente de la Pi termine la copia o el reinicio del túnel y lo cuenta por el chat."""
+    limite = time.time() + (1800 if accion == "copia" else 240)
+    while time.time() < limite:
+        await asyncio.sleep(10)
+        r = await asyncio.to_thread(telemetria.resultado, accion, desde)
+        if r and r.get("estado") in ("ok", "error"):
+            icono = "✅" if r["estado"] == "ok" else "⚠️"
+            await enviar_texto(b, chat_id, f"{icono} {r.get('detalle') or ('Hecho.' if r['estado'] == 'ok' else 'Ha fallado.')}")
+            return
+    await enviar_texto(b, chat_id, "No he recibido respuesta del agente de la Pi. Comprueba que está activo "
+                                   "(systemctl status aria-host-agente).")
 
 
 def qr_png(texto: str) -> bytes:

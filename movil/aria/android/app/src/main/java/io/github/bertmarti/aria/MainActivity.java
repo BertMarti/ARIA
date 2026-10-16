@@ -166,15 +166,24 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void crearAtajoEscucha() {
+        try {
+            crearAtajosDinamicos();
+        } catch (RuntimeException e) {
+            android.util.Log.w("ARIA", "No se pudieron crear los atajos dinámicos", e);
+        }
+    }
+
+    private void crearAtajosDinamicos() {
         if (Build.VERSION.SDK_INT < 25) return;
         ShortcutManager gestor = getSystemService(ShortcutManager.class);
-        Intent intent = new Intent(this, MainActivity.class).putExtra("accion", "escuchar");
+        // Android exige acción en los intents de los atajos: sin ella, la app se cerraba al abrirse (visto en el emulador).
+        Intent intent = new Intent(Intent.ACTION_VIEW).setClass(this, MainActivity.class).putExtra("accion", "escuchar");
         ShortcutInfo atajo = new ShortcutInfo.Builder(this, "escuchar-aria")
                 .setShortLabel(getString(R.string.atajo_escuchar))
                 .setIcon(Icon.createWithResource(this, R.drawable.ic_stat_aria))
                 .setIntent(intent).build();
         gestor.addDynamicShortcuts(java.util.Collections.singletonList(atajo));
-        Intent asistente = new Intent(this, MainActivity.class).putExtra("accion", "asistente");
+        Intent asistente = new Intent(Intent.ACTION_VIEW).setClass(this, MainActivity.class).putExtra("accion", "asistente");
         ShortcutInfo atajoAsistente = new ShortcutInfo.Builder(this, "asistente-aria")
                 .setShortLabel(getString(R.string.asistente_titulo))
                 .setIcon(Icon.createWithResource(this, R.drawable.ic_stat_aria))

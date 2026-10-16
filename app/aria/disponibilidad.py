@@ -38,7 +38,7 @@ def registrar(servicio: str, ts: int, ok: bool, ms=None, detalle="") -> None:
 
 
 def _fila(servicio, ok, ms=None, detalle=""):
-    return servicio, bool(ok), ms, detalle
+    return servicio, bool(ok), ms, ("" if ok else detalle)   # el motivo solo cuando falla
 
 
 async def _muestras() -> list:

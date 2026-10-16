@@ -83,12 +83,12 @@ jobs:
             "$BT/apksigner" sign --ks prueba.jks --ks-pass pass:prueba --out "${f%-sin-firmar.apk}-prueba.apk" "$f"
           done
           ls -la apk
-      - name: Abrir las apps en un Android 14 emulado
+      - name: Abrir las apps en un Android 13 emulado
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 33
           arch: x86_64
-          target: google_apis
+          target: default
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |

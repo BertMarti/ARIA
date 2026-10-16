@@ -23,3 +23,11 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
 }
+
+// androidbrowserhelper trae kotlin-stdlib-jdk7/jdk8 1.6.21, que duplican clases del kotlin-stdlib moderno (desde 1.8 están
+// vacíos): se fuerzan a la misma versión.
+configurations.configureEach {
+    resolutionStrategy {
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22", "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22"
+    }
+}

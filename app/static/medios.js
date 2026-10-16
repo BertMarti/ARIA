@@ -421,7 +421,8 @@ const Medios = (() => {
   function alternarPantallaCompleta() {
     const escena = $m("medios-escena");
     if (document.fullscreenElement) document.exitFullscreen?.();
-    else escena.requestFullscreen?.();
+    else if (escena.requestFullscreen) escena.requestFullscreen().catch(() => video().webkitEnterFullscreen?.());
+    else video().webkitEnterFullscreen?.();   // iPhone: solo el vídeo puede ir a pantalla completa
   }
 
   function manejarRueda(e) {

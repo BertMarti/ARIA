@@ -1,0 +1,11 @@
+{
+  "appId": "io.github.bertmarti.aria",
+  "appName": "ARIA",
+  "webDir": "www",
+  "android": { "allowMixedContent": false, "captureInput": true, "webContentsDebuggingEnabled": false },
+  "server": { "androidScheme": "https", "allowNavigation": ["*"] },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 600, "backgroundColor": "#070b12", "showSpinner": false },
+    "LocalNotifications": { "smallIcon": "ic_stat_aria", "iconColor": "#38d6ff" }
+  }
+}

@@ -175,7 +175,8 @@ Antes de añadir contenedores pesados (Frigate, Paperless, Jellyfin), mira la RA
 | Fase | Qué incluye | Estado |
 |---|---|---|
 | **3.0** | TWA y app híbrida | ✅ Hecho |
-| **3.1** | Avisos push sin abrir la app | Pendiente |
-| **3.2** | Palabra de activación nativa | Pendiente |
-| **3.3** | Enviar a la tele nativo | Pendiente |
-| **3.4** | Widgets con datos: tiempo y próximo evento | Pendiente |
+| **3.1** | Avisos y widget con token de dispositivo | ✅ Hecho |
+| **3.2** | Asistente predeterminado; palabra «Aria» experimental | ✅ Hecho |
+| **3.3** | Enviar a la tele: cubierto por Compartir dentro de la app; la Pi hace de puente y nativo no hace falta por ahora | Cubierto |
+| **3.4** | Widget con tiempo, próximo evento y avisos | ✅ Hecho |
+| **3.5** | Atajos de Siri (iPhone) con el mismo token | Pendiente |

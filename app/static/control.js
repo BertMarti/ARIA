@@ -172,6 +172,23 @@ const Control = (() => {
     const hist = (await api("/api/sistema/historial?horas=1")).data.historial || [];
     c.replaceChildren(el("div", { class: "numeros" }, el("div", { class: "numero" }, el("strong", null, Number(s.cpu || 0).toFixed(1) + " %"), el("span", { class: "muted" }, "CPU")), el("div", { class: "numero" }, el("strong", null, s.temperatura == null ? "-" : s.temperatura + " °C"), el("span", { class: "muted" }, "Temperatura"))), el("div", { class: "graficas" }, linea(hist, "cpu"), linea(hist, "temperatura")), tabla, el("button", { type: "button", class: "peligro", onclick: reiniciar }, "Reiniciar la Raspberry"));
   }
+  async function disponibilidad() {
+    const c = cuerpoDe("card-disponibilidad"), dias = $("disponibilidad-dias").value;
+    const r = await api("/api/disponibilidad?dias=" + dias);
+    if (!r.ok) { fallo(c, r.data.error || "No se pudo leer la disponibilidad."); return; }
+    const filas = el("div", { class: "disponibilidad-filas" });
+    for (const s of r.data.servicios) {
+      const tira = el("div", { class: "disponibilidad-tira" });
+      for (const p of s.serie) {
+        const estado = p.ok == null ? "gris" : p.peor === "rojo" ? "rojo" : p.ok < 99 ? "ambar" : "verde";
+        tira.append(el("span", { class: "disponibilidad-barra " + estado, title: p.ok == null ? "Sin datos" : new Date(p.ts * 1000).toLocaleString("es-ES") + ": " + p.ok + " %" }));
+      }
+      filas.append(el("div", { class: "disponibilidad-fila" }, el("strong", null, s.servicio), el("b", null, s.porcentaje == null ? "—" : s.porcentaje.toString().replace(".", ",") + " %"), tira));
+    }
+    const i = await api("/api/disponibilidad/incidentes?dias=" + dias), lista = el("ul", { class: "incidentes" });
+    for (const x of (i.data?.incidentes || []).slice(-8).reverse()) lista.append(el("li", null, x.servicio + " · " + Math.max(1, Math.round(x.duracion / 60)) + " min · " + (x.detalle || "Sin detalle")));
+    c.replaceChildren(filas, el("h3", null, "Incidentes"), lista.children.length ? lista : el("p", { class: "muted" }, "Sin caídas registradas."));
+  }
   async function reiniciar() {
     if (!(await confirmar("Reiniciar la Raspberry", "La Raspberry se apagará en 15 segundos.", "Reiniciar"))) return;
     const r = await api("/api/sistema/reiniciar", { method: "POST", json: { confirmar: true } });
@@ -226,7 +243,7 @@ const Control = (() => {
 
   function actualizar() {
     const h = $("control-hora"); if (h) h.textContent = "Actualizado " + new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    return Promise.allSettled([shield(), vpn(), sistema(), directo(), ...(Sesion.funciones.spotify ? [spotify()] : [])]);
+    return Promise.allSettled([shield(), vpn(), sistema(), directo(), disponibilidad(), ...(Sesion.funciones.spotify ? [spotify()] : [])]);
   }
   // Se refresca cada ~15 s solo mientras la vista está abierta y la pestaña visible.
   function activar(si) {
@@ -238,6 +255,6 @@ const Control = (() => {
   }
   document.addEventListener("visibilitychange", () => { if (!document.hidden && temporizador) actualizar(); });
 
-  function iniciar() { iniciarVpn(); iniciarSpotify(); }
+  function iniciar() { iniciarVpn(); iniciarSpotify(); $("disponibilidad-dias").addEventListener("change", disponibilidad); }
   return { iniciar, activar, anadir, mostrarQr, pintarSistema };
 })();

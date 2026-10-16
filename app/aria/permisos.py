@@ -45,6 +45,7 @@ _USUARIO = [
     # Red: solo la salud (latencia ya medida, DNS, VPN y la última velocidad). Dispositivos, mediciones
     # nuevas y todo Seguridad son solo de admin.
     ("GET", r"/api/red/salud"),
+    # Historial de disponibilidad: contiene el estado de toda la infraestructura.
     # Memoria y resumen de buenos días: cada usuario solo ve y cambia lo suyo (se filtra por sesión).
     ("GET", r"/api/memoria"),
     ("POST", r"/api/memoria"),

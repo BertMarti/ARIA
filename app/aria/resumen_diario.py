@@ -10,7 +10,7 @@ import html
 import time
 from datetime import date, timedelta
 
-from . import (agenda, avisos_meteo, briefing, cerebros, estadisticas, finanzas, informacion, luz, memoria, proyectos, red,
+from . import (agenda, avisos_meteo, briefing, cerebros, disponibilidad, estadisticas, finanzas, informacion, luz, memoria, proyectos, red,
                recordatorios, sistema, tiempo, ubicacion, vpn)
 
 CACHE_S = 600
@@ -90,6 +90,7 @@ async def _aplicaciones() -> dict:
         activos = [c for c in cer if c.get("activo", True)]
         a["aria"] = {"listos": sum(c.get("estado") == "configurado" for c in activos), "total": len(activos)}
     a["copia"] = _seguro(briefing.ultima_copia)
+    a["disponibilidad"] = _seguro(disponibilidad.texto_24h)
     problemas = []
     r = a.get("raspberry") or {}
     if (r.get("temperatura") or 0) >= 75:
@@ -271,6 +272,8 @@ def secciones(d: dict, e=str) -> list[tuple[str, str, list[str]]]:
         cp = a.get("copia")
         if cp:
             lineas.append("💾 Copia: " + (f"hace {e(cp['hace'])}" if cp.get("disponible") else "no disponible"))
+        if a.get("disponibilidad"):
+            lineas.append(e(a["disponibilidad"]))
         out.append(("📊", "Tus aplicaciones", lineas))
     rd = d.get("red")
     if rd is not None:

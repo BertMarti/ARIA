@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import agenda, busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, informacion, mapas, memoria, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
+from . import agenda, busqueda, config, control, enlaces, escaneo, estadisticas, finanzas, informacion, mapas, memoria, notas, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -60,6 +60,7 @@ MEMORIA = frozenset({"recordar", "olvidar"})
 PROYECTOS = frozenset({"nuevo_proyecto", "mis_proyectos", "estado_proyecto", "registrar_decision", "decisiones", "actualizar_proyecto", "cambiar_personalidad"})
 # Recordatorios: todo rol, siempre los del usuario que habla.
 RECORDATORIOS = frozenset({"recordatorio", "mis_recordatorios", "borrar_recordatorio"})
+NOTAS = frozenset({"apuntar_nota", "mis_notas", "marcar_nota_hecha"})
 AGENDA = frozenset({"crear_evento", "mis_eventos", "borrar_evento", "anadir_cumpleanos", "proximos_cumpleanos"})
 # Rutinas (gestión desde el chat): todo rol, siempre las del usuario que habla.
 GESTION_RUTINAS = frozenset({"crear_rutina", "mis_rutinas", "borrar_rutina"})
@@ -83,7 +84,7 @@ def permitidas(rol: str) -> set:
         return set(_REGISTRO)
     if rol == "usuario":
         de_modulos = {n for n, i in _DE_MODULOS.items() if i["usuario"]}
-    return set(SOLO_LECTURA | MEMORIA | PROYECTOS | RECORDATORIOS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
+    return set(SOLO_LECTURA | MEMORIA | PROYECTOS | RECORDATORIOS | NOTAS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
     return set()
 
 
@@ -163,6 +164,7 @@ _INTENCIONES = [
     ((r"\b(resumen del d[ií]a|resumen diario|res[uú]meme el d[ií]a)\b",), {"resumen_diario"}),
     # Memoria personal: «recuerda que…», «apunta que…» / «olvida que…», «no recuerdes…»
     ((r"\b(recuerda|acu[eé]rdate|ac[eé]rdate|apunta|anota|memoriza|ten en cuenta)\b",), {"recordar"}),
+    ((r"\b(nota|notas|apunta|anota|ap[uú]ntame|mejoras|lista)\b",), NOTAS),
     ((r"\brecu[eé]rdame\b", r"!" + _CUANDO), {"recordar", "recordatorio"}),
     # Recordatorios: «recuérdame mañana a las 9…», «avísame en 20 minutos», «ponme un recordatorio».
     ((r"\b(recu[eé]rdame|av[ií]same|recordatorio|alarma)\b", r"!\b(mis|qu[eé]|cu[aá]les|borra\w*|quita\w*|elimina\w*|cancela\w*)\b"),
@@ -207,7 +209,7 @@ def rescatar_llamada(texto: str, permitidas: set) -> dict | None:
 
 
 _ERRORES_LEGIBLES = (spotify.SpotifyError, shield.ShieldError, vpn.VpnError, finanzas.FinanzasError,
-                     red.RedError, escaneo.EscaneoError, control.ControlError)
+                     red.RedError, escaneo.EscaneoError, control.ControlError, notas.NotaError)
 
 
 def registrar_errores(*clases) -> None:
@@ -586,7 +588,7 @@ async def desactivar_dispositivo_vpn(nombre: str) -> str:
 
 @tool("recordar",
       "Guarda un dato personal del usuario (algo suyo, de su casa o de sus preferencias) para recordarlo en "
-      "futuras conversaciones. Úsala cuando diga «recuerda que…», «apunta que…» o similar.",
+      "futuras conversaciones. Úsala cuando diga «recuerda que…», «apunta que…» o similar (para notas o listas, usa apuntar_nota).",
       {"dato": ("string", "Lo que hay que recordar, en una frase corta (máximo 300 caracteres)")}, ("dato",))
 async def recordar(dato: str) -> str:
     uid = memoria.uid_actual.get()
@@ -599,6 +601,37 @@ async def recordar(dato: str) -> str:
     if not nuevo:
         return f"Ya lo tenía anotado: «{rec['texto']}»."
     return f"Anotado: «{rec['texto']}». Puedes verlo o borrarlo en Ajustes → Memoria."
+
+
+@tool("apuntar_nota", "Guarda una nota o una lista personal. Para mejoras de ARIA usa la categoría mejora.",
+      {"texto": ("string", "Texto de la nota o lista"), "categoria": ("string", "general, mejora, compra o idea")},
+      ("texto",), usa_uid=True)
+async def apuntar_nota(texto: str, categoria: str = "general", uid: int = None) -> str:
+    try:
+        filas = notas.crear_varias(uid, texto, categoria, "chat")
+    except notas.NotaError as e:
+        return str(e)
+    return "Nota apuntada: " + "; ".join(f"n.º {x['id']} «{x['texto']}»" for x in filas) + "."
+
+
+@tool("mis_notas", "Lista tus notas personales, pudiendo filtrar por categoría y estado.",
+      {"categoria": ("string", "Categoría opcional"), "estado": ("string", "abierta o hecha, opcional")}, usa_uid=True)
+async def mis_notas(categoria: str = None, estado: str = None, uid: int = None) -> str:
+    try: filas = notas.listar(uid, estado, categoria)
+    except notas.NotaError as e: return str(e)
+    return json.dumps(filas, ensure_ascii=False) if filas else "No tienes notas que encajen."
+
+
+@tool("marcar_nota_hecha", "Marca como hecha una nota propia por su número o por parte de su texto.",
+      {"id_o_texto": ("string", "Número de nota o texto parcial")}, ("id_o_texto",), usa_uid=True)
+async def marcar_nota_hecha(id_o_texto: str, uid: int = None) -> str:
+    q = str(id_o_texto).strip()
+    filas = notas.listar(uid, estado="abierta")
+    elegidas = [x for x in filas if str(x["id"]) == q or q.casefold() in x["texto"].casefold()]
+    if not elegidas: return "No encuentro una nota abierta que encaje con eso."
+    if len(elegidas) > 1 and not q.isdigit(): return "Encajan varias notas: " + "; ".join(f"{x['id']}: {x['texto']}" for x in elegidas[:5])
+    notas.editar(uid, elegidas[0]["id"], estado="hecha")
+    return f"Nota n.º {elegidas[0]['id']} marcada como hecha."
 
 
 @tool("olvidar",
@@ -638,7 +671,7 @@ async def cambiar_personalidad(modo: str, discrepar: bool = False) -> str:
     return f"Personalidad cambiada a {p['modo']}" + ("; puedo discrepar." if p["discrepar"] else ".")
 
 
-@tool("nuevo_proyecto", "Crea un proyecto personal del usuario.",
+@tool("nuevo_proyecto", "Crea un proyecto personal del usuario (para notas o listas, usa apuntar_nota).",
       {"nombre": ("string", "Nombre"), "descripcion": ("string", "Descripción opcional")}, ("nombre",), usa_uid=True)
 async def nuevo_proyecto(nombre: str, descripcion: str = "", uid: int = None) -> str:
     try:

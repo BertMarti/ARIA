@@ -68,6 +68,7 @@ _USUARIO = [
     ("GET", r"/api/recordatorios"),
     ("POST", r"/api/recordatorios"),
     ("DELETE", r"/api/recordatorios/\d+"),
+    ("GET", r"/api/notas"), ("POST", r"/api/notas"), ("PATCH", r"/api/notas/\d+"), ("DELETE", r"/api/notas/\d+"),
     ("POST", r"/api/telegram/vincular"),
     ("DELETE", r"/api/telegram/chats/\d+"),
     ("POST", r"/api/push/suscripciones"),

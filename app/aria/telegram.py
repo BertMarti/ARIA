@@ -26,7 +26,7 @@ from contextlib import closing
 
 import httpx
 
-from . import avisos, config, db, enlaces, recordatorios, registro, resumen_diario, rutinas, telemetria, usuarios
+from . import avisos, config, db, enlaces, notas, recordatorios, registro, resumen_diario, rutinas, telemetria, usuarios
 
 log = logging.getLogger("aria.telegram")
 
@@ -41,6 +41,7 @@ MAX_TEXTO = 4000
 COMANDOS = [
     ("estado", "Resumen de la casa"), ("resumen", "Resumen de buenos días"), ("tiempo", "Previsión del tiempo"),
     ("recordatorios", "Tus recordatorios"), ("rutinas", "Tus rutinas programadas"), ("gastos", "Gastos de este mes"),
+    ("nota", "Apuntar una nota"), ("mejora", "Apuntar una mejora"), ("notas", "Tus notas abiertas"),
     ("red", "Salud de la red y dispositivos nuevos"), ("vpn", "Dispositivos de la VPN"),
     ("bloqueo", "Bloqueador de anuncios (SHIELD)"), ("informe", "Informe semanal (admin)"),
     ("nuevovpn", "Nuevo dispositivo VPN (admin)"),
@@ -739,6 +740,19 @@ async def _comando(b, chat_id: int, u: dict, cmd: str, arg: str) -> None:
         else:
             await enviar("**Tus recordatorios**\n" + "\n".join(f"- {r['id']}: {r['texto']} ({r['descripcion']})" for r in rs[:30])
                          + "\n\nPara borrar uno: «borra el recordatorio 3».")
+    elif cmd in ("nota", "mejora"):
+        if not arg:
+            await enviar(f"Uso: /{cmd} <texto>")
+            return
+        categoria = "mejora" if cmd == "mejora" and admin else "general"
+        try:
+            creadas = await asyncio.to_thread(notas.crear_varias, u["id"], arg[:1000], categoria, "telegram")
+        except notas.NotaError as e:
+            await enviar(str(e)); return
+        await enviar("📝 Apuntada (n.º " + str(creadas[0]["id"]) + ").")
+    elif cmd == "notas":
+        abiertas = await asyncio.to_thread(notas.listar, u["id"], "abierta")
+        await enviar("**Tus notas**\n" + "\n".join(f"- {n['id']}: {n['texto']}" for n in abiertas[:30]) if abiertas else "No tienes notas abiertas.")
     elif cmd == "gastos":
         await enviar(await asyncio.to_thread(_texto_gastos, u["id"]))
     elif cmd == "vpn":

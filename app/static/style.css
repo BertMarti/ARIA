@@ -18,6 +18,16 @@ body {
   color: var(--txt); font: 16px/1.5 var(--fuente); -webkit-font-smoothing: antialiased;
 }
 h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: .01em; }
+.notas-nueva { display: grid; gap: .6rem; max-width: 760px; }
+.notas-nueva textarea { width: 100%; resize: vertical; }
+.notas-filtros { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; }
+.notas-lista { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
+.nota-item { display: flex; align-items: flex-start; gap: .8rem; padding: 1rem; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); }
+.nota-cuerpo { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.nota-meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .35rem; }
+.nota-acciones { display: flex; gap: .4rem; flex-wrap: wrap; }
+.nota-edicion { width: 100%; }
+@media (max-width: 600px) { .nota-item { flex-wrap: wrap; } .nota-acciones { width: 100%; margin-left: 1.7rem; } }
 h1 { font-size: 1.35rem; }
 h2 { font-size: .8rem; color: var(--acento); text-transform: uppercase; letter-spacing: .14em; margin-bottom: .75rem; }
 h3 { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin: 1rem 0 .4rem; }

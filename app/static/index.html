@@ -20,6 +20,7 @@
   <button type="button" class="nav-btn" data-vista="finanzas"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M3 7h18v12H3z"/><path d="M3 11h18"/><path d="M7 15h4"/></svg></span><span>Finanzas</span></button>
   <button type="button" class="nav-btn" data-vista="informacion"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 9h10M7 13h7"/></svg></span><span>Información</span></button>
   <button type="button" class="nav-btn" data-vista="agenda"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M7 14h3M14 14h3M7 18h3"/></svg></span><span>Agenda</span></button>
+  <button type="button" class="nav-btn" data-vista="notas"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span><span>Notas</span></button>
   <button type="button" class="nav-btn" data-vista="mapa"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="m4 6 6-3 6 3 4-2v14l-6 3-6-3-4 2z"/><path d="M10 3v15M16 6v15"/></svg></span><span>Mapa</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="red"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v5M12 12 6.5 17.5M12 12l5.5 5.5"/></svg></span><span>Red</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="seguridad"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span>Seguridad</span></button>
@@ -88,6 +89,16 @@
       </fieldset>
       <button type="button" id="hud-op-reset" class="hud-boton">Restablecer</button>
     </aside>
+  </section>
+
+  <section id="v-notas" class="vista" hidden>
+    <header class="vista-cab"><div><h1>Notas</h1><p class="muted">Apuntes, compras e ideas en un solo sitio.</p></div></header>
+    <form id="notas-form" class="tarjeta notas-nueva">
+      <label for="notas-texto">Nueva nota</label><textarea id="notas-texto" maxlength="1000" rows="3" required placeholder="Escribe una nota…"></textarea>
+      <div class="fila-form"><select id="notas-categoria" aria-label="Categoría"><option value="general">General</option><option value="mejora">Mejora</option><option value="idea">Idea</option><option value="compra">Compra</option></select><button class="primario" type="submit">Añadir</button></div>
+    </form>
+    <div class="notas-filtros"><div id="notas-pestanas" class="pestanas" role="tablist"></div><label><input id="notas-hechas" type="checkbox"> Ver hechas</label></div>
+    <ul id="notas-lista" class="notas-lista"></ul>
   </section>
   <!-- CAMPANA DE AVISOS -->
   <div class="campana-zona">
@@ -822,6 +833,7 @@
 <script src="/static/informacion.js"></script>
 <script src="/static/automatizaciones.js"></script>
 <script src="/static/agenda.js"></script>
+<script src="/static/notas.js"></script>
 <script src="/static/paleta.js"></script>
 <script src="/static/compartir.js"></script>
 <script src="/static/vendor/leaflet/leaflet.js"></script>

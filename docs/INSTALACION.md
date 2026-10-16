@@ -181,6 +181,18 @@ Puedes ejecutarlo tantas veces como quieras: no borra nada.
 
 Las contraseñas de SHIELD-DNS y HEIMDALL están en el `.env` de sus carpetas. No hace falta memorizarlas: en Inicio de ARIA tienes «Copiar contraseña».
 
+### App de Android (opcional)
+
+Puedes instalar la app completa o ARIA Lite desde GitHub Releases. Consulta la [guía de la app de Android](APP-ANDROID.md) para elegir, instalar y solucionar problemas.
+
+Si usas una TWA, añade en `.env` la huella SHA-256 del certificado con el que se publican las APK:
+
+```bash
+ARIA_APP_SHA256=AA:BB:CC:DD:...:11
+```
+
+ARIA publica esa huella en `/.well-known/assetlinks.json`. Cloudflare Access debe dejar pasar esa ruta sin iniciar sesión. Si cambia la llave de firma, actualiza la huella y vuelve a instalar la app.
+
 ## 6. Claves gratuitas de IA (opcional)
 
 Sin claves, ARIA responde con el modelo local: funciona, pero en una Raspberry Pi es lento. Con una o varias de estas cuentas gratuitas, las respuestas llegan en uno o dos segundos. Puedes poner todas: si una agota su cuota gratuita, ARIA pasa a la siguiente.

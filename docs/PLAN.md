@@ -167,3 +167,13 @@ Ordenado por lo que más aporta con menos esfuerzo y menos consumo en la Pi:
 6. **Altavoz satélite**: «Aria» en toda la casa.
 
 Antes de añadir contenedores pesados (Frigate, Paperless, Jellyfin), mira la RAM libre en ARIA → Centro de control → Sistema. ARIA, Ollama y la voz ya usan la mayor parte de los 8 GB.
+
+## ARIA 3 — app de Android (16/10/2026)
+
+| Fase | Qué incluye | Estado |
+|---|---|---|
+| **3.0** | TWA y app híbrida | ✅ Hecho |
+| **3.1** | Avisos push sin abrir la app | Pendiente |
+| **3.2** | Palabra de activación nativa | Pendiente |
+| **3.3** | Enviar a la tele nativo | Pendiente |
+| **3.4** | Widgets con datos: tiempo y próximo evento | Pendiente |

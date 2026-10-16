@@ -95,7 +95,7 @@ class CDP:
                 return m.get("result", {})
 
     async def js(self, codigo):
-        r = await self("Runtime.evaluate", expression=codigo, awaitPromise=True, returnByValue=True)
+        r = await self("Runtime.evaluate", expression=codigo, awaitPromise=True, returnByValue=True, userGesture=True)
         return r.get("result", {}).get("value")
 
 

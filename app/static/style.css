@@ -332,6 +332,8 @@ body.login { display: grid; place-items: center; min-height: 100dvh; height: aut
 .svg-ico { width: 1.45rem; height: 1.45rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tile-ico { color: var(--acento); }
 .tile-ico .svg-ico { width: 2rem; height: 2rem; }
+#medios-enviar { display: inline-flex; align-items: center; gap: .45rem; }
+.ico-cast { width: 1.2rem; height: 1.2rem; }
 .inicio-cab p { text-transform: none; }
 
 /* Propuestas pendientes: acciones domésticas que requieren confirmación explícita. */

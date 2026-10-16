@@ -48,6 +48,7 @@ def test_xml_rechaza_doctype(monkeypatch):
 
 
 def test_descubrir_prefiere_json_fresco(monkeypatch, tmp_path):
+    monkeypatch.setattr(config, "RED_PERMITIDA", "192.168.1.0/24")
     monkeypatch.setattr(tele, "_cache_dispositivos", (0, []))
     archivo = tmp_path / "dispositivos.json"
     archivo.write_text(json.dumps({"ts": time.time(), "dispositivos": [{"id": "cast:abc", "ip": "192.168.1.20"}]}))
@@ -57,11 +58,14 @@ def test_descubrir_prefiere_json_fresco(monkeypatch, tmp_path):
 
 
 def test_descubrir_usa_respaldo_si_json_viejo(monkeypatch, tmp_path):
+    monkeypatch.setattr(config, "RED_PERMITIDA", "192.168.1.0/24")
     monkeypatch.setattr(tele, "_cache_dispositivos", (0, []))
     archivo = tmp_path / "dispositivos.json"
     archivo.write_text(json.dumps({"ts": 0, "dispositivos": []}))
     monkeypatch.setattr(config, "DESCUBRE_DIR", tmp_path)
     monkeypatch.setattr(tele, "_chromecast", lambda _ip: asyncio.sleep(0, result=None))
     monkeypatch.setattr(tele, "_dlna", lambda _ip: asyncio.sleep(0, result=None))
-    monkeypatch.setattr(tele.red, "dispositivos", lambda: [{"ip": "192.168.1.20"}])
+    async def _dispositivos():
+        return [{"ip": "192.168.1.20"}]
+    monkeypatch.setattr(tele.red, "dispositivos", _dispositivos)
     assert asyncio.run(tele.descubrir()) == []

@@ -1,18 +1,21 @@
 """Pruebas del descubrimiento local, sin tráfico de red."""
+import ipaddress
 import json
 from types import SimpleNamespace
 
 from descubre import descubre
 
 
-def test_txt_y_capacidades():
+def test_txt_y_capacidades(monkeypatch):
+    monkeypatch.setattr(descubre, "RED", ipaddress.ip_network("192.168.1.0/24"))
     datos = SimpleNamespace(addresses=[b"\xc0\xa8\x01\x14"], port=8009, properties={b"fn": "Salón".encode(), b"md": b"Chromecast", b"id": b"abc", b"ca": b"1"})
     resultado = descubre._cast("cast._googlecast._tcp.local.", datos)
     assert resultado["nombre"] == "Salón"
     assert resultado["video"]
 
 
-def test_cast_fuera_de_red():
+def test_cast_fuera_de_red(monkeypatch):
+    monkeypatch.setattr(descubre, "RED", ipaddress.ip_network("192.168.1.0/24"))
     datos = SimpleNamespace(addresses=[b"\xc0\xa8\x02\x14"], port=8009, properties={b"ca": b"1"})
     assert descubre._cast("cast", datos) is None
 

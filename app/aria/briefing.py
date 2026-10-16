@@ -16,7 +16,7 @@ from pathlib import Path
 
 import httpx
 
-from . import agenda, config, db, informacion, memoria, shield, sistema, tiempo, vpn
+from . import agenda, config, db, informacion, memoria, shield, sistema, tiempo, ubicacion, vpn
 
 log = logging.getLogger("aria.briefing")
 
@@ -127,9 +127,11 @@ def _ruta_ciudad() -> Path:
     return config.DATA_DIR / "ciudad.json"
 
 
-async def _coordenadas(cliente: httpx.AsyncClient) -> dict | None:
+async def _coordenadas(cliente: httpx.AsyncClient, lugar: dict | None = None) -> dict | None:
     """Coordenadas de ARIA_CIUDAD: ARIA_LAT/ARIA_LON si existen; si no, se geocodifica una sola vez
     (resultado en data/ciudad.json). «Ciudad, Provincia» elige el resultado de ES cuya provincia coincide."""
+    if lugar and lugar.get("lat") is not None and lugar.get("lon") is not None:
+        return {"nombre": lugar.get("nombre") or "tu ubicación", "lat": lugar["lat"], "lon": lugar["lon"], "origen": lugar.get("origen", "dispositivo")}
     if config.LAT is not None and config.LON is not None:
         return {"nombre": config.CIUDAD.split(",")[0].strip() or "tu ciudad", "lat": config.LAT, "lon": config.LON}
     try:
@@ -157,12 +159,12 @@ async def _coordenadas(cliente: httpx.AsyncClient) -> dict | None:
     return d
 
 
-async def _tiempo() -> dict | None:
-    if not config.CIUDAD and config.LAT is None:
+async def _tiempo(lugar: dict | None = None) -> dict | None:
+    if not lugar and not config.CIUDAD and config.LAT is None:
         return None
     try:
         async with httpx.AsyncClient(timeout=5) as c:
-            ub = await _coordenadas(c)
+            ub = await _coordenadas(c, lugar)
             if not ub:
                 return None
             r = await c.get("https://api.open-meteo.com/v1/forecast", params={
@@ -172,7 +174,7 @@ async def _tiempo() -> dict | None:
             j = r.json()
             d = j["daily"]
             actual = (j.get("current") or {}).get("temperature_2m")
-            return {"ciudad": ub["nombre"], "cielo": _cielo(int(d["weather_code"][0])),
+            return {"ciudad": ub["nombre"], "origen": ub.get("origen", "casa"), "cielo": _cielo(int(d["weather_code"][0])),
                     "max": round(d["temperature_2m_max"][0]), "min": round(d["temperature_2m_min"][0]),
                     "lluvia": d["precipitation_probability_max"][0],
                     "actual": round(actual) if actual is not None else None}
@@ -183,13 +185,15 @@ async def _tiempo() -> dict | None:
 _DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 
 
-async def prevision(dias: int = 3, ciudad: str | None = None) -> dict | None:
+async def prevision(dias: int = 3, ciudad: str | None = None, lugar: dict | None = None) -> dict | None:
     """Previsión diaria de Open-Meteo (1–7 días). Sin `ciudad`, la de ARIA_CIUDAD; con ella, se geocodifica
     (prefiriendo España). None si no hay ubicación o el servicio no responde."""
     dias = max(1, min(7, int(dias or 3)))
     try:
         async with httpx.AsyncClient(timeout=6) as c:
-            if ciudad and memoria.normalizar(ciudad) not in memoria.normalizar(config.CIUDAD or ""):
+            if lugar and lugar.get("lat") is not None:
+                ub = {"nombre": lugar.get("nombre") or "tu ubicación", "lat": lugar["lat"], "lon": lugar["lon"]}
+            elif ciudad and memoria.normalizar(ciudad) not in memoria.normalizar(config.CIUDAD or ""):
                 r = await c.get("https://geocoding-api.open-meteo.com/v1/search",
                                 params={"name": ciudad.split(",")[0].strip()[:60], "count": 10, "language": "es"})
                 res = r.json().get("results") or []
@@ -213,7 +217,7 @@ async def prevision(dias: int = 3, ciudad: str | None = None) -> dict | None:
                 out.append({"fecha": f, "dia": _DIAS[dia.weekday()], "cielo": _cielo(int(d["weather_code"][i])),
                             "max": round(d["temperature_2m_max"][i]), "min": round(d["temperature_2m_min"][i]),
                             "lluvia": d["precipitation_probability_max"][i]})
-            return {"ciudad": ub["nombre"], "dias": out}
+            return {"ciudad": ub["nombre"], "origen": ub.get("origen", "casa"), "dias": out}
     except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError):
         return None
 

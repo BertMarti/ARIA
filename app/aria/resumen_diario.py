@@ -11,7 +11,7 @@ import time
 from datetime import date, timedelta
 
 from . import (agenda, avisos_meteo, briefing, cerebros, estadisticas, finanzas, informacion, luz, memoria, proyectos, red,
-               recordatorios, sistema, tiempo, vpn)
+               recordatorios, sistema, tiempo, ubicacion, vpn)
 
 CACHE_S = 600
 _cache: dict = {}
@@ -138,14 +138,16 @@ async def construir_resumen_diario(usuario: dict, refrescar: bool = False) -> di
     """Contrato común de Inicio, HUD, Telegram y la herramienta. El uid sale siempre de la sesión."""
     uid, admin = usuario["id"], usuario.get("rol") == "admin"
     hoy = tiempo.hoy()
-    clave = (uid, admin)   # por rol: la vista «Probar como…» de un admin no debe ver su caché de admin
+    lugar = _seguro(lambda: ubicacion.actual(uid))
+    lugar_clave = tuple(round(lugar.get(k), 1) for k in ("lat", "lon")) if lugar else None
+    clave = (uid, admin, lugar_clave)   # la ubicación forma parte de la caché
     c = _cache.get(clave)
     if c and not refrescar and time.monotonic() - c[0] < CACHE_S and c[1]["fecha"] == hoy.isoformat():
         return c[1]
     tiempo_d, mercados, prevision, luz_d, meteo_d = await asyncio.gather(
-        _async_seguro(briefing._tiempo), _async_seguro(lambda: informacion.mercados(uid)),
-        _async_seguro(lambda: briefing.prevision(2)), _async_seguro(luz.hoy) if luz.activo() else _nada(),
-        _async_seguro(avisos_meteo.avisos, []))
+        _async_seguro(lambda: briefing._tiempo(lugar)), _async_seguro(lambda: informacion.mercados(uid)),
+        _async_seguro(lambda: briefing.prevision(2, lugar=lugar)), _async_seguro(luz.hoy) if luz.activo() else _nada(),
+        _async_seguro(lambda: avisos_meteo.avisos(provincia=(lugar or {}).get("provincia") if lugar and lugar.get("origen") == "dispositivo" else None), []))
     if tiempo_d and prevision and len(prevision.get("dias", [])) > 1:
         manana = prevision["dias"][1]
         if abs(manana.get("max", 0) - tiempo_d.get("max", 0)) >= 5 or abs(manana.get("min", 0) - tiempo_d.get("min", 0)) >= 5:
@@ -309,7 +311,7 @@ def secciones(d: dict, e=str) -> list[tuple[str, str, list[str]]]:
             lineas.append(f"Total de tus posiciones: {_euros(inv['total_posiciones'])}")
         out.append(("📈", "Mis inversiones", lineas))
     if d.get("avisos"):
-        out.append(("⚠️", "Avisos meteorológicos", [f"{a['nivel'].capitalize()}: {e(a['evento'])} · {e(a['area'])}" for a in d["avisos"]]))
+         out.append(("⚠️", "Avisos meteorológicos", [f"{a.get('color') or a['nivel'].capitalize()}: {e(a['evento'])} · {e(a['area'])}" for a in d["avisos"]]))
     ag = d.get("agenda") or {}
     hoy = date.fromisoformat(d["fecha"]) if d.get("fecha") else tiempo.hoy()
     lineas = []

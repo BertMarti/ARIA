@@ -7,8 +7,8 @@ from aria import briefing, red, resumen_diario, telegram, usuarios
 async def test_construye_todos_los_bloques_y_filtra_el_rol(monkeypatch):
     admin = usuarios.crear("admin@example.invalid", "Administrador", "admin")
     user = usuarios.crear("user@example.invalid", "Usuario", "usuario")
-    monkeypatch.setattr(briefing, "_tiempo", lambda: _async({"ciudad": "Pueblo", "cielo": "despejado", "actual": 20, "min": 10, "max": 25, "lluvia": 5}))
-    monkeypatch.setattr(briefing, "prevision", lambda dias=2: _async(None))
+    monkeypatch.setattr(briefing, "_tiempo", lambda lugar=None: _async({"ciudad": "Pueblo", "cielo": "despejado", "actual": 20, "min": 10, "max": 25, "lluvia": 5}))
+    monkeypatch.setattr(briefing, "prevision", lambda dias=2, lugar=None: _async(None))
     monkeypatch.setattr(resumen_diario.informacion, "mercados", lambda uid: _async({"valores": [{"nombre": "Fondo", "precio": 12.5}]}))
     monkeypatch.setattr(resumen_diario.estadisticas, "resumen", lambda horas=24: _async({"totales": {"consultas": 100, "bloqueadas": 20, "porcentaje": 20}}))
     monkeypatch.setattr(resumen_diario.vpn, "listar", lambda: _async([]))
@@ -126,11 +126,11 @@ async def test_cache_y_refresco(monkeypatch):
     user = usuarios.crear("cache@example.invalid", "Cache", "usuario")
     resumen_diario._cache.clear()
     llamadas = []
-    async def tiempo_():
+    async def tiempo_(lugar=None):
         llamadas.append(1)
         return None
     monkeypatch.setattr(briefing, "_tiempo", tiempo_)
-    monkeypatch.setattr(briefing, "prevision", lambda dias=2: _async(None))
+    monkeypatch.setattr(briefing, "prevision", lambda dias=2, lugar=None: _async(None))
     monkeypatch.setattr(resumen_diario.informacion, "mercados", lambda uid: _async({"valores": []}))
     monkeypatch.setattr(resumen_diario, "_cierre", lambda d: _async(None))
     await resumen_diario.construir_resumen_diario(user)
@@ -156,8 +156,8 @@ async def test_cerebros_configurados_cuentan_como_listos(monkeypatch):
 async def test_la_cache_es_por_rol(monkeypatch):
     """«Probar como…»: el mismo admin con rol usuario no debe recibir su resumen de administrador en caché."""
     admin = usuarios.crear("jefa@example.invalid", "Jefa", "admin")
-    monkeypatch.setattr(briefing, "_tiempo", lambda: _async(None))
-    monkeypatch.setattr(briefing, "prevision", lambda dias=2: _async(None))
+    monkeypatch.setattr(briefing, "_tiempo", lambda lugar=None: _async(None))
+    monkeypatch.setattr(briefing, "prevision", lambda dias=2, lugar=None: _async(None))
     monkeypatch.setattr(resumen_diario.informacion, "mercados", lambda uid: _async(None))
     monkeypatch.setattr(resumen_diario.estadisticas, "resumen", lambda horas=24: _async(None))
     monkeypatch.setattr(resumen_diario.vpn, "listar", lambda: _async([]))

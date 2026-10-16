@@ -75,9 +75,9 @@ async def _get(url, **kwargs):
         raise MapasError("No puedo conectar con el servicio de mapas ahora mismo.")
 
 
-async def _nominatim(params):
+async def _nominatim(params, endpoint="search"):
     global _ultimo_nominatim
-    clave = ("nominatim", tuple(sorted(params.items())))
+    clave = ("nominatim", endpoint, tuple(sorted(params.items())))
     async with _cache_lock:
         dato = _cache.get(clave)
         if dato and _ahora() - dato[0] < 86400:
@@ -86,13 +86,27 @@ async def _nominatim(params):
         espera = 1.0 - (_ahora() - _ultimo_nominatim)
         if espera > 0:
             await asyncio.sleep(espera)
-        resultado = await _get(f"{NOMINATIM}/search", params={**params, "format": "jsonv2", "limit": 10})
+        resultado = await _get(f"{NOMINATIM}/{endpoint}", params={**params, "format": "jsonv2", **({"limit": 10} if endpoint == "search" else {})})
         _ultimo_nominatim = _ahora()
-    if not isinstance(resultado, list):
+    if endpoint == "search" and not isinstance(resultado, list):
         raise MapasError("La búsqueda de lugares ha devuelto una respuesta no válida.")
     async with _cache_lock:
         _cache[clave] = (_ahora(), resultado)
     return resultado
+
+
+async def inversa(lat: float, lon: float) -> dict:
+    """Obtiene el nombre y la provincia de unas coordenadas respetando Nominatim."""
+    resultado = await _nominatim({
+        "lat": lat, "lon": lon, "zoom": 10, "addressdetails": 1,
+        "accept-language": "es"}, "reverse")
+    if not isinstance(resultado, dict):
+        raise MapasError("La geocodificación inversa no ha devuelto una respuesta válida.")
+    address = resultado.get("address") or {}
+    nombre = (address.get("city") or address.get("town") or address.get("village") or
+              address.get("municipality") or address.get("county") or "Ubicación actual")
+    return {"nombre": str(nombre)[:80], "provincia": str(address.get("ISO3166-2-lvl6") or "")[:12],
+            "comunidad": str(address.get("ISO3166-2-lvl4") or "")[:12]}
 
 
 async def buscar(q: str) -> list:

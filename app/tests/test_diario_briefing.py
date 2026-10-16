@@ -245,7 +245,7 @@ def test_tiempo_con_coordenadas_fijas(admin, monkeypatch):
             return R()
     monkeypatch.setattr(briefing.httpx, "AsyncClient", lambda **k: C())
     t = correr(briefing._tiempo())
-    assert t == {"ciudad": "Ronda", "cielo": "nublado", "max": 24, "min": 11, "lluvia": 40, "actual": 18}
+    assert t == {"ciudad": "Ronda", "origen": "casa", "cielo": "nublado", "max": 24, "min": 11, "lluvia": 40, "actual": 18}
     assert visto["p"]["latitude"] == 36.7423 and "geocoding" not in visto["url"]
 
 

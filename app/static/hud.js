@@ -72,7 +72,7 @@ const Hud = (() => {
     const d = resumen = b.value?.ok ? b.value.data : null;
     const t = d?.tiempo;
     pintar("tiempo", t?.aviso_manana ? "aviso" : "ok", ...(t ? [
-      grande(`${t.actual ?? t.max}°`, mayus(t.cielo) + " · " + t.ciudad),
+       grande(`${t.actual ?? t.max}°`, (t.origen === "dispositivo" ? "📍 " : "🏠 ") + mayus(t.cielo) + " · " + t.ciudad),
       el("div", { class: "hud-fila3" }, dato("Mín", t.min + "°"), dato("Máx", t.max + "°"), dato("Lluvia", (t.lluvia ?? "—") + " %")),
       barra(t.lluvia), t.aviso_manana ? el("p", { class: "hud-nota aviso" }, t.aviso_manana) : null] : []));
     const ag = d?.agenda || {}, items = [];
@@ -350,6 +350,7 @@ const Hud = (() => {
   }
   function iniciar() {
     addEventListener("aria:estado", cambiar);
+    addEventListener("aria:ubicacion", () => { if (activo) datos(); });
     addEventListener("resize", () => { if (activo) preparar(); });
     addEventListener("aria:hud-texto", (e) => { if (activo) $w("hud-subtitulo").textContent = String(e.detail?.texto || "").slice(-420); });
     addEventListener("visibilitychange", () => { if (activo && !document.hidden) { pantallaEncendida(); if (!raf) raf = requestAnimationFrame(dibujar); if (!rafFondo) rafFondo = requestAnimationFrame(dibujarFondo); } });

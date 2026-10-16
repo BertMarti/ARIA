@@ -17,7 +17,7 @@ from datetime import date
 
 import httpx
 
-from . import config, invitados, resumen_diario, tiempo, voz
+from . import config, invitados, resumen_diario, tiempo, ubicacion, voz
 
 log = logging.getLogger("aria.briefing_voz")
 
@@ -131,7 +131,9 @@ def _prefs_clave(uid: int) -> tuple[dict, str]:
 def _base(usuario: dict, limites: dict | None = None, ref=None) -> str:
     """Por usuario, rol y perfil (el guion de un admin cuenta cosas de la casa; el de una visita, menos), día y franja."""
     perfil = (limites or {}).get("perfil", "")
-    return f"{usuario['id']}-{usuario.get('rol', 'usuario')}{perfil}-{tiempo.hoy(ref).isoformat()}-{_franja(ref)}"
+    lugar = ubicacion.actual(usuario["id"])
+    coord = "-".join(f"{lugar[k]:.1f}" for k in ("lat", "lon")) if lugar else "sin-lugar"
+    return f"{usuario['id']}-{usuario.get('rol', 'usuario')}{perfil}-{coord}-{tiempo.hoy(ref).isoformat()}-{_franja(ref)}"
 
 
 def purgar() -> int:

@@ -72,7 +72,10 @@ CAPTURAS = {
     "captura-seguridad": ("seguridad", 1280, 1500, False, "", 8),
     "captura-ping-aviso": ("inicio", 1280, 800, False, "localStorage.setItem('aria_ping_modo', 'pasea'); window.dispatchEvent(new CustomEvent('aria:avisos', {detail: [{id: 'demo-ping', texto: 'Aviso naranja por lluvia en Madrid esta tarde', severidad: 'grave'}]}))", 4),
     "captura-movil-ping": ("inicio", 390, 844, True, "localStorage.setItem('aria_ping_modo', 'pasea'); window.dispatchEvent(new CustomEvent('aria:avisos', {detail: [{id: 'demo-ping-2', texto: 'Tienes cita con el dentista mañana a las 10:00'}, {id: 'demo-ping-3', texto: 'Copia de seguridad hecha'}]}))", 4),
-    "captura-cerebro-panel": ("cerebro", 1280, 860, False, "document.getElementById('cerebro-lienzo')?.dispatchEvent(new MouseEvent('click', {clientX: 640, clientY: 430, bubbles: true}))", 4),
+    "captura-cerebro-panel": ("cerebro", 1280, 860, False, "(() => { const c = document.getElementById('cerebro-canvas');"
+                              " const r = c.getBoundingClientRect(), x = r.left + r.width * .53, y = r.top + r.height * .155;"
+                              " for (const t of ['pointerdown', 'pointerup']) c.dispatchEvent(new PointerEvent(t, {clientX: x, clientY: y,"
+                              " bubbles: true, button: 0, pointerId: 1})); })()", 8),
     # iPad (Air 11": 820×1180 vertical, 1180×820 horizontal; Pro 13": 1032×1376)
     "ipad-v-inicio": ("inicio", 820, 1180, False, "", 6),
     "ipad-v-hud": ("hud", 820, 1180, False, "", 6),

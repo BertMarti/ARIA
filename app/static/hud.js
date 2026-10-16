@@ -6,7 +6,7 @@ const Hud = (() => {
   const TEMAS = { cian: [56, 214, 255], violeta: [167, 139, 250], ambar: [251, 191, 36], verde: [52, 211, 153], rosa: [244, 114, 182] };
   const NOMBRES_TEMA = { cian: "Cian", violeta: "Violeta", ambar: "Ámbar", verde: "Verde", rosa: "Rosa" };
   const TARJETAS = { tiempo: "Clima", agenda: "Agenda de hoy", pendiente: "Pendiente", finanzas: "Finanzas", luz: "Precio de la luz", casa: "Estado de la casa", red: "Red y seguridad", inversiones: "Mercados" };
-  const DEFECTO = { tarjetas: Object.fromEntries(Object.keys(TARJETAS).map((k) => [k, true])), tema: "cian", raton: true, fondo: true, cursor: true, segundos: false, voz: true, despierta: false, quiosco: false };
+  const DEFECTO = { tarjetas: Object.fromEntries(Object.keys(TARJETAS).map((k) => [k, true])), tema: "cian", raton: true, fondo: true, cursor: true, segundos: false, voz: true, despierta: false, quiosco: false, gestos: false };
   const ESTADOS = { reposo: "En espera", escuchando: "Te escucho", pensando: "Procesando…", hablando: "Hablando" };
   const reducido = matchMedia("(prefers-reduced-motion: reduce)");
   const tactil = matchMedia("(hover: none)");
@@ -310,8 +310,9 @@ const Hud = (() => {
     relojLocal();
     if (activo) { datos(); if (!rafFondo) rafFondo = requestAnimationFrame(dibujarFondo); }
   }
-  const INTERRUPTORES = [["hud-op-raton", "raton"], ["hud-op-fondo", "fondo"], ["hud-op-cursor", "cursor"], ["hud-op-segundos", "segundos"], ["hud-op-voz", "voz"], ["hud-op-despierta", "despierta"], ["hud-op-quiosco", "quiosco"]];
+  const INTERRUPTORES = [["hud-op-raton", "raton"], ["hud-op-fondo", "fondo"], ["hud-op-cursor", "cursor"], ["hud-op-segundos", "segundos"], ["hud-op-voz", "voz"], ["hud-op-despierta", "despierta"], ["hud-op-quiosco", "quiosco"], ["hud-op-gestos", "gestos"]];
   function pintarOpciones() {
+    const eg = $w("hud-op-gestos")?.closest("label"); if (eg) eg.hidden = !Gestos.disponible();
     $w("hud-op-tarjetas").replaceChildren(...Object.entries(TARJETAS).filter(([k]) => Sesion.esAdmin || !["casa", "red"].includes(k)).map(([k, nombre]) => {
       const i = el("input", { type: "checkbox", checked: opts.tarjetas[k] !== false });
       i.addEventListener("change", () => { opts.tarjetas[k] = i.checked; guardarOpciones(); });
@@ -339,7 +340,7 @@ const Hud = (() => {
   function activar(si) {
     activo = si;
     clearInterval(refresco); clearInterval(refrescoDirecto);
-    if (!si) { cancelAnimationFrame(raf); cancelAnimationFrame(rafFondo); raf = rafFondo = 0; panel(false); soltarPantalla(); clearTimeout(inactivo); return; }
+    if (!si) { cancelAnimationFrame(raf); cancelAnimationFrame(rafFondo); raf = rafFondo = 0; panel(false); soltarPantalla(); clearTimeout(inactivo); Gestos.desactivar(); return; }
     preparar(); aplicarOpciones(); rapidas(); directo();
     refresco = setInterval(() => { if (!document.hidden) datos(); }, 60000);
     refrescoDirecto = setInterval(directo, 5000);
@@ -361,8 +362,11 @@ const Hud = (() => {
     $w("hud-opciones").addEventListener("click", () => panel());
     $w("hud-panel-cerrar").addEventListener("click", () => { panel(false); $w("hud-opciones").focus(); });
     sec.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$w("hud-panel").hidden) { panel(false); $w("hud-opciones").focus(); } });
-    for (const [id, k] of INTERRUPTORES) $w(id).addEventListener("change", () => { opts[k] = $w(id).checked; guardarOpciones(); });
-    $w("hud-op-reset").addEventListener("click", () => { opts = structuredClone(DEFECTO); guardarOpciones(); pintarOpciones(); });
+    for (const [id, k] of INTERRUPTORES) $w(id).addEventListener("change", async () => { opts[k] = $w(id).checked; guardarOpciones(); if (k === "gestos") { const ok = opts[k] ? await Gestos.activar() : (Gestos.desactivar(), true); if (!ok) { opts[k] = false; guardarOpciones(); pintarOpciones(); } } });
+    addEventListener("aria:gesto-tema", (e) => { if (!activo) return; const ks = Object.keys(TEMAS), i = ks.indexOf(opts.tema), n = e.detail.direccion === "anterior" ? (i - 1 + ks.length) % ks.length : (i + 1) % ks.length; opts.tema = ks[n]; guardarOpciones(); pintarOpciones(); });
+    addEventListener("aria:gesto-panel", (e) => { if (activo) panel(e.detail.direccion === "abrir"); });
+    addEventListener("aria:gesto-briefing", () => { if (activo) Voz.briefing((t) => { $w("hud-subtitulo").textContent = t; }); });
+    $w("hud-op-reset").addEventListener("click", () => { opts = structuredClone(DEFECTO); Gestos.desactivar(); guardarOpciones(); pintarOpciones(); });
     Voz.botonMic($w("hud-mic"), (t) => { $w("hud-texto").value = t; $w("hud-form").requestSubmit(); });
     $w("hud-manos").addEventListener("click", () => ManosLibres.activa() ? ManosLibres.parar() : ManosLibres.iniciar());
     ManosLibres.alCambiar((on) => { $w("hud-manos").setAttribute("aria-pressed", on); });

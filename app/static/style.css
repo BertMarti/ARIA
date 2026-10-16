@@ -1096,3 +1096,20 @@ body.app { height: 100vh; height: 100dvh; }
   .app-tile:hover, a.mi-carta:hover { box-shadow: var(--sombra); border-color: var(--borde); }
 }
 @media (max-width: 700px) { .banner-vista-prueba { justify-content: space-between; font-size: .85rem; } .banner-vista-prueba span { min-width: 0; } .prueba-perfiles-lista { grid-template-columns: 1fr; } }
+
+/* Gestos con la mano en el HUD (P6): vista previa, rótulos y tarjetas agarradas */
+.gestos-vista{position:fixed;right:1rem;bottom:1rem;width:160px;height:120px;z-index:30;border:1px solid rgba(var(--hud-c),.5);background:#02050bcc;box-shadow:0 0 20px rgba(var(--hud-c),.2);pointer-events:none}
+.gestos-vista video,.gestos-vista canvas{position:absolute;inset:0;width:160px;height:120px;object-fit:cover;transform:scaleX(-1)}
+.gestos-estado{position:absolute;left:.35rem;bottom:.25rem;color:#e8f4ff;font:600 .58rem var(--mono);letter-spacing:.08em;text-shadow:0 1px 3px #000}
+.gestos-estado::first-letter{color:#34d399}
+.gestos-rotulo{position:fixed;z-index:51;pointer-events:none;padding:.3rem .55rem;border:1px solid rgba(var(--hud-c),.7);border-radius:3px;background:#020812e8;color:#e8f4ff;font:700 .68rem var(--mono);letter-spacing:.08em;opacity:0;transform:translate(12px,12px);transition:opacity .12s}
+.gestos-rotulo.visible{opacity:1}
+.hud-card.agarrada{transform:scale(1.04) rotateX(var(--rx)) rotateY(var(--ry));z-index:4;border-color:var(--c);box-shadow:0 0 28px rgba(var(--hud-c),.35)}
+.hud-card.ampliada{position:fixed;inset:8%;z-index:40;overflow:auto;transform:none!important;background:rgba(3,10,20,.97);padding:2rem}
+.gestos-destello{animation:gestos-destello .35s ease-out}
+@keyframes gestos-destello{50%{box-shadow:0 0 0 12px rgba(var(--hud-c),.4),0 0 35px var(--c)}
+}
+@media (prefers-reduced-motion:reduce){.gestos-rotulo{transition:none}
+.gestos-destello{animation:none}
+.hud-card.agarrada{transform:none}
+}

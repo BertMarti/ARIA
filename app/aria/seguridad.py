@@ -9,7 +9,7 @@ import re
 import time
 from collections import Counter
 
-from . import config, cve, escaneo, red, shield, vpn
+from . import config, cve, escaneo, red, shield, vpn, remedios
 
 ORDEN = {"alta": 0, "media": 1, "baja": 2, "info": 3}
 
@@ -187,14 +187,21 @@ async def informe(con_cves: bool = True) -> dict:
                    "ARIA no escanea tu IP pública: necesitaría un servicio externo que la escanee desde fuera.",
                    "Revisa en el router que no haya redirecciones de puertos aparte de UDP 51820 (VPN) y que la "
                    "gestión remota esté desactivada.", None))
-    hall.sort(key=lambda x: (ORDEN[x["gravedad"]], x["tipo"], x["ip"] or ""))
+    aceptados = []
+    activos = []
+    for h in hall:
+        h["clave"] = remedios.clave(h)
+        h["remedio"] = remedios.remedio(h)
+        h["estado"] = remedios.estado(h)
+        (aceptados if h["estado"] else activos).append(h)
+    hall = sorted(activos, key=lambda x: (ORDEN[x["gravedad"]], x["tipo"], x["ip"] or ""))
     cuenta = Counter(h["gravedad"] for h in hall)
     return {"generado": time.time(), "red": config.RED_PERMITIDA,
             "escaneo": {k: res.get(k) for k in ("id", "perfil", "origen", "inicio", "fin")} | {
                 "hosts": len(res.get("hosts") or []),
                 "puertos_abiertos": sum(len(h.get("puertos") or []) for h in res.get("hosts") or [])} if res else None,
             "resumen": {g: cuenta.get(g, 0) for g in ("alta", "media", "baja", "info")},
-            "hallazgos": hall, "bloqueos": bloqueos, "dispositivos": len(disp),
+            "hallazgos": hall, "aceptados": aceptados, "bloqueos": bloqueos, "dispositivos": len(disp),
             "desconocidos": sum(1 for d in disp if not d.get("conocido")),
             "estado_escaner": await asyncio.to_thread(escaneo.estado)}
 

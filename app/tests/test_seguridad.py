@@ -151,6 +151,9 @@ ADMIN_NUEVOS = [
     ("POST", "/api/red/dispositivos/conocer-todos"), ("POST", "/api/red/latencia"), ("POST", "/api/red/velocidad"),
     ("GET", "/api/red/historial"), ("GET", "/api/seguridad/informe"), ("GET", "/api/seguridad/escaneo"),
     ("POST", "/api/seguridad/escaneo"),
+    ("POST", "/api/seguridad/hallazgos/xxxxxxxxxxxxxxxx/accion"),
+    ("POST", "/api/seguridad/hallazgos/xxxxxxxxxxxxxxxx/comprobar"),
+    ("DELETE", "/api/seguridad/hallazgos/xxxxxxxxxxxxxxxx/estado"),
 ]
 
 

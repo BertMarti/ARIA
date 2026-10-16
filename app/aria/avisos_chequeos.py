@@ -81,7 +81,7 @@ def _inventario() -> dict:
 
 async def hallazgos_graves() -> list | None:
     """Hallazgos de gravedad alta del último escaneo (solo se recalcula cuando hay un escaneo nuevo)."""
-    from . import escaneo, seguridad
+    from . import escaneo, seguridad, remedios
     res = await asyncio.to_thread(escaneo.ultimo)
     if not res or res.get("error"):
         return None
@@ -92,7 +92,7 @@ async def hallazgos_graves() -> list | None:
     _ultimo_escaneo["id"] = res.get("id")
     return [Problema(f"{h['tipo']}:{h.get('ip') or ''}:{h['titulo']}"[:200],
                      f"Seguridad: {h['titulo']}. {h.get('recomendacion') or ''}".strip())
-            for h in hall if h.get("gravedad") == "alta"]
+            for h in hall if h.get("gravedad") == "alta" and not remedios.estado(h)]
 
 
 # --- Copia, sistema, VPN, cerebros ---------------------------------------------------------------------

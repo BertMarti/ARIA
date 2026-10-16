@@ -662,6 +662,13 @@ body.modo-hud > .nav, body.modo-hud > .manos-libres, body.modo-hud .campana-zona
 .hallazgo.g-media { border-left: 3px solid var(--warn); }
 .hallazgo .fila-info { gap: .2rem; }
 .recomendacion { font-size: .85rem; }
+.remedio { display: grid; gap: .4rem; margin-top: .5rem; }
+.remedio ol { margin: 0; padding-left: 1.3rem; }
+.aceptados { margin-top: 1rem; }
+.aceptados summary { cursor: pointer; font-weight: 600; }
+.dialogo { max-width: 32rem; border: 1px solid var(--linea); border-radius: .7rem; background: var(--fondo); color: var(--texto); padding: 1rem; }
+.dialogo::backdrop { background: rgb(0 0 0 / .55); }
+.check-fila { display: flex; gap: .5rem; align-items: start; }
 @media (max-width: 760px) {
   .nav-btn span:not(.ico) { font-size: .62rem; }
   .agente-sel select { max-width: 8.5rem; }

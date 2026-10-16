@@ -53,6 +53,7 @@ CAPTURAS = {
     "captura-movil-escaparate": ("/hola", 390, 844, True, "", 4),
     "captura-acceso": ("/acceso", 1280, 1000, False, "", 4),
     "captura-cerebro": ("cerebro", 1280, 860, False, "", 8),
+    "captura-seguridad": ("seguridad", 1280, 1500, False, "", 8),
     "captura-ping-aviso": ("inicio", 1280, 800, False, "window.dispatchEvent(new CustomEvent('aria:avisos', {detail: [{id: 'demo-ping', texto: 'Aviso naranja por lluvia en Madrid esta tarde', severidad: 'grave'}]}))", 4),
     "captura-movil-ping": ("inicio", 390, 844, True, "window.dispatchEvent(new CustomEvent('aria:avisos', {detail: [{id: 'demo-ping-2', texto: 'Tienes cita con el dentista mañana a las 10:00'}, {id: 'demo-ping-3', texto: 'Copia de seguridad hecha'}]}))", 4),
     "captura-cerebro-panel": ("cerebro", 1280, 860, False, "document.getElementById('cerebro-lienzo')?.dispatchEvent(new MouseEvent('click', {clientX: 640, clientY: 430, bubbles: true}))", 4),

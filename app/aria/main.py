@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_cerebro, api_finanzas, api_informacion, api_modulos, api_notas, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, mapas, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_control, api_cerebro, api_finanzas, api_informacion, api_modulos, api_notas, api_red, api_rutinas, api_sistema, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, mapas, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -86,6 +86,7 @@ async def _arranque():
         log.error("Faltan ARIA_USER / ARIA_PASSWORD o ARIA_SECRET (>=16 caracteres): login deshabilitado.")
     db.iniciar()
     registro.iniciar()
+    remedios.iniciar()
     telemetria.iniciar()
     vpn_ubicaciones.iniciar()
     usuarios.iniciar()

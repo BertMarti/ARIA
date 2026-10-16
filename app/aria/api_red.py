@@ -3,13 +3,15 @@
 Permisos (permisos.py): el rol `usuario` solo puede `GET /api/red/salud`; todo lo demás es de admin.
 """
 import asyncio
+import time
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from . import escaneo, estadisticas, red, seguridad, shield
+from . import escaneo, estadisticas, red, seguridad, shield, remedios
 
 router = APIRouter()
+_acciones = []
 
 
 def _err(msg: str, estado: int = 400) -> JSONResponse:
@@ -115,3 +117,62 @@ async def escanear(request: Request):
         return {"id": await asyncio.to_thread(escaneo.solicitar, perfil, d.get("objetivos"), "manual")}
     except escaneo.EscaneoError as e:
         return _err(str(e), 429 if "10 minutos" in str(e) or "pendiente" in str(e) else 400)
+
+
+async def _hallazgo_actual(clave: str, con_cves=True):
+    """El hallazgo vigente con esa clave (primero sin consultar CVE, que es lento; luego con la caché de CVE)."""
+    for cves in ((False, True) if con_cves else (False,)):
+        inf = await seguridad.informe(con_cves=cves)
+        h = next((h for h in inf.get("hallazgos", []) + inf.get("aceptados", []) if h.get("clave") == clave), None)
+        if h:
+            return h
+    return None
+
+
+def _limitar():
+    ahora = time.time()
+    _acciones[:] = [x for x in _acciones if ahora - x < 60]
+    if len(_acciones) >= 10:
+        return False
+    _acciones.append(ahora)
+    return True
+
+
+@router.post("/api/seguridad/hallazgos/{clave}/accion")
+async def accion_hallazgo(clave: str, request: Request):
+    if not _limitar():
+        return _err("Demasiadas acciones; espera un minuto.", 429)
+    d = await _json(request)
+    accion = d.get("accion")
+    if not isinstance(accion, str):
+        return _err("Acción no válida.")
+    h = await _hallazgo_actual(clave, True)
+    if not h:
+        return _err("Hallazgo no encontrado.", 404)
+    try:
+        texto = await remedios.aplicar(h, accion, request.state.usuario["id"], d)
+    except (ValueError, remedios.vpn.VpnError) as e:
+        return _err(str(e))
+    return {"ok": True, "mensaje": texto}
+
+
+@router.post("/api/seguridad/hallazgos/{clave}/comprobar")
+async def comprobar_hallazgo(clave: str, request: Request):
+    if not _limitar():
+        return _err("Demasiadas acciones; espera un minuto.", 429)
+    h = await _hallazgo_actual(clave, False)
+    if not h:
+        return _err("Hallazgo no encontrado.", 404)
+    try:
+        return {"ok": True, "mensaje": await remedios.comprobar(h)}
+    except escaneo.EscaneoError as e:
+        return _err(str(e), 429)
+
+
+@router.delete("/api/seguridad/hallazgos/{clave}/estado")
+async def reabrir_hallazgo(clave: str):
+    if not _limitar():
+        return _err("Demasiadas acciones; espera un minuto.", 429)
+    if not await asyncio.to_thread(remedios.reabrir, clave):
+        return _err("Estado no encontrado.", 404)
+    return {"ok": True}

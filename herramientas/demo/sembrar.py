@@ -91,3 +91,21 @@ for tipo, sev, texto in [("dispositivo_nuevo", "aviso", "Dispositivo desconocido
                          ("agenda", "info", "En 30 minutos: Dentista (Clínica Centro).")]:
     avisos._insertar(uid, tipo, sev, texto, "")
 print("sembrado")
+
+# Seguridad: un escaneo ficticio con hallazgos típicos (para ver los arreglos guiados)
+_res = config.ESCANER_DIR / "resultados"
+_res.mkdir(parents=True, exist_ok=True)
+_t = time.time() - 3600
+_id = time.strftime("%Y%m%d-%H%M%S", time.localtime(_t)) + "-demo01"
+(_res / f"{_id}.json").write_text(json.dumps({
+    "id": _id, "perfil": "rapido", "origen": "programado", "inicio": _t, "fin": _t + 90,
+    "hosts": [
+        {"ip": "192.168.1.1", "puertos": [
+            {"proto": "tcp", "puerto": 80, "servicio": "http", "producto": "TP-LINK router http config"},
+            {"proto": "tcp", "puerto": 1900, "servicio": "upnp", "producto": "MiniUPnP", "version": "2.2.2"}]},
+        {"ip": "192.168.1.50", "puertos": [
+            {"proto": "tcp", "puerto": 22, "servicio": "ssh", "producto": "OpenSSH", "version": "10.0p2 Debian 7"},
+            {"proto": "tcp", "puerto": 443, "servicio": "https", "producto": "Caddy"},
+            {"proto": "tcp", "puerto": 5900, "servicio": "vnc", "producto": "WayVNC"}]},
+        {"ip": "192.168.1.31", "puertos": [{"proto": "tcp", "puerto": 21, "servicio": "ftp", "producto": "HP ftpd"}]}],
+    "udp_router": [{"puerto": 1900, "estado": "open"}, {"puerto": 5351, "estado": "open"}]}))

@@ -17,28 +17,30 @@ Esta guía explica qué hay en cada parte de ARIA y cómo sacarle partido en el 
 5. [Voz](#voz)
 6. [Imágenes y tickets](#imágenes-y-tickets)
 7. [Memoria y diario](#memoria-y-diario)
-8. [Resumen diario](#resumen-diario)
-9. [Propuestas de ARIA](#propuestas-de-aria)
-10. [Recordatorios](#recordatorios)
-11. [Rutinas](#rutinas)
-12. [Finanzas](#finanzas)
-13. [Red](#red)
-14. [Control parental](#control-parental)
-15. [Seguridad](#seguridad)
-16. [Centro de control](#centro-de-control)
-17. [Modo HUD](#modo-hud)
-18. [Agenda y cumpleaños](#agenda-y-cumpleaños)
-19. [Mapa](#mapa)
-20. [Información e inversiones](#información-e-inversiones)
-21. [Precio de la luz](#precio-de-la-luz)
-22. [Ajustes](#ajustes)
-23. [Avisos](#avisos)
-24. [Telegram](#telegram)
-25. [Notificaciones push](#notificaciones-push)
-26. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
-27. [Acceso por invitación](#acceso-por-invitación)
-28. [Usuarios y roles](#usuarios-y-roles)
-29. [Cuando algo falla](#cuando-algo-falla)
+8. [Notas](#notas)
+9. [Resumen diario](#resumen-diario)
+10. [Propuestas de ARIA](#propuestas-de-aria)
+11. [Recordatorios](#recordatorios)
+12. [Rutinas](#rutinas)
+13. [Finanzas](#finanzas)
+14. [Red](#red)
+15. [Control parental](#control-parental)
+16. [Seguridad](#seguridad)
+17. [Centro de control](#centro-de-control)
+18. [Cerebro](#cerebro)
+19. [Modo HUD](#modo-hud)
+20. [Agenda y cumpleaños](#agenda-y-cumpleaños)
+21. [Mapa](#mapa)
+22. [Información e inversiones](#información-e-inversiones)
+23. [Precio de la luz](#precio-de-la-luz)
+24. [Ajustes](#ajustes)
+25. [Avisos](#avisos)
+26. [Telegram](#telegram)
+27. [Notificaciones push](#notificaciones-push)
+28. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
+29. [Acceso por invitación](#acceso-por-invitación)
+30. [Usuarios y roles](#usuarios-y-roles)
+31. [Cuando algo falla](#cuando-algo-falla)
 
 ## Un vistazo rápido
 
@@ -77,6 +79,7 @@ Es la página que ves al entrar.
 - Cada respuesta lleva insignias con el **cerebro** que la dio (Ollama Cloud, Groq, Gemini o local) y el **agente**.
 - En la cabecera eliges el **agente** de la conversación (o «ARIA (automático)»).
 - Junto a la caja de texto tienes el **micrófono**, **Manos libres** y el botón de **imagen**.
+- **¿Qué ves?**: en el chat o el HUD, pulsa el botón de cámara (o di «**Aria, ¿qué ves?**» o «**léeme esto**» en manos libres). Se abre una vista previa, haces la foto y la cámara se apaga. ARIA analiza la imagen y te responde. Útil para identificar objetos, leer textos difíciles o transcribir facturas.
 - **Copiar** copia un mensaje; **Leer** lo lee en voz alta.
 
 ### Frases de ejemplo
@@ -120,6 +123,7 @@ Cómo elegir:
 
 - **Pulsar para hablar**: mantén pulsado el micrófono mientras hablas y suelta (o toca una vez para empezar y otra para terminar). Máximo 30 segundos. El texto se envía solo.
 - **Leer**: el botón de cada respuesta la lee en voz alta. En **Ajustes → Voz** puedes hacer que lea todas las respuestas y cambiar la velocidad.
+- **ARIA flotante**: pulsa el botón **Flotante** (o desde el HUD o con Ctrl+K) para abrir una pequeña ventana que siempre se mantiene encima de otras aplicaciones (Chrome/Edge escritorio). Incluye el orbe de estado, el texto de ARIA y acceso al micrófono. No cierres la pestaña principal de ARIA mientras la usas.
 - **Lectura en streaming**: ARIA empieza a hablar en cuanto termina la primera frase. Funciona en el chat con «Leer respuestas», en manos libres y en el HUD. El resto del texto se agrupa en trozos grandes para no agotar la cuota de voz.
 - **Manos libres**: pulsa **Manos libres** en el chat (o actívalo en Ajustes → Voz o con Ctrl+K). Aparece un aviso «escuchando "Aria"» con el botón **Dejar de escuchar**. Di «**Aria**» y tu pregunta («Aria, ¿qué hora es?»), o «Aria», una pausa corta y la pregunta. Suena un pitido, ARIA escucha hasta que te callas, responde y lo lee.
   - «Aria» solo cuenta al principio de una frase: «María» o «esta aria de ópera» no la activan.
@@ -170,6 +174,16 @@ En **Ajustes → Memoria** puedes ver el origen y la fiabilidad de cada dato:
 - **Aprendizaje automático**: ARIA le asigna un 60 % de confianza inicial, que sube cada vez que se usa el recuerdo. Los datos aprendidos solos que no se utilicen en 90 días se olvidan automáticamente.
 
 La memoria se envía a los cerebros de la nube junto con tus preguntas para darte contexto. Al cerebro local solo le llega un trozo pequeño.
+
+## Notas
+
+Para apuntar cosas sueltas: ideas, la lista de la compra o mejoras para ARIA. Están en la sección **Notas** de la web.
+
+- **Telegram**: `/nota texto` apunta una nota; `/mejora texto` (administradores) apunta una mejora para ARIA; `/notas` te las lista.
+- **Chat**: «apúntame comprar pilas», «anota estas ideas: …». Si escribes una lista con viñetas, cada línea se guarda como una nota.
+- **Web**: escribe la nota, elige la categoría (**General**, **Mejoras**, **Ideas** o **Compra**) y pulsa **Añadir**. Puedes filtrar por categoría, marcarla como hecha, editarla o borrarla. **Ver hechas** muestra también las terminadas.
+- Las **mejoras** de los administradores se copian solas a un plan privado de la máquina (sección «Notas y mejoras desde Telegram»), para tenerlas a mano al mejorar ARIA. No se publican en ningún sitio.
+- Cada persona ve solo las suyas. Los invitados no tienen notas.
 
 ## Resumen diario
 
@@ -300,6 +314,15 @@ Solo para administradores. Tarjetas que se actualizan solas cada 15 segundos:
 
 Si una aplicación sale «no conectado», revisa su contraseña en `.env` (ver [Problemas frecuentes](INSTALACION.md#17-problemas-frecuentes)).
 
+## Cerebro
+
+Solo administradores. Muestra ARIA como una **red de nodos en 3D**, en vivo:
+
+- Arriba, los **cerebros de IA**; en el centro, el **núcleo** con los **agentes** y sus familias de **herramientas**; abajo, los **servicios** (contenedores); a los lados, los **módulos**, los **canales** (web, Telegram, notificaciones) y los **datos** (base de datos, memoria, notas). También el túnel y las copias.
+- Cada tipo tiene su color y un **anillo** que dice su estado: verde (bien), ámbar (aviso), rojo (falla) o gris (apagado).
+- Cada vez que ARIA usa una herramienta, un **pulso de luz** recorre la red (verde si fue bien, rosa si falló). Arriba ves cuántas acciones hubo en el último minuto.
+- **Arrastra** para girar, usa la **rueda** (o pellizca) para acercar, **doble clic** para volver a la vista inicial y **clic** en un nodo para ver sus datos. Con el teclado: flechas para girar y +/− para acercar.
+
 ## Modo HUD
 
 Abre `https://aria.local/#hud` (o el mosaico **Modo HUD** de Inicio). Es una pantalla pensada para un monitor, una tableta o una tele.
@@ -325,6 +348,7 @@ Pulsa **Opciones** (arriba a la derecha). Todo se guarda en ese navegador.
 | **Fondo animado** | Rejilla en perspectiva y estrellas |
 | **Cursor luminoso** | Un anillo de luz sigue al ratón |
 | **Reloj con segundos** | Muestra también los segundos |
+| **Gestos con la mano** | Controla el HUD moviendo la mano ante la cámara (palma = cursor, pellizco = clic, puño = agarrar, pulgar arriba = briefing). El vídeo no sale del navegador. |
 | **Leer en voz alta las respuestas** | Lo que respondes desde el HUD se lee con la voz de ARIA |
 | **Mantener la pantalla encendida** | Evita que la tableta se apague mientras el HUD está abierto |
 | **Modo quiosco** | Al tocar la pantalla pasa a pantalla completa y los botones se esconden tras unos segundos sin uso |
@@ -359,6 +383,15 @@ Pulsa **Sincronizar**:
 ## Mapa
 
 Mapa de **OpenStreetMap**, sin claves ni seguimiento: busca una dirección, pulsa **Mi ubicación** (el navegador te pedirá permiso), traza una **ruta** o busca **farmacias, gasolineras, supermercados, restaurantes o cajeros** cerca.
+
+### Mapa 3D
+
+Pulsa **3D** junto a los botones del mapa (ARIA lo recuerda en cada dispositivo):
+
+- **Edificios en 3D** al acercarte a una ciudad. Con todo el país a la vista el mapa está plano; al acercarte se inclina.
+- **Inclinar y girar**: con dos dedos o con el botón derecho del ratón. **Vista cenital** lo vuelve a poner plano.
+- **Vuela a…**: al buscar un sitio, el mapa vuela hasta él. Las búsquedas y **Cerca de** ponen un marcador por resultado; al pulsarlo ves su nombre (también en 2D).
+- Los mapas 3D son de **OpenFreeMap**, gratis y sin claves. Si tu navegador no puede mostrar el 3D, ARIA vuelve sola al mapa 2D.
 
 ## Información e inversiones
 
@@ -445,6 +478,8 @@ Comandos:
 | `/red` | Salud de la red y dispositivos nuevos |
 | `/vpn` | Dispositivos de la VPN |
 | `/bloqueo` | Bloqueador de anuncios, con botones de pausa para administradores (también `/anuncios`) |
+| `/copia` | Realiza una copia de seguridad cifrada al momento (administradores) |
+| `/tunel` | Muestra el estado del túnel de Cloudflare y permite reiniciarlo (administradores) |
 | `/nuevovpn <nombre>` | Crea un dispositivo VPN y te manda el QR y el `.conf` (administradores) |
 | `/control` | Dispositivos pausados o bloqueados, con botón **Reanudar** (administradores) |
 | `/nuevo` | Empieza otra conversación |
@@ -454,6 +489,10 @@ Comandos:
 <p align="center"><img alt="Resumen diario en Telegram" src="img/captura-telegram.png" width="320"></p>
 
 Las acciones de administración piden **Confirmar**. Cada chat tiene su conversación («Telegram · …» en el historial de la web).
+
+### Vigilante del túnel
+
+ARIA incluye un vigilante que comprueba cada 2 minutos si la casa es accesible desde internet. Si el túnel de Cloudflare se cae, la Raspberry intenta reiniciarlo automáticamente. Puedes ver los reinicios recientes con el comando `/tunel`. En caso de caída total del túnel, siempre puedes entrar a través de la VPN **HEIMDALL**.
 
 > El `.conf` de `/nuevovpn` contiene la clave privada del dispositivo. Bórralo del chat cuando lo hayas importado.
 

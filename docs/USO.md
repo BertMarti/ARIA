@@ -20,30 +20,31 @@ Esta guía explica qué hay en cada parte de ARIA y cómo sacarle partido en el 
 8. [Imágenes y tickets](#imágenes-y-tickets)
 9. [Memoria y diario](#memoria-y-diario)
 10. [Notas](#notas)
-11. [Listas](#listas)
-12. [Resumen diario](#resumen-diario)
-13. [Propuestas de ARIA](#propuestas-de-aria)
-14. [Recordatorios](#recordatorios)
-15. [Rutinas](#rutinas)
-16. [Finanzas](#finanzas)
-17. [Red](#red)
-18. [Control parental](#control-parental)
-19. [Seguridad](#seguridad)
-20. [Centro de control](#centro-de-control)
-21. [Cerebro](#cerebro)
-22. [Modo HUD](#modo-hud)
-23. [Agenda y cumpleaños](#agenda-y-cumpleaños)
-24. [Mapa](#mapa)
-25. [Información e inversiones](#información-e-inversiones)
-26. [Precio de la luz](#precio-de-la-luz)
-27. [Ajustes](#ajustes)
-28. [Avisos](#avisos)
-29. [Telegram](#telegram)
-30. [Notificaciones push](#notificaciones-push)
-31. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
-32. [Acceso por invitación](#acceso-por-invitación)
-33. [Usuarios y roles](#usuarios-y-roles)
-34. [Cuando algo falla](#cuando-algo-falla)
+11. [Tus documentos](#tus-documentos)
+12. [Listas](#listas)
+13. [Resumen diario](#resumen-diario)
+14. [Propuestas de ARIA](#propuestas-de-aria)
+15. [Recordatorios](#recordatorios)
+16. [Rutinas](#rutinas)
+17. [Finanzas](#finanzas)
+18. [Red](#red)
+19. [Control parental](#control-parental)
+20. [Seguridad](#seguridad)
+21. [Centro de control](#centro-de-control)
+22. [Cerebro](#cerebro)
+23. [Modo HUD](#modo-hud)
+24. [Agenda y cumpleaños](#agenda-y-cumpleaños)
+25. [Mapa](#mapa)
+26. [Información e inversiones](#información-e-inversiones)
+27. [Precio de la luz](#precio-de-la-luz)
+28. [Ajustes](#ajustes)
+29. [Avisos](#avisos)
+30. [Telegram](#telegram)
+31. [Notificaciones push](#notificaciones-push)
+32. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
+33. [Acceso por invitación](#acceso-por-invitación)
+34. [Usuarios y roles](#usuarios-y-roles)
+35. [Cuando algo falla](#cuando-algo-falla)
 
 ## Un vistazo rápido
 
@@ -214,6 +215,18 @@ Para apuntar cosas sueltas: ideas, la lista de la compra o mejoras para ARIA. Es
 - **Web**: escribe la nota, elige la categoría (**General**, **Mejoras**, **Ideas** o **Compra**) y pulsa **Añadir**. Puedes filtrar por categoría, marcarla como hecha, editarla o borrarla. **Ver hechas** muestra también las terminadas.
 - Las **mejoras** de los administradores se copian solas a un plan privado de la máquina (sección «Notas y mejoras desde Telegram»), para tenerlas a mano al mejorar ARIA. No se publican en ningún sitio.
 - Cada persona ve solo las suyas. Los invitados no tienen notas.
+
+### Tus documentos
+
+En **Notas → Documentos** puedes subir tus papeles y preguntarle a ARIA por su contenido.
+
+- Se admiten archivos **PDF, TXT y MD** de hasta **15 MB**. Cada usuario dispone de una cuota de **300 MB** y **200 documentos**; además, hay un límite de 10 subidas por hora.
+- Los PDF pueden tener hasta **400 páginas**. El texto se extrae en un proceso aislado, con límites de memoria, CPU, tiempo y salida, para reducir el riesgo de PDF maliciosos. Después se limpia, se divide en fragmentos y se indexa.
+- La búsqueda prioriza el significado con el modelo local de embeddings de la Pi. Si no está disponible, usa coincidencias de palabras.
+- En el chat, prueba «¿qué dice mi contrato sobre…?» o «según el manual…». ARIA usa `buscar_en_documentos` y cita cada fragmento como **[documento, pág. N]**.
+- El archivo y el índice permanecen en la Pi. Al hacer una pregunta, los fragmentos relevantes se envían al cerebro que responde; si es un cerebro de la nube, esos fragmentos salen de casa.
+- Solo el dueño puede ver, buscar, descargar y borrar sus documentos. Los invitados no tienen acceso.
+- En **Ajustes → General → Mis datos** se exportan los metadatos de los documentos, no los archivos originales. Al borrar la cuenta se eliminan también sus archivos e índice.
 
 ## Listas
 

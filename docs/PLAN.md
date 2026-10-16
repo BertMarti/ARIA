@@ -150,7 +150,7 @@ Lo que aún no tiene ARIA y más aportaría (gratis, privado y viable en la Pi),
 | 5 | **Gasolineras más baratas** cerca (datos del Ministerio, sin clave) | Ahorro diario | S | ✅ Hecho |
 | 6 | **Salud del sistema**: historial de disponibilidad de cada servicio y del túnel | Saber qué falló y cuándo | S | ✅ Hecho |
 | 7 | **Atajos de Siri y Android** con tokens personales limitados | ARIA desde cualquier sitio | M | Pendiente |
-| 8 | **Tus documentos**: subir PDF y preguntar sobre ellos (búsqueda local) | Un cerebro para tus papeles | M/L | Pendiente |
+| 8 | **Tus documentos**: subir PDF, TXT o MD y preguntar sobre ellos (búsqueda local) | Un cerebro para tus papeles | M/L | ✅ Hecho |
 | 9 | **Hogar con Home Assistant** (si se instala) | Luces y enchufes | M | Pendiente |
 | 10 | **Ubicación para el tiempo** (opcional, ~1 km, 12 h) | El tiempo y los avisos de donde estés | S | ✅ Hecho |
 | 11 | **Ping compañero** por toda la app, avisando de novedades | ARIA con más vida | S | ✅ Hecho |
@@ -165,7 +165,7 @@ Ordenado por lo que más aporta con menos esfuerzo y menos consumo en la Pi:
 2. **Calendario bidireccional (CalDAV)**: editar la agenda desde el móvil (ya se puede ver con la suscripción).
 3. **Home Assistant**: abre la puerta a las luces, los enchufes y el robot de casa con un solo módulo.
 4. **Uptime Kuma** e **historial de velocidad**: mejor vigilancia de la casa con poco consumo.
-5. **Documentos propios (RAG)** y **Paperless-ngx**: el gran salto como asistente personal, pero el más pesado.
+5. **Paperless-ngx**: gestión documental avanzada, pero el más pesado.
 6. **Altavoz satélite**: «Aria» en toda la casa.
 
 Antes de añadir contenedores pesados (Frigate, Paperless, Jellyfin), mira la RAM libre en ARIA → Centro de control → Sistema. ARIA, Ollama y la voz ya usan la mayor parte de los 8 GB.

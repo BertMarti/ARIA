@@ -189,8 +189,8 @@ const Inicio = (() => {
       dato: (d) => d?.aplicaciones?.aria ? d.aplicaciones.aria.listos + " de " + d.aplicaciones.aria.total + " cerebros listos" : "Habla o escribe a ARIA", estado: () => ["Activo", "ok"] },
     { vista: "finanzas", etq: "Dinero", titulo: "Finanzas", visual: () => el("span", { class: "mi-v-barras" }, el("i"), el("i"), el("i"), el("i")),
       dato: (d) => d?.finanzas ? eur(d.finanzas.gastos / 100, 0) + " en " + d.finanzas.mes_texto : "Gastos y presupuestos", estado: () => ["Activo", "ok"] },
-    { pronto: true, etq: "En construcción", titulo: "ARIA PRO", visual: () => el("span", { class: "mi-v-lineas pronto" }, el("i"), el("i"), el("i")),
-      dato: () => "Briefing hablado, voz propia y ARIA flotante", estado: () => ["Pronto", "pronto"] },
+    { pronto: true, etq: "En construcción", titulo: "ARIA PRO 2", visual: () => el("span", { class: "mi-v-lineas pronto" }, el("i"), el("i"), el("i")),
+      dato: () => "Búsqueda global, mis datos, gasolineras y avisos del tiempo donde estés", estado: () => ["Pronto", "pronto"] },
   ];
   function visualResumen(d) {
     const t = d?.tiempo, lz = d?.luz;

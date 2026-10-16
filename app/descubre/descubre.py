@@ -181,7 +181,9 @@ def sondear_dlna():
 def escribir():
     ahora = time.time()
     for ident, dato in list(VISTO.items()):
-        if ahora - dato.get("_visto", 0) > 300:
+        # Solo DLNA caduca por tiempo (se vuelve a sondear cada minuto). Los Cast los quita remove_service cuando
+        # zeroconf deja de verlos: mDNS no repite el anuncio, así que caducarlos borraba teles que siguen encendidas.
+        if dato.get("tipo") == "dlna" and ahora - dato.get("_visto", 0) > 300:
             VISTO.pop(ident, None)
     salida = []
     for dato in VISTO.values():

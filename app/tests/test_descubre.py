@@ -47,3 +47,12 @@ def test_escritura_atomica(monkeypatch, tmp_path):
                                   "_visto": descubre.time.time()}
     descubre.escribir()
     assert json.loads(destino.read_text())["dispositivos"][0]["id"] == "cast:abc"
+
+
+def test_cast_no_caduca_por_tiempo_pero_dlna_si(monkeypatch, tmp_path):
+    monkeypatch.setattr(descubre, "SALIDA", tmp_path / "dispositivos.json")
+    descubre.VISTO.clear()
+    descubre.VISTO["cast:a"] = {"id": "cast:a", "tipo": "chromecast", "_visto": 0}
+    descubre.VISTO["dlna:b"] = {"id": "dlna:b", "tipo": "dlna", "_visto": 0}
+    descubre.escribir()
+    assert [d["id"] for d in json.loads((tmp_path / "dispositivos.json").read_text())["dispositivos"]] == ["cast:a"]

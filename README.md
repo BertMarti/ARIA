@@ -110,6 +110,7 @@ Ping se estrena en el **escaparate público** de ARIA (`/hola`): una página est
 ## 📑 Índice
 
 - [✨ Qué puede hacer](#-qué-puede-hacer)
+- [📱 App de Android (ARIA 3)](#-app-de-android-aria-3)
 - [📸 Capturas](#-capturas)
 - [🧚 Conoce a Ping](#-conoce-a-ping)
 - [🧩 Cómo está hecha](#-cómo-está-hecha)
@@ -143,6 +144,19 @@ Ping se estrena en el **escaparate público** de ARIA (`/hola`): una página est
 | 🌌 | **HUD y resumen diario** | **Modo HUD** futurista con tarjetas interactivas, control por **gestos**, opciones y modo quiosco.<br>**Resumen diario** en Inicio, HUD y Telegram (HTML bien maquetado, con botones).<br>**Precio de la luz** por horas (PVPC). |
 | 🖥️ | **Sistema** | Telemetría en directo por contenedor, **Cerebro 3D** con la red de nodos en vivo (admin), **reinicio seguro** firmado (HMAC) y **vigilante del túnel**. HEIMDALL admite accesos **temporales** y avisa si una VPN conecta desde un país u operador nuevo. |
 | 🔑 | **Acceso y usuarios** | HTTPS automático en tu red (`https://aria.local`, la IP o `https://aria.lan`).<br>Opcional: tu dominio con **Cloudflare Tunnel + Access**, sin abrir puertos y con inicio de sesión único.<br>Varios usuarios con rol **administrador** o **usuario**; permisos comprobados en el servidor; **verificación en dos pasos** opcional.<br>Paleta de órdenes **Ctrl+K** con **búsqueda global** en tus notas, agenda, recordatorios, conversaciones y recuerdos; app instalable (PWA) y menú **Compartir** de Android.<br>**Mis datos**: descarga todo lo tuyo en un ZIP o borra tu cuenta. |
+
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
+
+## 📱 App de Android (ARIA 3)
+
+ARIA también tiene **app para Android**, en dos sabores. Las dos se descargan de las [Releases de GitHub](https://github.com/BertMarti/ARIA/releases) y se mantienen al día con [Obtainium](https://obtainium.imranr.dev/):
+
+| | App | Qué es |
+|:---:|---|---|
+| ⚡ | **ARIA Lite** | La misma web de ARIA a pantalla completa, como una app (TWA): siempre actualizada y muy ligera. |
+| 🤖 | **ARIA** | App híbrida con piezas nativas: acceso con un token por dispositivo que puedes revocar, notificaciones, accesos rápidos (hablar, manos libres, nota, HUD, compartir) y más. |
+
+Cómo instalarla y configurarla: **[docs/APP-ANDROID.md](docs/APP-ANDROID.md)**.
 
 <p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
 

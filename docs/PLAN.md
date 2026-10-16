@@ -118,16 +118,40 @@ Aprobado y en curso. La idea es enseñar ARIA mejor y darle funciones de asisten
 | **Escaparate público** | Página «Conoce a ARIA»: portada oscura con su voz presentándose (pregrabada), menú en tarjetas numeradas y demos de solo lectura con datos inventados. Sin IA en vivo, sin formularios ni analítica y **Ping**, su hada de luz con voz propia, en `/hola` | ✅ Hecho |
 | **Inicio en tarjetas** | El menú principal de ARIA como tarjetas numeradas con estado (activo, aviso, pronto) | ✅ Hecho |
 | **Voz «Elegante»** | Nuevo tono: serena, segura, con un punto de ironía amable | ✅ Hecho |
-| **Voz diseñada** | Una voz nueva creada a partir de una descripción (Qwen3-TTS VoiceDesign, Apache 2.0) y entrenada para Piper con [herramientas/voz-propia](../herramientas/voz-propia/README.md): local y sin cuotas | Propuesta |
-| **Voz en streaming** | Empezar a hablar al terminar la primera frase | Propuesta |
-| **Memoria de verdad** | Búsqueda semántica local, recuerdos con fuente y confianza, olvido de lo que no se usa | Propuesta |
-| **Proactividad con permiso** | ARIA propone acciones ante eventos en una bandeja (aprobar o rechazar) y registra todo lo que hace | Propuesta |
+| **Voz diseñada** | Una voz nueva creada a partir de una descripción (Qwen3-TTS VoiceDesign, Apache 2.0) y entrenada para Piper con [herramientas/voz-propia](../herramientas/voz-propia/README.md): local y sin cuotas | ⏸️ Aparcada (16/10/2026) |
+| **Voz en streaming** | Empezar a hablar al terminar la primera frase | ✅ Hecho |
+| **Memoria de verdad** | Búsqueda semántica local, recuerdos con fuente y confianza, olvido de lo que no se usa | ✅ Hecho |
+| **Proactividad con permiso** | ARIA propone acciones ante eventos en una bandeja (aprobar o rechazar) y registra todo lo que hace | ✅ Hecho |
 | **Briefing hablado** | Un minuto de voz cada mañana con lo importante (Telegram como nota de voz, HUD e Inicio) | ✅ Hecho |
-| **Ojos y gestos en el HUD** | Cámara bajo petición («¿qué ves?») y control con la mano (MediaPipe, en el navegador) | Propuesta |
-| **Mapa 3D** | MapLibre + OpenFreeMap: edificios en 3D y «vuela a…», sin claves | Propuesta |
-| **ARIA flotante** | Mini-ventana siempre visible en el PC con orbe, subtítulos y micrófono | Propuesta |
+| **Ojos y gestos en el HUD** | Cámara bajo petición («¿qué ves?») y control con la mano (MediaPipe, en el navegador) | ✅ Hecho |
+| **Mapa 3D** | MapLibre + OpenFreeMap: edificios en 3D y «vuela a…», sin claves | ✅ Hecho |
+| **ARIA flotante** | Mini-ventana siempre visible en el PC con orbe, subtítulos y micrófono | ✅ Hecho |
+
+> **Voz propia diseñada (aparcada el 16/10/2026).** Idea: crear una voz con Qwen3-TTS VoiceDesign a partir de una descripción,
+> generar con ella un corpus de frases y entrenar un modelo Piper en Google Colab (GPU gratis) para que ARIA hable en la propia
+> máquina, sin cuotas ni internet. Lo necesario ya existe en [herramientas/voz-propia](../herramientas/voz-propia/README.md) (corpus,
+> guía de grabación con consentimiento y cuaderno de Colab) y ARIA ya sabe usar un modelo Piper propio (`data/voz-propia/`). Para
+> retomarlo: actualizar el cuaderno a VoiceDesign, elegir la voz entre unas muestras, entrenar e instalar el `.onnx`.
 
 Fuera de alcance a propósito: reconocimiento facial y rastreo de información sobre personas.
+
+## ARIA PRO 2 (16/10/2026)
+
+Lo que aún no tiene ARIA y más aportaría (gratis, privado y viable en la Pi), por valor/esfuerzo:
+
+| # | Mejora | Qué aporta | Esfuerzo | Estado |
+|---|---|---|---|---|
+| 1 | **Búsqueda global** (Ctrl+K) en notas, agenda, recordatorios, conversaciones y memoria | Encontrar cualquier cosa al momento | S | En curso |
+| 2 | **Listas compartidas** (la compra de la familia) | Lo más usado en casa | S | Pendiente |
+| 3 | **Mis datos**: descargar todo lo mío (ZIP) y borrar mi cuenta | Privacidad de verdad | S | En curso |
+| 4 | **Avisos meteorológicos oficiales** (Meteoalarm, sin clave) con propuestas | Útil y proactivo | S | En curso |
+| 5 | **Gasolineras más baratas** cerca (datos del Ministerio, sin clave) | Ahorro diario | S | En curso |
+| 6 | **Salud del sistema**: historial de disponibilidad de cada servicio y del túnel | Saber qué falló y cuándo | S | Pendiente |
+| 7 | **Atajos de Siri y Android** con tokens personales limitados | ARIA desde cualquier sitio | M | Pendiente |
+| 8 | **Tus documentos**: subir PDF y preguntar sobre ellos (búsqueda local) | Un cerebro para tus papeles | M/L | Pendiente |
+| 9 | **Hogar con Home Assistant** (si se instala) | Luces y enchufes | M | Pendiente |
+
+No conviene: reconocimiento facial (privacidad de las visitas), leer el correo (demasiado riesgo) ni agentes que actúen sin pedir permiso.
 
 ## 3. Orden propuesto
 

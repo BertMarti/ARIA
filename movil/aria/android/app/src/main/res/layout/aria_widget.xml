@@ -1,1 +1,52 @@
-<?xml version="1.0" encoding="utf-8"?><LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp" android:background="@drawable/widget_background"><ImageView android:layout_width="32dp" android:layout_height="32dp" android:src="@drawable/ic_stat_aria" android:contentDescription="ARIA"/><Button android:id="@+id/widget_hablar" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_hablar"/><Button android:id="@+id/widget_nota" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_nota"/></LinearLayout>
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:background="@drawable/widget_background">
+    <TextView
+        android:id="@+id/widget_tiempo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#38d6ff"
+        android:textSize="14sp"
+        android:maxLines="1" />
+    <TextView
+        android:id="@+id/widget_proximo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#ffffff"
+        android:textSize="13sp"
+        android:maxLines="1" />
+    <TextView
+        android:id="@+id/widget_avisos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#38d6ff"
+        android:textSize="12sp"
+        android:maxLines="1"
+        android:layout_marginBottom="2dp" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/widget_hablar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/widget_hablar" />
+        <Button
+            android:id="@+id/widget_nota"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/widget_nota" />
+    </LinearLayout>
+    <View
+        android:id="@+id/widget_resumen"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+</LinearLayout>

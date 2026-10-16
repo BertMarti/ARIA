@@ -4,7 +4,7 @@ import json
 import zipfile
 from contextlib import closing
 
-from . import db, listas, usuarios
+from . import db, dispositivos_app, listas, usuarios
 
 
 def _filas(con, tabla, uid):
@@ -19,6 +19,7 @@ def _json(valor):
 
 def exportar(uid: int, perfil: dict) -> bytes:
     listas.iniciar()   # crea sus tablas si aún no existen (exportación de una cuenta que nunca usó listas)
+    dispositivos_app.iniciar()
     with closing(db._con()) as con:
         convs = []
         for c in con.execute("SELECT * FROM conversaciones WHERE user_id=? ORDER BY creada, id", (uid,)):
@@ -47,6 +48,8 @@ def exportar(uid: int, perfil: dict) -> bytes:
             "voz.json": _filas(con, "voz_preferencias", uid),
             "avisos.json": {"avisos": _filas(con, "avisos", uid), "ajustes": _filas(con, "avisos_ajustes", uid)},
             "ubicacion.json": _filas(con, "ubicaciones", uid),
+            "dispositivos-app.json": [dict(r) for r in con.execute(
+                "SELECT id, nombre, creado, ultimo_uso, caduca FROM app_dispositivos WHERE user_id=? ORDER BY rowid", (uid,))],
         }
     leeme = ("Exportación de tus datos de ARIA\n\n"
              "perfil.json: datos básicos de tu cuenta, sin contraseña ni secretos.\n"
@@ -61,8 +64,9 @@ def exportar(uid: int, perfil: dict) -> bytes:
              "finanzas.json: movimientos, categorías, presupuestos y reglas.\n"
              "propuestas.json: propuestas de ARIA y su estado.\n"
              "voz.json: preferencias de voz.\n"
-              "avisos.json: avisos y ajustes de avisos.\n\n"
-              "ubicacion.json: tu última ubicación temporal, si la has usado.\n\n"
+               "avisos.json: avisos y ajustes de avisos.\n\n"
+               "dispositivos-app.json: móviles vinculados, sin tokens ni huellas.\n\n"
+               "ubicacion.json: tu última ubicación temporal, si la has usado.\n\n"
              "La exportación no incluye contraseñas, secretos de dos pasos, tokens ni claves.\n")
     salida = io.BytesIO()
     with zipfile.ZipFile(salida, "w", zipfile.ZIP_DEFLATED) as z:

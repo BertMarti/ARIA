@@ -686,8 +686,12 @@
           <p>ARIA y ARIA Lite son dos formas de abrir esta misma ARIA desde Android. La dirección se configura en la app y nunca incluye un dominio fijo.</p>
           <div class="botones"><a class="boton primario" href="https://github.com/BertMarti/ARIA/releases/latest">Descargar ARIA</a><a class="boton fantasma" href="https://github.com/BertMarti/ARIA/releases/latest">Descargar ARIA Lite</a></div>
           <p>Escribe esta dirección en la app: <code id="app-android-origen"></code> <button type="button" class="fantasma pequeno" id="app-android-copiar">Copiar</button></p>
-          <ol><li>Instala la APK (permite instalar desde esta fuente una vez).</li><li>Escribe esta dirección.</li><li>Inicia sesión como siempre.</li></ol>
-        </article>
+           <ol><li>Instala la APK (permite instalar desde esta fuente una vez).</li><li>Escribe esta dirección.</li><li>Inicia sesión como siempre.</li></ol>
+           <h3>Móviles vinculados</h3>
+           <p class="muted">Estos móviles pueden leer tus avisos y un resumen. El token solo se muestra al vincularlos.</p>
+           <ul id="app-dispositivos" class="filas"></ul>
+           <dialog id="app-revocar-dialog"><form method="dialog"><p id="app-revocar-texto"></p><div class="botones"><button value="cancel" class="fantasma">Cancelar</button><button value="ok" class="peligro">Revocar</button></div></form></dialog>
+         </article>
         <article class="tarjeta" id="ajustes-pass">
         <h2>Contraseña</h2>
         <form id="form-pass" class="formulario" autocomplete="off">

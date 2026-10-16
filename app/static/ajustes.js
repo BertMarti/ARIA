@@ -265,6 +265,28 @@ const Ajustes = (() => {
       try { await navigator.clipboard.writeText(location.origin); toast("Dirección copiada."); }
       catch (_) { toast("No se pudo copiar la dirección.", "mal"); }
     });
+    const lista = $("app-dispositivos"), dialog = $("app-revocar-dialog");
+    async function pintar() {
+      const r = await api("/api/app/dispositivos");
+      lista.replaceChildren();
+      if (!r.ok) { lista.append(el("li", { class: "muted" }, "No se pudieron leer los móviles vinculados.")); return; }
+      if (!r.data.dispositivos.length) { lista.append(el("li", { class: "muted" }, "No hay móviles vinculados.")); return; }
+      for (const d of r.data.dispositivos) {
+        const fecha = (v) => v ? new Date(v * 1000).toLocaleString("es-ES") : "Nunca";
+        const boton = el("button", { type: "button", class: "peligro pequeno" }, "Revocar");
+        boton.addEventListener("click", () => {
+          $("app-revocar-texto").textContent = "¿Revocar el acceso de «" + d.nombre + "»?";
+          dialog.returnValue = "cancel";
+          dialog.showModal();
+          dialog.addEventListener("close", async () => {
+            if (dialog.returnValue === "ok") { await api("/api/app/dispositivos/" + d.id, { method: "DELETE" }); pintar(); }
+          }, { once: true });
+        });
+        lista.append(el("li", { class: "fila" }, el("div", { class: "fila-info" }, el("strong", null, d.nombre),
+          el("span", { class: "muted" }, "Creado: " + fecha(d.creado) + " · Último uso: " + fecha(d.ultimo_uso))), boton));
+      }
+    }
+    pintar();
   }
 
   // --- Spotify ---

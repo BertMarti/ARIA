@@ -133,7 +133,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                      .replace("{accion}", "x").replace("{mid}", "1").replace("{rid}", "1").replace("{fecha}", "2026-10-06") \
                       .replace("{aid}", "1").replace("{chat_id}", "1").replace("{sid}", "1").replace("{hid}", "1").replace("{identificador}", "1").replace("{eid}", "1").replace("{nid}", "1") \
                      .replace("{lista_id}", "1").replace("{item_id}", "1") \
-                     .replace("{token}", "a" * 24).replace("{n}", "1")
+                     .replace("{token}", "a" * 24).replace("{ident}", "1").replace("{n}", "1")
         for m in r.methods - {"HEAD", "OPTIONS"}:
             if permisos.permitido("usuario", m, ruta):
                 assert (m, camino) in {
@@ -160,7 +160,9 @@ def test_toda_ruta_registrada_esta_cubierta():
                      ("GET", "/api/2fa"), ("POST", "/api/2fa/preparar"), ("POST", "/api/2fa/activar"), ("POST", "/api/2fa/desactivar"),
                      ("GET", "/api/proyectos"), ("POST", "/api/proyectos"), ("PATCH", "/api/proyectos/{pid}"),
                      ("DELETE", "/api/proyectos/{pid}"), ("GET", "/api/proyectos/{pid}/decisiones"),
-                     ("POST", "/api/proyectos/{pid}/decisiones"), ("DELETE", "/api/decisiones/{did}"),
+                      ("POST", "/api/proyectos/{pid}/decisiones"), ("DELETE", "/api/decisiones/{did}"),
+                      ("POST", "/api/app/dispositivos"), ("GET", "/api/app/dispositivos"),
+                      ("DELETE", "/api/app/dispositivos/{ident}"), ("GET", "/api/app/resumen"),
                 } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION | RUTAS_USUARIO_INFORMACION | RUTAS_USUARIO_AGENDA | RUTAS_USUARIO_MODULOS | RUTAS_USUARIO_MAPAS | permisos.rutas_modulos_usuario(), (m, camino)
                 if camino.startswith("/api/modulos/"):
                     # Las de módulos solo se abren si su registro las declara (siempre bajo /api/modulos/<id>/).

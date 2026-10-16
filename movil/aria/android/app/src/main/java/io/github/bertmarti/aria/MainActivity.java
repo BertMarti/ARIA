@@ -8,12 +8,8 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.Settings;
-import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
-import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
 import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
@@ -33,27 +29,44 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(state);
         ariaUrl = getSharedPreferences(PREFS, MODE_PRIVATE).getString(URL_KEY, "");
         WebView web = getBridge().getWebView();
-        // Se hereda del cliente de Capacitor: sirve la página local (https://localhost) y mantiene el puente con lo nativo.
+        // Se mantiene el puente de Capacitor mientras se navega por ARIA.
         web.setWebViewClient(new BridgeWebViewClient(getBridge()) {
-            @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return abrirExternoSiHaceFalta(request.getUrl()) || super.shouldOverrideUrlLoading(view, request);
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                return abrirExternoSiHaceFalta(request.getUrl())
+                        || super.shouldOverrideUrlLoading(view, request);
+            }
+
+            @Override public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                Uri pagina = Uri.parse(url);
+                if (esPaginaDeCasa(pagina)) {
+                    DispositivoApp.vincularEnSegundoPlano(MainActivity.this, ariaUrl);
+                }
             }
         });
         crearCanal();
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 20);
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 20);
+        }
         WorkManager.getInstance(this).enqueueUniquePeriodicWork("avisos-aria", ExistingPeriodicWorkPolicy.UPDATE,
-                new PeriodicWorkRequest.Builder(AvisosWorker.class, 15, TimeUnit.MINUTES).setConstraints(new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build());
+                new PeriodicWorkRequest.Builder(AvisosWorker.class, 15, TimeUnit.MINUTES)
+                        .setConstraints(new Constraints.Builder()
+                                .setRequiredNetworkType(NetworkType.CONNECTED).build()).build());
         gestionarIntent(getIntent());
         Actualizaciones.comprobar(this, false);
     }
 
     private boolean abrirExternoSiHaceFalta(Uri uri) {
         if (ariaUrl.isEmpty() && "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null) {
-            ariaUrl = uri.getScheme() + "://" + uri.getHost() + (uri.getPort() > 0 ? ":" + uri.getPort() : "") + "/";
+            ariaUrl = uri.getScheme() + "://" + uri.getHost()
+                    + (uri.getPort() > 0 ? ":" + uri.getPort() : "") + "/";
             return false;
         }
         Uri base = ariaUrl.isEmpty() ? null : Uri.parse(ariaUrl);
-        boolean mismaCasa = base != null && base.getScheme().equals(uri.getScheme()) && base.getHost().equalsIgnoreCase(uri.getHost()) && base.getPort() == uri.getPort();
+        boolean mismaCasa = base != null && base.getScheme().equals(uri.getScheme())
+                && base.getHost().equalsIgnoreCase(uri.getHost()) && base.getPort() == uri.getPort();
         String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
         boolean local = "localhost".equals(host);
         // El acceso de Cloudflare (código por correo) pasa por <equipo>.cloudflareaccess.com: debe seguir dentro de la app.
@@ -66,14 +79,27 @@ public class MainActivity extends BridgeActivity {
     private void gestionarIntent(Intent intent) {
         if (intent == null) return;
         String accion = intent.getStringExtra("accion");
-        if ("cambiar".equals(accion)) { getSharedPreferences(PREFS, MODE_PRIVATE).edit().remove(URL_KEY).apply(); getBridge().getWebView().loadUrl("https://localhost/?cambiar=1"); ariaUrl = ""; return; }
-        if ("actualizaciones".equals(accion)) { Actualizaciones.comprobar(this, true); return; }
-        if (accion != null && !ariaUrl.isEmpty()) getBridge().getWebView().loadUrl(ariaUrl + "#" + Uri.encode(accion));
+        if ("cambiar".equals(accion)) {
+            DispositivoApp.borrar(this);
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().remove(URL_KEY).apply();
+            getBridge().getWebView().loadUrl("https://localhost/?cambiar=1");
+            ariaUrl = "";
+            return;
+        }
+        if ("actualizaciones".equals(accion)) {
+            Actualizaciones.comprobar(this, true);
+            return;
+        }
+        if (accion != null && !ariaUrl.isEmpty()) {
+            getBridge().getWebView().loadUrl(ariaUrl + "#" + Uri.encode(accion));
+        }
         if (Intent.ACTION_SEND.equals(intent.getAction()) && !ariaUrl.isEmpty()) {
             try {
                 String texto = intent.getStringExtra(Intent.EXTRA_TEXT);
                 String url = intent.getData() == null ? "" : intent.getDataString();
-                String destino = ariaUrl + "?text=" + URLEncoder.encode(texto == null ? "" : texto, "UTF-8") + "&url=" + URLEncoder.encode(url == null ? "" : url, "UTF-8");
+                String destino = ariaUrl + "?text="
+                        + URLEncoder.encode(texto == null ? "" : texto, "UTF-8")
+                        + "&url=" + URLEncoder.encode(url == null ? "" : url, "UTF-8");
                 getBridge().getWebView().loadUrl(destino);
             } catch (Exception ignored) { }
         }
@@ -83,10 +109,29 @@ public class MainActivity extends BridgeActivity {
 
     @Override public void onBackPressed() {
         WebView web = getBridge().getWebView();
-        if (web.canGoBack() && web.getUrl() != null && !web.getUrl().startsWith("https://localhost")) web.goBack(); else super.onBackPressed();
+        if (web.canGoBack() && web.getUrl() != null
+                && !web.getUrl().startsWith("https://localhost")) {
+            web.goBack();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     private void crearCanal() {
-        if (Build.VERSION.SDK_INT >= 26) ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(new NotificationChannel("avisos", getString(R.string.avisos_canal), NotificationManager.IMPORTANCE_DEFAULT));
+        if (Build.VERSION.SDK_INT >= 26) {
+            NotificationManager gestor = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            gestor.createNotificationChannel(new NotificationChannel(
+                    "avisos", getString(R.string.avisos_canal), NotificationManager.IMPORTANCE_DEFAULT));
+        }
+    }
+
+    private boolean esPaginaDeCasa(Uri pagina) {
+        if (ariaUrl.isEmpty() || pagina.getHost() == null) {
+            return false;
+        }
+        Uri base = Uri.parse(ariaUrl);
+        String ruta = pagina.getPath() == null ? "" : pagina.getPath().toLowerCase();
+        return base.getHost().equalsIgnoreCase(pagina.getHost())
+                && !ruta.contains("login") && !ruta.contains("authorize");
     }
 }

@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_automatizaciones, api_avisos, api_cerebro, api_control, api_disponibilidad, api_finanzas, api_informacion, api_listas, api_medios, api_modulos, api_notas, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, disponibilidad, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, listas, mapas, medios, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_app, api_automatizaciones, api_avisos, api_cerebro, api_control, api_disponibilidad, api_finanzas, api_informacion, api_listas, api_medios, api_modulos, api_notas, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, dispositivos_app, disponibilidad, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, listas, mapas, medios, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -91,6 +91,7 @@ async def _arranque():
     telemetria.iniciar()
     vpn_ubicaciones.iniciar()
     usuarios.iniciar()
+    dispositivos_app.iniciar()
     ubicacion.iniciar()
     invitados.iniciar()
     propuestas.iniciar()
@@ -191,6 +192,23 @@ async def seguridad(request: Request, call_next):
     nueva = None          # usuario para el que hay que emitir cookie de sesión
     pendiente = False     # SSO: Cloudflare no respondió, hay que reintentar
     usuario = None
+    if path == "/api/app/resumen":
+        cabecera = request.headers.get("authorization", "")
+        token = cabecera[7:] if cabecera.startswith("Bearer ") else ""
+        usuario = await asyncio.to_thread(dispositivos_app.verificar, token)
+        if usuario is None:
+            return JSONResponse({"error": "Token de dispositivo no válido."}, status_code=401)
+        request.state.usuario = usuario
+        request.state.app_token = token
+        request.state.vista = None
+        request.state.limites = await asyncio.to_thread(invitados.de, usuario["id"]) if usuario["rol"] != "admin" else None
+        if invitados.caducado(request.state.limites):
+            return JSONResponse({"error": "Tu acceso a ARIA ha caducado."}, status_code=403)
+        resp = await call_next(request)
+        resp.headers.setdefault("Cache-Control", "no-store")
+        resp.headers.setdefault("Content-Security-Policy", CSP)
+        resp.headers.setdefault("Permissions-Policy", PERMISOS_NAVEGADOR)
+        return resp
     if not (_libre(path) or (path.startswith("/flujo/") and request.method in ("GET", "HEAD"))) and not (path.startswith("/cal/") and request.method == "GET"):
         usuario = auth.sesion_usuario(request.cookies.get(auth.COOKIE))
         token = request.headers.get(sso.CABECERA)
@@ -486,6 +504,7 @@ app.include_router(api_finanzas.router)
 app.include_router(api_red.router)
 app.include_router(api_control.router)
 app.include_router(api_avisos.router)
+app.include_router(api_app.router)
 app.include_router(api_disponibilidad.router)
 app.include_router(api_rutinas.router)
 app.include_router(api_automatizaciones.router)

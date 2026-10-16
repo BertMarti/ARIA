@@ -8,6 +8,8 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import androidx.work.Constraints;
@@ -19,6 +21,9 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
 import java.net.URLEncoder;
 import java.util.concurrent.TimeUnit;
+import android.content.pm.ShortcutInfo;
+import android.content.pm.ShortcutManager;
+import android.graphics.drawable.Icon;
 
 public class MainActivity extends BridgeActivity {
     private static final String PREFS = "CapacitorStorage";
@@ -55,10 +60,15 @@ public class MainActivity extends BridgeActivity {
                         .setConstraints(new Constraints.Builder()
                                 .setRequiredNetworkType(NetworkType.CONNECTED).build()).build());
         gestionarIntent(getIntent());
+        crearAtajoEscucha();
         Actualizaciones.comprobar(this, false);
     }
 
     private boolean abrirExternoSiHaceFalta(Uri uri) {
+        if ("aria".equalsIgnoreCase(uri.getScheme()) && "asistente".equalsIgnoreCase(uri.getHost())) {
+            abrirAjustesAsistencia();
+            return true;
+        }
         if (ariaUrl.isEmpty() && "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null) {
             ariaUrl = uri.getScheme() + "://" + uri.getHost()
                     + (uri.getPort() > 0 ? ":" + uri.getPort() : "") + "/";
@@ -76,8 +86,24 @@ public class MainActivity extends BridgeActivity {
         return true;
     }
 
+    private void abrirAjustesAsistencia() {
+        try {
+            startActivity(new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS));
+        } catch (Exception ignorada) {
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS));
+            } catch (Exception ignoradaTambien) {
+                startActivity(new Intent(Settings.ACTION_SETTINGS));
+            }
+        }
+    }
+
     private void gestionarIntent(Intent intent) {
         if (intent == null) return;
+        if (Intent.ACTION_ASSIST.equals(intent.getAction())
+                || Intent.ACTION_VOICE_COMMAND.equals(intent.getAction())) {
+            intent.putExtra("accion", "hablar");
+        }
         String accion = intent.getStringExtra("accion");
         if ("cambiar".equals(accion)) {
             DispositivoApp.borrar(this);
@@ -88,6 +114,14 @@ public class MainActivity extends BridgeActivity {
         }
         if ("actualizaciones".equals(accion)) {
             Actualizaciones.comprobar(this, true);
+            return;
+        }
+        if ("escuchar".equals(accion)) {
+            alternarEscucha();
+            return;
+        }
+        if ("asistente".equals(accion)) {
+            abrirAjustesAsistencia();
             return;
         }
         if (accion != null && !ariaUrl.isEmpty()) {
@@ -103,6 +137,49 @@ public class MainActivity extends BridgeActivity {
                 getBridge().getWebView().loadUrl(destino);
             } catch (Exception ignored) { }
         }
+    }
+
+    private void alternarEscucha() {
+        if (EscuchaService.estaActiva(this)) {
+            stopService(new Intent(this, EscuchaService.class));
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 23
+                && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 31);
+            return;
+        }
+        if (ahorroDeBateria()) return;
+        EscuchaService.iniciar(this);
+    }
+
+    private boolean ahorroDeBateria() {
+        PowerManager energia = (PowerManager) getSystemService(POWER_SERVICE);
+        return Build.VERSION.SDK_INT >= 21 && energia.isPowerSaveMode();
+    }
+
+    @Override public void onRequestPermissionsResult(int codigo, String[] permisos, int[] resultados) {
+        super.onRequestPermissionsResult(codigo, permisos, resultados);
+        if (codigo == 31 && resultados.length > 0 && resultados[0] == PackageManager.PERMISSION_GRANTED) {
+            EscuchaService.iniciar(this);
+        }
+    }
+
+    private void crearAtajoEscucha() {
+        if (Build.VERSION.SDK_INT < 25) return;
+        ShortcutManager gestor = getSystemService(ShortcutManager.class);
+        Intent intent = new Intent(this, MainActivity.class).putExtra("accion", "escuchar");
+        ShortcutInfo atajo = new ShortcutInfo.Builder(this, "escuchar-aria")
+                .setShortLabel(getString(R.string.atajo_escuchar))
+                .setIcon(Icon.createWithResource(this, R.drawable.ic_stat_aria))
+                .setIntent(intent).build();
+        gestor.addDynamicShortcuts(java.util.Collections.singletonList(atajo));
+        Intent asistente = new Intent(this, MainActivity.class).putExtra("accion", "asistente");
+        ShortcutInfo atajoAsistente = new ShortcutInfo.Builder(this, "asistente-aria")
+                .setShortLabel(getString(R.string.asistente_titulo))
+                .setIcon(Icon.createWithResource(this, R.drawable.ic_stat_aria))
+                .setIntent(asistente).build();
+        gestor.addDynamicShortcuts(java.util.Collections.singletonList(atajoAsistente));
     }
 
     @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); gestionarIntent(intent); }

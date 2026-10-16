@@ -17,5 +17,13 @@
     <string name="atajo_compartir">Compartir</string>
     <string name="atajo_cambiar_de_aria">Cambiar de ARIA</string>
     <string name="atajo_buscar_actualizaciones">Buscar actualizaciones</string>
+    <string name="atajo_escuchar">Escuchar “Aria”</string>
+    <string name="escucha_notificacion">ARIA te escucha: di “Aria”</string>
+    <string name="escucha_parar">Parar</string>
+    <string name="escucha_descargando">Descargando modelo de voz: %1$d%%</string>
+    <string name="asistente_titulo">Usar ARIA como asistente</string>
+    <string name="asistente_instrucciones">Ve a Ajustes de Android → Aplicaciones → Aplicaciones predeterminadas → App de asistencia digital → ARIA.</string>
+    <string name="asistente_abrir_ajustes">Abrir ajustes de asistencia</string>
+    <string name="escucha_error_modelo">No se ha podido descargar el modelo de voz.</string>
     <string name="sin_actualizaciones">Ya tienes la última versión de ARIA.</string>
 </resources>

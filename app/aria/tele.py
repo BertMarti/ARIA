@@ -239,6 +239,15 @@ async def flujo(token, rango=None):
 
 async def descubrir():
     global _cache_dispositivos
+    try:
+        archivo = config.DESCUBRE_DIR / "dispositivos.json"
+        dato = json.loads(archivo.read_text(encoding="utf-8"))
+        if time.time() - float(dato.get("ts", 0)) < 60:
+            lista = [d for d in dato.get("dispositivos", []) if isinstance(d, dict) and en_red(d.get("ip", ""))]
+            _cache_dispositivos = (time.monotonic(), lista)
+            return lista
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        pass
     ahora = time.monotonic()
     for identificador, (cast, ultimo) in list(_chromecasts.items()):
         if ahora - ultimo > 2 * 3600:
@@ -263,7 +272,8 @@ async def _chromecast(ip):
         async with httpx.AsyncClient(timeout=1.2) as c:
             r = await c.get(f"http://{ip}:8008/setup/eureka_info")
             if r.is_success:
-                return {"id": f"chromecast:{ip}", "nombre": r.json().get("name") or ip, "tipo": "chromecast", "ip": ip}
+                return {"id": f"cast:{ip}", "nombre": r.json().get("name") or ip, "modelo": "", "tipo": "chromecast",
+                        "ip": ip, "puerto": 8009, "video": True, "grupo": False, "control": None}
     except (httpx.HTTPError, ValueError):
         pass
     return None

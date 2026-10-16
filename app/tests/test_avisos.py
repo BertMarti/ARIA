@@ -314,11 +314,11 @@ def test_chequeo_dispositivos_nuevos(monkeypatch):
     monkeypatch.setattr(shield, "configurado", lambda: True)
 
     async def ds():
-        return [{"clave": "AA", "ip": "192.168.0.50", "nombre": "tele", "conocido": True},
-                {"clave": "BB", "ip": "192.168.0.66", "fabricante": "Xiaomi", "conocido": False}]
+        return [{"clave": "AA", "ip": "192.168.1.50", "nombre": "tele", "conocido": True},
+                {"clave": "BB", "ip": "192.168.1.66", "fabricante": "Xiaomi", "conocido": False}]
     monkeypatch.setattr(red, "dispositivos", ds)
     p = correr(ch.dispositivos_nuevos())
-    assert [x.clave for x in p] == ["BB"] and "Xiaomi" in p[0].texto and "192.168.0.66" in p[0].texto
+    assert [x.clave for x in p] == ["BB"] and "Xiaomi" in p[0].texto and "192.168.1.66" in p[0].texto
 
 
 def test_chequeo_hallazgos_graves(monkeypatch):
@@ -327,8 +327,8 @@ def test_chequeo_hallazgos_graves(monkeypatch):
     monkeypatch.setattr(escaneo, "ultimo", lambda: {"id": "e1", "hosts": []})
     monkeypatch.setattr(escaneo, "anterior_a", lambda rid: None)
     monkeypatch.setattr(seguridad, "hallazgos_de_escaneo", lambda res, ant, inv: [
-        {"gravedad": "alta", "tipo": "telnet", "titulo": "Telnet abierto", "ip": "192.168.0.9", "recomendacion": "Ciérralo."},
-        {"gravedad": "media", "tipo": "http", "titulo": "Panel web", "ip": "192.168.0.1", "recomendacion": ""}])
+        {"gravedad": "alta", "tipo": "telnet", "titulo": "Telnet abierto", "ip": "192.168.1.9", "recomendacion": "Ciérralo."},
+        {"gravedad": "media", "tipo": "http", "titulo": "Panel web", "ip": "192.168.1.1", "recomendacion": ""}])
     p = correr(ch.hallazgos_graves())
     assert len(p) == 1 and "Telnet" in p[0].texto
     assert correr(ch.hallazgos_graves()) == []  # mismo escaneo: no se recalcula

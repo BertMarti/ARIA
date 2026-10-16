@@ -448,7 +448,7 @@ def test_plantilla_copiada_funciona(cargador, monkeypatch, admin, ana):
 
 
 # --- Módulo de ejemplo «uptime» ---------------------------------------------------------------------------------
-DNS = {"example.org": ["93.184.216.34"], "caida.example": ["93.184.216.35"], "casa.example": ["192.168.0.10"]}
+DNS = {"example.org": ["93.184.216.34"], "caida.example": ["93.184.216.35"], "casa.example": ["192.168.1.10"]}
 
 
 @pytest.fixture
@@ -477,7 +477,7 @@ def test_enlaces_comprobar(red):
     with pytest.raises(enlaces.EnlaceError, match="red de casa|privada"):
         correr(enlaces.comprobar("https://example.org/viejo"))     # redirección a casa: se revalida
     with pytest.raises(enlaces.EnlaceError):
-        correr(enlaces.comprobar("http://192.168.0.1/"))
+        correr(enlaces.comprobar("http://192.168.1.1/"))
 
 
 uptime = pytest.mark.skipif(not (REPO_MODULOS / "uptime").is_dir(), reason="sin la carpeta modulos/ del repositorio")
@@ -496,7 +496,7 @@ def test_uptime_herramienta(cargador, red, monkeypatch, ana, admin):
     ok = correr(tools.ejecutar("comprobar_web", {"url": "example.org"}, "usuario"))
     assert ok.startswith("https://example.org responde (código 200)") and " ms" in ok
     assert "problemas" in correr(tools.ejecutar("comprobar_web", {"url": "https://caida.example"}, "usuario"))
-    assert "no responde" in correr(tools.ejecutar("comprobar_web", {"url": "http://192.168.0.1"}, "usuario"))
+    assert "no responde" in correr(tools.ejecutar("comprobar_web", {"url": "http://192.168.1.1"}, "usuario"))
     assert "no responde" in correr(tools.ejecutar("comprobar_web", {"url": "https://no-existe.example"}, "admin"))
     # El modelo local la recibe solo si hay web + pregunta de disponibilidad
     assert "comprobar_web" in tools.relevantes("¿responde https://example.org?")
@@ -508,14 +508,14 @@ def test_uptime_herramienta(cargador, red, monkeypatch, ana, admin):
 
 @uptime
 def test_uptime_chequeo(cargador, red, monkeypatch):
-    monkeypatch.setenv("UPTIME_URLS", "example.org, https://caida.example ,http://192.168.0.1")
+    monkeypatch.setenv("UPTIME_URLS", "example.org, https://caida.example ,http://192.168.1.1")
     monkeypatch.setenv("UPTIME_INTERVALO_MIN", "15")
     res, app = cargador(directorio=REPO_MODULOS, habilitados={"uptime"})
     assert res["uptime"].chequeos == ["webs"]
     c = avisos.chequeos()["modulo:uptime:webs"]
     assert c.intervalo_s == 900 and c.confirmaciones == 2 and c.solo_admin
     problemas = correr(c.fn())
-    assert {p.clave for p in problemas} == {"https://caida.example", "http://192.168.0.1"}
+    assert {p.clave for p in problemas} == {"https://caida.example", "http://192.168.1.1"}
     assert c.texto_ok("https://caida.example") == "https://caida.example vuelve a responder."
     estado = TestClient(app).get("/api/modulos/uptime/estado").json()
     assert estado["intervalo_min"] == 15 and len(estado["resultados"]) == 3

@@ -532,18 +532,18 @@ def test_red_segun_rol(bot, admin, ana, monkeypatch):
                 "vpn": "funciona", "velocidad": None, "vpn_clientes": None}
 
     async def dispositivos():
-        return [{"ip": "192.168.0.10", "nombre": "movil", "conocido": True},
-                {"ip": "192.168.0.99", "nombre": "", "fabricante": "Espressif", "conocido": False}]
+        return [{"ip": "192.168.1.10", "nombre": "movil", "conocido": True},
+                {"ip": "192.168.1.99", "nombre": "", "fabricante": "Espressif", "conocido": False}]
     monkeypatch.setattr(red, "salud", salud)
     monkeypatch.setattr(red, "dispositivos", dispositivos)
     vincular(bot, ana, 200)
     correr(tg.procesar(msg(200, "/red"), bot))
     t = bot.ultimo()["text"]
-    assert "1,5 ms" in t and "192.168.0.99" not in t and "Dispositivos" not in t
+    assert "1,5 ms" in t and "192.168.1.99" not in t and "Dispositivos" not in t
     vincular(bot, admin, 100)
     correr(tg.procesar(msg(100, "/red"), bot))
     t = bot.ultimo()["text"]
-    assert "Dispositivos: 2, sin reconocer: 1" in t and "Espressif (192.168.0.99)" in t
+    assert "Dispositivos: 2, sin reconocer: 1" in t and "Espressif (192.168.1.99)" in t
 
 
 def test_bloqueo_es_el_bloqueador(bot, ana, monkeypatch):

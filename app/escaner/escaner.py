@@ -1,7 +1,7 @@
 """aria-escaner: atiende peticiones de escaneo de ARIA (volumen compartido /escaner).
 
 Seguridad:
-- Solo escanea IPv4/CIDR dentro de ARIA_RED_PERMITIDA (192.168.0.0/24 por defecto); lo vuelve a
+- Solo escanea IPv4/CIDR dentro de ARIA_RED_PERMITIDA (192.168.1.0/24 por defecto); lo vuelve a
   comprobar aquí aunque la app ya lo haya hecho. Nombres de host, IPv6 y redes públicas se rechazan.
 - Argumentos de nmap fijos por perfil (`escaneo_comun.PERFILES`); nada del usuario llega a la línea
   de órdenes salvo los objetivos validados, y nunca a través de un shell.
@@ -19,8 +19,8 @@ from pathlib import Path
 from escaneo_comun import PERFILES, ObjetivoNoPermitido, parsear_nmap_xml, red_permitida, validar_objetivos
 
 DIR = Path(os.environ.get("ESCANER_DIR", "/escaner"))
-RED = os.environ.get("ARIA_RED_PERMITIDA", "192.168.0.0/24")
-ROUTER = os.environ.get("ARIA_ROUTER_IP", "192.168.0.1")
+RED = os.environ.get("ARIA_RED_PERMITIDA", "192.168.1.0/24")
+ROUTER = os.environ.get("ARIA_ROUTER_IP", "192.168.1.1")
 DIA = int(os.environ.get("ESCANER_DIA", "6"))      # 0 = lunes ... 6 = domingo
 HORA = int(os.environ.get("ESCANER_HORA", "4"))
 PROGRAMADO = os.environ.get("ESCANER_PROGRAMADO", "1") == "1"

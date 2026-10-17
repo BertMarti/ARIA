@@ -110,6 +110,7 @@ async def _arranque():
     cve.iniciar()
     # Diario: planificador interno (03:30 locales + recuperación de días perdidos). Sin contenedor nuevo.
     app.state.diario = asyncio.create_task(diario.bucle())
+    app.state.premium = asyncio.create_task(premium.bucle())
     # Avisos: tablas, chequeos, canales y planificador (recordatorios, resumen programado). Telegram con long polling.
     avisos.iniciar()
     disponibilidad.iniciar()
@@ -136,7 +137,7 @@ async def _arranque():
 
 @app.on_event("shutdown")
 async def _parada():
-    for nombre in ("diario", "avisos", "telegram", "control", "arranque", "embeddings"):
+    for nombre in ("diario", "premium", "avisos", "telegram", "control", "arranque", "embeddings"):
         tarea = getattr(app.state, nombre, None)
         if tarea:
             tarea.cancel()

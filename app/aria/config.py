@@ -135,6 +135,9 @@ COPIAS_REPO = os.environ.get("ARIA_COPIAS_REPO", "/copias-repo")
 
 # Premium se mantiene desactivado durante la fase de prueba.
 PREMIUM_EXIGIR = os.environ.get("ARIA_PREMIUM_EXIGIR", "0").strip().lower() in ("1", "true", "si", "sí", "yes", "on")
+PREMIUM_SERVIDOR = os.environ.get("ARIA_PREMIUM_SERVIDOR", "").strip().rstrip("/")
+if PREMIUM_SERVIDOR and not PREMIUM_SERVIDOR.startswith("https://"):
+    PREMIUM_SERVIDOR = ""
 
 NOMBRE_USUARIO = os.environ.get("ARIA_NOMBRE_USUARIO", "").strip()[:40]
 

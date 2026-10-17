@@ -95,6 +95,12 @@ def iniciar() -> None:
                 proyecto_id INTEGER NOT NULL REFERENCES proyectos(id) ON DELETE CASCADE, texto TEXT NOT NULL,
                 motivo TEXT NOT NULL DEFAULT '', fecha REAL NOT NULL);
             CREATE INDEX IF NOT EXISTS idx_decisiones_proyecto ON decisiones(user_id, proyecto_id, fecha DESC);
+            CREATE TABLE IF NOT EXISTS app_fallos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                cuando REAL NOT NULL, version TEXT NOT NULL, android INTEGER NOT NULL,
+                modelo TEXT NOT NULL, excepcion TEXT NOT NULL, traza TEXT NOT NULL);
+            CREATE INDEX IF NOT EXISTS idx_app_fallos_cuando ON app_fallos(cuando DESC);
         """)
         # Migración: etiqueta del cerebro que respondió (p. ej. "Ollama Cloud · gpt-oss:120b").
         if "cerebro" not in {r["name"] for r in con.execute("PRAGMA table_info(mensajes)")}:

@@ -21,6 +21,7 @@ _USUARIO = [
     ("DELETE", r"/api/ubicacion"),
     ("POST", r"/api/app/dispositivos"), ("GET", r"/api/app/dispositivos"),
     ("DELETE", r"/api/app/dispositivos/\d+"), ("GET", r"/api/app/resumen"),
+    ("POST", r"/api/app/fallos"),   # informe de cierre que manda la propia app (sesión normal, no el token)
     ("POST", r"/api/password"),
     ("POST", r"/api/chat"),  # también con imagen (visión); límite por usuario en el propio endpoint
     # Tickets leídos de una foto: confirmar o descartar la propuesta propia (ligada al usuario en el servidor).

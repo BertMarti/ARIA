@@ -42,6 +42,7 @@ public class MainActivity extends BridgeActivity {
     private boolean listo;
 
     @Override public void onCreate(Bundle state) {
+        Fallos.instalar(this);
         super.onCreate(state);
         ariaUrl = getSharedPreferences(PREFS, MODE_PRIVATE).getString(URL_KEY, "");
         WebView web = getBridge().getWebView();
@@ -59,6 +60,7 @@ public class MainActivity extends BridgeActivity {
                 Uri pagina = Uri.parse(url);
                 if (esPaginaDeCasa(pagina)) {
                     DispositivoApp.vincularEnSegundoPlano(MainActivity.this, ariaUrl);
+                    Fallos.enviarPendiente(MainActivity.this, ariaUrl);
                     pedirNotificacionesUnaVez();   // ya dentro de ARIA: ahora el permiso tiene sentido
                 }
             }

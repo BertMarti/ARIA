@@ -11,12 +11,26 @@ sleep 15
 adb exec-out screencap -p > capturas/aria-inicio.png
 # Como un móvil ya configurado: se escribe una dirección (no hace falta que sea ARIA) y se repiten las entradas
 # del widget («Hablar» y «Nota») con la app abierta y con la app cerrada, que es como las usa la gente.
-adb shell input tap 540 1200 || true
+# El campo se busca en la jerarquía de la pantalla (las coordenadas fijas fallan si cambia la resolución del emulador).
+adb shell uiautomator dump /sdcard/pantalla.xml >/dev/null 2>&1 || true
+CAMPO=$(adb shell cat /sdcard/pantalla.xml 2>/dev/null | tr '>' '\n' | grep 'class="android.widget.EditText"' \
+  | sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' | head -1)
+if [ -n "$CAMPO" ]; then
+  set -- $CAMPO
+  adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
+else
+  # La página de la WebView no siempre sale en la jerarquía: el campo ya tiene el foco (autofocus).
+  echo "El campo no sale en la jerarquía; uso el foco automático"
+fi
 sleep 1
 adb shell input text "https://example.com" || true
 adb shell input keyevent 66 || true
 sleep 8
 adb exec-out screencap -p > capturas/aria-configurada.png
+# Sin root no se pueden leer las preferencias: se mira si la WebView ha llegado a cargar la dirección escrita.
+adb shell dumpsys activity top 2>/dev/null | grep -q "example.com" \
+  || adb logcat -d 2>/dev/null | grep -q "example.com" \
+  && echo "Dirección cargada" || echo "Aviso: no consta que la app haya cargado la dirección"
 for accion in hablar nota avisos; do
   adb shell am start -n io.github.bertmarti.aria/.MainActivity -f 0x30000000 --es accion "$accion"   # abierta
   sleep 4

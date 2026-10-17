@@ -63,8 +63,7 @@ public class MainActivity extends BridgeActivity {
             @Override public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 Uri pagina = Uri.parse(url);
-                if (esPaginaDeCasa(pagina)) {
-                    planB = false;
+                if (esPaginaDeCasa(pagina) && !planB) {   // en el plan B esa «página» es el error de la bloqueada
                     DispositivoApp.vincularEnSegundoPlano(MainActivity.this, ariaUrl);
                     Fallos.enviarPendiente(MainActivity.this, ariaUrl);
                     Casa.actualizar(MainActivity.this, ariaUrl);   // direcciones de casa para el plan B

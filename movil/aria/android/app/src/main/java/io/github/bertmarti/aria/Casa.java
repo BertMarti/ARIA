@@ -132,6 +132,36 @@ final class Casa {
         return null;
     }
 
+    /**
+     * Abre `ruta` (p. ej. «api/app/resumen») en la primera dirección de casa que responda, con la cadena validada
+     * contra la raíz de casa. El llamante añade cabeceras y lee; devuelve null si no hay ninguna. Bloquea.
+     */
+    static HttpsURLConnection abrir(Context context, String ruta, String autorizacion) {
+        String pem = prefs(context).getString(RAIZ, "");
+        if (pem.isEmpty()) return null;
+        SSLContext tls;
+        try {
+            tls = contexto(raiz(pem));
+        } catch (Exception e) {
+            return null;
+        }
+        for (String direccion : direcciones(context)) {
+            HttpsURLConnection conexion = null;
+            try {
+                conexion = (HttpsURLConnection) new URL(direccion + ruta).openConnection();
+                conexion.setSSLSocketFactory(tls.getSocketFactory());
+                conexion.setConnectTimeout(3000);
+                conexion.setReadTimeout(8000);
+                if (autorizacion != null) conexion.setRequestProperty("Authorization", autorizacion);
+                conexion.getResponseCode();   // conecta (y valida el certificado) ya
+                return conexion;
+            } catch (Exception ignorada) {
+                if (conexion != null) conexion.disconnect();
+            }
+        }
+        return null;
+    }
+
     /** ¿Puede la WebView aceptar este certificado? Solo el de una dirección de casa ya validada por buscar(). */
     static boolean aceptar(Context context, SslError error) {
         try {

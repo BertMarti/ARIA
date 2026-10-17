@@ -273,3 +273,16 @@ def test_verificar_anota_el_ultimo_uso(admin):
     with closing(db._con()) as con:
         fila = con.execute("SELECT ultimo_uso FROM app_dispositivos WHERE id=?", (creado["id"],)).fetchone()
     assert fila["ultimo_uso"] is not None
+
+
+def test_casa_da_direcciones_locales_y_el_certificado_raiz(admin, monkeypatch, tmp_path):
+    from aria import config
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(config, "LAN_IP", "192.168.1.50")
+    monkeypatch.setattr(config, "HOSTS", {"192.168.1.50", "aria.local", "aria.ejemplo.com", "127.0.0.1", "mal host.local"})
+    assert cliente(admin).get("/api/app/casa").status_code == 404   # sin certificado no hay plan B
+    (tmp_path / "aria-certificado.crt").write_text("-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n")
+    d = cliente(admin).get("/api/app/casa").json()
+    assert d["direcciones"] == ["https://192.168.1.50/", "https://aria.local/"]   # la IP primero; nada público
+    assert d["certificado"].startswith("-----BEGIN CERTIFICATE-----")
+    assert anonimo().get("/api/app/casa").status_code in (303, 401)

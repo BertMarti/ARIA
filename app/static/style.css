@@ -67,6 +67,16 @@ code { font-family: var(--mono); font-size: .9em; background: rgba(0, 0, 0, .35)
 @keyframes ping-campana { 50% { transform: scale(1.13) rotate(5deg); } }
 @media (prefers-reduced-motion: reduce) { .ping-compa-lienzo { transition: opacity .2s ease; } .ping-compa-campana { animation: none; } }
 
+/* Tour guiado: la capa deja un hueco sobre el control señalado. */
+.tour-capa { position: fixed; inset: 0; z-index: 40; pointer-events: none; background: rgba(0, 4, 10, .78); clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+.tour-foco { position: relative; z-index: 41 !important; border-radius: 8px; box-shadow: 0 0 0 3px var(--acento), 0 0 0 8px rgba(56, 214, 255, .2); }
+.tour-foco::after { content: ""; position: absolute; inset: -8px; border: 2px solid rgba(56, 214, 255, .7); border-radius: 12px; animation: tour-respira 1.7s ease-in-out infinite; pointer-events: none; }
+.ping-compa-lienzo.tour-ping { z-index: 52; }
+.ping-compa-bocadillo.tour-bocadillo { z-index: 54; max-width: min(350px, calc(100vw - 1.5rem)); }
+.tour-indice { margin: 0 0 .45rem; color: var(--muted); font: 500 .72rem var(--mono); }
+@keyframes tour-respira { 50% { opacity: .35; transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .tour-foco::after { animation: none; } }
+
 /* Ventana Document Picture-in-Picture: estas reglas se clonan junto con style.css. */
 .flot-hud { min-height: 100vh; padding: .7rem .8rem .8rem; background: radial-gradient(circle at 50% 30%, rgba(56, 214, 255, .14), transparent 48%), #070b12; color: var(--txt); display: flex; flex-direction: column; align-items: center; gap: .25rem; }
 .flot-titulo { margin: 0; color: var(--acento); font: 650 .8rem var(--mono); letter-spacing: .2em; }

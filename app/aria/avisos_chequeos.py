@@ -47,8 +47,14 @@ async def tunel() -> list | None:
         estado = type(e).__name__
     if estado in (200, 302):
         return []
+    import time
     from . import telemetria
     v = telemetria.estado_tunel() or {}
+    if v.get("estado") == "bloqueo_operador" and time.time() - float(v.get("ts") or 0) < 15 * 60:
+        return [Problema("bloqueo", "Tu operador está bloqueando las IP de Cloudflare de tu dominio (suele pasar con los "
+                                    "bloqueos de LaLiga mientras hay fútbol). ARIA y el túnel funcionan bien: la Pi no lo "
+                                    "reiniciará. Desde fuera, entra por la VPN HEIMDALL (https://aria.local) o activa "
+                                    "WARP en la app 1.1.1.1 del móvil. Normalmente se levanta al acabar los partidos.")]
     reinicios = len(v.get("reinicios") or [])
     extra = (f" La Pi ya lo ha reiniciado sola {reinicios} vez(es) en la última hora." if reinicios else
              " La Pi lo reiniciará sola si sigue caído.")

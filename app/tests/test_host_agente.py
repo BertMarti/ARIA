@@ -177,6 +177,38 @@ def test_vigilar_tunel_como_maximo_tres_reinicios_por_hora(agente, monkeypatch, 
     assert sin_reboot == []
 
 
+def test_vigilar_tunel_bloqueo_del_operador_no_reinicia(agente, monkeypatch, sin_reboot):
+    """IP de Cloudflare bloqueadas por el operador (certificado falso) y ARIA accesible por otra IP: no se reinicia."""
+    llamadas = []
+    monkeypatch.setattr(agente, "_en_hilo", lambda accion, fn: llamadas.append(accion))
+    monkeypatch.setattr(agente, "_publica_ok", lambda: False)
+    monkeypatch.setattr(agente, "_http_ok", lambda url: True)
+    monkeypatch.setattr(agente, "_url_publica", lambda: "https://aria.ejemplo.com")
+    monkeypatch.setattr(agente, "_certificado_falso", lambda url: True)
+    monkeypatch.setattr(agente, "_responde_por_otra_ip", lambda url: True)
+    t = time.time()
+    for i in range(4):
+        agente._vigilancia["ultima"] = 0.0
+        agente.vigilar_tunel(t + i * 300)
+    assert estado(agente)["estado"] == "bloqueo_operador"
+    assert llamadas == [] and agente._vigilancia["reinicios"] == [] and sin_reboot == []
+
+
+def test_vigilar_tunel_certificado_falso_sin_otra_ip_si_reinicia(agente, monkeypatch):
+    llamadas = []
+    monkeypatch.setattr(agente, "_en_hilo", lambda accion, fn: llamadas.append(accion))
+    monkeypatch.setattr(agente, "_publica_ok", lambda: False)
+    monkeypatch.setattr(agente, "_http_ok", lambda url: True)
+    monkeypatch.setattr(agente, "_url_publica", lambda: "https://aria.ejemplo.com")
+    monkeypatch.setattr(agente, "_certificado_falso", lambda url: True)
+    monkeypatch.setattr(agente, "_responde_por_otra_ip", lambda url: False)   # tampoco llega por otra IP: túnel caído
+    t = time.time()
+    for i in range(2):
+        agente._vigilancia["ultima"] = 0.0
+        agente.vigilar_tunel(t + i)
+    assert llamadas == ["tunel"]
+
+
 # --- Notas de mejora → plan privado ------------------------------------------------------------------------
 def test_volcar_notas_aniade_la_seccion_al_final(agente):
     plan = agente.PLAN_PRIVADO

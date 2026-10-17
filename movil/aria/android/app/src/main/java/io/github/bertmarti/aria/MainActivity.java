@@ -22,6 +22,8 @@ import android.view.View;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
 import java.net.URLEncoder;
@@ -174,7 +176,14 @@ public class MainActivity extends BridgeActivity {
      */
     private void aplicarZonaSegura(WebView web) {
         View contenedor = (View) web.getParent();
-        contenedor.setBackgroundColor(Color.parseColor("#070b12"));
+        int fondo = Color.parseColor("#070b12");
+        contenedor.setBackgroundColor(fondo);
+        // Barras del sistema oscuras con iconos claros, como el resto de ARIA (en Android 15 manda el relleno de arriba).
+        getWindow().setStatusBarColor(fondo);
+        getWindow().setNavigationBarColor(fondo);
+        WindowInsetsControllerCompat barras = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        barras.setAppearanceLightStatusBars(false);
+        barras.setAppearanceLightNavigationBars(false);
         ViewCompat.setOnApplyWindowInsetsListener(contenedor, (vista, margenes) -> {
             Insets zona = margenes.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
                     | WindowInsetsCompat.Type.ime());

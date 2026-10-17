@@ -124,6 +124,9 @@ def _float(name: str):
 
 
 LAT, LON = _float("ARIA_LAT"), _float("ARIA_LON")
+# Certificado raíz (público) de la autoridad interna del Caddy de HEIMDALL: con él se verifica su panel en vez de
+# aceptar cualquier certificado. Si no existe, se mantiene el comportamiento anterior (ver vpn.py).
+VPN_CA = os.environ.get("ARIA_VPN_CA", "/data/heimdall-ca.crt")
 PROVINCIA = os.environ.get("ARIA_PROVINCIA", "").strip()[:2] or None
 GASOLINERAS = os.environ.get("ARIA_GASOLINERAS", "1") != "0"
 ZONA_METEO = os.environ.get("ARIA_ZONA_METEO", "").strip()[:120]

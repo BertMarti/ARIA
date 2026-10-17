@@ -3,7 +3,7 @@
 # de solo lectura (ver docker-compose.yml).
 FROM python:3.12-alpine
 
-RUN pip install --no-cache-dir "zeroconf>=0.132,<1" \
+RUN pip install --no-cache-dir "zeroconf>=0.132,<1" "defusedxml>=0.7,<1" \
     && mkdir -p /opt/descubre /descubre \
     && chown 65534:1000 /descubre && chmod 2750 /descubre
 

@@ -11,6 +11,8 @@ import time
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
+
+from defusedxml import ElementTree as DET
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -120,7 +122,7 @@ def _xml(url, ip):
         datos = respuesta.read(256 * 1024 + 1)
     if len(datos) > 256 * 1024 or re.search(br"<!DOCTYPE", datos, re.I):
         return None
-    return ET.fromstring(datos)
+    return DET.fromstring(datos)   # defusedxml: XML de un aparato de la red, no fiable
 
 
 def _dlna(respuesta, ip_respuesta=None):

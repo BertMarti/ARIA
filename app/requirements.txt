@@ -8,5 +8,6 @@ websockets>=13,<16
 qrcode>=7.4,<9
 pypng>=0.20220715
 pychromecast>=14.0,<15
-pypdf>=5,<6
+pypdf>=6.19,<7   # 5.x tenía 85 vulnerabilidades conocidas (pip-audit, 17/10/2026)
 python-multipart>=0.0.9,<1
+defusedxml>=0.7,<1   # XML de fuera (teles de la red, Meteoalarm) sin entidades ni DTD

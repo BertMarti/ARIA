@@ -2,12 +2,15 @@
 
 Solo se exponen campos de una lista blanca: las claves privadas nunca llegan al navegador.
 """
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 
 import httpx
 
 from . import config
+
+log = logging.getLogger("aria.vpn")
 
 NOMBRE_RE = re.compile(r"^[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ ._-]{1,32}$")
 CONECTADO_SEG = 180  # handshake reciente = conectado
@@ -63,8 +66,7 @@ async def _llamar(metodo: str, ruta: str, **kw) -> httpx.Response:
     if not configurado():
         raise VpnError("HEIMDALL no está conectado.")
     try:
-        # Certificado autofirmado accedido por IP: no se puede verificar.
-        async with httpx.AsyncClient(timeout=10, verify=False, auth=(config.VPN_USER, config.VPN_PASSWORD)) as c:
+        async with httpx.AsyncClient(timeout=10, verify=_verificacion(), auth=(config.VPN_USER, config.VPN_PASSWORD)) as c:
             r = await c.request(metodo, config.VPN_URL.rstrip("/") + ruta, **kw)
     except httpx.HTTPError:
         raise VpnError("No se pudo contactar con HEIMDALL.") from None
@@ -149,3 +151,22 @@ async def activar(cid, activo: bool) -> None:
 
 async def eliminar(cid) -> None:
     await _llamar("DELETE", f"/api/client/{_id(cid)}")
+
+
+_aviso_sin_ca = False
+
+
+def _verificacion():
+    """Verifica el panel de HEIMDALL con la autoridad interna de su Caddy (su certificado se emite para la IP).
+
+    Sin ese certificado no se puede comprobar nada (autofirmado), y alguien dentro de la red podría hacerse pasar por
+    HEIMDALL y llevarse la contraseña: se avisa una vez en el registro y se mantiene el comportamiento anterior.
+    """
+    global _aviso_sin_ca
+    import os
+    if config.VPN_CA and os.path.isfile(config.VPN_CA):
+        return config.VPN_CA
+    if not _aviso_sin_ca:
+        log.warning("Sin certificado de HEIMDALL (%s): su panel se usa sin verificar", config.VPN_CA)
+        _aviso_sin_ca = True
+    return False

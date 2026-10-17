@@ -1,6 +1,8 @@
 """Avisos meteorológicos públicos de Meteoalarm para España."""
 import time
 import xml.etree.ElementTree as ET
+
+from defusedxml import ElementTree as DET
 from datetime import datetime, timedelta
 
 import httpx
@@ -23,7 +25,7 @@ def parsear(xml: str, zona: str | None = None, provincia: str | None = None) -> 
     zona = config.ZONA_METEO if zona is None else zona
     if not zona and not provincia:
         return []
-    root = ET.fromstring(xml)
+    root = DET.fromstring(xml)   # defusedxml: sin entidades ni DTD (feed externo)
     out = []
     for entry in [x for x in root.iter() if x.tag.rsplit("}", 1)[-1] == "entry"]:
         area, nivel = _texto(entry, "areaDesc"), _texto(entry, "severity").lower()
@@ -64,7 +66,7 @@ async def avisos(refrescar=False, provincia=None, zona=None) -> list[dict]:
         datos = parsear(r.text, zona, provincia)
         _cache[clave] = (time.monotonic(), datos)
         return datos
-    except (httpx.HTTPError, ET.ParseError):
+    except (httpx.HTTPError, ET.ParseError, ValueError):
         return guardado[1]
 
 

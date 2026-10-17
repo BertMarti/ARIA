@@ -10,6 +10,8 @@ import struct
 import time
 import uuid
 import xml.etree.ElementTree as ET
+
+from defusedxml import ElementTree as DET
 from dataclasses import dataclass, field
 from urllib.parse import quote, urljoin, urlparse
 
@@ -344,7 +346,7 @@ async def _xml(url):
         r = await c.get(url)
         if len(r.content) > 256 * 1024 or b"<!DOCTYPE" in r.content.upper():
             raise TeleError("XML no permitido")
-        return ET.fromstring(r.content)
+        return DET.fromstring(r.content)   # defusedxml: XML de un aparato de la red, no fiable
 
 
 def soap(control, accion, argumentos=""):

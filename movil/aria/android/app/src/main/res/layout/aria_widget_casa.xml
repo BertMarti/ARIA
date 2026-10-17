@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/casa_raiz"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@drawable/widget_background">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/widget_logo"
+            android:contentDescription="@null" />
+        <TextView
+            android:id="@+id/casa_titulo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#38d6ff"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:text="@string/widget_casa" />
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical">
+        <TextView
+            android:id="@+id/casa_anuncios"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#e8fbff"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:maxLines="1" />
+        <TextView
+            android:id="@+id/casa_anuncios_txt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#9fb3c8"
+            android:textSize="13sp"
+            android:ellipsize="end"
+            android:maxLines="2" />
+        <TextView
+            android:id="@+id/casa_vpn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#e8fbff"
+            android:textSize="13sp"
+            android:ellipsize="end"
+            android:maxLines="2" />
+        <TextView
+            android:id="@+id/casa_servicios"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#e8fbff"
+            android:textSize="13sp"
+            android:ellipsize="end"
+            android:maxLines="2" />
+    </LinearLayout>
+</LinearLayout>

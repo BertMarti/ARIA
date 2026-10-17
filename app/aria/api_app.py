@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from . import agenda, avisos, briefing, dispositivos_app, invitados, premium, ubicacion
+from . import agenda, avisos, briefing, dispositivos_app, invitados, premium, services, shield, ubicacion, vpn
 
 router = APIRouter()
 _lim_crear = avisos.Limitador(5, 3600)
@@ -74,15 +74,34 @@ async def _datos_resumen(u: dict) -> dict:
     tiempo_mini = None if not tiempo_d else {"lugar": tiempo_d.get("ciudad"), "actual": tiempo_d.get("actual"),
                                              "min": tiempo_d.get("min"), "max": tiempo_d.get("max"),
                                              "cielo": tiempo_d.get("cielo")}
-    proximo = None
+    proximo, proximos = None, []
     if lim is None or "agenda" in lim["secciones"]:
         desde = briefing.tiempo.ahora()
         eventos = await asyncio.to_thread(agenda.listar_eventos, u["id"], desde.isoformat(),
                                           (desde + timedelta(days=7)).isoformat())
         futuro = [e for e in eventos if e.get("inicio", "") >= desde.isoformat()]
-        if futuro:
-            proximo = {"titulo": futuro[0].get("titulo"), "inicio": futuro[0].get("inicio")}
-    return {"avisos": pendientes, "tiempo": tiempo_mini, "proximo": proximo, "generado": ahora}
+        proximos = [{"titulo": e.get("titulo"), "inicio": e.get("inicio")} for e in futuro[:3]]   # widget de Agenda
+        proximo = proximos[0] if proximos else None
+    casa = await _casa() if u["rol"] == "admin" else None   # widget de Casa: solo quien administra la red
+    return {"avisos": pendientes, "tiempo": tiempo_mini, "proximo": proximo, "proximos": proximos, "casa": casa,
+            "generado": ahora}
+
+
+async def _casa() -> dict:
+    """Anuncios bloqueados, VPN y servicios. Cada dato es opcional: si algo tarda o falla, el widget enseña el resto."""
+    async def dato(corrutina):
+        try:
+            return await asyncio.wait_for(corrutina, 4)
+        except Exception:
+            return None
+    s, clientes, servicios = await asyncio.gather(
+        dato(shield.resumen()) if shield.configurado() else asyncio.sleep(0),
+        dato(vpn.listar()) if vpn.configurado() else asyncio.sleep(0),
+        dato(services.estado()))
+    return {"anuncios": s.get("bloqueadas") if s else None, "porcentaje": s.get("porcentaje") if s else None,
+            "bloqueo_activo": s.get("bloqueo_activo") if s else None,
+            "vpn_conectados": sum(1 for c in clientes if c.get("conectado")) if isinstance(clientes, list) else None,
+            "servicios_ok": all(x.get("estado") == "ok" for x in servicios.values()) if servicios else None}
 
 
 def _texto_resumen(datos: dict) -> str:

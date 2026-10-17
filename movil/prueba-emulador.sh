@@ -9,6 +9,23 @@ adb logcat -c
 adb shell am start -n io.github.bertmarti.aria/.MainActivity
 sleep 15
 adb exec-out screencap -p > capturas/aria-inicio.png
+# Como un móvil ya configurado: se escribe una dirección (no hace falta que sea ARIA) y se repiten las entradas
+# del widget («Hablar» y «Nota») con la app abierta y con la app cerrada, que es como las usa la gente.
+adb shell input tap 540 1200 || true
+sleep 1
+adb shell input text "https://example.com" || true
+adb shell input keyevent 66 || true
+sleep 8
+adb exec-out screencap -p > capturas/aria-configurada.png
+for accion in hablar nota avisos; do
+  adb shell am start -n io.github.bertmarti.aria/.MainActivity -f 0x30000000 --es accion "$accion"   # abierta
+  sleep 4
+  adb exec-out screencap -p > "capturas/widget-$accion-abierta.png"
+  adb shell am force-stop io.github.bertmarti.aria
+  adb shell am start -n io.github.bertmarti.aria/.MainActivity -f 0x30000000 --es accion "$accion"   # cerrada
+  sleep 6
+  adb exec-out screencap -p > "capturas/widget-$accion-cerrada.png"
+done
 for accion in hablar nota hud compartir cambiar; do
   adb shell am start -n io.github.bertmarti.aria/.MainActivity --es accion "$accion"
   sleep 3

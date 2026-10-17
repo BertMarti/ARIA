@@ -38,6 +38,40 @@ def _sin_red(monkeypatch, contador: list | None = None) -> None:
     monkeypatch.setattr(main.briefing, "_tiempo", tiempo)
 
 
+async def _casa_falsa():
+    return {"anuncios": 1234, "porcentaje": 12.5, "bloqueo_activo": True, "vpn_conectados": 1, "servicios_ok": True}
+
+
+def test_resumen_trae_tres_proximos_y_casa_solo_para_admin(admin, monkeypatch):
+    _sin_red(monkeypatch)
+    monkeypatch.setattr(api_app, "_casa", _casa_falsa)
+    ahora = datetime(2026, 10, 17, 10, 0, tzinfo=main.briefing.tiempo.zona())
+    monkeypatch.setattr(main.briefing.tiempo, "ahora", lambda: ahora)
+    eventos = [{"titulo": f"Evento {i}", "inicio": f"2026-10-{18 + i}T10:00:00+02:00"} for i in range(5)]
+    monkeypatch.setattr(main.agenda, "listar_eventos", lambda *_: eventos)
+    r = anonimo().get("/api/app/resumen", headers={"Authorization": "Bearer " + dispositivos_app.crear(admin["id"], "Pixel")["token"]})
+    d = r.json()
+    assert [e["titulo"] for e in d["proximos"]] == ["Evento 0", "Evento 1", "Evento 2"]
+    assert d["proximo"]["titulo"] == "Evento 0" and d["casa"]["anuncios"] == 1234
+    ana = usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
+    r = anonimo().get("/api/app/resumen", headers={"Authorization": "Bearer " + dispositivos_app.crear(ana["id"], "Móvil")["token"]})
+    assert r.json()["casa"] is None   # el estado de la red solo lo ve quien la administra
+
+
+def test_casa_aguanta_que_falle_un_servicio(monkeypatch):
+    import asyncio
+    async def falla():
+        raise RuntimeError("SHIELD-DNS caído")
+    async def servicios():
+        return {"shield_dns": {"estado": "ok"}, "heimdall": {"estado": "no_instalado"}}
+    monkeypatch.setattr(api_app.shield, "configurado", lambda: True)
+    monkeypatch.setattr(api_app.shield, "resumen", falla)
+    monkeypatch.setattr(api_app.vpn, "configurado", lambda: False)
+    monkeypatch.setattr(api_app.services, "estado", servicios)
+    casa = asyncio.run(api_app._casa())
+    assert casa["anuncios"] is None and casa["vpn_conectados"] is None and casa["servicios_ok"] is False
+
+
 def test_token_solo_se_devuelve_al_crear_y_se_guarda_su_huella(admin):
     dispositivos_app.iniciar()
     r = dispositivos_app.crear(admin["id"], "Pixel")
@@ -55,10 +89,11 @@ def test_bearer_solo_abre_el_resumen(admin, monkeypatch):
         return {"ciudad": "Casa", "actual": 20, "min": 10, "max": 25, "cielo": "despejado"}
 
     monkeypatch.setattr(main.briefing, "_tiempo", tiempo)
+    monkeypatch.setattr(api_app, "_casa", _casa_falsa)
     c = TestClient(main.app, base_url=LAN, follow_redirects=False)
     r = c.get("/api/app/resumen", headers={"Authorization": "Bearer " + token})
     assert r.status_code == 200
-    assert set(r.json()) == {"avisos", "tiempo", "proximo", "generado"}
+    assert set(r.json()) == {"avisos", "tiempo", "proximo", "proximos", "casa", "generado"}
     assert c.get("/api/avisos", headers={"Authorization": "Bearer " + token}).status_code in (303, 401)
 
 

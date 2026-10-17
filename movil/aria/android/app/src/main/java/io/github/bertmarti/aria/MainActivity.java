@@ -35,7 +35,11 @@ import android.graphics.drawable.Icon;
 public class MainActivity extends BridgeActivity {
     private static final String PREFS = "CapacitorStorage";
     private static final String URL_KEY = "aria_url";
-    private String ariaUrl;
+    private String ariaUrl = "";
+    // Capacitor llama a onNewIntent DENTRO de super.onCreate cuando la app se abre en frío con una acción (widget,
+    // atajos): entonces aún no hemos leído la dirección y la app se cerraba. Esa primera llamada se ignora y la
+    // acción se atiende al final de onCreate.
+    private boolean listo;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -64,6 +68,7 @@ public class MainActivity extends BridgeActivity {
                 new PeriodicWorkRequest.Builder(AvisosWorker.class, 15, TimeUnit.MINUTES)
                         .setConstraints(new Constraints.Builder()
                                 .setRequiredNetworkType(NetworkType.CONNECTED).build()).build());
+        listo = true;
         gestionarIntent(getIntent());
         crearAtajoEscucha();
         Actualizaciones.comprobar(this, false);
@@ -231,7 +236,7 @@ public class MainActivity extends BridgeActivity {
         gestor.addDynamicShortcuts(java.util.Collections.singletonList(atajoAsistente));
     }
 
-    @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); gestionarIntent(intent); }
+    @Override protected void onNewIntent(Intent intent) { super.onNewIntent(intent); setIntent(intent); if (listo) gestionarIntent(intent); }
 
     @Override public void onBackPressed() {
         WebView web = getBridge().getWebView();

@@ -27,4 +27,10 @@
     <string name="asistente_abrir_ajustes">Abrir ajustes de asistencia</string>
     <string name="escucha_error_modelo">No se ha podido descargar el modelo de voz.</string>
     <string name="sin_actualizaciones">Ya tienes la última versión de ARIA.</string>
+    <string name="widget_hablar_desc">Un toque y ARIA te escucha</string>
+    <string name="widget_agenda">Agenda</string>
+    <string name="widget_agenda_desc">Tus próximos tres eventos</string>
+    <string name="widget_casa">Casa</string>
+    <string name="widget_casa_desc">Anuncios bloqueados, VPN y estado de los servicios</string>
+    <string name="widget_resumen">Resumen de ARIA</string>
 </resources>

@@ -48,7 +48,7 @@ public class AvisosWorker extends Worker {
         }
         guardarResumen(resumen);
         notificarNuevos(base, resumen.optJSONArray("avisos"));
-        AriaWidget.actualizar(getApplicationContext());
+        AriaWidget.actualizarTodos(getApplicationContext());
         return Result.success();
     }
 

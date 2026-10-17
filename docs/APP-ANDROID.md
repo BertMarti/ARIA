@@ -63,14 +63,17 @@ El token solo permite leer el resumen personal y caduca como los demás tokens d
 
 La aplicación completa añade:
 
-- **Widget** de pantalla de inicio con el tiempo, el próximo evento y los avisos sin leer, además de los botones **Hablar** y **Nota**.
+- **Cuatro widgets** de pantalla de inicio: **Resumen**; **Hablar** (1×1); **Agenda**, con los tres próximos eventos; y **Casa**, con anuncios bloqueados, VPN y estado de los servicios. El widget Casa es solo para administradores.
 - **Mosaico de ajustes rápidos** para abrir ARIA rápidamente.
+- **Informe de cierres**: si la app se cierra, guarda la causa (sin tus datos ni la dirección de ARIA) y la manda a tu ARIA la próxima vez que la abres. Los administradores reciben un aviso y lo ven en **Ajustes → App de Android → Cierres recientes**.
 - **Atajos** para hablar, activar manos libres, crear una nota, abrir el HUD, compartir, cambiar de instalación y buscar actualizaciones.
 - **Compartir**: elige ARIA en el menú Compartir de otra aplicación para enviarle texto o un enlace.
 - **Avisos en segundo plano**: consulta el resumen del móvil vinculado cada 15 minutos como mínimo, cuando Android y la red lo permiten, y muestra los avisos nuevos.
 - **Actualizaciones desde la propia app**: comprueba GitHub Releases y descarga la nueva APK. Android confirma la instalación.
 
 Los atajos web de `#hablar`, `#manos-libres`, `#nota`, `#hud` y `#compartir` abren la acción correspondiente de ARIA.
+
+Para añadirlos al escritorio, mantén pulsado un espacio vacío, toca **Widgets** y busca **ARIA**. El icono nuevo de la app sigue el de la web con una versión temática.
 
 ## Permisos
 
@@ -110,7 +113,7 @@ Mientras está activo aparece una notificación fija con una acción para pararl
 
 ## Cómo se construye y publica
 
-GitHub Actions compila las dos APK sin firmar. El flujo `Android` usa Java 21 y Node 22, guarda el artefacto `apk-sin-firmar` durante 14 días y nunca recibe la llave de firma.
+GitHub Actions compila las dos APK sin firmar y prueba cada compilación en un Android 13 emulado. El flujo `Android` usa Java 21 y Node 22, guarda el artefacto `apk-sin-firmar` durante 14 días y nunca recibe la llave de firma.
 
 La llave vive solo en la máquina de ARIA. `herramientas/app/publicar.sh` descarga la compilación, firma `aria` y `aria-lite`, verifica el certificado y publica las APK en una GitHub Release. La contraseña de la llave se lee desde un archivo, no desde la línea de órdenes.
 

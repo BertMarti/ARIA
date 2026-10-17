@@ -90,6 +90,7 @@ Ping se estrena en el **escaparate público** de ARIA (`/hola`): una página est
 | 🔊 | **Voz en streaming**: ARIA empieza a leer en cuanto tiene la primera frase lista mientras sigue escribiendo. Funciona en el chat, manos libres y el HUD, agrupando el resto en bloques optimizados. |
 | 📋 | **Registro de actividad**: para administradores en Ajustes → Usuarios. Historial de qué herramientas usó cada agente, desde dónde, con qué resultado y cuánto tardó (se guarda 30 días). |
 | 🧚 | **Escaparate «Conoce a ARIA»** (`/hola`) y **Ping**, su hada de luz con voz propia: ARIA se presenta con su voz y Ping la interrumpe con un «¡Eh, mira!». Página pública y estática, sin datos reales. |
+| 💎 | **ARIA Gratis y ARIA Premium**: funciones gratuitas y ampliadas, con prueba de 14 días y licencias firmadas comprobadas en casa. Ahora está en modo prueba. |
 | 🆕 | **Ping compañero y compartir**: Ping pasea de vez en cuando por la app y es quien te avisa de los avisos y propuestas nuevas; comparte texto o enlaces desde Android y ARIA los resume en el chat. |
 | 📺 | **Compartir y enviar a la tele**: reproductor local tipo VLC, carpetas y archivos sin subirlos, subtítulos automáticos, «Seguir viendo» y envío en directo a teles Google Cast y DLNA. |
 | 🔢 | **Inicio en tarjetas numeradas**: 01 HUD · 02 Resumen del día · 03 Agenda · 04 Tu casa · 05 Información · 06 Mapa · 07 Chat · 08 Finanzas, cada una con un dato vivo y su estado (ACTIVO, AVISO, PRONTO). |
@@ -110,7 +111,9 @@ Ping se estrena en el **escaparate público** de ARIA (`/hola`): una página est
 ## 📑 Índice
 
 - [✨ Qué puede hacer](#-qué-puede-hacer)
+- [🆕 Novedades](#-novedades)
 - [📱 App de Android (ARIA 3)](#-app-de-android-aria-3)
+- [💎 ARIA Gratis y ARIA Premium](#-aria-gratis-y-aria-premium)
 - [📸 Capturas](#-capturas)
 - [🧚 Conoce a Ping](#-conoce-a-ping)
 - [🧩 Cómo está hecha](#-cómo-está-hecha)
@@ -156,7 +159,33 @@ ARIA también tiene **app para Android**, en dos sabores. Las dos se descargan d
 | ⚡ | **ARIA Lite** | La misma web de ARIA a pantalla completa, como una app (TWA): siempre actualizada y muy ligera. |
 | 🤖 | **ARIA** | App híbrida con piezas nativas: acceso con un token por dispositivo que puedes revocar, notificaciones, accesos rápidos (hablar, manos libres, nota, HUD, compartir) y más. |
 
+La app ARIA trae cuatro widgets: **Resumen**, **Hablar** (1×1), **Agenda** con los tres próximos eventos y **Casa**, con anuncios bloqueados, VPN y estado de los servicios; este último es solo para administradores. Su icono es el mismo que el de la web, con versión temática. Si alguna vez se cierra, manda a tu ARIA un informe con la causa (lo ves en **Ajustes → App de Android**). Cada compilación se prueba en un Android 13 emulado.
+
 Cómo instalarla y configurarla: **[docs/APP-ANDROID.md](docs/APP-ANDROID.md)**.
+
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
+
+## 💎 ARIA Gratis y ARIA Premium
+
+ARIA Premium está en **modo prueba** (`ARIA_PREMIUM_EXIGIR=0`): no se bloquea ninguna función. Puedes iniciar una prueba de **14 días** desde **Ajustes → ARIA Premium**, sin tarjeta.
+
+| Función | ARIA Gratis | ARIA Premium |
+|---|---|---|
+| Chat, voz, notas, agenda e información | Sí | Sí |
+| Bloqueo de anuncios, VPN y escaneo de la red | Sí | Sí |
+| Compartir: reproductor en el navegador | Sí | Sí |
+| Enviar a la tele | No | Sí |
+| Modo HUD y Cerebro | No | Sí |
+| «Arreglar lo que ARIA puede» | Ver hallazgos | Sí |
+| Finanzas | Movimientos y CSV | Además presupuestos, reglas y sugerencias |
+| Documentos con búsqueda inteligente | Hasta 20 | Hasta 200 |
+| Automatizaciones | Hasta 3 | Hasta el máximo de ARIA |
+| Usuarios | Hasta 2 | Sin límite |
+| App de Android | 1 móvil | Varios móviles y Siri |
+
+Las licencias Premium están **firmadas** y se comprueban en casa, sin necesidad de internet. Tras caducar hay **21 días de gracia**. La compra todavía **no está abierta**: no hay precios definitivos ni activación de compra disponible.
+
+<p align="right"><img src="docs/img/ping/ping-premium.svg" alt="Ping: «Premium está probándose; yo vigilo que nadie cierre la puerta.»"></p>
 
 <p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
 
@@ -680,6 +709,8 @@ Hace falta HTTPS y dar permiso al navegador. Instala el certificado ([paso 8](do
 Deja vacía `ARIA_URL_PUBLICA` en `.env` y `docker compose up -d`.
 </details>
 
+<p align="right"><a href="#readme-top">⬆️ Volver arriba</a></p>
+
 ## 🛠️ Para desarrolladores
 
 - Código en `app/aria/` (FastAPI), web sin paso de compilación en `app/static/`, pruebas en `app/tests/`.
@@ -695,7 +726,7 @@ Deja vacía `ARIA_URL_PUBLICA` en `.env` y `docker compose up -d`.
 
 La hoja de ruta distingue lo que ya está hecho de lo que queda pendiente. Ya están disponibles la búsqueda global con **Ctrl+K**, **Mis datos**, las gasolineras más baratas, los avisos de Meteoalarm, la ubicación opcional, Ping compañero, el briefing hablado, la memoria semántica, el Cerebro 3D, la cámara y los gestos, ARIA flotante, el mapa 3D y el acceso por invitación con perfiles. La voz propia diseñada continúa **aparcada**.
 
-Lo siguiente prioriza CalDAV, Home Assistant y Uptime Kuma. Las listas compartidas, la salud histórica del sistema y tus documentos ya están disponibles; consulta el detalle, el esfuerzo y el consumo estimado en **[docs/PLAN.md](docs/PLAN.md)**.
+Lo siguiente prioriza CalDAV, Home Assistant y Uptime Kuma. En la línea Premium, está en marcha el modo prueba y lo siguiente es abrir la compra. Las listas compartidas, la salud histórica del sistema y tus documentos ya están disponibles; consulta el detalle, el esfuerzo y el consumo estimado en **[docs/PLAN.md](docs/PLAN.md)**.
 
 ## 🌐 El ecosistema ARIA
 
@@ -716,7 +747,7 @@ flowchart LR
 
 **Elastic License 2.0** desde el 17/10/2026. Consulta [LICENSE](LICENSE).
 
-En pocas palabras: puedes leer el código, instalar ARIA en tu casa, modificarla para ti y compartirla. Lo que no se
+En pocas palabras: es código a la vista: puedes leerlo, instalar ARIA en tu casa, modificarla para ti y compartirla. Lo que no se
 permite es ofrecer ARIA como servicio gestionado a terceros ni quitar o esquivar la activación de las funciones de pago.
 
 Las versiones publicadas hasta la etiqueta [`ultima-mit`](../../tree/ultima-mit) siguen bajo la licencia MIT con la que

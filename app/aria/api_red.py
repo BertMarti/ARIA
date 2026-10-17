@@ -5,10 +5,10 @@ Permisos (permisos.py): el rol `usuario` solo puede `GET /api/red/salud`; todo l
 import asyncio
 import time
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from . import escaneo, estadisticas, red, seguridad, shield, remedios
+from . import escaneo, estadisticas, premium, red, seguridad, shield, remedios
 
 router = APIRouter()
 _acciones = []
@@ -138,7 +138,7 @@ def _limitar():
     return True
 
 
-@router.post("/api/seguridad/hallazgos/{clave}/accion")
+@router.post("/api/seguridad/hallazgos/{clave}/accion", dependencies=[Depends(premium.requiere("remedios"))])
 async def accion_hallazgo(clave: str, request: Request):
     if not _limitar():
         return _err("Demasiadas acciones; espera un minuto.", 429)

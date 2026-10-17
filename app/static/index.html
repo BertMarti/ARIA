@@ -468,6 +468,19 @@
           <p id="inv-msg" class="muted" role="status"></p>
         </form>
       </article>
+      <article class="tarjeta ancha" id="ajustes-premium">
+        <h2>ARIA Premium</h2>
+        <p id="premium-estado" class="premium-estado" role="status">Cargando…</p>
+        <p id="premium-nota" class="muted"></p>
+        <div class="tabla-cont"><table class="tabla premium-tabla"><thead><tr><th>Función</th><th>Gratis</th><th>Premium</th></tr></thead><tbody id="premium-funciones"></tbody></table></div>
+        <form id="premium-licencia" class="formulario solo-admin" autocomplete="off">
+          <label>Licencia <input id="premium-texto" maxlength="2048" placeholder="Pega aquí tu licencia firmada"></label>
+          <button type="submit" class="primario">Activar</button>
+          <p id="premium-msg" class="muted" role="status"></p>
+        </form>
+        <div class="botones solo-admin"><button type="button" class="fantasma" id="premium-prueba">Empezar prueba de 14 días</button><button type="button" class="fantasma" disabled>Comprar ARIA Premium (próximamente)</button></div>
+        <p class="muted pequeno-txt">Tus datos no salen de casa: la licencia se comprueba en tu propia ARIA.</p>
+      </article>
       <article class="tarjeta ancha solo-admin" id="ajustes-accesos">
         <div id="prueba-perfiles" class="prueba-perfiles"></div>
         <h2>Accesos por invitación</h2>
@@ -940,6 +953,7 @@
 <script src="/static/hud.js"></script>
 <script src="/static/cerebro.js"></script>
 <script src="/static/flotante.js"></script>
+<script src="/static/premium.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

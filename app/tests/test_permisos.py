@@ -45,6 +45,8 @@ ADMIN = [
     ("POST", "/api/spotify/next", None), ("POST", "/api/spotify/previous", None),
     ("GET", "/spotify/login", None), ("GET", "/spotify/callback", None),
     ("POST", "/api/models/otro", None), ("GET", "/api/ruta-inventada", None),
+    ("POST", "/api/premium/licencia", {"licencia": "x"}), ("POST", "/api/premium/prueba", {}),
+    ("DELETE", "/api/premium/licencia", None),
     # Control parental: solo admin
     ("GET", "/api/red/control", None), ("POST", "/api/red/control/pausa", {"clave": "x", "minutos": 5}),
     ("POST", "/api/red/control/reanudar", {"clave": "x"}),
@@ -147,7 +149,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("DELETE", "/api/lista-items/{item_id}"),
                     ("GET", "/api/documentos"), ("POST", "/api/documentos"), ("GET", "/api/documentos/{doc_id}/archivo"),
                     ("DELETE", "/api/documentos/{doc_id}"), ("POST", "/api/documentos/buscar"),
-                    ("DELETE", "/api/ubicacion"), ("GET", "/api/info"), ("GET", "/api/services"),
+                    ("DELETE", "/api/ubicacion"), ("GET", "/api/info"), ("GET", "/api/premium"), ("GET", "/api/services"),
                     ("GET", "/api/shield"), ("GET", "/api/system"), ("GET", "/api/vpn/clients"),
                     ("GET", "/api/spotify/status"), ("GET", "/api/certificado"), ("POST", "/api/password"),
                     ("POST", "/api/chat"), ("GET", "/api/conversations"), ("GET", "/api/conversations/{cid}"),

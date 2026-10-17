@@ -11,7 +11,7 @@ import time
 from contextlib import closing
 from datetime import datetime
 
-from . import avisos, db, tiempo
+from . import avisos, db, premium, tiempo
 from . import registro as registro_herramientas   # (aquí «registro» ya es la función del historial de cada automatización)
 
 log = logging.getLogger("aria.automatizaciones")
@@ -128,7 +128,10 @@ def crear(uid, datos):
     if not isinstance(datos, dict): raise AutomatizacionError("Datos no válidos.")
     d, c, a = _validar_disparador(datos.get("disparador")), _validar_condiciones(datos.get("condiciones")), _validar_acciones(datos.get("acciones"))
     with closing(db._con()) as con, con:
-        if con.execute("SELECT COUNT(*) FROM automatizaciones WHERE user_id=?", (uid,)).fetchone()[0] >= MAX_POR_USUARIO:
+        maximo = min(MAX_POR_USUARIO, premium.limite("automatizaciones") or MAX_POR_USUARIO)
+        if con.execute("SELECT COUNT(*) FROM automatizaciones WHERE user_id=?", (uid,)).fetchone()[0] >= maximo:
+            if premium.limite("automatizaciones") is not None:
+                raise AutomatizacionError("Con ARIA Gratis puedes tener 3 automatizaciones. Hazte Premium para tener más.")
             raise AutomatizacionError(f"No puedes tener más de {MAX_POR_USUARIO} automatizaciones.")
         aid = con.execute("INSERT INTO automatizaciones(user_id,nombre,disparador,condiciones,acciones,creado) VALUES(?,?,?,?,?,?)",
                           (uid, _texto(datos.get("nombre"), 80, "Nombre"), json.dumps(d), json.dumps(c), json.dumps(a), time.time())).lastrowid

@@ -154,6 +154,11 @@ def _comprobar_password(p) -> str:
 def crear(email, nombre, rol="usuario", password=None) -> dict:
     e, r = email_valido(email), _rol(rol)
     h = auth.hashear(_comprobar_password(password)) if password else None
+    # La comprobación vive aquí también para cubrir invitaciones y otros flujos internos.
+    from . import premium
+    limite = premium.limite("usuarios")
+    if limite is not None and len(listar()) >= limite:
+        raise UsuarioError(f"Con ARIA Gratis puedes tener {limite} usuarios. Hazte Premium para tener más.")
     try:
         with closing(db._con()) as con, con:
             cur = con.execute(

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from . import agenda, avisos, briefing, dispositivos_app, invitados, ubicacion
+from . import agenda, avisos, briefing, dispositivos_app, invitados, premium, ubicacion
 
 router = APIRouter()
 _lim_crear = avisos.Limitador(5, 3600)
@@ -32,6 +32,10 @@ async def crear(request: Request):
     d = await _json(request)
     if not isinstance(d.get("nombre", ""), str) or not d.get("nombre", "").strip() or len(d["nombre"].strip()) > 60:
         return JSONResponse({"error": "El nombre debe tener entre 1 y 60 caracteres."}, status_code=400)
+    # ARIA Gratis: un móvil vinculado (avisos y widget); Premium: los que quieras, también el token de Atajos/Siri.
+    if not premium.tiene("app_extra") and len(await asyncio.to_thread(dispositivos_app.listar, u["id"])) >= 1:
+        return JSONResponse({"error": "Con ARIA Gratis puedes vincular un móvil. Hazte Premium para tener más.",
+                             "premium": "app_extra"}, status_code=402)
     return await asyncio.to_thread(dispositivos_app.crear, u["id"], d["nombre"])
 
 

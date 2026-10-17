@@ -133,6 +133,9 @@ ZONA_METEO = os.environ.get("ARIA_ZONA_METEO", "").strip()[:120]
 # Repositorio de copias fuera de la Pi (solo se lee si está montado en el contenedor).
 COPIAS_REPO = os.environ.get("ARIA_COPIAS_REPO", "/copias-repo")
 
+# Premium se mantiene desactivado durante la fase de prueba.
+PREMIUM_EXIGIR = os.environ.get("ARIA_PREMIUM_EXIGIR", "0").strip().lower() in ("1", "true", "si", "sí", "yes", "on")
+
 NOMBRE_USUARIO = os.environ.get("ARIA_NOMBRE_USUARIO", "").strip()[:40]
 
 # Funciones aparcadas hasta más adelante (8/10/2026): el código sigue, pero sin herramientas

@@ -19,9 +19,8 @@ if [ -n "$CAMPO" ]; then
   set -- $CAMPO
   adb shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
 else
-  # La página de la WebView no siempre sale en la jerarquía: el campo tiene autofocus y, si no, Tab lo alcanza.
+  # La página de la WebView no siempre sale en la jerarquía: el campo ya tiene el foco (autofocus).
   echo "El campo no sale en la jerarquía; uso el foco automático"
-  adb shell input keyevent 61 || true
 fi
 sleep 1
 adb shell input text "https://example.com" || true

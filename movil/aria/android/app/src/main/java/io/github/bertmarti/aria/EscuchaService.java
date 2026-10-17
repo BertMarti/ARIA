@@ -52,6 +52,7 @@ public class EscuchaService extends Service {
     }
 
     @Override public void onCreate() {
+        Fallos.instalar(this);
         super.onCreate();
         crearCanal();
         startForeground(NOTIFICACION, notificacion(getString(R.string.escucha_notificacion)));

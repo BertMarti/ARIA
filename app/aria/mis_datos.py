@@ -51,6 +51,7 @@ def exportar(uid: int, perfil: dict) -> bytes:
             "ubicacion.json": _filas(con, "ubicaciones", uid),
             "dispositivos-app.json": [dict(r) for r in con.execute(
                 "SELECT id, nombre, creado, ultimo_uso, caduca FROM app_dispositivos WHERE user_id=? ORDER BY rowid", (uid,))],
+            "fallos-app.json": _filas(con, "app_fallos", uid),
         }
     leeme = ("Exportación de tus datos de ARIA\n\n"
              "perfil.json: datos básicos de tu cuenta, sin contraseña ni secretos.\n"
@@ -68,6 +69,7 @@ def exportar(uid: int, perfil: dict) -> bytes:
              "voz.json: preferencias de voz.\n"
                "avisos.json: avisos y ajustes de avisos.\n\n"
                "dispositivos-app.json: móviles vinculados, sin tokens ni huellas.\n\n"
+               "fallos-app.json: informes de cierres de la app de Android.\n\n"
                "ubicacion.json: tu última ubicación temporal, si la has usado.\n\n"
              "La exportación no incluye contraseñas, secretos de dos pasos, tokens ni claves.\n")
     salida = io.BytesIO()

@@ -266,6 +266,7 @@ const Ajustes = (() => {
       catch (_) { toast("No se pudo copiar la dirección.", "mal"); }
     });
     const lista = $("app-dispositivos"), dialog = $("app-revocar-dialog"), siri = $("app-siri-dialog");
+    const fallosZona = $("app-fallos-zona"), fallosLista = $("app-fallos");
     async function pintar() {
       const r = await api("/api/app/dispositivos");
       lista.replaceChildren();
@@ -284,6 +285,20 @@ const Ajustes = (() => {
         });
         lista.append(el("li", { class: "fila" }, el("div", { class: "fila-info" }, el("strong", null, d.nombre),
           el("span", { class: "muted" }, "Creado: " + fecha(d.creado) + " · Último uso: " + fecha(d.ultimo_uso))), boton));
+      }
+    }
+    async function pintarFallos() {
+      if (!Sesion.esAdmin) return;
+      const r = await api("/api/app/fallos");
+      if (!r.ok || !r.data.fallos.length) { fallosZona.hidden = true; return; }
+      fallosZona.hidden = false; fallosLista.replaceChildren();
+      for (const f of r.data.fallos) {
+        const fecha = new Date(f.cuando * 1000).toLocaleString("es-ES");
+        const detalle = el("details", null, el("summary", null, "Traza"), el("pre", null, f.traza || "Sin traza"));
+        fallosLista.append(el("li", { class: "fila" },
+          el("div", { class: "fila-info" }, el("strong", null, fecha),
+            el("span", { class: "muted" }, "ARIA " + f.version + " · Android " + f.android + " · " + f.modelo),
+            el("span", null, f.excepcion), detalle)));
       }
     }
     $("app-siri-crear").addEventListener("click", async () => {
@@ -306,6 +321,7 @@ const Ajustes = (() => {
       $("app-siri-url").textContent = "";
     });
     pintar();
+    pintarFallos();
   }
 
   // --- Spotify ---

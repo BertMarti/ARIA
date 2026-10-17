@@ -167,6 +167,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                       ("POST", "/api/proyectos/{pid}/decisiones"), ("DELETE", "/api/decisiones/{did}"),
                       ("POST", "/api/app/dispositivos"), ("GET", "/api/app/dispositivos"),
                       ("DELETE", "/api/app/dispositivos/{ident}"), ("GET", "/api/app/resumen"),
+                      ("POST", "/api/app/fallos"),
                 } | RUTAS_USUARIO_AGENTES | RUTAS_USUARIO_AVISOS | RUTAS_USUARIO_RUTINAS | RUTAS_USUARIO_VISION | RUTAS_USUARIO_INFORMACION | RUTAS_USUARIO_AGENDA | RUTAS_USUARIO_MODULOS | RUTAS_USUARIO_MAPAS | permisos.rutas_modulos_usuario(), (m, camino)
                 if camino.startswith("/api/modulos/"):
                     # Las de módulos solo se abren si su registro las declara (siempre bajo /api/modulos/<id>/).

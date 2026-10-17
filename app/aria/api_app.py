@@ -1,17 +1,21 @@
 """API de vinculación y resumen de la aplicación nativa."""
 import asyncio
 import hashlib
+import json
+import math
 import time
+from contextlib import closing
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from . import agenda, avisos, briefing, dispositivos_app, invitados, premium, services, shield, ubicacion, vpn
+from . import agenda, avisos, briefing, db, dispositivos_app, invitados, premium, services, shield, ubicacion, vpn
 
 router = APIRouter()
 _lim_crear = avisos.Limitador(5, 3600)
 _lim_resumen = avisos.Limitador(60, 3600)
+_lim_fallos = avisos.Limitador(5, 3600)
 
 
 async def _json(request: Request) -> dict:
@@ -60,6 +64,73 @@ async def resumen(request: Request):
     if request.query_params.get("formato") == "texto":
         return PlainTextResponse(_texto_resumen(datos), media_type="text/plain; charset=utf-8")
     return datos
+
+
+def _recortar(valor, limite: int) -> str:
+    return valor.strip()[:limite] if isinstance(valor, str) else ""
+
+
+def _guardar_fallo(uid: int, datos: dict) -> tuple[dict, bool]:
+    ahora = datos["cuando"] / 1000
+    with closing(db._con()) as con, con:
+        cur = con.execute(
+            "INSERT INTO app_fallos (user_id, cuando, version, android, modelo, excepcion, traza) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (uid, ahora, datos["version"], datos["android"], datos["modelo"], datos["excepcion"], datos["traza"]),
+        )
+        fila = {"id": cur.lastrowid, "user_id": uid, "cuando": ahora, **datos}
+        con.execute("DELETE FROM app_fallos WHERE id NOT IN (SELECT id FROM app_fallos ORDER BY cuando DESC, id DESC LIMIT 50)")
+        repetido = con.execute(
+            "SELECT 1 FROM app_fallos WHERE excepcion=? AND version=? AND cuando>=? AND id<>? LIMIT 1",
+            (datos["excepcion"], datos["version"], ahora - 86400, cur.lastrowid),
+        ).fetchone() is not None
+    return fila, repetido
+
+
+@router.post("/api/app/fallos")
+async def registrar_fallo(request: Request):
+    u = request.state.usuario
+    try:
+        if int(request.headers.get("content-length", "0")) > 8192:
+            return JSONResponse({"error": "El informe es demasiado grande."}, status_code=413)
+    except ValueError:
+        return JSONResponse({"error": "Cabecera de tamaño no válida."}, status_code=400)
+    cuerpo = await request.body()
+    if len(cuerpo) > 8192:
+        return JSONResponse({"error": "El informe es demasiado grande."}, status_code=413)
+    try:
+        d = json.loads(cuerpo)
+    except (TypeError, ValueError):
+        return JSONResponse({"error": "Informe no válido."}, status_code=400)
+    if (not isinstance(d, dict) or not isinstance(d.get("android"), int) or isinstance(d["android"], bool)
+            or not isinstance(d.get("cuando"), (int, float)) or isinstance(d["cuando"], bool)
+            or not math.isfinite(d["cuando"]) or d["cuando"] <= 0):
+        return JSONResponse({"error": "Informe no válido."}, status_code=400)
+    # La hora del cierre la pone el móvil: se acota a los últimos 30 días para que no descoloque la lista ni el deduplicado.
+    ahora_ms = time.time() * 1000
+    cuando = min(max(float(d["cuando"]), ahora_ms - 30 * 86400 * 1000), ahora_ms)
+    datos = {"version": _recortar(d.get("version"), 100), "android": d["android"], "cuando": cuando,
+             "modelo": _recortar(d.get("modelo"), 120), "excepcion": _recortar(d.get("excepcion"), 300),
+             "traza": _recortar(d.get("traza"), 4000)}
+    if not all(datos[k] for k in ("version", "modelo", "excepcion")) or not 0 <= datos["android"] <= 1000:
+        return JSONResponse({"error": "Informe no válido."}, status_code=400)
+    if not _lim_fallos.permitir(u["id"]):
+        return JSONResponse({"error": "Demasiados informes; espera un poco."}, status_code=429)
+    fallo, repetido = await asyncio.to_thread(_guardar_fallo, u["id"], datos)
+    if not repetido:
+        texto = f"La app de Android se ha cerrado (ARIA {datos['version']}, Android {datos['android']}): {datos['excepcion']}"
+        await avisos.emitir("app", "aviso", texto, "ajustes")
+    return {"ok": True, "id": fallo["id"]}
+
+
+@router.get("/api/app/fallos")
+async def listar_fallos(request: Request):
+    def leer():
+        with closing(db._con()) as con:
+            return [dict(r) for r in con.execute(
+                "SELECT id, user_id, cuando, version, android, modelo, excepcion, traza "
+                "FROM app_fallos ORDER BY cuando DESC, id DESC LIMIT 50")]
+    return {"fallos": await asyncio.to_thread(leer)}
 
 
 async def _datos_resumen(u: dict) -> dict:

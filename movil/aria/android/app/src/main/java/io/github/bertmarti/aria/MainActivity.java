@@ -10,6 +10,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.net.http.SslError;
+import android.webkit.SslErrorHandler;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import androidx.work.Constraints;
@@ -40,6 +43,8 @@ public class MainActivity extends BridgeActivity {
     // atajos): entonces aún no hemos leído la dirección y la app se cerraba. Esa primera llamada se ignora y la
     // acción se atiende al final de onCreate.
     private boolean listo;
+    private boolean planB;   // la dirección pública no responde: buscando o usando la de casa
+    private String casaActual;   // dirección de casa en uso durante el plan B (null = ninguna responde)
 
     @Override public void onCreate(Bundle state) {
         Fallos.instalar(this);
@@ -59,10 +64,28 @@ public class MainActivity extends BridgeActivity {
                 super.onPageFinished(view, url);
                 Uri pagina = Uri.parse(url);
                 if (esPaginaDeCasa(pagina)) {
+                    planB = false;
                     DispositivoApp.vincularEnSegundoPlano(MainActivity.this, ariaUrl);
                     Fallos.enviarPendiente(MainActivity.this, ariaUrl);
+                    Casa.actualizar(MainActivity.this, ariaUrl);   // direcciones de casa para el plan B
                     pedirNotificacionesUnaVez();   // ya dentro de ARIA: ahora el permiso tiene sentido
                 }
+            }
+
+            // Certificado no válido: el de casa (ya validado contra su raíz) se acepta; el resto, nunca. Si el que
+            // falla es el de la dirección pública, casi siempre es el bloqueo del operador: se pasa al plan B.
+            @Override public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                if (Casa.aceptar(MainActivity.this, error)) {
+                    handler.proceed();
+                    return;
+                }
+                handler.cancel();
+                if (esPublica(Uri.parse(error.getUrl()))) activarPlanB();
+            }
+
+            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                if (request.isForMainFrame() && esPublica(request.getUrl())) activarPlanB();
             }
         });
         crearCanal();
@@ -81,6 +104,15 @@ public class MainActivity extends BridgeActivity {
             abrirAjustesAsistencia();
             return true;
         }
+        if ("aria".equalsIgnoreCase(uri.getScheme()) && "vpn".equalsIgnoreCase(uri.getHost())) {
+            abrirVpn();
+            return true;
+        }
+        if ("aria".equalsIgnoreCase(uri.getScheme()) && "reintentar".equalsIgnoreCase(uri.getHost())) {
+            planB = false;
+            getBridge().getWebView().loadUrl(ariaUrl.isEmpty() ? "https://localhost/" : ariaUrl);
+            return true;
+        }
         if (ariaUrl.isEmpty() && "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null) {
             ariaUrl = uri.getScheme() + "://" + uri.getHost()
                     + (uri.getPort() > 0 ? ":" + uri.getPort() : "") + "/";
@@ -88,7 +120,8 @@ public class MainActivity extends BridgeActivity {
         }
         Uri base = ariaUrl.isEmpty() ? null : Uri.parse(ariaUrl);
         boolean mismaCasa = base != null && base.getScheme().equals(uri.getScheme())
-                && base.getHost().equalsIgnoreCase(uri.getHost()) && base.getPort() == uri.getPort();
+                && base.getHost().equalsIgnoreCase(uri.getHost()) && base.getPort() == uri.getPort()
+                || Casa.esCasa(this, uri);   // las direcciones locales del plan B también son ARIA
         String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
         boolean local = "localhost".equals(host);
         // El acceso de Cloudflare (código por correo) pasa por <equipo>.cloudflareaccess.com: debe seguir dentro de la app.
@@ -96,6 +129,60 @@ public class MainActivity extends BridgeActivity {
         if (ariaUrl.isEmpty() || mismaCasa || local || accesoCloudflare) return false;
         startActivity(new Intent(Intent.ACTION_VIEW, uri));
         return true;
+    }
+
+    private boolean esPublica(Uri uri) {
+        if (ariaUrl.isEmpty() || uri == null || uri.getHost() == null) return false;
+        return uri.getHost().equalsIgnoreCase(Uri.parse(ariaUrl).getHost());
+    }
+
+    /** La dirección pública falla: se prueba ARIA en casa (wifi o VPN); si tampoco, se explica qué pasa. */
+    private void activarPlanB() {
+        if (planB) return;
+        planB = true;
+        new Thread(() -> {
+            String local = Casa.buscar(this);
+            runOnUiThread(() -> {
+                casaActual = local;
+                getBridge().getWebView().loadUrl(local != null ? local : "https://localhost/bloqueo.html");
+            });
+        }, "aria-plan-b").start();
+    }
+
+    /** Abre la app de VPN (WG Tunnel o WireGuard) para entrar en casa por HEIMDALL. */
+    private void abrirVpn() {
+        for (String paquete : new String[]{"com.zaneschepke.wireguardautotunnel", "com.wireguard.android"}) {
+            Intent abrir = getPackageManager().getLaunchIntentForPackage(paquete);
+            if (abrir != null) {
+                startActivity(abrir);
+                return;
+            }
+        }
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.zaneschepke.wireguardautotunnel")));
+        } catch (Exception e) {
+            startActivity(new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=com.zaneschepke.wireguardautotunnel")));
+        }
+    }
+
+    // Al volver a la app: si se estaba en casa por el plan B y la dirección pública ya responde, se vuelve a ella.
+    @Override public void onResume() {
+        super.onResume();
+        WebView web = getBridge() == null ? null : getBridge().getWebView();
+        String actual = web == null ? null : web.getUrl();
+        if (ariaUrl.isEmpty() || actual == null) return;
+        Uri pagina = Uri.parse(actual);
+        boolean fuera = Casa.esCasa(this, pagina) || actual.startsWith("https://localhost/bloqueo");
+        if (!fuera) return;
+        new Thread(() -> {
+            if (Casa.publicaAccesible(ariaUrl)) {
+                runOnUiThread(() -> { planB = false; casaActual = null; getBridge().getWebView().loadUrl(ariaUrl); });
+            } else if (actual.startsWith("https://localhost/bloqueo")) {
+                String local = Casa.buscar(this);   // quizá ya se ha conectado la VPN
+                if (local != null) runOnUiThread(() -> { casaActual = local; getBridge().getWebView().loadUrl(local); });
+            }
+        }, "aria-volver").start();
     }
 
     private void abrirAjustesAsistencia() {
@@ -137,7 +224,9 @@ public class MainActivity extends BridgeActivity {
             return;
         }
         if (accion != null && !ariaUrl.isEmpty()) {
-            getBridge().getWebView().loadUrl(ariaUrl + "#" + Uri.encode(accion));
+            // En el plan B, la acción va a la dirección de casa en uso (la pública está bloqueada).
+            String base = planB ? casaActual : ariaUrl;
+            getBridge().getWebView().loadUrl(base != null ? base + "#" + Uri.encode(accion) : "https://localhost/bloqueo.html");
         }
         if (Intent.ACTION_SEND.equals(intent.getAction()) && !ariaUrl.isEmpty()) {
             try {

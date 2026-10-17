@@ -1,6 +1,7 @@
 """API de vinculación y resumen de la aplicación nativa."""
 import asyncio
 import hashlib
+import ipaddress
 import json
 import math
 import time
@@ -10,7 +11,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from . import agenda, avisos, briefing, db, dispositivos_app, invitados, premium, services, shield, ubicacion, vpn
+from . import agenda, avisos, briefing, config, db, dispositivos_app, invitados, premium, services, shield, ubicacion, vpn
 
 router = APIRouter()
 _lim_crear = avisos.Limitador(5, 3600)
@@ -131,6 +132,32 @@ async def listar_fallos(request: Request):
                 "SELECT id, user_id, cuando, version, android, modelo, excepcion, traza "
                 "FROM app_fallos ORDER BY cuando DESC, id DESC LIMIT 50")]
     return {"fallos": await asyncio.to_thread(leer)}
+
+
+def _direcciones_casa() -> list:
+    """Direcciones de ARIA dentro de casa (o por la VPN): IP privadas y nombres .local/.lan. La IP de la LAN va
+    primero porque no depende del DNS (con la VPN, «aria.local» puede no resolverse)."""
+    def de_casa(h: str) -> bool:
+        try:
+            return ipaddress.ip_address(h).is_private and not ipaddress.ip_address(h).is_loopback
+        except ValueError:
+            return h.endswith((".local", ".lan")) and h.replace(".", "").replace("-", "").isalnum()
+    hosts = sorted((h for h in config.HOSTS if de_casa(h)), key=lambda h: (h != config.LAN_IP.lower(), h))
+    return [f"https://{h}/" for h in hosts][:5]
+
+
+@router.get("/api/app/casa")
+async def casa():
+    """Plan B de la app de Android: si el operador bloquea Cloudflare (LaLiga), la app entra por estas direcciones,
+    fiándose SOLO de su certificado si lo firma la autoridad de esta casa (el certificado raíz es público)."""
+    ruta = config.DATA_DIR / "aria-certificado.crt"
+    try:
+        pem = await asyncio.to_thread(ruta.read_text, encoding="ascii")
+    except (OSError, UnicodeDecodeError):
+        pem = ""
+    if "BEGIN CERTIFICATE" not in pem:
+        return JSONResponse({"error": "Certificado de casa no disponible."}, status_code=404)
+    return {"direcciones": _direcciones_casa(), "certificado": pem.strip()}
 
 
 async def _datos_resumen(u: dict) -> dict:

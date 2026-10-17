@@ -9,7 +9,8 @@ adb logcat -c
 adb shell am start -n io.github.bertmarti.aria/.MainActivity
 sleep 15
 adb exec-out screencap -p > capturas/aria-inicio.png
-# Como un móvil ya configurado: se escribe una dirección (no hace falta que sea ARIA) y se repiten las entradas
+# Como un móvil ya configurado: se escribe una dirección con certificado falso (como el que pone el operador en los
+# bloqueos de LaLiga), así se prueba también el plan B, y se repiten las entradas
 # del widget («Hablar» y «Nota») con la app abierta y con la app cerrada, que es como las usa la gente.
 # El campo se busca en la jerarquía de la pantalla (las coordenadas fijas fallan si cambia la resolución del emulador).
 adb shell uiautomator dump /sdcard/pantalla.xml >/dev/null 2>&1 || true
@@ -23,14 +24,12 @@ else
   echo "El campo no sale en la jerarquía; uso el foco automático"
 fi
 sleep 1
-adb shell input text "https://example.com" || true
+adb shell input text "https://self-signed.badssl.com" || true
 adb shell input keyevent 66 || true
 sleep 8
 adb exec-out screencap -p > capturas/aria-configurada.png
 # Sin root no se pueden leer las preferencias: se mira si la WebView ha llegado a cargar la dirección escrita.
-adb shell dumpsys activity top 2>/dev/null | grep -q "example.com" \
-  || adb logcat -d 2>/dev/null | grep -q "example.com" \
-  && echo "Dirección cargada" || echo "Aviso: no consta que la app haya cargado la dirección"
+adb exec-out screencap -p > capturas/plan-b.png   # debe verse «No llego a tu ARIA por internet»
 for accion in hablar nota avisos; do
   adb shell am start -n io.github.bertmarti.aria/.MainActivity -f 0x30000000 --es accion "$accion"   # abierta
   sleep 4

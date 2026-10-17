@@ -18,6 +18,12 @@ public class AriaWidget extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         actualizar(context, manager, ids);
+        AvisosWorker.ahora(context);   // recién puesto en el escritorio: datos ya, sin esperar 15 minutos
+    }
+
+    @Override
+    public void onEnabled(Context context) {
+        AvisosWorker.ahora(context);
     }
 
     static void actualizar(Context context) {
@@ -29,21 +35,23 @@ public class AriaWidget extends AppWidgetProvider {
     private static void actualizar(Context context, AppWidgetManager manager, int[] ids) {
         String texto = context.getSharedPreferences("widget_aria", Context.MODE_PRIVATE)
                 .getString("resumen", "");
+        boolean configurada = !context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
+                .getString("aria_url", "").isEmpty();
         for (int id : ids) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.aria_widget);
             views.setOnClickPendingIntent(R.id.widget_hablar, accion(context, "hablar", id));
             views.setOnClickPendingIntent(R.id.widget_nota, accion(context, "nota", id + 1000));
             views.setOnClickPendingIntent(R.id.widget_resumen, accion(context, "avisos", id + 2000));
-            rellenar(views, texto);
+            rellenar(views, texto, configurada);
             manager.updateAppWidget(id, views);
         }
     }
 
-    private static void rellenar(RemoteViews views, String texto) {
+    private static void rellenar(RemoteViews views, String texto, boolean configurada) {
         if (texto.isEmpty()) {
-            views.setTextViewText(R.id.widget_tiempo, "Abre ARIA para vincular");
-            views.setTextViewText(R.id.widget_proximo, "");
-            views.setTextViewText(R.id.widget_avisos, "");
+            views.setTextViewText(R.id.widget_tiempo, "ARIA");
+            views.setTextViewText(R.id.widget_proximo, configurada ? "Cargando tu resumen…" : "Abre ARIA para vincular");
+            views.setTextViewText(R.id.widget_avisos, configurada ? "" : "Toca aquí para empezar");
             return;
         }
         try {
@@ -55,14 +63,16 @@ public class AriaWidget extends AppWidgetProvider {
                 String lugar = tiempo.optString("lugar", "");
                 String grados = tiempo.optString("actual", "") + "°";
                 String cielo = tiempo.optString("cielo", "");
-                views.setTextViewText(R.id.widget_tiempo, lugar + " · " + grados + " · " + cielo);
+                views.setTextViewText(R.id.widget_tiempo, (lugar.isEmpty() ? "" : lugar + " · ") + grados
+                        + (cielo.isEmpty() ? "" : " · " + cielo));
             }
             JSONObject proximo = resumen.optJSONObject("proximo");
             String evento = proximo == null ? "Sin próximos eventos" : fecha(proximo.optString("inicio"))
                     + " · " + proximo.optString("titulo", "Evento");
             views.setTextViewText(R.id.widget_proximo, evento);
             JSONArray avisos = resumen.optJSONArray("avisos");
-            views.setTextViewText(R.id.widget_avisos, (avisos == null ? 0 : avisos.length()) + " avisos sin leer");
+            int n = avisos == null ? 0 : avisos.length();
+            views.setTextViewText(R.id.widget_avisos, n == 0 ? "Sin avisos" : n == 1 ? "1 aviso sin leer" : n + " avisos sin leer");
         } catch (Exception ignorada) {
             views.setTextViewText(R.id.widget_tiempo, "Abre ARIA para vincular");
         }

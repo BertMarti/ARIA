@@ -1,52 +1,87 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Solo clases que admite RemoteViews (LinearLayout, TextView, ImageView…). Un <View> suelto hace que Android muestre
+     «No se puede cargar el widget». -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_raiz"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="10dp"
+    android:padding="12dp"
     android:background="@drawable/widget_background">
-    <TextView
-        android:id="@+id/widget_tiempo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="#38d6ff"
-        android:textSize="14sp"
-        android:maxLines="1" />
-    <TextView
-        android:id="@+id/widget_proximo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="#ffffff"
-        android:textSize="13sp"
-        android:maxLines="1" />
-    <TextView
-        android:id="@+id/widget_avisos"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="#38d6ff"
-        android:textSize="12sp"
-        android:maxLines="1"
-        android:layout_marginBottom="2dp" />
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-        <Button
-            android:id="@+id/widget_hablar"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/widget_hablar" />
-        <Button
-            android:id="@+id/widget_nota"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/widget_nota" />
-    </LinearLayout>
-    <View
         android:id="@+id/widget_resumen"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/widget_logo"
+                android:contentDescription="@null" />
+            <TextView
+                android:id="@+id/widget_tiempo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#38d6ff"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:ellipsize="end"
+                android:maxLines="1" />
+        </LinearLayout>
+        <TextView
+            android:id="@+id/widget_proximo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#e8fbff"
+            android:textSize="13sp"
+            android:ellipsize="end"
+            android:maxLines="1" />
+        <TextView
+            android:id="@+id/widget_avisos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#9fb3c8"
+            android:textSize="12sp"
+            android:ellipsize="end"
+            android:maxLines="1" />
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+        <TextView
+            android:id="@+id/widget_hablar"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:gravity="center"
+            android:background="@drawable/widget_boton"
+            android:textColor="#070b12"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:text="@string/widget_hablar" />
+        <TextView
+            android:id="@+id/widget_nota"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:background="@drawable/widget_boton_secundario"
+            android:textColor="#38d6ff"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:text="@string/widget_nota" />
+    </LinearLayout>
 </LinearLayout>

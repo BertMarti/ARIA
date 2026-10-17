@@ -17,6 +17,11 @@ import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
+import android.graphics.Color;
+import android.view.View;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
 import java.net.URLEncoder;
@@ -34,6 +39,7 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(state);
         ariaUrl = getSharedPreferences(PREFS, MODE_PRIVATE).getString(URL_KEY, "");
         WebView web = getBridge().getWebView();
+        aplicarZonaSegura(web);
         // Se mantiene el puente de Capacitor mientras se navega por ARIA.
         web.setWebViewClient(new BridgeWebViewClient(getBridge()) {
             @Override
@@ -160,6 +166,22 @@ public class MainActivity extends BridgeActivity {
         if (codigo == 31 && resultados.length > 0 && resultados[0] == PackageManager.PERMISSION_GRANTED) {
             EscuchaService.iniciar(this);
         }
+    }
+
+    /**
+     * Android 15 dibuja la app detrás de la barra de estado, la cámara y la barra de navegación, y el WebView no siempre
+     * informa a la web de esos márgenes: se aplican como relleno del contenedor (fondo oscuro de ARIA) y nada queda tapado.
+     */
+    private void aplicarZonaSegura(WebView web) {
+        View contenedor = (View) web.getParent();
+        contenedor.setBackgroundColor(Color.parseColor("#070b12"));
+        ViewCompat.setOnApplyWindowInsetsListener(contenedor, (vista, margenes) -> {
+            Insets zona = margenes.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
+                    | WindowInsetsCompat.Type.ime());
+            vista.setPadding(zona.left, zona.top, zona.right, zona.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
+        ViewCompat.requestApplyInsets(contenedor);
     }
 
     private boolean notificacionesPedidas;

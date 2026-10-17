@@ -4,7 +4,7 @@ name: Android
 
 on:
   push:
-    branches: [main, aria3]
+    branches: [main, aria3, movil-hud]
     paths: ["movil/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 

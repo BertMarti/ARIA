@@ -17,6 +17,15 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class AvisosWorker extends Worker {
+    /** Pide el resumen ya (al poner el widget o al vincular el móvil), sin esperar a la tarea de cada 15 minutos. */
+    static void ahora(Context context) {
+        androidx.work.WorkManager.getInstance(context.getApplicationContext()).enqueueUniqueWork("avisos-aria-ahora",
+                androidx.work.ExistingWorkPolicy.REPLACE,
+                new androidx.work.OneTimeWorkRequest.Builder(AvisosWorker.class)
+                        .setConstraints(new androidx.work.Constraints.Builder()
+                                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED).build()).build());
+    }
+
     public AvisosWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
     }

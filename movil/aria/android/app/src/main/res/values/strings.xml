@@ -10,6 +10,7 @@
     <string name="mas_tarde">Más tarde</string>
     <string name="widget_hablar">Hablar</string>
     <string name="widget_nota">Nota</string>
+    <string name="widget_descripcion">Tiempo, próximo evento y avisos de tu ARIA</string>
     <string name="atajo_hablar">Hablar</string>
     <string name="atajo_manos_libres">Manos libres</string>
     <string name="atajo_nueva_nota">Nueva nota</string>

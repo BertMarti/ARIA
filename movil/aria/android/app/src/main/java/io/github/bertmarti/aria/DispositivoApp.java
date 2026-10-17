@@ -86,6 +86,7 @@ final class DispositivoApp {
             if (!token.isEmpty() && caduca > 0L) {
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                         .putString(TOKEN, token).putLong(CADUCA, caduca).remove(NO_DISPONIBLE).apply();
+                AvisosWorker.ahora(context);   // el widget se rellena en cuanto el móvil queda vinculado
             }
         } catch (Exception ignorada) {
             return;

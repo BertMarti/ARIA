@@ -112,5 +112,9 @@ def test_heimdall_se_verifica_con_su_autoridad_si_esta(tmp_path, monkeypatch):
     ca = tmp_path / "heimdall-ca.crt"
     monkeypatch.setattr(config, "VPN_CA", str(ca))
     assert vpn._verificacion() is False          # sin certificado: comportamiento anterior (y aviso en el registro)
-    ca.write_text("-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----\n")
-    assert vpn._verificacion() == str(ca)        # con certificado: se exige
+    ca.write_text("certificado de prueba")
+    usados = []
+    monkeypatch.setattr(vpn.ssl, "create_default_context", lambda cafile: usados.append(cafile) or "contexto")
+    monkeypatch.setattr(vpn, "_contexto", None)
+    assert vpn._verificacion() == "contexto"     # con certificado: se exige (contexto SSL con esa autoridad)
+    assert vpn._verificacion() == "contexto" and usados == [str(ca)]   # se crea una vez y se reutiliza

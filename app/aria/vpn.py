@@ -3,7 +3,9 @@
 Solo se exponen campos de una lista blanca: las claves privadas nunca llegan al navegador.
 """
 import logging
+import os
 import re
+import ssl
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -153,7 +155,9 @@ async def eliminar(cid) -> None:
     await _llamar("DELETE", f"/api/client/{_id(cid)}")
 
 
+
 _aviso_sin_ca = False
+_contexto: tuple[str, ssl.SSLContext] | None = None
 
 
 def _verificacion():
@@ -161,11 +165,13 @@ def _verificacion():
 
     Sin ese certificado no se puede comprobar nada (autofirmado), y alguien dentro de la red podría hacerse pasar por
     HEIMDALL y llevarse la contraseña: se avisa una vez en el registro y se mantiene el comportamiento anterior.
+    Si el certificado existe pero no corresponde (HEIMDALL reinstalado), la conexión falla: es lo correcto.
     """
-    global _aviso_sin_ca
-    import os
+    global _aviso_sin_ca, _contexto
     if config.VPN_CA and os.path.isfile(config.VPN_CA):
-        return config.VPN_CA
+        if _contexto is None or _contexto[0] != config.VPN_CA:
+            _contexto = (config.VPN_CA, ssl.create_default_context(cafile=config.VPN_CA))
+        return _contexto[1]
     if not _aviso_sin_ca:
         log.warning("Sin certificado de HEIMDALL (%s): su panel se usa sin verificar", config.VPN_CA)
         _aviso_sin_ca = True

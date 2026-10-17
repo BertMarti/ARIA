@@ -1,0 +1,27 @@
+app/aria/automatizaciones.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/control.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/escaneo_comun.py | MEDIUM | Using xml.etree.ElementTree.fromstring to parse untrusted XML data is known to be vulnerable to XML attacks. Replace xml.etree.ElementTree.fromstring with its defusedxml equivalent function or make sure defusedxml.defuse_stdlib() is called
+app/aria/escaneo.py | MEDIUM | Chmod setting a permissive mask 0o2770 on file (NOT PARSED).
+app/aria/escaneo.py | MEDIUM | Chmod setting a permissive mask 0o660 on file (tmp).
+app/aria/finanzas.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/invitados.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/invitados.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/main.py | HIGH | Use of weak SHA1 hash for security. Consider usedforsecurity=False
+app/aria/medios.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/mis_datos.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/mis_datos.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/modulos.py | HIGH | "Call to httpx with verify=False disabling SSL certificate checks
+app/aria/notas.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/propuestas.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/red.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/red.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/red.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/red.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/rutinas.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/telemetria.py | MEDIUM | Chmod setting a permissive mask 0o660 on file (temporal).
+app/aria/usuarios.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/usuarios.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/usuarios.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/escaner/escaner.py | MEDIUM | Chmod setting a permissive mask 0o2770 on file (NOT PARSED).
+sistema/host-agente.py | MEDIUM | Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.
+sistema/host-agente.py | MEDIUM | Chmod setting a permissive mask 0o770 on file (PETICIONES).

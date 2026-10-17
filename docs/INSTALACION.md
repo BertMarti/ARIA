@@ -255,6 +255,12 @@ Aplica con `docker compose up -d`.
 
 ¿No sabes tu red? Mira la IP de la máquina con `hostname -I`. Si es `192.168.1.50`, tu red es `192.168.1.0/24` y tu router suele ser `192.168.1.1`.
 
+> **Si usas HEIMDALL:** ARIA verifica su panel con la autoridad interna del Caddy de HEIMDALL. Copia su certificado
+> público una vez (y otra vez si reinstalas HEIMDALL, porque cambia):
+> `sudo cp ~/homelab/HEIMDALL/data/caddy/caddy/pki/authorities/local/root.crt ~/homelab/ARIA/data/heimdall-ca.crt`.
+> Si no coincide, ARIA deja de conectar con la VPN (falla cerrado, que es lo seguro); si no existe, funciona como antes
+> y lo avisa en el registro. Ruta configurable con `ARIA_VPN_CA`.
+
 ## 8. Entrar desde casa sin avisos de certificado
 
 ARIA cifra la conexión con su propio certificado. Para que el navegador deje de avisar, instala ese certificado una vez en cada dispositivo:

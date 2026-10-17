@@ -190,8 +190,8 @@ const Inicio = (() => {
       dato: (d) => d?.aplicaciones?.aria ? d.aplicaciones.aria.listos + " de " + d.aplicaciones.aria.total + " cerebros listos" : "Habla o escribe a ARIA", estado: () => ["Activo", "ok"] },
     { vista: "finanzas", etq: "Dinero", titulo: "Finanzas", visual: () => el("span", { class: "mi-v-barras" }, el("i"), el("i"), el("i"), el("i")),
       dato: (d) => d?.finanzas ? eur(d.finanzas.gastos / 100, 0) + " en " + d.finanzas.mes_texto : "Gastos y presupuestos", estado: () => ["Activo", "ok"] },
-    { pronto: true, etq: "En construcción", titulo: "ARIA PRO 2", visual: () => el("span", { class: "mi-v-lineas pronto" }, el("i"), el("i"), el("i")),
-      dato: () => "Búsqueda global, mis datos, gasolineras y avisos del tiempo donde estés", estado: () => ["Pronto", "pronto"] },
+    { tour: true, etq: "NOVEDADES", titulo: "Tour de ARIA 3", visual: () => el("span", { class: "mi-v-lineas pronto" }, el("i"), el("i"), el("i")),
+      dato: () => "App de Android, widget, Siri y Ping como guía", estado: () => ["Nuevo", "ok"] },
   ];
   function visualResumen(d) {
     const t = d?.tiempo, lz = d?.luz;
@@ -220,7 +220,7 @@ const Inicio = (() => {
   }
   function pintarMenu(d) {
     const cont = $("menu-inicio"); if (!cont) return;
-    const visibles = MENU.filter((m) => !(m.admin && !Sesion.esAdmin) && (m.pronto || m.vista === "resumen" || puede(m.vista)));
+     const visibles = MENU.filter((m) => !(m.admin && !Sesion.esAdmin) && (m.pronto || m.tour || m.vista === "resumen" || puede(m.vista)));
     cont.replaceChildren(...visibles.map((m, i) => {
       const [estado, clase] = m.estado(d), visual = el("span", { class: "mi-visual" }, m.visual(d));
       visual.setAttribute("aria-hidden", "true");
@@ -229,7 +229,12 @@ const Inicio = (() => {
         visual, el("span", { class: "mi-nombre" }, m.titulo), el("span", { class: "mi-dato" }, m.dato(d)),
         el("span", { class: "mi-estado " + clase }, estado),
       ];
-      if (m.pronto) {   // rellena lo que quede de su fila en la rejilla de 4 columnas
+       if (m.tour) {
+         const a = el("a", { class: "mi-carta pronto", href: "#inicio" }, ...hijos);
+         a.addEventListener("click", (e) => { e.preventDefault(); Tour.iniciar({ forzar: true }); });
+         return a;
+       }
+       if (m.pronto) {   // rellena lo que quede de su fila en la rejilla de 4 columnas
         const usadas = visibles.slice(0, i).reduce((n, x) => n + (x.destacada ? 2 : 1), 0);
         return el("div", { class: "mi-carta pronto relleno-" + (4 - usadas % 4) }, ...hijos);
       }

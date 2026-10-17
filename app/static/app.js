@@ -67,5 +67,6 @@
     // Invitados: fuera de la barra lo que su acceso no incluye
     document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => { if (b.dataset.vista !== "ajustes" && !puede(b.dataset.vista)) b.hidden = true; });
     mostrar();
+    setTimeout(() => Tour.iniciar(), 0);
   })();
 })();

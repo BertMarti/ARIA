@@ -29,8 +29,9 @@ const PingCompa = (() => {
     a.play().catch(() => {});
   }
   function seguro() { return !document.hidden && !vistaBloqueada() && modo() !== "nunca"; }
-  function mostrar() {
-    if (!canvas || !seguro()) return false;
+  // «forzado»: el tour lo ha pedido el usuario, así que Ping aparece aunque esté en «Solo avisos» o «Nunca».
+  function mostrar(forzado = false) {
+    if (!canvas || document.hidden || (!forzado && !seguro())) return false;
     canvas.hidden = false; canvas.classList.add("ping-visible"); ping.iniciar(); return true;
   }
   function ocultar() {
@@ -66,6 +67,34 @@ const PingCompa = (() => {
     }
     const b = burbuja, x = Math.min(innerWidth - b.offsetWidth - 12, Math.max(12, r.left - b.offsetWidth - 10));
     b.style.left = x + "px"; b.style.top = Math.max(12, r.bottom + 10) + "px";
+  }
+  function volarA(destino) {
+    if (!mostrar(true)) return false;
+    clearInterval(vuelta); clearTimeout(salida);
+    const r = canvas.getBoundingClientRect();
+    const p = destino instanceof Element ? destino.getBoundingClientRect() : null;
+    const punto = p ? { x: p.left + p.width / 2 - r.left, y: p.top + p.height / 2 - r.top } : destino;
+    ping.destino = { x: punto.x, y: punto.y };
+    if (REDUCIDO.matches) { ping.p.x = punto.x; ping.p.y = punto.y; }
+    ping.tono("ok");
+    ping.iniciar();
+    return true;
+  }
+  function decir(texto, botones = []) {
+    if (!canvas || canvas.hidden) return null;
+    if (!burbuja) burbuja = el("div", { class: "ping-compa-bocadillo" });
+    burbuja.setAttribute("role", "dialog"); burbuja.setAttribute("aria-live", "polite");
+    const acciones = botones.map((b) => {
+      const boton = el("button", { type: "button", class: b.clase || "fantasma pequeno" }, b.texto);
+      boton.addEventListener("click", b.accion);
+      return boton;
+    });
+    burbuja.replaceChildren(el("p", { class: "ping-compa-texto" }, texto), el("div", { class: "ping-compa-acciones" }, ...acciones));
+    document.body.append(burbuja);
+    const r = canvas.getBoundingClientRect(), x = r.left + ping.p.x, y = r.top + ping.p.y;
+    burbuja.style.left = Math.min(innerWidth - burbuja.offsetWidth - 12, Math.max(12, x - burbuja.offsetWidth / 2)) + "px";
+    burbuja.style.top = Math.min(innerHeight - burbuja.offsetHeight - 12, Math.max(12, y + 28)) + "px";
+    return burbuja;
   }
   function textoAviso(lista) {
     if (lista.length > 1) return "¡Eh, mira! Tienes " + lista.length + " avisos nuevos";
@@ -111,5 +140,5 @@ const PingCompa = (() => {
     document.addEventListener("visibilitychange", () => { if (document.hidden) { ocultar(); clearTimeout(paseo); } else programar(); });
     programar();
   }
-  return { iniciar };
+  return { iniciar, volarA, decir, ocultar };
 })();

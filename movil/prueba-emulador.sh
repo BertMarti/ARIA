@@ -27,8 +27,10 @@ adb shell input text "https://example.com" || true
 adb shell input keyevent 66 || true
 sleep 8
 adb exec-out screencap -p > capturas/aria-configurada.png
-adb shell cat /data/data/io.github.bertmarti.aria/shared_prefs/CapacitorStorage.xml 2>/dev/null | grep -q aria_url \
-  && echo "Dirección guardada" || echo "Aviso: la dirección no se ha guardado (la prueba del widget no cubre una app configurada)"
+# Sin root no se pueden leer las preferencias: se mira si la WebView ha llegado a cargar la dirección escrita.
+adb shell dumpsys activity top 2>/dev/null | grep -q "example.com" \
+  || adb logcat -d 2>/dev/null | grep -q "example.com" \
+  && echo "Dirección cargada" || echo "Aviso: no consta que la app haya cargado la dirección"
 for accion in hablar nota avisos; do
   adb shell am start -n io.github.bertmarti.aria/.MainActivity -f 0x30000000 --es accion "$accion"   # abierta
   sleep 4

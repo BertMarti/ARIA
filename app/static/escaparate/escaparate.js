@@ -18,7 +18,7 @@
     "Una asistente que vive en tu casa, no en la nube de nadie. Hablo contigo, cuido de la red y te llevo el día. Lo justo para que no tengas que pensar en ello.",
     "Solo espero a oír «Aria», y eso lo hago en tu propia máquina. Lo que dices después se transcribe y se olvida: el audio no se guarda nunca.",
     "Vigila la red, atrapa anuncios y presume de ello. Mucho. Yo pongo la calma; él, el entusiasmo.",
-    "Nada. Soy de código abierto: me instalas en una Raspberry Pi o en un PC con Linux y soy tuya.",
+    "Nada. Mi código está a la vista: me instalas en una Raspberry Pi o en un PC con Linux y soy tuya.",
   ];
   const FRASES_PING = [
     ["ok", "¡Eh, mira! 1.284 anuncios atrapados hoy."],

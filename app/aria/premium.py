@@ -5,12 +5,15 @@ por defecto para que ninguna instalación existente pierda funciones.
 """
 import base64
 import json
+import logging
+import re
 import secrets
 import time
 from contextlib import closing
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
+import httpx
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from . import config, db
 
@@ -24,6 +27,8 @@ FUNCIONES = {
 LIMITES_GRATIS = {"automatizaciones": 3, "documentos": 20, "usuarios": 2}
 _PRUEBA_DIAS = 14
 _GRACIA_DIAS = 21
+_CLAVE_COMPRA = re.compile(r"^[A-Za-z0-9-]{8,64}$")
+_LOG = logging.getLogger(__name__)
 
 
 class PremiumError(ValueError):
@@ -40,6 +45,11 @@ def iniciar() -> None:
         con.execute("""CREATE TABLE IF NOT EXISTS premium (
             id INTEGER PRIMARY KEY CHECK(id=1), licencia TEXT, prueba_inicio REAL,
             instalacion TEXT NOT NULL)""")
+        columnas = {r[1] for r in con.execute("PRAGMA table_info(premium)")}
+        if "clave_compra" not in columnas:
+            con.execute("ALTER TABLE premium ADD COLUMN clave_compra TEXT")
+        if "ultima_renovacion" not in columnas:
+            con.execute("ALTER TABLE premium ADD COLUMN ultima_renovacion REAL")
         con.execute("INSERT OR IGNORE INTO premium(id, instalacion) VALUES(1, ?)", (secrets.token_urlsafe(18),))
 
 
@@ -89,6 +99,8 @@ def _payload(texto: str) -> dict:
 
 
 def instalar_licencia(texto: str) -> dict:
+    if isinstance(texto, str) and "." not in texto and _CLAVE_COMPRA.fullmatch(texto):
+        return activar_compra(texto)
     datos = _payload(texto)
     fila = _fila()
     if datos["instalacion"] is not None and datos["instalacion"] != fila["instalacion"]:
@@ -98,9 +110,79 @@ def instalar_licencia(texto: str) -> dict:
     return estado()
 
 
+def _post(ruta: str, clave: str, instalacion: str) -> dict:
+    if not config.PREMIUM_SERVIDOR:
+        raise PremiumError("La activación con clave de compra aún no está disponible; pega una licencia firmada.")
+    try:
+        respuesta = httpx.post(config.PREMIUM_SERVIDOR + ruta,
+                               json={"clave": clave, "instalacion": instalacion}, timeout=10)
+        if respuesta.status_code >= 400:
+            try:
+                detalle = respuesta.json().get("error")
+            except (ValueError, TypeError):
+                detalle = None
+            raise PremiumError(detalle or "El servidor de licencias ha rechazado la clave.")
+        datos = respuesta.json()
+        if not isinstance(datos, dict) or not isinstance(datos.get("licencia"), str):
+            raise PremiumError("El servidor de licencias ha devuelto una respuesta no válida.")
+        return datos
+    except PremiumError:
+        raise
+    except (httpx.HTTPError, ValueError, TypeError) as exc:
+        raise PremiumError("No se ha podido contactar con el servidor de licencias.") from exc
+
+
+def activar_compra(clave: str) -> dict:
+    fila = _fila()
+    respuesta = _post("/v1/activar", clave, fila["instalacion"])
+    instalar_licencia(respuesta["licencia"])
+    with closing(db._con()) as con, con:
+        con.execute("UPDATE premium SET clave_compra=?, ultima_renovacion=? WHERE id=1",
+                    (clave, time.time()))
+    return estado()   # después de guardar la clave, para que «compra» salga ya a true
+
+
+def _renovar() -> bool:
+    fila = _fila()
+    clave = fila["clave_compra"]
+    if not clave:
+        return False
+    try:
+        respuesta = _post("/v1/renovar", clave, fila["instalacion"])
+        instalar_licencia(respuesta["licencia"])
+    except PremiumError as exc:
+        _LOG.warning("Renovación de Premium fallida: %s", str(exc))
+        return False
+    with closing(db._con()) as con, con:
+        con.execute("UPDATE premium SET ultima_renovacion=? WHERE id=1", (time.time(),))
+    _LOG.info("Renovación de Premium correcta")
+    return True
+
+
+async def bucle() -> None:
+    import asyncio
+    while True:
+        try:
+            fila = _fila()
+            renovar = bool(fila["clave_compra"])
+            if renovar:
+                try:
+                    renovar = _estado_real(fila)[0] != "premium" or _estado_real(fila)[1] <= 7
+                except (TypeError, ValueError):
+                    renovar = True
+            if renovar:
+                await asyncio.to_thread(_renovar)
+            await asyncio.sleep(6 * 60 * 60)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            _LOG.exception("Error en el ciclo de licencias Premium")
+            await asyncio.sleep(6 * 60 * 60)
+
+
 def quitar_licencia() -> dict:
     with closing(db._con()) as con, con:
-        con.execute("UPDATE premium SET licencia=NULL WHERE id=1")
+        con.execute("UPDATE premium SET licencia=NULL, clave_compra=NULL, ultima_renovacion=NULL WHERE id=1")
     return estado()
 
 
@@ -139,7 +221,8 @@ def estado() -> dict:
     activo = real in ("premium", "prueba", "gracia")
     return {"estado": real, "exigir": config.PREMIUM_EXIGIR, "modo_prueba": not config.PREMIUM_EXIGIR,
             "funciones": {k: (True if not config.PREMIUM_EXIGIR else activo) for k in FUNCIONES},
-            "nombres": FUNCIONES, "limites": {k: limite(k) for k in LIMITES_GRATIS}, "dias_restantes": dias}
+            "nombres": FUNCIONES, "limites": {k: limite(k) for k in LIMITES_GRATIS}, "dias_restantes": dias,
+            "compra": bool(fila["clave_compra"]), "servidor": bool(config.PREMIUM_SERVIDOR)}
 
 
 def tiene(funcion: str) -> bool:

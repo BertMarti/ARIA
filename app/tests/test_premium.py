@@ -134,3 +134,41 @@ def test_un_usuario_no_activa_licencias():
     assert c.post("/api/premium/licencia", json={"licencia": "x"}).status_code == 403
     assert c.post("/api/premium/prueba", json={}).status_code == 403
     assert c.delete("/api/premium/licencia").status_code == 403
+
+
+def test_compra_sin_servidor_da_un_error_claro(monkeypatch):
+    premium.iniciar()
+    monkeypatch.setattr(config, "PREMIUM_SERVIDOR", "")
+    with pytest.raises(premium.PremiumError, match="aún no está disponible"):
+        premium.instalar_licencia("clave-de-compra")
+
+
+def test_activacion_guarda_compra_y_no_la_expone(monkeypatch):
+    premium.iniciar()
+    texto = licencia(monkeypatch)
+    monkeypatch.setattr(config, "PREMIUM_SERVIDOR", "https://licencias.example.com")
+    monkeypatch.setattr(premium, "_post", lambda ruta, clave, instalacion: {"licencia": texto})
+    estado = premium.instalar_licencia("clave-de-compra")
+    assert estado["compra"] is True
+    assert "clave-de-compra" not in json.dumps(estado)
+
+
+def test_renovacion_403_no_borra_la_licencia(monkeypatch):
+    premium.iniciar()
+    texto = licencia(monkeypatch, caduca="2026-01-01")
+    premium.instalar_licencia(texto)
+    with premium.db._con() as con:
+        con.execute("UPDATE premium SET clave_compra=? WHERE id=1", ("clave-de-compra",))
+    monkeypatch.setattr(premium, "_post", lambda *args: (_ for _ in ()).throw(
+        premium.PremiumError("rechazada")))
+    assert premium._renovar() is False
+    assert premium._fila()["licencia"] == texto
+
+
+def test_activacion_rechaza_instalacion_ajena(monkeypatch):
+    premium.iniciar()
+    texto = licencia(monkeypatch, instalacion="otra-instalacion")
+    monkeypatch.setattr(config, "PREMIUM_SERVIDOR", "https://licencias.example.com")
+    monkeypatch.setattr(premium, "_post", lambda *args: {"licencia": texto})
+    with pytest.raises(premium.PremiumError, match="otra instalación"):
+        premium.instalar_licencia("clave-de-compra")

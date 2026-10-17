@@ -19,3 +19,5 @@ herramientas/demo/.demo/
 # MediaPipe: archivos grandes, los descarga herramientas/vendor/descargar-mediapipe.sh (versión y huella fijas)
 app/static/vendor/mediapipe/wasm/*.wasm
 app/static/vendor/mediapipe/*.task
+servicios/licencias/wrangler.toml
+servicios/licencias/.wrangler/

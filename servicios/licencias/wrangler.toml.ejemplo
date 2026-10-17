@@ -1,0 +1,11 @@
+name = "aria-licencias"
+main = "worker.js"
+compatibility_date = "2026-10-17"
+
+[[kv_namespaces]]
+binding = "LICENCIAS"
+id = "REEMPLAZAR"   # lo da «npx wrangler kv namespace create LICENCIAS»
+
+[vars]
+LS_STORE_ID = "REEMPLAZAR"
+LS_PRODUCT_ID = "REEMPLAZAR"

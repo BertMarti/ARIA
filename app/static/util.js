@@ -74,6 +74,10 @@ async function api(ruta, opciones = {}) {
   if (r.status === 401) { location.href = "/login"; return { ok: false, status: 401, data: {} }; }
   let data = {};
   try { data = await r.json(); } catch (_) { /* sin cuerpo JSON */ }
+  if (r.status === 402) {   // función de ARIA Premium: cada pantalla enseña el mensaje y Ping ofrece verlo
+    data.error = data.error || data.detail || "Esta función es de ARIA Premium.";
+    window.dispatchEvent(new CustomEvent("aria:premium", { detail: { funcion: data.premium, texto: data.error } }));
+  }
   return { ok: r.ok, status: r.status, data };
 }
 

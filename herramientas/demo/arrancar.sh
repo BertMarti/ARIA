@@ -32,7 +32,7 @@ FIN
 fi
 $DOCKER build -q -t aria-app:demo "$RAIZ/app" >/dev/null
 $DOCKER rm -f aria-demo >/dev/null 2>&1 || true
-$DOCKER run -d --name aria-demo --env-file "$DATOS/demo.env" -p 127.0.0.1:18080:8000 \
+$DOCKER run -d --name aria-demo --env-file "$DATOS/demo.env" -e ARIA_PREMIUM_EXIGIR="${ARIA_PREMIUM_EXIGIR:-0}" -p 127.0.0.1:18080:8000 \
   -v "$DATOS/data:/data" -v "$AQUI:/demo:ro" aria-app:demo \
   uvicorn aria.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips '*' --no-server-header >/dev/null
 $DOCKER exec -d aria-demo python /demo/telemetria_falsa.py

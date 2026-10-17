@@ -13,10 +13,17 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- Barras del sistema con el fondo de ARIA e iconos claros -->
+        <item name="android:statusBarColor">#070b12</item>
+        <item name="android:navigationBarColor">#070b12</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">@color/fondo_aria</item>
     </style>
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <item name="android:statusBarColor">#070b12</item>
+        <item name="android:navigationBarColor">#070b12</item>
     </style>
 </resources>

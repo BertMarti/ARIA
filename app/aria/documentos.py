@@ -13,7 +13,7 @@ from array import array
 from contextlib import closing
 from pathlib import Path
 
-from . import config, db, embeddings, memoria
+from . import config, db, embeddings, memoria, premium
 
 MAX_ARCHIVO = 15 * 1024 * 1024
 MAX_PAGINAS = 400
@@ -81,7 +81,10 @@ def crear(uid: int, nombre: str, contenido: bytes) -> dict:
         raise DocumentoError("La extensión no coincide con el contenido.")
     with closing(db._con()) as con, con:
         n, bytes_ = _cuotas(con, uid)
-        if n >= MAX_DOCUMENTOS:
+        maximo = min(MAX_DOCUMENTOS, premium.limite("documentos") or MAX_DOCUMENTOS)
+        if n >= maximo:
+            if premium.limite("documentos") is not None:
+                raise DocumentoError("Con ARIA Gratis puedes tener 20 documentos. Hazte Premium para tener más.")
             raise DocumentoError("No puedes tener más de 200 documentos.")
         if bytes_ + len(contenido) > MAX_CUOTA:
             raise DocumentoError("Has superado la cuota de 300 MB.")

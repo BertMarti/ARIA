@@ -389,6 +389,7 @@ const Ajustes = (() => {
     { id: "ia", nombre: "Inteligencia artificial", desc: "Cerebros en la nube y modelos locales.", ico: "M7 7h10v10H7zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4", tarjetas: ["ajustes-cerebros", "ajustes-modelos"] },
      { id: "usuarios", nombre: "Usuarios", desc: "Quién puede entrar y con qué permisos.", ico: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a5 5 0 0 0-5-5", tarjetas: ["ajustes-usuarios", "ajustes-accesos", "ajustes-registro"] },
     { id: "apps", nombre: "Aplicaciones", desc: "Módulos, integraciones y certificado HTTPS.", ico: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", tarjetas: ["ajustes-modulos", "ajustes-spotify", "ajustes-certificado"] },
+    { id: "premium", nombre: "ARIA Premium", desc: "Funciones avanzadas, prueba y licencia local.", ico: "m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17l-5.6 3.2 1.1-6.2L3 9.6l6.2-.9z", tarjetas: ["ajustes-premium"] },
   ];
   let seccion = Prefs.get("ajustes_seccion", "general");
   const REQUIERE = { "ajustes-memoria": "memoria", "ajustes-rutinas": "rutinas" };   // opciones de un invitado

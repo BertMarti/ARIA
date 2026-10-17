@@ -16,7 +16,7 @@ def _err(e, status=400): return JSONResponse({"error": str(e)}, status_code=stat
 async def listar(request: Request): return {"automatizaciones": await asyncio.to_thread(automatizaciones.listar, _u(request)["id"]), "acciones": sorted(automatizaciones.ACCIONES), "tipos": list(automatizaciones.avisos.TIPOS)}
 @router.get("/api/automatizaciones/registro")
 async def registro(request: Request): return {"registro": await asyncio.to_thread(automatizaciones.registro, _u(request)["id"])}
-@router.post("/api/automatizaciones")
+@router.post("/api/automatizaciones")   # el límite de ARIA Gratis (3) lo aplica automatizaciones.crear
 async def crear(request: Request):
     try: return {"automatizacion": await asyncio.to_thread(automatizaciones.crear, _u(request)["id"], await _json(request))}
     except automatizaciones.AutomatizacionError as e: return _err(e)

@@ -5,10 +5,10 @@ import binascii
 import json
 import re
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from . import agentes, finanzas, finanzas_csv
+from . import agentes, finanzas, finanzas_csv, premium
 
 router = APIRouter(prefix="/api/finanzas")
 
@@ -91,7 +91,7 @@ async def borrar(mid: int, request: Request):
     return {"ok": True}
 
 
-@router.post("/presupuestos")
+@router.post("/presupuestos", dependencies=[Depends(premium.requiere("finanzas_avanzadas"))])
 async def presupuesto(request: Request):
     d = await _json(request)
     try:
@@ -100,12 +100,12 @@ async def presupuesto(request: Request):
         return _err(e)
 
 
-@router.get("/reglas")
+@router.get("/reglas", dependencies=[Depends(premium.requiere("finanzas_avanzadas"))])
 async def reglas(request: Request):
     return {"reglas": await asyncio.to_thread(finanzas.reglas, _uid(request))}
 
 
-@router.post("/reglas")
+@router.post("/reglas", dependencies=[Depends(premium.requiere("finanzas_avanzadas"))])
 async def crear_regla(request: Request):
     d = await _json(request)
     try:
@@ -156,7 +156,7 @@ async def importar(request: Request):
     return r
 
 
-@router.post("/sugerir")
+@router.post("/sugerir", dependencies=[Depends(premium.requiere("finanzas_avanzadas"))])
 async def sugerir(request: Request):
     """Opcional: pide al primer cerebro en la nube una categoría para los conceptos sin categoría.
     Solo salen de casa los conceptos (no importes ni fechas). Nada se aplica sin que el usuario lo acepte."""

@@ -3,9 +3,9 @@ import asyncio
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 
-from . import agentes, briefing, cerebros, config, memoria, modulos, notas, push, registro, telegram, telemetria, tools, usuarios
+from . import agentes, briefing, cerebros, config, memoria, modulos, notas, premium, push, registro, telegram, telemetria, tools, usuarios
 
 router = APIRouter()
 
@@ -186,12 +186,12 @@ async def _mapa(request: Request):
     return {"nodos": nodos, "enlaces": enlaces, "generado": time.time()}
 
 
-@router.get("/api/cerebro")
+@router.get("/api/cerebro", dependencies=[Depends(premium.requiere("cerebro"))])
 async def cerebro(request: Request):
     return await _mapa(request)
 
 
-@router.get("/api/cerebro/actividad")
+@router.get("/api/cerebro/actividad", dependencies=[Depends(premium.requiere("cerebro"))])
 async def actividad(request: Request, desde: float = Query(0)):
     try:
         rows = registro.listar(limite=500)

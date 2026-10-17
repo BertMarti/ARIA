@@ -12,16 +12,21 @@ from datetime import date
 from urllib.parse import parse_qs, urlparse
 
 import httpx
-from fastapi import FastAPI, Request, WebSocket
+from fastapi import Depends, FastAPI, Request, WebSocket
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_app, api_automatizaciones, api_avisos, api_cerebro, api_control, api_disponibilidad, api_documentos, api_finanzas, api_informacion, api_listas, api_medios, api_modulos, api_notas, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, disponibilidad, dispositivos_app, documentos, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, listas, mapas, medios, memoria, mis_datos, modelos, modulos, notas, permisos, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_app, api_automatizaciones, api_avisos, api_cerebro, api_control, api_disponibilidad, api_documentos, api_finanzas, api_informacion, api_listas, api_medios, api_modulos, api_notas, api_premium, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, disponibilidad, dispositivos_app, documentos, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, listas, mapas, medios, memoria, mis_datos, modelos, modulos, notas, permisos, premium, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+
+@app.exception_handler(premium.PremiumRequired)
+async def premium_requerido(_, exc):
+    return JSONResponse({"detail": "Esta función requiere ARIA Premium.", "premium": exc.funcion}, status_code=402)
 
 # Rutas accesibles sin sesion.
 LIBRES = {"/health", "/internal/tls-ask", "/.well-known/assetlinks.json", "/static/style.css", "/static/login.js",
@@ -86,6 +91,7 @@ async def _arranque():
     if not auth.habilitado():
         log.error("Faltan ARIA_USER / ARIA_PASSWORD o ARIA_SECRET (>=16 caracteres): login deshabilitado.")
     db.iniciar()
+    premium.iniciar()
     registro.iniciar()
     remedios.iniciar()
     telemetria.iniciar()
@@ -502,6 +508,7 @@ async def index():
 
 app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
 app.include_router(api_finanzas.router)
+app.include_router(api_premium.router)
 app.include_router(api_red.router)
 app.include_router(api_control.router)
 app.include_router(api_avisos.router)
@@ -866,7 +873,7 @@ async def ws_tele(ws: WebSocket):
     u = auth.sesion_usuario(ws.cookies.get(auth.COOKIE))
     if (not voz.origen_ws_permitido(ws.headers.get("origin"), ws.headers.get("host")) or u is None
             or ws.cookies.get(VISTA_COOKIE) or await asyncio.to_thread(invitados.de, u["id"])
-            or not permisos.permitido(u["rol"], "GET", ws.url.path)):
+            or not permisos.permitido(u["rol"], "GET", ws.url.path) or not premium.tiene("tele")):
         await ws.close(code=1008)
         return
     await api_tele.tele.canal(ws, u)
@@ -1191,6 +1198,9 @@ async def api_registro(usuario: int | None = None, herramienta: str | None = Non
 @app.post("/api/users")
 async def api_usuarios_crear(request: Request):
     d = await _json(request)
+    limite = premium.limite("usuarios")
+    if limite is not None and len(usuarios.listar()) >= limite:
+        return JSONResponse({"error": f"Con ARIA Gratis puedes tener {limite} usuarios. Hazte Premium para tener más."}, status_code=402)
     try:
         u = await asyncio.to_thread(usuarios.crear, d.get("email"), d.get("nombre"), d.get("rol", "usuario"),
                                     d.get("password") or None)

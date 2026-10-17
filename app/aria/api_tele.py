@@ -3,10 +3,10 @@ import html
 import math
 import re
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
-from . import config, tele
+from . import config, premium, tele
 
 router = APIRouter()
 
@@ -100,7 +100,7 @@ async def _json(request):
     return dato if isinstance(dato, dict) else None
 
 
-@router.post("/api/tele/enviar")
+@router.post("/api/tele/enviar", dependencies=[Depends(premium.requiere("tele"))])
 async def enviar(request: Request):
     d = await _json(request)
     if d is None:
@@ -152,7 +152,7 @@ async def enviar(request: Request):
     return {"ok": True}
 
 
-@router.post("/api/tele/control")
+@router.post("/api/tele/control", dependencies=[Depends(premium.requiere("tele"))])
 async def control(request: Request):
     d = await _json(request)
     if d is None:

@@ -429,5 +429,7 @@ const Ajustes = (() => {
     $("ajustes-buscar").addEventListener("input", pintarSecciones);
     pintarSecciones();
   }
-  return { iniciar, activar, modelos };
+  // Para el tour: enseña una sección sin cambiar la que el usuario tenía guardada.
+  function irSeccion(id) { if (SECCIONES.some((x) => x.id === id)) { seccion = id; $("ajustes-buscar").value = ""; pintarSecciones(); } }
+  return { iniciar, activar, modelos, irSeccion };
 })();

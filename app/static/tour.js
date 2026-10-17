@@ -2,7 +2,7 @@
 // Tour de primera visita, guiado por Ping y sin navegar si la interfaz no está disponible.
 const Tour = (() => {
   const VERSION = "3.0", MARCA = "aria_tour_visto";
-  let paso = -1, activo = false, capa, foco, indice;
+  let paso = -1, activo = false, capa, foco, indice, turno = 0;
   const movil = () => matchMedia("(pointer: coarse)").matches || innerWidth < 900;
   const visto = () => { try { return localStorage.getItem(MARCA) === VERSION; } catch (_) { return false; } };
   const marcar = () => { try { localStorage.setItem(MARCA, VERSION); } catch (_) { /* almacenamiento no disponible */ } };
@@ -15,12 +15,14 @@ const Tour = (() => {
     { texto: "¡Eh, mira! Estas tarjetas son tu mapa rápido: cada número abre una parte de ARIA.", selector: "#menu-inicio" },
     { texto: "¡Eh, mira! El HUD convierte tu casa y tus datos en una cabina de mando visual.", selector: ".mi-carta[href=\"#hud\"]" },
     { texto: "¡Eh, mira! En Compartir mandas tus vídeos a la tele y los tienes organizados.", selector: "#v-compartir", vista: "compartir", movil: "compartir" },
-    { texto: "¡Eh, mira! En Ajustes tienes la app de Android, el widget y los atajos de Siri.", selector: "#ajustes-android", vista: "ajustes", movil: "ajustes" },
+    { texto: "¡Eh, mira! En Ajustes tienes la app de Android, el widget y los atajos de Siri.", selector: "#ajustes-android", vista: "ajustes", seccion: "general", movil: "ajustes" },
     { texto: "¡Ya está! Si me necesitas, toca la tarjeta 09 y volvemos a dar una vuelta.", selector: ".mi-carta[href=\"#inicio\"]" },
   ];
-  function mostrarVista(vista) {
-    if (!vista || movil()) return;
-    if (location.hash !== "#" + vista) location.hash = vista;
+  function mostrarVista(def) {
+    if (movil()) return;
+    const vista = def.vista || "inicio";   // al volver «Atrás» desde Compartir hay que regresar al inicio
+    if ((location.hash.replace("#", "") || "inicio") !== vista) location.hash = vista;
+    if (def.seccion) Ajustes.irSeccion(def.seccion);
   }
   function encontrar(def) {
     const selector = movil() && def.movil ? ".nav-btn[data-vista=\"" + def.movil + "\"]" : def.selector;
@@ -34,11 +36,11 @@ const Tour = (() => {
   }
   function limpiarFoco() { foco?.classList.remove("tour-foco"); foco = null; }
   function cerrar() {
-    activo = false; limpiarFoco(); capa?.remove(); capa = null; indice?.remove(); indice = null;
+    activo = false; turno++; limpiarFoco(); capa?.remove(); capa = null; indice?.remove(); indice = null;
     PingCompa.ocultar(); document.querySelector(".ping-compa-lienzo")?.classList.remove("tour-ping"); paso = -1;
   }
-  function siguiente() { cargar(paso + 1); }
-  function anterior() { cargar(paso - 1); }
+  function siguiente() { cargar(paso + 1, 1); }
+  function anterior() { cargar(paso - 1, -1); }
   function bocadillo(def) {
     const botones = [{ texto: "Atrás", clase: "fantasma pequeno", accion: anterior },
       { texto: paso === pasos.length - 1 ? "Terminar" : "Siguiente", clase: "primario pequeno", accion: siguiente },
@@ -65,19 +67,24 @@ const Tour = (() => {
     b.style.top = top + "px";
     b.style.left = left + "px";
   }
-  function cargar(numero) {
+  // Cada llamada invalida los reintentos de la anterior: así «Atrás» y «Siguiente» nunca se pelean por la vista.
+  // Si un paso no aparece en ~2 s (sección oculta, sin permiso…), se salta en la dirección en que íbamos.
+  function cargar(numero, sentido = 1, intentos = 0) {
+    const mio = ++turno;
     limpiarFoco();
-    while (numero < pasos.length) {
-      const def = pasos[numero]; mostrarVista(def.vista);
+    while (numero >= 0 && numero < pasos.length) {
+      const def = pasos[numero];
+      if (intentos === 0) mostrarVista(def);
       const elemento = encontrar(def);
-      if (!elemento && def.vista && !movil()) {
-        setTimeout(() => { if (activo) cargar(numero); }, 80);
+      if (elemento) { paso = numero; foco = elemento; break; }
+      if (!movil() && intentos < 25) {
+        setTimeout(() => { if (activo && turno === mio) cargar(numero, sentido, intentos + 1); }, 80);
         return;
       }
-      if (elemento) { paso = numero; foco = elemento; break; }
-      numero++;
+      numero += sentido; intentos = 0;
     }
     if (numero >= pasos.length) { cerrar(); marcar(); return; }
+    if (numero < 0) { cargar(0, 1); return; }
     foco.classList.add("tour-foco"); hueco(foco); PingCompa.volarA(foco); bocadillo(pasos[paso]);
   }
   function iniciar(opciones = {}) {

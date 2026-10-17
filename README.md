@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="Licencia MIT" src="https://img.shields.io/badge/licencia-MIT-38d6ff?style=flat-square"></a>
+  <a href="LICENSE"><img alt="Licencia Elastic 2.0" src="https://img.shields.io/badge/licencia-Elastic%202.0-38d6ff?style=flat-square"></a>
   <img alt="100 % autoalojado" src="https://img.shields.io/badge/100%20%25-autoalojado-34d399?style=flat-square">
   <img alt="Gratis" src="https://img.shields.io/badge/precio-gratis-7c8cff?style=flat-square">
   <img alt="Docker Compose" src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white">
@@ -714,7 +714,13 @@ flowchart LR
 
 ## 📄 Licencia
 
-MIT. Consulta [LICENSE](LICENSE).
+**Elastic License 2.0** desde el 17/10/2026. Consulta [LICENSE](LICENSE).
+
+En pocas palabras: puedes leer el código, instalar ARIA en tu casa, modificarla para ti y compartirla. Lo que no se
+permite es ofrecer ARIA como servicio gestionado a terceros ni quitar o esquivar la activación de las funciones de pago.
+
+Las versiones publicadas hasta la etiqueta [`ultima-mit`](../../tree/ultima-mit) siguen bajo la licencia MIT con la que
+salieron.
 
 <p align="center"><img src="docs/img/ping/ping-adios.svg" alt="Ping: «¡Hasta luego! Y no toques mis anuncios.»"></p>
 

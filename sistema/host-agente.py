@@ -250,6 +250,54 @@ def _publica_ok() -> bool:
     return bool(u) and _http_ok(u + "/hola")
 
 
+# Otras IP de Cloudflare (anycast): cualquier IP suya sirve cualquier dominio si se pide con su nombre (SNI).
+# Si por ellas ARIA responde y por la IP que da el DNS llega un certificado falso, el túnel está bien y lo que hay
+# es un bloqueo del operador (en España, las órdenes de LaLiga bloquean IP de Cloudflare durante el fútbol).
+IPS_CLOUDFLARE_ALTERNATIVAS = ("104.18.0.1", "104.16.0.1", "172.67.0.1")
+
+
+def _certificado_falso(url: str) -> bool:
+    import ssl
+    import urllib.error
+    import urllib.request
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "aria-host-agente"}), timeout=15):
+            return False
+    except urllib.error.URLError as e:
+        return isinstance(e.reason, ssl.SSLCertVerificationError)
+    except ssl.SSLCertVerificationError:
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _responde_por_otra_ip(url: str) -> bool:
+    import http.client
+    import socket
+    import ssl
+    from urllib.parse import urlparse
+    host = urlparse(url).hostname or ""
+    for ip in IPS_CLOUDFLARE_ALTERNATIVAS:
+        conexion = None
+        try:
+            crudo = socket.create_connection((ip, 443), timeout=10)
+            conexion = http.client.HTTPSConnection(host, timeout=10)
+            conexion.sock = ssl.create_default_context().wrap_socket(crudo, server_hostname=host)   # certificado verificado
+            conexion.request("GET", "/hola", headers={"User-Agent": "aria-host-agente"})
+            if conexion.getresponse().status == 200:
+                return True
+        except Exception:  # noqa: BLE001
+            continue
+        finally:
+            if conexion is not None:
+                conexion.close()
+    return False
+
+
+def _bloqueo_operador(url: str) -> bool:
+    return _certificado_falso(url + "/hola") and _responde_por_otra_ip(url)
+
+
 def vigilar_tunel(ahora: float) -> None:
     v = _vigilancia
     if ahora - v["ultima"] < VIGILANCIA_S or not _url_publica() or "tunel" in _en_curso:
@@ -258,12 +306,21 @@ def vigilar_tunel(ahora: float) -> None:
     if _publica_ok():
         if v["caido_desde"]:
             log("Túnel de nuevo accesible desde fuera")
-        v["fallos"], v["caido_desde"] = 0, None
+        v["fallos"], v["caido_desde"], v["estado"] = 0, None, "ok"
         escribir(HOST / "tunel.json", {"ts": ahora, "estado": "ok", "reinicios": v["reinicios"][-5:]})
         return
     if not _http_ok("https://www.cloudflare.com/cdn-cgi/trace"):
         escribir(HOST / "tunel.json", {"ts": ahora, "estado": "sin_internet", "reinicios": v["reinicios"][-5:]})
         return   # sin internet en casa: reiniciar el túnel no arreglaría nada
+    if _bloqueo_operador(_url_publica()):
+        if v.get("estado") != "bloqueo_operador":
+            log("Acceso desde fuera bloqueado por el operador (IP de Cloudflare); el túnel está bien: no se reinicia")
+        v["fallos"], v["estado"] = 0, "bloqueo_operador"
+        v["caido_desde"] = v["caido_desde"] or ahora
+        escribir(HOST / "tunel.json", {"ts": ahora, "estado": "bloqueo_operador", "caido_desde": v["caido_desde"],
+                                        "reinicios": v["reinicios"][-5:]})
+        return   # reiniciar el túnel no sirve de nada: el corte está en el operador
+    v["estado"] = "caido"
     v["fallos"] += 1
     v["caido_desde"] = v["caido_desde"] or ahora
     v["reinicios"] = [t for t in v["reinicios"] if ahora - t < 3600]

@@ -307,6 +307,21 @@ def test_chequeo_tunel_sin_conexion_y_sin_url(monkeypatch):
     assert "ConnectError" in correr(ch.tunel())[0].texto
 
 
+def test_chequeo_tunel_bloqueo_del_operador_explica_la_causa(monkeypatch):
+    import time
+    monkeypatch.setattr(ch.config, "URL_PUBLICA", "https://aria.ejemplo.com")
+    real = httpx.AsyncClient
+
+    def falla(r):
+        raise httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED]")
+    monkeypatch.setattr(ch.httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(falla), **kw))
+    monkeypatch.setattr(ch.telemetria, "estado_tunel", lambda: {"estado": "bloqueo_operador", "ts": time.time()})
+    p = correr(ch.tunel())[0]
+    assert p.clave == "bloqueo" and "operador" in p.texto and "no lo reiniciará" in p.texto
+    monkeypatch.setattr(ch.telemetria, "estado_tunel", lambda: {"estado": "bloqueo_operador", "ts": time.time() - 3600})
+    assert correr(ch.tunel())[0].clave == "caido"   # dato viejo del vigilante: no se da por bueno
+
+
 def test_chequeo_dispositivos_nuevos(monkeypatch):
     from aria import red, shield
     monkeypatch.setattr(shield, "configurado", lambda: False)

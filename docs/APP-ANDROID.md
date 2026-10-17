@@ -65,6 +65,7 @@ La aplicación completa añade:
 
 - **Cuatro widgets** de pantalla de inicio: **Resumen**; **Hablar** (1×1); **Agenda**, con los tres próximos eventos; y **Casa**, con anuncios bloqueados, VPN y estado de los servicios. El widget Casa es solo para administradores.
 - **Mosaico de ajustes rápidos** para abrir ARIA rápidamente.
+- **Plan B ante bloqueos** (por ejemplo, los de LaLiga a IP de Cloudflare): si la dirección pública no responde, la app y los widgets entran solos por la dirección de casa (en tu wifi o con la VPN HEIMDALL), fiándose solo de certificados firmados por la autoridad de tu casa. Si no hay forma, la app lo explica y ofrece conectar la VPN. Hace falta haber abierto la app al menos una vez con la dirección normal funcionando.
 - **Informe de cierres**: si la app se cierra, guarda la causa (sin tus datos ni la dirección de ARIA) y la manda a tu ARIA la próxima vez que la abres. Los administradores reciben un aviso y lo ven en **Ajustes → App de Android → Cierres recientes**.
 - **Atajos** para hablar, activar manos libres, crear una nota, abrir el HUD, compartir, cambiar de instalación y buscar actualizaciones.
 - **Compartir**: elige ARIA en el menú Compartir de otra aplicación para enviarle texto o un enlace.

@@ -40,6 +40,9 @@ public class AvisosWorker extends Worker {
         }
         String token = DispositivoApp.token(getApplicationContext());
         JSONObject resumen = token.isEmpty() ? null : pedirResumen(base, token);
+        if (resumen == null && !token.isEmpty()) {
+            resumen = pedirResumenEnCasa(token);   // plan B: la pública bloqueada (LaLiga) pero en casa o con la VPN
+        }
         if (resumen == null) {
             resumen = pedirAvisosConCookies(base);
         }
@@ -72,6 +75,23 @@ public class AvisosWorker extends Worker {
             if (conexion != null) {
                 conexion.disconnect();
             }
+        }
+    }
+
+    private JSONObject pedirResumenEnCasa(String token) {
+        HttpURLConnection conexion = Casa.abrir(getApplicationContext(), "api/app/resumen", "Bearer " + token);
+        if (conexion == null) {
+            return null;
+        }
+        try {
+            if (conexion.getResponseCode() != HttpURLConnection.HTTP_OK) {
+                return null;
+            }
+            return new JSONObject(leer(conexion));
+        } catch (Exception ignorada) {
+            return null;
+        } finally {
+            conexion.disconnect();
         }
     }
 

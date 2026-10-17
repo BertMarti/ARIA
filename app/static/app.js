@@ -25,11 +25,13 @@
     if (accion) v = accion;
     if (!VISTAS.includes(v) || (SOLO_ADMIN.includes(v) && !Sesion.esAdmin) || (v !== "ajustes" && !puede(v))) v = "inicio";
     for (const n of VISTAS) $("v-" + n).hidden = n !== v;
-    document.body.classList.toggle("modo-hud", v === "hud");
+    const bloqueada = Premium.vistaBloqueada(v);   // HUD y Cerebro sin Premium: tarjeta explicativa en su lugar
+    document.body.classList.toggle("modo-hud", v === "hud" && !bloqueada);
+    document.body.classList.toggle("vista-premium-bloqueada", bloqueada);
     document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => b.classList.toggle("activo", b.dataset.vista === v));
     document.querySelector(".nav-btn.activo")?.scrollIntoView({ block: "nearest", inline: "nearest" });   // barra inferior en móvil
     Control.activar(v === "control");
-    Cerebro.activar(v === "cerebro");
+    Cerebro.activar(v === "cerebro" && !bloqueada);
     Inicio.activar(v === "inicio");
     Finanzas.activar(v === "finanzas");
     Informacion.activar(v === "informacion");
@@ -40,7 +42,7 @@
     Red.activar(v === "red");
     Seguridad.activar(v === "seguridad");
     Mapa.activar(v === "mapa");
-    Hud.activar(v === "hud");
+    Hud.activar(v === "hud" && !bloqueada);
     if (v === "ajustes") { Ajustes.activar(); Usuarios.activar(); Memoria.activar(); Avisos.activar(); Rutinas.activar(); if (Sesion.esAdmin) { Modulos.pintarAjustes(); Automatizaciones.activar(); Accesos.activar(); Registro.activar(); } }
     document.title = "ARIA · " + { inicio: "Inicio", chat: "Chat", finanzas: "Finanzas", informacion: "Información", agenda: "Agenda", notas: "Notas", compartir: "Compartir", red: "Red", seguridad: "Seguridad", cerebro: "Cerebro", control: "Centro de control", ajustes: "Ajustes", mapa: "Mapa", hud: "HUD" }[v];
     if (v === "chat" && parametros) {

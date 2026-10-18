@@ -80,3 +80,29 @@ def texto(r: dict) -> str:
     if r.get("mejores_restantes"):
         partes.append("Mejores horas que quedan: " + ", ".join(f"{x['hora']}:00" for x in r["mejores_restantes"]) + ".")
     return " ".join(partes)
+
+
+def franja(serie: list[dict], horas: int = 3, cara: bool = False) -> dict | None:
+    """Las `horas` seguidas más baratas (o más caras) del día: {desde, hasta, media}. «hasta» es la hora en que acaba."""
+    por_hora = {x["hora"]: x["precio"] for x in serie}
+    mejor = None
+    for inicio in range(0, 25 - horas):
+        tramo = [por_hora.get(h) for h in range(inicio, inicio + horas)]
+        if None in tramo:
+            continue
+        media = sum(tramo) / horas
+        if mejor is None or (media > mejor["media"] if cara else media < mejor["media"]):
+            mejor = {"desde": inicio, "hasta": inicio + horas, "media": round(media, 4)}
+    return mejor
+
+
+def texto_manana(serie: list[dict]) -> str:
+    """Aviso de la tarde: cuándo conviene poner lavadora, lavavajillas o cargar el coche mañana."""
+    def eur(p): return f"{p:.3f}".replace(".", ",") + " €/kWh"
+    barata, cara = franja(serie), franja(serie, cara=True)
+    media = sum(x["precio"] for x in serie) / len(serie)
+    partes = [f"Luz de mañana: lo más barato, de {barata['desde']}:00 a {barata['hasta']}:00 ({eur(barata['media'])} de media)."]
+    if cara:
+        partes.append(f"Evita de {cara['desde']}:00 a {cara['hasta']}:00 ({eur(cara['media'])}).")
+    partes.append(f"Media del día: {eur(media)}. Buen momento para la lavadora o el lavavajillas: las horas baratas.")
+    return " ".join(partes)

@@ -76,7 +76,7 @@ async def luces():
             estado = {}
         caps = estado.get("capabilities", []) if isinstance(estado, dict) else []
         color = _estado(caps, "colorRgb")
-        salida.append({"nombre": d.get("deviceName") or "Luz", "id": d.get("device"), "sku": d.get("sku"),
+        salida.append({"nombre": (d.get("deviceName") or "").strip() or "Luz", "id": d.get("device"), "sku": d.get("sku"),
                        "encendida": _estado(caps, "powerSwitch", 0) in (1, True, "on"),
                        "brillo": _estado(caps, "brightness"),
                        "color": f"#{int(color):06x}" if isinstance(color, int) and 0 <= color <= 0xFFFFFF else None,

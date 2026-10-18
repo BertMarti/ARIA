@@ -48,7 +48,7 @@ async def _ips() -> list:
 
 def _fila(ip: str, dev) -> dict:
     modulos = getattr(dev, "modules", {})
-    fila = {"ip": ip, "modelo": getattr(dev, "model", "") or "Tapo", "nombre": getattr(dev, "alias", "") or ip,
+    fila = {"ip": ip, "modelo": getattr(dev, "model", "") or "Tapo", "nombre": (getattr(dev, "alias", "") or "").strip() or ip,
             "en_linea": True}
     mascara = modulos.get("LensMask") if hasattr(modulos, "get") else None
     if mascara is not None:

@@ -4,9 +4,11 @@ import re
 import time
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
-from . import hogar_cache as cache, hogar_camaras as camaras_video, hogar_govee as govee, hogar_router as router_hogar, hogar_tapo as tapo, hogar_vigilancia as vigilancia
+from . import (config, hogar_cache as cache, hogar_camaras as camaras_video, hogar_govee as govee,
+               hogar_grabaciones as grabaciones, hogar_router as router_hogar, hogar_tapo as tapo,
+               hogar_vigilancia as vigilancia)
 
 router = APIRouter()
 _acciones = []
@@ -183,6 +185,60 @@ async def mover_camara(request: Request):
         await tapo.mover(d["ip"], d["direccion"])
         return {"ok": True}
     except tapo.TapoError as e: return _error(str(e), 400 if "no encontrada" in str(e) or "no se puede" in str(e) else 502)
+
+
+def _camara_grabacion(ip):
+    nombre = camaras_video.flujo(ip)
+    return nombre if nombre and ip in config.TAPO_CAMARAS else None
+
+
+@router.get("/api/hogar/camaras/grabaciones/dias")
+async def dias_grabaciones(ip: str = ""):
+    nombre = _camara_grabacion(ip)
+    if not nombre: return _error("Cámara no encontrada.", 404)
+    try:
+        r = await grabaciones.consultar("/dias", {"cam": nombre})
+        return Response(r.content, status_code=r.status_code, media_type="application/json")
+    except Exception: return _error("No se pudo consultar la cámara.", 502)
+
+
+@router.get("/api/hogar/camaras/grabaciones")
+async def fragmentos_grabaciones(ip: str = "", dia: str = ""):
+    nombre = _camara_grabacion(ip)
+    if not nombre or not dia: return _error("Cámara o día no válido.", 400)
+    try:
+        r = await grabaciones.consultar("/fragmentos", {"cam": nombre, "dia": dia})
+        return Response(r.content, status_code=r.status_code, media_type="application/json")
+    except Exception: return _error("No se pudo consultar la cámara.", 502)
+
+
+@router.get("/api/hogar/camaras/grabaciones/clip")
+async def clip_grabacion(request: Request, ip: str = "", dia: str = "", inicio: int | None = None, fin: int | None = None):
+    nombre = _camara_grabacion(ip)
+    if not nombre or not dia or inicio is None or fin is None: return _error("Cámara o fragmento no válido.", 400)
+    cliente = grabaciones.cliente_stream("/clip", {"cam": nombre, "dia": dia, "inicio": inicio, "fin": fin}, request.headers.get("range"))
+    try:
+        upstream = await cliente.__aenter__()
+        if upstream.status_code >= 400:
+            contenido = await upstream.aread()
+            await cliente.__aexit__(None, None, None)
+            return Response(contenido, status_code=upstream.status_code,
+                            media_type=upstream.headers.get("content-type", "application/json"))
+        cabeceras = {k: upstream.headers[k] for k in
+                     ("content-length", "content-range", "accept-ranges", "cache-control") if k in upstream.headers}
+
+        async def cuerpo():
+            try:
+                async for bloque in upstream.aiter_bytes():
+                    yield bloque
+            finally:
+                await cliente.__aexit__(None, None, None)
+
+        return StreamingResponse(cuerpo(), status_code=upstream.status_code,
+                                 media_type=upstream.headers.get("content-type", "video/mp4"), headers=cabeceras)
+    except Exception:
+        await cliente.__aexit__(None, None, None)
+        return _error("No se pudo preparar el vídeo.", 502)
 
 
 async def precalentar() -> None:

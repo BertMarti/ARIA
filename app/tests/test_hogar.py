@@ -466,6 +466,56 @@ def test_miniatura_reutiliza_la_foto_reciente(monkeypatch):
     assert llamadas == ["c1", "c1"]
 
 
+def test_proxy_grabaciones_filtra_ip_y_rol(monkeypatch):
+    from aria import hogar_grabaciones
+    monkeypatch.setattr(config, "TAPO_CAMARAS", ["192.168.1.30"])
+    llamadas = []
+
+    async def consultar(ruta, parametros):
+        llamadas.append((ruta, parametros))
+        return httpx.Response(200, json={"dias": ["2026-07-16"]})
+
+    monkeypatch.setattr(hogar_grabaciones, "consultar", consultar)
+    admin = usuarios.por_identificador("admin")
+    assert cliente(admin).get("/api/hogar/camaras/grabaciones/dias?ip=192.168.1.30").json() == {"dias": ["2026-07-16"]}
+    assert cliente(admin).get("/api/hogar/camaras/grabaciones/dias?ip=192.168.1.99").status_code == 404
+    ana = usuarios.crear("ana-grabaciones@example.com", "Ana", "usuario", "clave-larga-ana")
+    assert cliente(ana).get("/api/hogar/camaras/grabaciones/dias?ip=192.168.1.30").status_code == 403
+    assert llamadas == [("/dias", {"cam": "c1"})]
+
+
+def test_proxy_grabacion_reenvia_range_y_respuesta(monkeypatch):
+    from aria import hogar_grabaciones
+    monkeypatch.setattr(config, "TAPO_CAMARAS", ["192.168.1.30"])
+
+    class Respuesta:
+        status_code = 206
+        headers = {"content-type": "video/mp4", "content-length": "4", "content-range": "bytes 2-5/10",
+                   "accept-ranges": "bytes", "cache-control": "no-store"}
+
+        async def aread(self): return b"abcd"
+        async def aiter_bytes(self): yield b"abcd"
+
+    class Stream:
+        def __init__(self): self.respuesta = Respuesta()
+        async def __aenter__(self): return self.respuesta
+        async def __aexit__(self, *args): pass
+
+    recibido = []
+    def stream(ruta, parametros, rango):
+        recibido.append((ruta, parametros, rango))
+        return Stream()
+
+    monkeypatch.setattr(hogar_grabaciones, "cliente_stream", stream)
+    admin = usuarios.por_identificador("admin")
+    r = cliente(admin).get("/api/hogar/camaras/grabaciones/clip?ip=192.168.1.30&dia=2026-07-16&inicio=10&fin=20",
+                     headers={"Range": "bytes=2-5"})
+    assert r.status_code == 206 and r.content == b"abcd"
+    assert r.headers["content-range"] == "bytes 2-5/10" and recibido[-1][2] == "bytes=2-5"
+    assert recibido[-1][1]["dia"] == "2026-07-16"                      # solo se valida ese día en la cámara
+    assert cliente(admin).get("/api/hogar/camaras/grabaciones/clip?ip=192.168.1.30&inicio=10&fin=20").status_code == 400
+
+
 def test_cache_responde_con_lo_ultimo_y_refresca_detras(monkeypatch):
     from aria import hogar_cache
     import time

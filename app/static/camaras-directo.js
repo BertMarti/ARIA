@@ -64,10 +64,61 @@ const CamaraDirecto = (() => {
     const video = el("video", { class: "camara-video", autoplay: true, muted: true, playsInline: true });
     const estado = el("p", { class: "muted camara-estado", role: "status" }, "Conectando con la cámara… (las de batería tardan unos segundos en despertar)");
     const foto = el("img", { class: "camara-video", alt: "Última imagen de " + camara.nombre, hidden: true });
-    const d = dialogo(camara.nombre, el("div", { class: "camara-visor" }, el("div", null, video, foto, estado), controles(camara, video, alCambiar)));
+    const grabaciones = el("section", { class: "camara-grabaciones", hidden: true });
+    const directo = el("div", { class: "camara-directo" }, el("div", null, video, foto, estado), controles(camara, video, alCambiar));
+    const pestañaDirecto = el("button", { type: "button", class: "fantasma pequeno", ariaPressed: "true" }, "Directo");
+    const pestañaGrabaciones = el("button", { type: "button", class: "fantasma pequeno", ariaPressed: "false" }, "Grabaciones");
+    const seleccionar = (mostrarGrabaciones) => {
+      directo.hidden = mostrarGrabaciones; grabaciones.hidden = !mostrarGrabaciones;
+      pestañaDirecto.ariaPressed = String(!mostrarGrabaciones); pestañaGrabaciones.ariaPressed = String(mostrarGrabaciones);
+      if (mostrarGrabaciones) { if (soportados()) pararDirecto(); if (!grabaciones.dataset.cargadas) cargarGrabaciones(); }
+      else if (soportados() && pausado) iniciarDirecto();
+    };
+    pestañaDirecto.addEventListener("click", () => seleccionar(false));
+    pestañaGrabaciones.addEventListener("click", () => seleccionar(true));
+    const d = dialogo(camara.nombre, el("div", { class: "camara-pestanas" }, pestañaDirecto, pestañaGrabaciones),
+      el("div", { class: "camara-visor" }, directo, grabaciones));
     let ws = null, url = null, cerrado = false;
     const fin = () => { cerrado = true; try { ws?.close(); } catch (_) { /* ya cerrado */ } if (url) URL.revokeObjectURL(url); d.remove(); };
     d.addEventListener("close", fin);
+
+    async function cargarGrabaciones() {
+      grabaciones.dataset.cargadas = "1";
+      const estadoCarga = el("p", { class: "muted", role: "status" }, "Cargando días con grabaciones…");
+      const selector = el("select", { ariaLabel: "Día de grabación", disabled: true });
+      const lista = el("div", { class: "camara-fragmentos" });
+      grabaciones.replaceChildren(estadoCarga, selector, lista);
+      const r = await api("/api/hogar/camaras/grabaciones/dias?ip=" + encodeURIComponent(camara.ip));
+      if (!r.ok || !(r.data.dias || []).length) { estadoCarga.textContent = r.data.error || "No hay grabaciones disponibles."; return; }
+      estadoCarga.remove();
+      for (const dia of r.data.dias) selector.append(el("option", { value: dia }, new Date(dia + "T12:00:00").toLocaleDateString("es-ES")));
+      selector.disabled = false;
+      const cargarDia = async () => {
+        lista.replaceChildren(el("p", { class: "muted", role: "status" }, "Cargando fragmentos…"));
+        const f = await api("/api/hogar/camaras/grabaciones?ip=" + encodeURIComponent(camara.ip) + "&dia=" + encodeURIComponent(selector.value));
+        if (!f.ok) { lista.replaceChildren(el("p", { class: "error" }, f.data.error || "No se han podido cargar los fragmentos.")); return; }
+        lista.replaceChildren(...(f.data.fragmentos || []).map((fragmento) => {
+          const duracion = fragmento.fin - fragmento.inicio;
+          const boton = el("button", { type: "button", class: "fantasma", "ariaLabel": "Reproducir grabación" },
+            new Date(fragmento.inicio * 1000).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) + "–" +
+            new Date(fragmento.fin * 1000).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) + " (" + Math.floor(duracion / 60) + ":" + String(duracion % 60).padStart(2, "0") + ")");
+          boton.addEventListener("click", () => reproducir({ ...fragmento, dia: selector.value }));
+          return boton;
+        }));
+        if (!lista.children.length) lista.append(el("p", { class: "muted" }, "No hay fragmentos para ese día."));
+      };
+      selector.addEventListener("change", cargarDia);
+      cargarDia();
+    }
+    function reproducir(fragmento) {
+      const videoGrabacion = el("video", { class: "camara-video", controls: true, playsInline: true, preload: "metadata" });
+      const aviso = el("p", { class: "muted", role: "status" }, "La cámara está preparando el vídeo…");
+      const descargar = el("a", { class: "fantasma", download: "grabacion.mp4", hidden: true }, "Descargar");
+      videoGrabacion.src = "/api/hogar/camaras/grabaciones/clip?ip=" + encodeURIComponent(camara.ip) + "&dia=" + encodeURIComponent(fragmento.dia) + "&inicio=" + fragmento.inicio + "&fin=" + fragmento.fin;
+      videoGrabacion.addEventListener("loadedmetadata", () => { aviso.hidden = true; descargar.hidden = false; descargar.href = videoGrabacion.src; });
+      videoGrabacion.addEventListener("error", () => { aviso.textContent = "No se ha podido reproducir el vídeo."; });
+      grabaciones.prepend(el("div", { class: "camara-reproductor" }, videoGrabacion, aviso, descargar));
+    }
 
     // Sin MSE (algunos iPhone): una foto cada 5 s mientras el diálogo esté abierto.
     if (!soportados()) {
@@ -78,47 +129,61 @@ const CamaraDirecto = (() => {
       refrescar();
       return;
     }
-    const ms = new MediaSource();
-    url = URL.createObjectURL(ms);
-    video.src = url;
-    let sb = null;
-    const cola = [];
-    const volcar = () => {
-      if (!sb || sb.updating || !cola.length) return;
-      try { sb.appendBuffer(cola.shift()); } catch (_) { cola.length = 0; }
-    };
-    ms.addEventListener("sourceopen", () => {
-      ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/api/hogar/camaras/directo?ip=" + encodeURIComponent(camara.ip));
-      ws.binaryType = "arraybuffer";
-      ws.addEventListener("open", () => ws.send(JSON.stringify({ type: "mse", value: soportados() })));
-      ws.addEventListener("message", (e) => {
-        if (typeof e.data === "string") {
-          let m = {};
-          try { m = JSON.parse(e.data); } catch (_) { return; }
-          if (m.type === "mse" && !sb) {
-            sb = ms.addSourceBuffer(m.value);
-            sb.mode = "segments";
-            sb.addEventListener("updateend", () => {
-              // Siempre en directo: si se acumula retraso, se salta al final y se libera lo viejo.
-              const b = video.buffered;
-              if (b.length) {
-                const final = b.end(b.length - 1);
-                if (final - video.currentTime > 2) video.currentTime = final - 0.3;
-                if (!sb.updating && video.currentTime - b.start(0) > 20) { try { sb.remove(b.start(0), video.currentTime - 10); return; } catch (_) { /* sigue */ } }
-              }
-              volcar();
-            });
-            estado.textContent = "En directo";
-          } else if (m.type === "error") {
-            estado.textContent = "La cámara no responde (¿dormida, sin batería o en modo privacidad?).";
+    // El directo se para al ver las grabaciones: la cámara (sobre todo las de batería) no atiende las dos cosas a la vez.
+    let pausado = false;
+    function pararDirecto() {
+      pausado = true;
+      try { ws?.close(); } catch (_) { /* ya cerrado */ }
+      ws = null;
+      video.removeAttribute("src"); video.load();
+      if (url) { URL.revokeObjectURL(url); url = null; }
+    }
+    function iniciarDirecto() {
+      pausado = false;
+      estado.textContent = "Conectando con la cámara…";
+      const ms = new MediaSource();
+      url = URL.createObjectURL(ms);
+      video.src = url;
+      let sb = null;
+      const cola = [];
+      const volcar = () => {
+        if (!sb || sb.updating || !cola.length) return;
+        try { sb.appendBuffer(cola.shift()); } catch (_) { cola.length = 0; }
+      };
+      ms.addEventListener("sourceopen", () => {
+        ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/api/hogar/camaras/directo?ip=" + encodeURIComponent(camara.ip));
+        ws.binaryType = "arraybuffer";
+        ws.addEventListener("open", () => ws.send(JSON.stringify({ type: "mse", value: soportados() })));
+        ws.addEventListener("message", (e) => {
+          if (typeof e.data === "string") {
+            let m = {};
+            try { m = JSON.parse(e.data); } catch (_) { return; }
+            if (m.type === "mse" && !sb) {
+              sb = ms.addSourceBuffer(m.value);
+              sb.mode = "segments";
+              sb.addEventListener("updateend", () => {
+                // Siempre en directo: si se acumula retraso, se salta al final y se libera lo viejo.
+                const b = video.buffered;
+                if (b.length) {
+                  const final = b.end(b.length - 1);
+                  if (final - video.currentTime > 2) video.currentTime = final - 0.3;
+                  if (!sb.updating && video.currentTime - b.start(0) > 20) { try { sb.remove(b.start(0), video.currentTime - 10); return; } catch (_) { /* sigue */ } }
+                }
+                volcar();
+              });
+              estado.textContent = "En directo";
+            } else if (m.type === "error") {
+              estado.textContent = "La cámara no responde (¿dormida, sin batería o en modo privacidad?).";
+            }
+            return;
           }
-          return;
-        }
-        cola.push(e.data);
-        volcar();
-      });
-      ws.addEventListener("close", () => { if (!cerrado && estado.textContent !== "En directo") estado.textContent = "No se ha podido abrir el directo de esta cámara."; else if (!cerrado) estado.textContent = "Directo terminado."; });
-    }, { once: true });
+          cola.push(e.data);
+          volcar();
+        });
+        ws.addEventListener("close", () => { if (cerrado || pausado) return; estado.textContent = estado.textContent !== "En directo" ? "No se ha podido abrir el directo de esta cámara." : "Directo terminado."; });
+      }, { once: true });
+    }
+    iniciarDirecto();
   }
   return { abrir };
 })();

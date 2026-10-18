@@ -21,6 +21,7 @@
   <button type="button" class="nav-btn" data-vista="informacion"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M7 9h10M7 13h7"/></svg></span><span>Información</span></button>
   <button type="button" class="nav-btn" data-vista="agenda"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M7 14h3M14 14h3M7 18h3"/></svg></span><span>Agenda</span></button>
   <button type="button" class="nav-btn" data-vista="notas"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span><span>Notas</span></button>
+  <button type="button" class="nav-btn" data-vista="hogar"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v9H3z"/><path d="M9 20v-6h6v6M17 8h.01"/></svg></span><span>Hogar</span></button>
   <button type="button" class="nav-btn" data-vista="compartir"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/><path d="M4 5v14"/></svg></span><span>Compartir</span></button>
   <button type="button" class="nav-btn" data-vista="mapa"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><path d="m4 6 6-3 6 3 4-2v14l-6 3-6-3-4 2z"/><path d="M10 3v15M16 6v15"/></svg></span><span>Mapa</span></button>
   <button type="button" class="nav-btn solo-admin" data-vista="red"><span class="ico" aria-hidden="true"><svg class="svg-ico" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v5M12 12 6.5 17.5M12 12l5.5 5.5"/></svg></span><span>Red</span></button>
@@ -93,6 +94,10 @@
       </fieldset>
       <button type="button" id="hud-op-reset" class="hud-boton">Restablecer</button>
     </aside>
+  </section>
+  <section id="v-hogar" class="vista" hidden>
+    <header class="vista-cab"><div><h1>Hogar</h1><p class="muted">Luces, cámaras y router, en un vistazo.</p></div></header>
+    <div id="hogar-cuerpo" class="rejilla hogar-rejilla"><p class="muted">Cargando…</p></div>
   </section>
 
   <section id="v-notas" class="vista" hidden>
@@ -928,6 +933,7 @@
 <script src="/static/voz.js"></script>
 <script src="/static/chat.js"></script>
 <script src="/static/control.js"></script>
+<script src="/static/hogar.js"></script>
 <script src="/static/modulos.js"></script>
 <script src="/static/accesos.js"></script>
 <script src="/static/ubicacion.js"></script>

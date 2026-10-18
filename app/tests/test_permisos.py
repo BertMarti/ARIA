@@ -149,7 +149,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("DELETE", "/api/lista-items/{item_id}"),
                     ("GET", "/api/documentos"), ("POST", "/api/documentos"), ("GET", "/api/documentos/{doc_id}/archivo"),
                     ("DELETE", "/api/documentos/{doc_id}"), ("POST", "/api/documentos/buscar"),
-                    ("DELETE", "/api/ubicacion"), ("GET", "/api/info"), ("GET", "/api/premium"), ("GET", "/api/app/casa"), ("GET", "/api/services"),
+                    ("DELETE", "/api/ubicacion"), ("GET", "/api/info"), ("GET", "/api/premium"), ("GET", "/api/app/casa"), ("GET", "/api/hogar"), ("POST", "/api/hogar/luces/{identificador}"), ("GET", "/api/services"),
                     ("GET", "/api/shield"), ("GET", "/api/system"), ("GET", "/api/vpn/clients"),
                     ("GET", "/api/spotify/status"), ("GET", "/api/certificado"), ("POST", "/api/password"),
                     ("POST", "/api/chat"), ("GET", "/api/conversations"), ("GET", "/api/conversations/{cid}"),
@@ -267,6 +267,7 @@ def test_migracion_conserva_el_hash_y_la_version(tmp_path, monkeypatch):
 LECTURA = {"fecha_hora", "resumen_diario", "precio_luz", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "estado_sistema", "buscar_en_netflix",
            "buscar_en_internet", "noticias", "tiempo",
            "recordar", "olvidar",  # las de memoria las tiene todo rol, sobre sus propios datos
+           "luces",  # encender y apagar las luces de casa
            "recordatorio", "mis_recordatorios", "borrar_recordatorio",  # y los recordatorios (los suyos)
            "apuntar_nota", "mis_notas", "marcar_nota_hecha",  # y sus notas
            "anadir_a_lista", "ver_lista", "marcar_en_lista", "quitar_de_lista",  # y las listas (de casa o suyas)

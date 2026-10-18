@@ -1,7 +1,7 @@
 "use strict";
 // Navegación entre vistas (Chat, Centro de control, Ajustes) con #hash.
 (() => {
-  const VISTAS = ["inicio", "chat", "finanzas", "informacion", "red", "seguridad", "cerebro", "control", "ajustes", "agenda", "notas", "compartir", "mapa", "hud"];
+  const VISTAS = ["inicio", "chat", "finanzas", "informacion", "red", "seguridad", "cerebro", "control", "hogar", "ajustes", "agenda", "notas", "compartir", "mapa", "hud"];
   const SOLO_ADMIN = ["control", "red", "seguridad", "cerebro"];
   const ACCIONES = { hablar: "chat", "manos-libres": "inicio", nota: "notas", hud: "hud", compartir: "compartir" };
   let accionEjecutada = false;
@@ -31,6 +31,7 @@
     document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => b.classList.toggle("activo", b.dataset.vista === v));
     document.querySelector(".nav-btn.activo")?.scrollIntoView({ block: "nearest", inline: "nearest" });   // barra inferior en móvil
     Control.activar(v === "control");
+    Hogar.activar(v === "hogar");
     Cerebro.activar(v === "cerebro" && !bloqueada);
     Inicio.activar(v === "inicio");
     Finanzas.activar(v === "finanzas");
@@ -44,7 +45,7 @@
     Mapa.activar(v === "mapa");
     Hud.activar(v === "hud" && !bloqueada);
     if (v === "ajustes") { Ajustes.activar(); Usuarios.activar(); Memoria.activar(); Avisos.activar(); Rutinas.activar(); if (Sesion.esAdmin) { Modulos.pintarAjustes(); Automatizaciones.activar(); Accesos.activar(); Registro.activar(); } }
-    document.title = "ARIA · " + { inicio: "Inicio", chat: "Chat", finanzas: "Finanzas", informacion: "Información", agenda: "Agenda", notas: "Notas", compartir: "Compartir", red: "Red", seguridad: "Seguridad", cerebro: "Cerebro", control: "Centro de control", ajustes: "Ajustes", mapa: "Mapa", hud: "HUD" }[v];
+    document.title = "ARIA · " + { inicio: "Inicio", chat: "Chat", finanzas: "Finanzas", informacion: "Información", agenda: "Agenda", notas: "Notas", compartir: "Compartir", red: "Red", seguridad: "Seguridad", cerebro: "Cerebro", control: "Centro de control", hogar: "Hogar", ajustes: "Ajustes", mapa: "Mapa", hud: "HUD" }[v];
     if (v === "chat" && parametros) {
       const params = new URLSearchParams(parametros);
       const id = params.get("c");
@@ -63,7 +64,7 @@
   (async () => {
     await cargarSesion();
     await Premium.cargar();
-    ManosLibres.iniciarUI(); Chat.iniciar(); Control.iniciar(); Cerebro.iniciar(); Finanzas.iniciar(); Informacion.iniciar(); Agenda.iniciar(); Notas.iniciar(); Documentos.iniciar(); Medios.iniciar(); Red.iniciar(); Seguridad.iniciar(); Inicio.iniciar(); Ajustes.iniciar(); Usuarios.iniciar(); Memoria.iniciar(); Avisos.iniciar(); Rutinas.iniciar(); Registro.iniciar(); Paleta.iniciar(); Mapa.iniciar(); Hud.iniciar();
+    ManosLibres.iniciarUI(); Chat.iniciar(); Control.iniciar(); Hogar.iniciar(); Cerebro.iniciar(); Finanzas.iniciar(); Informacion.iniciar(); Agenda.iniciar(); Notas.iniciar(); Documentos.iniciar(); Medios.iniciar(); Red.iniciar(); Seguridad.iniciar(); Inicio.iniciar(); Ajustes.iniciar(); Usuarios.iniciar(); Memoria.iniciar(); Avisos.iniciar(); Rutinas.iniciar(); Registro.iniciar(); Paleta.iniciar(); Mapa.iniciar(); Hud.iniciar();
     Premium.iniciar(); Chat.refrescarCerebro(); PingCompa.iniciar();
     if (new URLSearchParams(location.search).get("spotify")) history.replaceState(null, "", "/#ajustes");
     Compartir.revisar(); // «Compartir con ARIA» desde otra app del móvil (Web Share Target)

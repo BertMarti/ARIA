@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import agenda, busqueda, config, control, disponibilidad, documentos, enlaces, escaneo, estadisticas, finanzas, informacion, listas, mapas, memoria, notas, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
+from . import agenda, busqueda, config, control, disponibilidad, documentos, enlaces, escaneo, estadisticas, finanzas, hogar_govee, hogar_router, hogar_tapo, informacion, listas, mapas, memoria, notas, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -53,8 +53,9 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "resumen_diario",
                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
                           "resumir_enlace", "resumen_noticias", "precio", "mis_mercados", "mis_inversiones",
-                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
-                             "resumir_enlace", "mapa_ir", "ruta", "sitios_cerca", "gasolineras", "buscar_en_documentos"})
+                          "mapa_ir", "ruta", "sitios_cerca", "gasolineras", "buscar_en_documentos"})
+# Luces de casa: cualquier usuario puede encenderlas o apagarlas (no es solo lectura: no entra en las rutinas).
+HOGAR = frozenset({"luces"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
 PROYECTOS = frozenset({"nuevo_proyecto", "mis_proyectos", "estado_proyecto", "registrar_decision", "decisiones", "actualizar_proyecto", "cambiar_personalidad"})
@@ -85,7 +86,7 @@ def permitidas(rol: str) -> set:
         return set(_REGISTRO)
     if rol == "usuario":
         de_modulos = {n for n, i in _DE_MODULOS.items() if i["usuario"]}
-    return set(SOLO_LECTURA | MEMORIA | PROYECTOS | RECORDATORIOS | NOTAS | LISTAS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
+    return set(SOLO_LECTURA | HOGAR | MEMORIA | PROYECTOS | RECORDATORIOS | NOTAS | LISTAS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
     return set()
 
 
@@ -116,6 +117,10 @@ _CUANDO = (r"\b(en \d+ ?(min\w*|h|horas?|d[ií]as?)|en (media|una) hora|dentro d
            r"esta (tarde|noche)|a las? \d|a mediod[ií]a|el (lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)|"
            r"todos los|cada (d[ií]a|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo))\b")
 _INTENCIONES = [
+    ((r"\b(luces?|l[aá]mparas?|bombillas?|tira led|brillo|azul|rojo|verde|enciende|apaga)\b",
+      r"\b(luz|luces?|l[aá]mpara|bombilla|tira|sal[oó]n|habitaci[oó]n|casa)\b"), {"luces"}),
+    ((r"\b(c[aá]mara|c[aá]maras|privacidad|tapar)\b",), {"camara_privacidad"}),
+    ((r"\b(router|wifi|wi-fi|invitados?)\b",), {"router_invitados"}),
     ((r"\b(agenda|calendario|evento|eventos|cita|cumplea[nñ]os|qué tengo|que tengo)\b",), set(AGENDA)),
     ((r"\b(mapa|mapas|ubicaci[oó]n|sitios? cerca|farmacia|gasolinera|supermercado|restaurante|cajero)\b",),
       {"mapa_ir", "sitios_cerca"}),
@@ -383,6 +388,51 @@ async def resumen_diario_tool(uid: int) -> str:
 @tool("estado_servicios", "Consulta el estado de los servicios SHIELD-DNS (bloqueo de anuncios) y HEIMDALL (VPN).")
 async def estado_servicios() -> dict:
     return await services.estado()
+
+
+@tool("luces", "Consulta y controla las luces Govee. Busca por nombre sin distinguir mayúsculas ni acentos; para apagar todas usa nombre vacío.",
+      {"nombre": ("string", "Nombre o parte del nombre de la luz; vacío para todas"),
+       "encendida": ("boolean", "True para encender, False para apagar"),
+       "brillo": ("integer", "Brillo entre 1 y 100"),
+       "color": ("string", "Color hexadecimal como #3366ff")}, ("nombre",))
+async def luces(nombre: str = "", encendida=None, brillo=None, color=None) -> str:
+    def normaliza(s):
+        import unicodedata
+        return "".join(c for c in unicodedata.normalize("NFD", str(s).lower()) if unicodedata.category(c) != "Mn")
+    filas = await hogar_govee.luces()
+    buscado = normaliza(nombre).strip()
+    elegidas = [x for x in filas if not buscado or buscado in normaliza(x.get("nombre", ""))]
+    if not elegidas: return "No he encontrado ninguna luz con ese nombre."
+    if encendida is None and brillo is None and color is None:
+        return "\n".join(f"{x['nombre']}: {'encendida' if x.get('encendida') else 'apagada'}" for x in elegidas)
+    for x in elegidas:
+        await hogar_govee.cambiar(x["id"], encendida, brillo, int(color[1:], 16) if color else None)
+    return "He actualizado " + ", ".join(x["nombre"] for x in elegidas) + "."
+
+
+@tool("camara_privacidad", "Tapa o destapa la lente (modo privacidad) de una cámara Tapo. Solo administrador.",
+      {"nombre": ("string", "Nombre de la cámara; vacío si solo hay una o para todas"),
+       "activa": ("boolean", "True para tapar la cámara, False para destaparla")}, ("activa",))
+async def camara_privacidad(activa: bool, nombre: str = "") -> str:
+    def normaliza(s):
+        import unicodedata
+        return "".join(c for c in unicodedata.normalize("NFD", str(s).lower()) if unicodedata.category(c) != "Mn")
+    camaras = [c for c in await hogar_tapo.camaras() if c.get("en_linea") and "privacidad" in c]
+    buscado = normaliza(nombre).strip()
+    elegidas = [c for c in camaras if not buscado or buscado in normaliza(c.get("nombre", ""))]
+    if not elegidas:
+        return "No he encontrado ninguna cámara Tapo con modo privacidad" + (" con ese nombre." if buscado else ".")
+    for c in elegidas:
+        await hogar_tapo.privacidad(c["ip"], activa)
+    nombres = ", ".join(c["nombre"] for c in elegidas)
+    return ("He tapado " if activa else "He destapado ") + nombres + "."
+
+
+@tool("router_invitados", "Activa o desactiva la red wifi de invitados del router (solo administrador).",
+      {"activa": ("boolean", "Si se debe activar")}, ("activa",))
+async def router_invitados(activa: bool) -> str:
+    await hogar_router.invitados(activa)
+    return "Wifi de invitados " + ("activada." if activa else "desactivada.")
 
 
 @tool("spotify_play", "Reanuda la reproducción en Spotify.")

@@ -9,6 +9,8 @@ _USUARIO = [
     ("POST", r"/api/mis-datos/borrar-cuenta"),
     ("GET", r"/static/.*"),
     ("GET", r"/api/info"),
+    ("GET", r"/api/hogar"),
+    ("POST", r"/api/hogar/luces/[^/]+"),
     ("GET", r"/api/premium"),
     ("GET", r"/api/services"),
     ("GET", r"/api/shield"),

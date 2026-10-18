@@ -41,6 +41,7 @@
         <receiver android:name=".AriaWidgetHablar" android:exported="true" android:label="@string/widget_hablar"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/aria_widget_hablar_info" /></receiver>
         <receiver android:name=".AriaWidgetAgenda" android:exported="true" android:label="@string/widget_agenda"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/aria_widget_agenda_info" /></receiver>
         <receiver android:name=".AriaWidgetCasa" android:exported="true" android:label="@string/widget_casa"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/aria_widget_casa_info" /></receiver>
+        <receiver android:name=".AriaWidgetHogar" android:exported="true" android:label="@string/widget_hogar"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/aria_widget_hogar_info" /></receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

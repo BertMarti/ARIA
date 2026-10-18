@@ -93,7 +93,7 @@ def test_bearer_solo_abre_el_resumen(admin, monkeypatch):
     c = TestClient(main.app, base_url=LAN, follow_redirects=False)
     r = c.get("/api/app/resumen", headers={"Authorization": "Bearer " + token})
     assert r.status_code == 200
-    assert set(r.json()) == {"avisos", "tiempo", "proximo", "proximos", "casa", "generado"}
+    assert set(r.json()) == {"avisos", "tiempo", "proximo", "proximos", "casa", "hogar", "generado"}
     assert c.get("/api/avisos", headers={"Authorization": "Bearer " + token}).status_code in (303, 401)
 
 
@@ -286,3 +286,17 @@ def test_casa_da_direcciones_locales_y_el_certificado_raiz(admin, monkeypatch, t
     assert d["direcciones"] == ["https://192.168.1.50/", "https://aria.local/"]   # la IP primero; nada público
     assert d["certificado"].startswith("-----BEGIN CERTIFICATE-----")
     assert anonimo().get("/api/app/casa").status_code in (303, 401)
+
+
+
+def test_resumen_trae_hogar_con_lo_ya_conocido(admin, monkeypatch):
+    from aria import hogar_cache
+    _sin_red(monkeypatch)
+    monkeypatch.setattr(api_app, "_casa", _casa_falsa)
+    hogar_cache.limpiar()
+    hogar_cache._datos["camaras"] = (0, [{"privacidad": True, "en_linea": True}, {"privacidad": False, "en_linea": False}])
+    hogar_cache._datos["luces"] = (0, [{"encendida": True}, {"encendida": False}])
+    token = dispositivos_app.crear(admin["id"], "Pixel")["token"]
+    h = anonimo().get("/api/app/resumen", headers={"Authorization": "Bearer " + token}).json()["hogar"]
+    assert h["camaras"] == 2 and h["tapadas"] == 1 and h["sin_respuesta"] == 1 and h["luces_encendidas"] == 1
+    hogar_cache.limpiar()

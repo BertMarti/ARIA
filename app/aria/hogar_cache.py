@@ -27,6 +27,11 @@ async def obtener(clave: str, funcion, fresco: float = 60, maximo: float = 900):
     return valor
 
 
+async def refrescar(clave: str, funcion) -> None:
+    """Refresca ya (lo usa el precalentado en segundo plano)."""
+    await _refrescar(clave, funcion)
+
+
 async def _refrescar(clave, funcion):
     try:
         _datos[clave] = (time.monotonic(), await funcion())

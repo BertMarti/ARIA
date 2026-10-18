@@ -183,3 +183,25 @@ async def mover_camara(request: Request):
         await tapo.mover(d["ip"], d["direccion"])
         return {"ok": True}
     except tapo.TapoError as e: return _error(str(e), 400 if "no encontrada" in str(e) or "no se puede" in str(e) else 502)
+
+
+async def precalentar() -> None:
+    """Mantiene la pantalla Hogar lista: el router (~6-9 s) y las luces cada 2 min; las cámaras cada 10 min (las de
+    batería no se despiertan más de la cuenta). La primera visita ya no espera."""
+    await asyncio.sleep(20)
+    vuelta = 0
+    while True:
+        try:
+            if router_hogar.configurado():
+                await cache.refrescar("router", router_hogar.estado)
+                await cache.refrescar("router-conectados", router_hogar.conectados)   # misma sesión (caché interna)
+            if govee.configurado():
+                await cache.refrescar("luces", govee.luces)
+            if tapo.configurado() and vuelta % 5 == 0:
+                await cache.refrescar("camaras", tapo.camaras)
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 - nunca para: la pantalla seguirá funcionando bajo demanda
+            pass
+        vuelta += 1
+        await asyncio.sleep(120)

@@ -4,6 +4,50 @@ const CamaraDirecto = (() => {
   const CODECS = ["avc1.640029", "avc1.64002A", "avc1.640033", "hvc1.1.6.L153.B0", "mp4a.40.2", "mp4a.40.5", "flac", "opus"];
   const soportados = () => CODECS.filter((c) => window.MediaSource && MediaSource.isTypeSupported('video/mp4; codecs="' + c + '"')).join(",");
 
+  // Hablar por la cámara: micrófono -> WebRTC (solo envío) -> go2rtc -> altavoz de la cámara. La señalización va por
+  // el WebSocket de ARIA (con sesión); el audio, directo a la Pi por el puerto 8555 (en casa o con la VPN).
+  function hablar(camara, aviso) {
+    let pc = null, ws = null, pista = null;
+    const parar = () => {
+      try { ws?.close(); } catch (_) { /* ya cerrado */ }
+      try { pc?.close(); } catch (_) { /* ya cerrado */ }
+      pista?.stop();
+      pc = ws = pista = null;
+    };
+    const empezar = async () => {
+      if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection) { aviso("Este navegador no permite hablar por la cámara."); return false; }
+      try {
+        pista = (await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })).getAudioTracks()[0];
+      } catch (_) { aviso("Sin permiso para usar el micrófono."); return false; }
+      pc = new RTCPeerConnection({ iceServers: [] });
+      pc.addTransceiver(pista, { direction: "sendonly" });
+      ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/api/hogar/camaras/directo?ip=" + encodeURIComponent(camara.ip));
+      const enviar = (tipo, valor) => { if (ws?.readyState === 1) ws.send(JSON.stringify({ type: tipo, value: valor })); };
+      pc.addEventListener("icecandidate", (e) => { if (e.candidate) enviar("webrtc/candidate", e.candidate.candidate); });
+      pc.addEventListener("connectionstatechange", () => {
+        if (!pc) return;
+        if (pc.connectionState === "connected") aviso("Hablando: te escuchan por la cámara.");
+        else if (pc.connectionState === "failed") aviso("No se puede hablar desde aquí: funciona en casa o con la VPN HEIMDALL conectada.");
+      });
+      ws.addEventListener("open", async () => {
+        const oferta = await pc.createOffer();
+        await pc.setLocalDescription(oferta);
+        enviar("webrtc/offer", oferta.sdp);
+      });
+      ws.addEventListener("message", async (e) => {
+        if (typeof e.data !== "string" || !pc) return;
+        let m = {};
+        try { m = JSON.parse(e.data); } catch (_) { return; }
+        if (m.type === "webrtc/answer") await pc.setRemoteDescription({ type: "answer", sdp: m.value });
+        else if (m.type === "webrtc/candidate" && m.value) { try { await pc.addIceCandidate({ candidate: m.value, sdpMid: "0" }); } catch (_) { /* candidato no válido */ } }
+        else if (m.type === "error") aviso("La cámara no acepta audio ahora mismo.");
+      });
+      aviso("Conectando el micrófono con la cámara…");
+      return true;
+    };
+    return { empezar, parar };
+  }
+
   function dialogo(titulo, ...contenido) {
     const cerrar = el("button", { type: "button", class: "dialogo-cerrar", ariaLabel: "Cerrar" }, "×");
     const d = el("dialog", { class: "dialogo camara-dialogo" }, el("header", { class: "dialogo-cab" }, el("h2", null, titulo), cerrar),
@@ -46,6 +90,14 @@ const CamaraDirecto = (() => {
         });
         return el("label", { class: "interruptor hogar-interruptor" }, c, el("span", null, texto));
       });
+    const avisoHablar = el("p", { class: "muted camara-hablar-aviso", role: "status" });
+    const microfono = hablar(camara, (t) => { avisoHablar.textContent = t; });
+    let hablando = false;
+    const botonHablar = boton("Hablar", "Hablar por la cámara", async () => {
+      if (hablando) { microfono.parar(); hablando = false; botonHablar.textContent = "Hablar"; botonHablar.classList.remove("activo"); avisoHablar.textContent = ""; return; }
+      if (await microfono.empezar()) { hablando = true; botonHablar.textContent = "Dejar de hablar"; botonHablar.classList.add("activo"); }
+    }, "primario pequeno");
+    video.addEventListener("aria:cerrar-camara", () => microfono.parar());
     const sonido = boton("Activar sonido", "Activar o quitar el sonido", () => { video.muted = !video.muted; sonido.textContent = video.muted ? "Activar sonido" : "Quitar sonido"; });
     const completa = boton("Pantalla completa", "Pantalla completa", () => (video.requestFullscreen || video.webkitEnterFullscreen)?.call(video));
     const instantanea = boton("Guardar foto", "Guardar una foto", async () => {
@@ -57,7 +109,7 @@ const CamaraDirecto = (() => {
     const bateria = camara.bateria !== undefined ? el("span", { class: "camara-bateria" + (camara.bateria < 20 ? " baja" : "") }, "Batería: " + camara.bateria + " %") : null;
     return el("div", { class: "camara-controles" }, ...partes,
       el("div", { class: "camara-ajustes" }, ...ajustes),
-      el("div", { class: "botones camara-botones" }, sonido, completa, instantanea, bateria));
+      el("div", { class: "botones camara-botones" }, botonHablar, sonido, completa, instantanea, bateria), avisoHablar);
   }
 
   function abrir(camara, alCambiar) {
@@ -79,7 +131,7 @@ const CamaraDirecto = (() => {
     const d = dialogo(camara.nombre, el("div", { class: "camara-pestanas" }, pestañaDirecto, pestañaGrabaciones),
       el("div", { class: "camara-visor" }, directo, grabaciones));
     let ws = null, url = null, cerrado = false;
-    const fin = () => { cerrado = true; try { ws?.close(); } catch (_) { /* ya cerrado */ } if (url) URL.revokeObjectURL(url); d.remove(); };
+    const fin = () => { video.dispatchEvent(new Event("aria:cerrar-camara")); cerrado = true; try { ws?.close(); } catch (_) { /* ya cerrado */ } if (url) URL.revokeObjectURL(url); d.remove(); };
     d.addEventListener("close", fin);
 
     async function cargarGrabaciones() {

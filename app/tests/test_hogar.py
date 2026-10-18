@@ -550,3 +550,18 @@ def test_secciones_por_separado_y_por_rol(monkeypatch):
     a = cliente(ana)
     assert a.get("/api/hogar/luces").status_code == 200
     assert a.get("/api/hogar/camaras").status_code == 403 and a.get("/api/hogar/router").status_code == 403
+
+
+def test_config_go2rtc_webrtc_solo_con_ip_de_casa(monkeypatch, tmp_path):
+    from aria import hogar_camaras
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(config, "TAPO_USUARIO", "usuario@example.com")
+    monkeypatch.setattr(config, "TAPO_PASSWORD", "x")
+    monkeypatch.setattr(config, "TAPO_CAMARAS", ["192.168.1.30"])
+    monkeypatch.setattr(config, "LAN_IP", "127.0.0.1")
+    hogar_camaras.escribir_config()
+    assert 'webrtc:\n  listen: ""' in hogar_camaras.ruta_config().read_text()          # sin IP de casa: apagado
+    monkeypatch.setattr(config, "LAN_IP", "192.168.1.50")
+    hogar_camaras.escribir_config()
+    texto = hogar_camaras.ruta_config().read_text()
+    assert 'webrtc:\n  listen: ":8555"\n  candidates:\n    - 192.168.1.50:8555' in texto

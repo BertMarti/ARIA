@@ -113,12 +113,37 @@ async def cambiar_vigilancia(request: Request):
 
 
 @router.get("/api/hogar/camaras/foto")
-async def foto_camara(ip: str = ""):
-    """Imagen actual de una cámara (solo administradores: no está en la lista blanca de `usuario`)."""
+async def foto_camara(ip: str = "", miniatura: int = 0):
+    """Imagen de una cámara (solo administradores: no está en la lista blanca de `usuario`). Con `miniatura=1` vale una
+    de los últimos 10 minutos (para la cuadrícula, sin despertar a las de batería cada vez)."""
     if not camaras_video.disponible() or not camaras_video.flujo(ip):
         return _error("Cámara no encontrada.", 404)
     try:
-        datos = await camaras_video.foto(ip)
+        datos = await camaras_video.foto(ip, camaras_video.EDAD_MINIATURA if miniatura else 0)
     except Exception:  # noqa: BLE001
         return _error("La cámara no ha enviado imagen (puede estar dormida o en modo privacidad).", 502)
     return Response(datos, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+@router.post("/api/hogar/camaras/ajuste")
+async def ajuste_camara(request: Request):
+    if not _limite(): return _error("Demasiadas acciones; espera un minuto.", 429)
+    try: d = await request.json()
+    except ValueError: return _error("Datos no válidos.")
+    if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or not isinstance(d.get("valor"), bool) \
+            or d.get("campo") not in tapo.AJUSTES:
+        return _error("Datos no válidos.")
+    try: return {"camara": await tapo.ajustar(d["ip"], d["campo"], d["valor"])}
+    except tapo.TapoError as e: return _error(str(e), 400 if "no encontrada" in str(e) or "no tiene" in str(e) else 502)
+
+
+@router.post("/api/hogar/camaras/mover")
+async def mover_camara(request: Request):
+    try: d = await request.json()
+    except ValueError: return _error("Datos no válidos.")
+    if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or d.get("direccion") not in tapo.MOVIMIENTOS:
+        return _error("Datos no válidos.")
+    try:
+        await tapo.mover(d["ip"], d["direccion"])
+        return {"ok": True}
+    except tapo.TapoError as e: return _error(str(e), 400 if "no encontrada" in str(e) or "no se puede" in str(e) else 502)

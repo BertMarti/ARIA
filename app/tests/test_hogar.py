@@ -203,7 +203,7 @@ def test_tapo_estado_y_privacidad(monkeypatch):
     camara = CamaraFalsa()
     _tapo(monkeypatch, camara)
     assert asyncio.run(hogar_tapo.camaras()) == [{"ip": "192.168.1.30", "modelo": "C520WS", "nombre": "Jardín",
-                                                  "en_linea": True, "privacidad": False}]
+                                                  "en_linea": True, "ptz": False, "privacidad": False}]
     assert asyncio.run(hogar_tapo.privacidad("192.168.1.30", True))["privacidad"] is True
     with pytest.raises(hogar_tapo.TapoError):
         asyncio.run(hogar_tapo.privacidad("192.168.1.99", True))   # IP que no es una cámara conocida
@@ -373,7 +373,7 @@ def test_foto_y_directo_solo_admin_y_solo_camaras_conocidas(monkeypatch):
     monkeypatch.setattr(config, "TAPO_PASSWORD", PASS_FALSA)
     monkeypatch.setattr(config, "TAPO_CAMARAS", ["192.168.1.30"])
 
-    async def foto(ip):
+    async def foto(ip, max_edad=0):
         return b"\xff\xd8imagen"
     monkeypatch.setattr(hogar_camaras, "foto", foto)
     admin = usuarios.por_identificador("admin")
@@ -415,3 +415,50 @@ def test_router_conocidos_incluye_concesiones_dhcp(monkeypatch):
     _router(monkeypatch, RouterFalso())
     nombres = {c["nombre"] for c in asyncio.run(hogar_router.conocidos())}
     assert {"Portátil", "Tele", "Xiaomi-dormido"} <= nombres        # el que duerme también se puede elegir
+
+
+def test_ajustes_y_movimiento_de_camaras(monkeypatch):
+    class Modulo:
+        def __init__(self): self.enabled, self.led, self.llamadas = False, True, []
+        async def set_enabled(self, si): self.enabled = si
+        async def set_led(self, si): self.led = si
+        async def move(self, *, pan, tilt): self.llamadas.append((pan, tilt))
+
+    class Bateria:
+        battery_percent = 64
+
+    camara = CamaraFalsa()
+    mov, motor = Modulo(), Modulo()
+    camara.modules.update({"MotionDetection": mov, "Led": mov, "PanTilt": motor, "Battery": Bateria()})
+    _tapo(monkeypatch, camara)
+    fila = asyncio.run(hogar_tapo.camaras())[0]
+    assert fila["ptz"] is True and fila["bateria"] == 64 and fila["movimiento"] is False and fila["led"] is True
+    assert asyncio.run(hogar_tapo.ajustar("192.168.1.30", "movimiento", True))["movimiento"] is True
+    asyncio.run(hogar_tapo.mover("192.168.1.30", "izquierda"))
+    assert motor.llamadas == [(hogar_tapo.PASO_GIRO, 0)]
+    with pytest.raises(hogar_tapo.TapoError):
+        asyncio.run(hogar_tapo.ajustar("192.168.1.30", "borrar_tarjeta", True))
+    with pytest.raises(hogar_tapo.TapoError):
+        asyncio.run(hogar_tapo.mover("192.168.1.99", "arriba"))
+    admin = usuarios.por_identificador("admin")
+    c = cliente(admin)
+    assert c.post("/api/hogar/camaras/mover", json={"ip": "192.168.1.30", "direccion": "girar_loco"}).status_code == 400
+    assert c.post("/api/hogar/camaras/ajuste", json={"ip": "192.168.1.30", "campo": "led", "valor": False}).json()["camara"]["led"] is False
+    ana = usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
+    assert cliente(ana).post("/api/hogar/camaras/mover", json={"ip": "192.168.1.30", "direccion": "arriba"}).status_code == 403
+
+
+def test_miniatura_reutiliza_la_foto_reciente(monkeypatch):
+    from aria import hogar_camaras
+    monkeypatch.setattr(config, "TAPO_CAMARAS", ["192.168.1.30"])
+    monkeypatch.setattr(hogar_camaras, "_fotos", {})
+    llamadas = []
+
+    async def nueva(nombre):
+        llamadas.append(nombre)
+        return b"\\xff\\xd8x"
+    monkeypatch.setattr(hogar_camaras, "_foto_nueva", nueva)
+    asyncio.run(hogar_camaras.foto("192.168.1.30", 600))
+    asyncio.run(hogar_camaras.foto("192.168.1.30", 600))          # la segunda no despierta a la cámara
+    asyncio.run(hogar_camaras.foto("192.168.1.30"))               # el directo/foto pedida sí
+    assert llamadas == ["c1", "c1"]

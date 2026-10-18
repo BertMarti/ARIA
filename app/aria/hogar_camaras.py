@@ -62,11 +62,32 @@ def escribir_config() -> bool:
     return True
 
 
-async def foto(ip: str) -> bytes:
-    """Una imagen de la cámara en JPEG (despierta a las de batería: puede tardar unos segundos)."""
+_fotos: dict = {}   # ip -> (momento, jpeg): las miniaturas no despiertan a las cámaras de batería a cada rato
+EDAD_MINIATURA = 10 * 60
+
+
+async def foto(ip: str, max_edad: float = 0) -> bytes:
+    """Una imagen de la cámara en JPEG (despierta a las de batería: puede tardar unos segundos). Con `max_edad`, vale
+    una guardada si no es más vieja que eso."""
+    import time
     nombre = flujo(ip)
     if not nombre:
         raise ValueError("Cámara no encontrada.")
+    guardada = _fotos.get(ip)
+    if max_edad and guardada and time.time() - guardada[0] < max_edad:
+        return guardada[1]
+    datos = await _foto_nueva(nombre)
+    _fotos[ip] = (time.time(), datos)
+    return datos
+
+
+def edad_foto(ip: str) -> float | None:
+    import time
+    g = _fotos.get(ip)
+    return time.time() - g[0] if g else None
+
+
+async def _foto_nueva(nombre: str) -> bytes:
     async with httpx.AsyncClient(timeout=25) as c:
         r = await c.get(f"{url_base()}/api/frame.jpeg", params={"src": nombre})
     if r.status_code != 200 or not r.content.startswith(b"\xff\xd8"):

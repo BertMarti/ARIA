@@ -57,3 +57,58 @@ def test_sin_pvpc_publicado(ree):
     ree["datos"] = {"included": []}
     with pytest.raises(luz.LuzError, match="publicado"):
         correr(luz.precios(date(2026, 10, 10)))
+
+
+def _serie_dia():
+    # Barata de 13 a 16 (0,05), cara de 19 a 22 (0,25), el resto 0,12.
+    return [{"hora": h, "precio": 0.05 if 13 <= h < 16 else 0.25 if 19 <= h < 22 else 0.12} for h in range(24)]
+
+
+def test_franja_barata_y_cara():
+    assert luz.franja(_serie_dia()) == {"desde": 13, "hasta": 16, "media": 0.05}
+    assert luz.franja(_serie_dia(), cara=True) == {"desde": 19, "hasta": 22, "media": 0.25}
+    t = luz.texto_manana(_serie_dia())
+    assert "de 13:00 a 16:00" in t and "Evita de 19:00 a 22:00" in t and "0,050 €/kWh" in t
+
+
+def test_aviso_de_la_luz_una_vez_por_dia_y_solo_por_la_tarde(monkeypatch):
+    from datetime import datetime
+    from aria import avisos, tiempo
+    avisos.iniciar()
+    enviados = []
+
+    async def emitir(tipo, severidad, texto, enlace="", destinatarios=None, **kw):
+        enviados.append((tipo, texto, destinatarios))
+        return []
+
+    async def precios(dia=None):
+        return _serie_dia()
+    monkeypatch.setattr(avisos, "emitir", emitir)
+    monkeypatch.setattr(luz, "precios", precios)
+    monkeypatch.setattr(luz, "activo", lambda: True)
+    monkeypatch.setattr(avisos, "_luz_reintento", 0.0)
+    tarde = datetime(2026, 10, 17, 18, 0, tzinfo=tiempo.zona())
+    assert asyncio.run(avisos.luz_de_manana(tarde)) is False          # antes de las 20:45: aún no
+    noche = datetime(2026, 10, 17, 21, 0, tzinfo=tiempo.zona())
+    assert asyncio.run(avisos.luz_de_manana(noche)) is True
+    assert asyncio.run(avisos.luz_de_manana(noche)) is False          # una sola vez por día
+    assert len(enviados) == 1 and enviados[0][0] == "luz" and "13:00 a 16:00" in enviados[0][1]
+    assert enviados[0][2]                                              # a todos los usuarios activos
+
+
+def test_aviso_de_la_luz_espera_si_aun_no_hay_precios(monkeypatch):
+    from datetime import datetime
+    from aria import avisos, tiempo
+    avisos.iniciar()
+    llamadas = []
+
+    async def precios(dia=None):
+        llamadas.append(dia)
+        raise luz.LuzError("Red Eléctrica aún no ha publicado el precio de ese día.")
+    monkeypatch.setattr(luz, "precios", precios)
+    monkeypatch.setattr(luz, "activo", lambda: True)
+    monkeypatch.setattr(avisos, "_luz_reintento", 0.0)
+    noche = datetime(2026, 10, 17, 20, 50, tzinfo=tiempo.zona())
+    assert asyncio.run(avisos.luz_de_manana(noche)) is False
+    assert asyncio.run(avisos.luz_de_manana(noche)) is False          # no vuelve a preguntar hasta 15 min después
+    assert len(llamadas) == 1

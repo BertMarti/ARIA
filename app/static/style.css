@@ -1422,6 +1422,44 @@ body.app { height: 100vh; height: 100dvh; }
 }
 /* Hogar */
 .hogar-rejilla { align-items: start; }
+/* Hogar: franja de resumen, cámaras a todo el ancho y debajo luces | casa (vigilancia y wifi) */
+.hogar-panel { display: grid; gap: 1rem; }
+.hogar-resumen { display: flex; flex-wrap: wrap; gap: .5rem; min-height: 2.2rem; }
+.hogar-chip { padding: .45rem .85rem; border-radius: 999px; border: 1px solid var(--borde); background: var(--panel); color: var(--txt); font-size: .85rem; font-weight: 600; cursor: pointer; }
+.hogar-chip:hover, .hogar-chip:focus-visible { border-color: var(--acento); }
+.hogar-chip.aviso { border-color: color-mix(in srgb, var(--warn) 55%, transparent); color: var(--warn); }
+.hogar-seccion { display: flex; flex-direction: column; gap: .8rem; min-width: 0; scroll-margin-top: 1rem; }
+.hogar-seccion-cab { margin-bottom: 0; }
+.hogar-columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 1rem; align-items: start; }
+.hogar-esqueleto { height: 5.5rem; border-radius: 10px; background: linear-gradient(90deg, var(--panel) 25%, color-mix(in srgb, var(--borde) 70%, var(--panel)) 50%, var(--panel) 75%); background-size: 200% 100%; animation: hogar-brillo 1.4s linear infinite; }
+.hogar-esqueleto.corto { height: 1.2rem; width: 55%; margin-top: .6rem; }
+@keyframes hogar-brillo { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .hogar-esqueleto { animation: none; } }
+.hogar-bloque { display: grid; gap: .6rem; padding: .2rem 0 1rem; }
+.hogar-bloque + .hogar-bloque { border-top: 1px solid var(--borde); padding-top: 1rem; }
+.hogar-bloque-cab { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.hogar-bloque h3 { margin: 0; font-size: 1rem; }
+.hogar-estado { display: flex; align-items: center; gap: .55rem; margin: 0; font-weight: 600; }
+.hogar-punto { width: .7rem; height: .7rem; border-radius: 50%; background: var(--muted); flex: none; }
+.hogar-estado.ok .hogar-punto { background: var(--ok); box-shadow: 0 0 .5rem var(--ok); }
+.hogar-estado.aviso .hogar-punto { background: var(--warn); box-shadow: 0 0 .5rem var(--warn); }
+.hogar-moviles { display: flex; flex-wrap: wrap; gap: .35rem; }
+.hogar-moviles .pildora.ok { border-color: color-mix(in srgb, var(--ok) 50%, transparent); color: var(--ok); }
+.hogar-cifra { margin: 0; font-size: 1rem; }
+.hogar-cifra strong { font-size: 1.8rem; color: var(--acento); }
+.hogar-dialogo { width: min(94vw, 34rem); }
+.hogar-config { display: grid; gap: .8rem; }
+.hogar-config h3 { margin: .3rem 0 0; font-size: .95rem; }
+.hogar-clientes { max-height: 60vh; overflow-y: auto; }
+@media (max-width: 760px) {
+  .hogar-resumen { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -1rem; padding: 0 1rem; }
+  .hogar-resumen::-webkit-scrollbar { display: none; }
+  .hogar-chip { white-space: nowrap; font-size: .8rem; padding: .4rem .75rem; }
+  .hogar-panel .camaras-mosaico { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+  .hogar-panel .camara-mini { padding: .35rem; }
+  .hogar-panel .camara-mini-pie { flex-direction: column; gap: 0; }
+  .camara-mini-aviso { font-size: .72rem; }
+}
 .hogar-tarjeta { display: flex; flex-direction: column; gap: .8rem; min-width: 0; }
 .hogar-luces { display: grid; gap: .2rem; }
 .hogar-luz { display: grid; gap: .55rem; padding: .75rem 0; border-bottom: 1px solid var(--borde); }

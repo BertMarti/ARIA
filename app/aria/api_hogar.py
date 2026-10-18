@@ -6,7 +6,7 @@ import time
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 
-from . import hogar_camaras as camaras_video, hogar_govee as govee, hogar_router as router_hogar, hogar_tapo as tapo, hogar_vigilancia as vigilancia
+from . import hogar_cache as cache, hogar_camaras as camaras_video, hogar_govee as govee, hogar_router as router_hogar, hogar_tapo as tapo, hogar_vigilancia as vigilancia
 
 router = APIRouter()
 _acciones = []
@@ -15,19 +15,37 @@ _acciones = []
 def _error(texto, estado=400): return JSONResponse({"error": texto}, status_code=estado)
 
 
-async def _integracion(modulo, funcion, nombre):
+async def _integracion(modulo, funcion, nombre, clave=None, fresco=60):
     if not modulo.configurado(): return {"configurado": False, "datos": []}
-    try: return {"configurado": True, "datos": await funcion()}
+    try:
+        datos = await (cache.obtener(clave, funcion, fresco) if clave else funcion())
+        return {"configurado": True, "datos": datos}
     except Exception: return {"configurado": True, "error": f"No se pudo consultar {nombre}.", "datos": []}
+
+
+# Cada sección por separado: la pantalla pinta cada una en cuanto llega (antes esperaba a la más lenta).
+@router.get("/api/hogar/luces")
+async def hogar_luces():
+    return await _integracion(govee, govee.luces, "Govee", "luces", 30)
+
+
+@router.get("/api/hogar/camaras")
+async def hogar_camaras_estado():
+    return await _integracion(tapo, tapo.camaras, "las cámaras", "camaras", 120)
+
+
+@router.get("/api/hogar/router")
+async def hogar_router_estado():
+    return await _integracion(router_hogar, router_hogar.estado, "el router", "router", 90)
 
 
 @router.get("/api/hogar")
 async def hogar(request: Request):
     es_admin = request.state.usuario["rol"] == "admin"
     luces, router_d, camaras = await asyncio.gather(
-        _integracion(govee, govee.luces, "Govee"),
-        _integracion(router_hogar, router_hogar.estado, "el router") if es_admin else asyncio.sleep(0, result=None),
-        _integracion(tapo, tapo.camaras, "las cámaras") if es_admin else asyncio.sleep(0, result=None))
+        _integracion(govee, govee.luces, "Govee", "luces", 30),
+        _integracion(router_hogar, router_hogar.estado, "el router", "router", 90) if es_admin else asyncio.sleep(0, result=None),
+        _integracion(tapo, tapo.camaras, "las cámaras", "camaras", 120) if es_admin else asyncio.sleep(0, result=None))
     resultado = {"luces": luces}
     if es_admin: resultado.update(router=router_d, camaras=camaras)
     return resultado
@@ -51,7 +69,10 @@ async def cambiar_luz(identificador: str, request: Request):
     if encendida is not None and not isinstance(encendida, bool): return _error("La alimentación no es válida.")
     if brillo is not None and (isinstance(brillo, bool) or not isinstance(brillo, int) or not 1 <= brillo <= 100): return _error("El brillo debe estar entre 1 y 100.")
     if color is not None and (not isinstance(color, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", color)): return _error("El color debe tener formato #rrggbb.")
-    try: return await govee.cambiar(identificador, encendida, brillo, int(color[1:], 16) if color else None)
+    try:
+        r = await govee.cambiar(identificador, encendida, brillo, int(color[1:], 16) if color else None)
+        cache.invalidar("luces")
+        return r
     except govee.GoveeError as e: return _error(str(e), 502)
 
 
@@ -62,7 +83,10 @@ async def privacidad(request: Request):
     except ValueError: return _error("Datos no válidos.")
     if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or not isinstance(d.get("activa"), bool):
         return _error("Datos no válidos.")
-    try: return {"camara": await tapo.privacidad(d["ip"], d["activa"])}   # solo cámaras ya vistas o configuradas
+    try:
+        fila = await tapo.privacidad(d["ip"], d["activa"])   # solo cámaras ya vistas o configuradas
+        cache.invalidar("camaras")
+        return {"camara": fila}
     except tapo.TapoError as e: return _error(str(e), 400 if "no encontrada" in str(e) else 502)
     except Exception: return _error("No se pudo cambiar la privacidad.", 502)
 
@@ -73,7 +97,10 @@ async def invitados(request: Request):
     try: d = await request.json()
     except ValueError: return _error("Datos no válidos.")
     if not isinstance(d, dict) or not isinstance(d.get("activa"), bool): return _error("Datos no válidos.")
-    try: return await router_hogar.invitados(d["activa"])
+    try:
+        r = await router_hogar.invitados(d["activa"])
+        cache.invalidar("router")
+        return r
     except router_hogar.RouterError as e: return _error(str(e), 502)
 
 
@@ -92,10 +119,16 @@ async def _candidatos() -> list:
 
 
 @router.get("/api/hogar/vigilancia")
-async def ver_vigilancia():
+async def ver_vigilancia(candidatos: int = 0):
+    """Estado de la vigilancia. Con `candidatos=1` añade los dispositivos de la red para elegir (lento: consulta
+    también las concesiones DHCP del router); sin él usa la última lista conocida."""
     if not router_hogar.configurado():
         return {"disponible": False}
-    return {"disponible": True, **await asyncio.to_thread(vigilancia.resumen, await _candidatos())}
+    try:
+        lista = await _candidatos() if candidatos else await cache.obtener("router-conectados", router_hogar.conectados, 90)
+    except Exception:  # noqa: BLE001
+        lista = []
+    return {"disponible": True, **await asyncio.to_thread(vigilancia.resumen, lista)}
 
 
 @router.post("/api/hogar/vigilancia")
@@ -133,7 +166,10 @@ async def ajuste_camara(request: Request):
     if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or not isinstance(d.get("valor"), bool) \
             or d.get("campo") not in tapo.AJUSTES:
         return _error("Datos no válidos.")
-    try: return {"camara": await tapo.ajustar(d["ip"], d["campo"], d["valor"])}
+    try:
+        fila = await tapo.ajustar(d["ip"], d["campo"], d["valor"])
+        cache.invalidar("camaras")
+        return {"camara": fila}
     except tapo.TapoError as e: return _error(str(e), 400 if "no encontrada" in str(e) or "no tiene" in str(e) else 502)
 
 

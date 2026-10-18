@@ -10,6 +10,7 @@ _USUARIO = [
     ("GET", r"/static/.*"),
     ("GET", r"/api/info"),
     ("GET", r"/api/hogar"),
+    ("GET", r"/api/hogar/luces"),
     ("POST", r"/api/hogar/luces/[^/]+"),
     ("GET", r"/api/premium"),
     ("GET", r"/api/services"),

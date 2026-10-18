@@ -11,3 +11,5 @@ pychromecast>=14.0,<15
 pypdf>=6.19,<7   # 5.x tenía 85 vulnerabilidades conocidas (pip-audit, 17/10/2026)
 python-multipart>=0.0.9,<1
 defusedxml>=0.7,<1   # XML de fuera (teles de la red, Meteoalarm) sin entidades ni DTD
+python-kasa>=0.11,<0.12   # cámaras Tapo (local)
+tplinkrouterc6u>=5.37,<6   # router TP-Link (la interfaz de Tether)

@@ -1403,3 +1403,36 @@ body.app { height: 100vh; height: 100dvh; }
   .hud-entrada > button[type="submit"] { display: none; }
   .hud-entrada .hud-boton { min-height: 2.4rem; }
 }
+/* Hogar */
+.hogar-rejilla { align-items: start; }
+.hogar-tarjeta { display: flex; flex-direction: column; gap: .8rem; min-width: 0; }
+.hogar-luces { display: grid; gap: .2rem; }
+.hogar-luz { display: grid; gap: .55rem; padding: .75rem 0; border-bottom: 1px solid var(--borde); }
+.hogar-luz:last-child { border-bottom: 0; }
+.hogar-luz.sin-conexion { opacity: .55; }
+.hogar-luz-cab { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+.hogar-luz-cab strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hogar-muestra { width: 1rem; height: 1rem; border-radius: 50%; background: var(--color, #fff); box-shadow: 0 0 .7rem var(--color, #fff); flex: none; }
+.hogar-muestra.apagada { background: var(--borde-fuerte); box-shadow: none; }
+.hogar-brillo { display: flex; align-items: center; gap: .6rem; }
+.hogar-brillo input[type="range"] { flex: 1; min-width: 0; accent-color: var(--acento); }
+.hogar-brillo-valor { width: 3.2rem; text-align: right; font-variant-numeric: tabular-nums; }
+.hogar-colores { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.hogar-color { width: 1.9rem; height: 1.9rem; padding: 0; border-radius: 50%; border: 2px solid var(--borde-fuerte); background: var(--color); cursor: pointer; }
+.hogar-color:hover:not(:disabled), .hogar-color:focus-visible { transform: scale(1.12); border-color: var(--acento); }
+.hogar-colores input[type="color"] { width: 2rem; height: 2rem; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.hogar-fila { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding: .6rem 0; border-bottom: 1px solid var(--borde); }
+.hogar-fila:last-child { border-bottom: 0; }
+.hogar-interruptor { display: inline-flex; align-items: center; gap: .5rem; }
+.hogar-interruptor input { appearance: none; -webkit-appearance: none; flex: none; width: 2.6rem; height: 1.5rem; margin: 0; border-radius: 999px;
+  background: var(--borde-fuerte); position: relative; cursor: pointer; transition: background .2s; }
+.hogar-interruptor input::after { content: ""; position: absolute; top: .19rem; left: .19rem; width: 1.12rem; height: 1.12rem; border-radius: 50%;
+  background: var(--txt); transition: transform .2s; }
+.hogar-interruptor input:checked { background: var(--acento); }
+.hogar-interruptor input:checked::after { transform: translateX(1.1rem); background: var(--bg); }
+.hogar-interruptor input:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.hogar-interruptor input:disabled { opacity: .45; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .hogar-interruptor input, .hogar-interruptor input::after { transition: none; } }
+.hogar-clientes summary { cursor: pointer; font-weight: 600; }
+.hogar-clientes .filas { max-height: 18rem; overflow-y: auto; margin-top: .5rem; }
+.hogar-variables { margin: 0; padding-left: 1.2rem; }

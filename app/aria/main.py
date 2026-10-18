@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
-from . import agenda, agentes, api_acceso, api_agenda, api_app, api_automatizaciones, api_avisos, api_cerebro, api_control, api_disponibilidad, api_documentos, api_finanzas, api_informacion, api_listas, api_medios, api_modulos, api_notas, api_premium, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, disponibilidad, dispositivos_app, documentos, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, listas, mapas, medios, memoria, mis_datos, modelos, modulos, notas, permisos, premium, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
+from . import agenda, agentes, api_acceso, api_agenda, api_app, api_automatizaciones, api_avisos, api_cerebro, api_control, api_disponibilidad, api_documentos, api_finanzas, api_hogar, api_informacion, api_listas, api_medios, api_modulos, api_notas, api_premium, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, disponibilidad, dispositivos_app, documentos, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, listas, mapas, medios, memoria, mis_datos, modelos, modulos, notas, permisos, premium, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -142,6 +142,7 @@ async def _parada():
         if tarea:
             tarea.cancel()
     await shield.cerrar()  # Pi-hole limita las sesiones de API: se libera la nuestra
+    await api_hogar.tapo.cerrar()
 
 
 def _ip(request: Request) -> str:
@@ -511,6 +512,7 @@ app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
 app.include_router(api_finanzas.router)
 app.include_router(api_premium.router)
 app.include_router(api_red.router)
+app.include_router(api_hogar.router)
 app.include_router(api_control.router)
 app.include_router(api_avisos.router)
 app.include_router(api_app.router)

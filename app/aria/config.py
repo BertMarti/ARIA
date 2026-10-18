@@ -64,6 +64,11 @@ ADMIN_EMAILS = [e.strip().lower() for e in os.environ.get("ARIA_ADMIN_EMAILS", "
 # Agentes Redes / Seguridad. La red permitida es la ÚNICA que se puede escanear (guardia en la app y en el escáner).
 RED_PERMITIDA = (os.environ.get("ARIA_RED_PERMITIDA") or "192.168.1.0/24").strip()
 ROUTER_IP = (os.environ.get("ARIA_ROUTER_IP") or "192.168.1.1").strip()
+GOVEE_API_KEY = os.environ.get("ARIA_GOVEE_API_KEY", "").strip()
+TAPO_USUARIO = os.environ.get("ARIA_TAPO_USUARIO", "").strip()
+TAPO_PASSWORD = os.environ.get("ARIA_TAPO_PASSWORD", "")
+TAPO_CAMARAS = [x.strip() for x in os.environ.get("ARIA_TAPO_CAMARAS", "").split(",") if x.strip()]
+ROUTER_PASSWORD = os.environ.get("ARIA_ROUTER_PASSWORD", "")
 # Control parental (control.py): ARIA_CONTROL=0 lo desactiva. IPs que NUNCA se pueden pausar ni bloquear (además
 # del router, la Raspberry y ARIA_LAN_IP), separadas por comas.
 CONTROL = os.environ.get("ARIA_CONTROL", "1").strip().lower() not in ("0", "false", "no", "off")

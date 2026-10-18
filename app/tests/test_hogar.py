@@ -1,0 +1,259 @@
+"""Hogar: luces Govee, cámaras Tapo y router TP-Link. Sin red: Govee con MockTransport y los demás con dobles."""
+import asyncio
+import json
+
+import httpx
+import pytest
+from fastapi.testclient import TestClient
+
+from aria import api_hogar, auth, config, hogar_govee, hogar_router, hogar_tapo, main, tools, usuarios
+
+LAN = "https://192.168.1.50"
+CLAVE_FALSA = "clave-govee-de-prueba-123"
+CLIENTE_HTTP = httpx.AsyncClient   # el real, antes de cualquier sustitución
+PASS_FALSA = "contrasena-router-de-prueba"
+
+
+def cliente(u):
+    c = TestClient(main.app, base_url=LAN, follow_redirects=False)
+    c.cookies.set(auth.COOKIE, auth.crear_sesion(u))
+    return c
+
+
+@pytest.fixture(autouse=True)
+def limpio(monkeypatch):
+    monkeypatch.setattr(hogar_govee, "_cache", {"cuando": 0.0, "dispositivos": []})
+    monkeypatch.setattr(hogar_govee, "_ultimo", {})
+    monkeypatch.setattr(hogar_router, "_cache", {"cuando": 0.0, "estado": None})
+    monkeypatch.setattr(hogar_tapo, "_conexiones", {})
+    monkeypatch.setattr(hogar_tapo, "_conocidas", set())
+    monkeypatch.setattr(api_hogar, "_acciones", [])
+
+    async def sin_espera(_segundos, result=None):
+        return result
+    monkeypatch.setattr(hogar_govee.asyncio, "sleep", sin_espera)
+
+
+# --- Govee -------------------------------------------------------------------------------------------------------
+def _govee(monkeypatch, respuestas: dict, enviados: list | None = None):
+    """respuestas: ruta -> función(request) -> httpx.Response."""
+    monkeypatch.setattr(config, "GOVEE_API_KEY", CLAVE_FALSA)
+    def manejar(r: httpx.Request):
+        assert r.headers["Govee-API-Key"] == CLAVE_FALSA
+        if enviados is not None and r.content:
+            enviados.append(json.loads(r.content))
+        return respuestas[r.url.path.rsplit("/v1/", 1)[1]](r)
+    monkeypatch.setattr(hogar_govee.httpx, "AsyncClient", lambda **kw: CLIENTE_HTTP(transport=httpx.MockTransport(manejar), **kw))
+
+
+DISPOSITIVOS = {"code": 200, "message": "success", "data": [
+    {"sku": "H6199", "device": "AA:BB", "deviceName": "Tira del Salón"},
+    {"sku": "H6008", "device": "CC:DD", "deviceName": "Bombilla cocina"}]}
+
+
+def _estado(r):
+    disp = json.loads(r.content)["payload"]["device"]
+    caps = [{"type": "devices.capabilities.online", "instance": "online", "state": {"value": disp == "AA:BB"}},
+            {"type": "devices.capabilities.on_off", "instance": "powerSwitch", "state": {"value": 1}},
+            {"type": "devices.capabilities.range", "instance": "brightness", "state": {"value": 50}},
+            {"type": "devices.capabilities.color_setting", "instance": "colorRgb", "state": {"value": 0xFF0000}}]
+    return httpx.Response(200, json={"requestId": "x", "msg": "success", "code": 200,
+                                     "payload": {"sku": "H6199", "device": disp, "capabilities": caps}})
+
+
+def test_govee_lista_luces_con_su_estado(monkeypatch):
+    _govee(monkeypatch, {"user/devices": lambda r: httpx.Response(200, json=DISPOSITIVOS), "device/state": _estado})
+    luces = asyncio.run(hogar_govee.luces())
+    assert luces[0] == {"nombre": "Tira del Salón", "id": "AA:BB", "sku": "H6199", "encendida": True, "brillo": 50,
+                        "color": "#ff0000", "en_linea": True}
+    assert luces[1]["en_linea"] is False
+
+
+def test_govee_cambia_encendido_brillo_y_color(monkeypatch):
+    enviados = []
+    ok = lambda r: httpx.Response(200, json={"requestId": "x", "msg": "success", "code": 200, "payload": {}})
+    _govee(monkeypatch, {"user/devices": lambda r: httpx.Response(200, json=DISPOSITIVOS), "device/control": ok}, enviados)
+    assert asyncio.run(hogar_govee.cambiar("AA:BB", encendida=False, brillo=30, color=0x3366FF)) == {"ok": True}
+    capacidades = [e["payload"]["capability"] for e in enviados]
+    assert capacidades == [
+        {"type": "devices.capabilities.on_off", "instance": "powerSwitch", "value": 0},
+        {"type": "devices.capabilities.range", "instance": "brightness", "value": 30},
+        {"type": "devices.capabilities.color_setting", "instance": "colorRgb", "value": 0x3366FF}]
+    assert all(e["payload"]["sku"] == "H6199" and e["requestId"] for e in enviados)
+
+
+def test_govee_errores_y_reintento_tras_429(monkeypatch):
+    llamadas = []
+
+    def con_429(r):
+        llamadas.append(1)
+        return httpx.Response(429) if len(llamadas) == 1 else httpx.Response(200, json=DISPOSITIVOS)
+    _govee(monkeypatch, {"user/devices": con_429})
+    assert len(asyncio.run(hogar_govee._listar_bruto())) == 2 and len(llamadas) == 2
+    hogar_govee._cache["cuando"] = 0.0
+    _govee(monkeypatch, {"user/devices": lambda r: httpx.Response(200, json={"code": 401, "message": "Unauthorized"})})
+    with pytest.raises(hogar_govee.GoveeError):
+        asyncio.run(hogar_govee._listar_bruto())
+    with pytest.raises(hogar_govee.GoveeError):
+        asyncio.run(hogar_govee.cambiar("ZZ", encendida=True))
+
+
+# --- Router -------------------------------------------------------------------------------------------------------
+class RouterFalso:
+    def __init__(self, falla=False):
+        self.falla, self.log = falla, []
+
+    def authorize(self):
+        self.log.append("authorize")
+
+    def logout(self):
+        self.log.append("logout")
+
+    def get_status(self):
+        from tplinkrouterc6u import Connection
+
+        class Disp:
+            def __init__(self, nombre, ip, tipo):
+                self.hostname, self.ipaddress, self.macaddress, self.type, self.active = nombre, ip, "AA-BB-CC-DD-EE-FF", tipo, True
+
+        class Estado:
+            clients_total, guest_2g_enable, guest_5g_enable = 2, False, None
+            devices = [Disp("Portátil", "192.168.1.20", Connection.HOST_5G), Disp("Tele", "192.168.1.21", Connection.WIRED)]
+        if self.falla:
+            raise RuntimeError("se cayó a mitad")
+        return Estado()
+
+    def get_firmware(self):
+        class F:
+            model = "Router de prueba"
+        return F()
+
+    def set_wifi(self, banda, activa):
+        self.log.append((banda.name, activa))
+
+    def reboot(self):
+        self.log.append("reboot")
+
+
+def _router(monkeypatch, falso):
+    import tplinkrouterc6u
+    monkeypatch.setattr(config, "ROUTER_PASSWORD", PASS_FALSA)
+    monkeypatch.setattr(tplinkrouterc6u.TplinkRouterProvider, "get_client", staticmethod(lambda *a, **kw: falso))
+
+
+def test_router_estado_y_siempre_cierra_sesion(monkeypatch):
+    falso = RouterFalso()
+    _router(monkeypatch, falso)
+    e = asyncio.run(hogar_router.estado())
+    assert e["modelo"] == "Router de prueba" and e["conectados"] == 2 and e["invitados_24"] is False
+    assert "invitados_5" not in e   # el router no lo da: no se inventa
+    assert {c["banda"] for c in e["clientes"]} == {"5 GHz", "cable"} and e["clientes"][0]["mac"] == "DD:EE:FF"
+    assert falso.log == ["authorize", "logout"]
+    roto = RouterFalso(falla=True)
+    _router(monkeypatch, roto)
+    hogar_router._cache["cuando"] = 0.0
+    with pytest.raises(hogar_router.RouterError) as error:
+        asyncio.run(hogar_router.estado())
+    assert roto.log == ["authorize", "logout"]          # la sesión se cierra aunque falle (si no, echa a Tether)
+    assert PASS_FALSA not in str(error.value)
+
+
+def test_router_invitados_en_las_dos_bandas_y_reinicio(monkeypatch):
+    falso = RouterFalso()
+    _router(monkeypatch, falso)
+    assert asyncio.run(hogar_router.invitados(True)) == {"activa": True}
+    assert ("GUEST_2G", True) in falso.log and ("GUEST_5G", True) in falso.log
+    asyncio.run(hogar_router.reiniciar())
+    assert "reboot" in falso.log and falso.log[-1] == "logout"
+
+
+# --- Cámaras Tapo -------------------------------------------------------------------------------------------------
+class Mascara:
+    def __init__(self):
+        self.enabled = False
+
+    async def set_enabled(self, si):
+        self.enabled = si
+
+
+class CamaraFalsa:
+    def __init__(self):
+        self.model, self.alias, self.modules = "C520WS", "Jardín", {"LensMask": Mascara()}
+
+    async def update(self):
+        return None
+
+
+def _tapo(monkeypatch, camara):
+    monkeypatch.setattr(config, "TAPO_USUARIO", "usuario@example.com")
+    monkeypatch.setattr(config, "TAPO_PASSWORD", PASS_FALSA)
+    monkeypatch.setattr(config, "TAPO_CAMARAS", ["192.168.1.30"])
+
+    async def conectar(ip):
+        return camara
+    monkeypatch.setattr(hogar_tapo, "_conectar", conectar)
+
+
+def test_tapo_estado_y_privacidad(monkeypatch):
+    camara = CamaraFalsa()
+    _tapo(monkeypatch, camara)
+    assert asyncio.run(hogar_tapo.camaras()) == [{"ip": "192.168.1.30", "modelo": "C520WS", "nombre": "Jardín",
+                                                  "en_linea": True, "privacidad": False}]
+    assert asyncio.run(hogar_tapo.privacidad("192.168.1.30", True))["privacidad"] is True
+    with pytest.raises(hogar_tapo.TapoError):
+        asyncio.run(hogar_tapo.privacidad("192.168.1.99", True))   # IP que no es una cámara conocida
+
+
+# --- API y permisos -----------------------------------------------------------------------------------------------
+def test_api_por_rol_y_sin_credenciales(monkeypatch):
+    _govee(monkeypatch, {"user/devices": lambda r: httpx.Response(200, json=DISPOSITIVOS), "device/state": _estado})
+    _router(monkeypatch, RouterFalso())
+    _tapo(monkeypatch, CamaraFalsa())
+    admin = usuarios.por_identificador("admin")
+    ana = usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
+    d = cliente(admin).get("/api/hogar").json()
+    assert set(d) == {"luces", "router", "camaras"} and d["router"]["datos"]["conectados"] == 2
+    texto = json.dumps(d)
+    assert CLAVE_FALSA not in texto and PASS_FALSA not in texto
+    c = cliente(ana)
+    assert set(c.get("/api/hogar").json()) == {"luces"}              # un usuario no ve router ni cámaras
+    assert c.post("/api/hogar/router/reiniciar").status_code == 403
+    assert c.post("/api/hogar/router/invitados", json={"activa": True}).status_code == 403
+    assert c.post("/api/hogar/camaras/privacidad", json={"ip": "192.168.1.30", "activa": True}).status_code == 403
+    assert c.post("/api/hogar/luces/AA:BB", json={"brillo": 101}).status_code == 400
+    assert c.post("/api/hogar/luces/AA:BB", json={"color": "rojo"}).status_code == 400
+
+
+def test_sin_configurar_lo_dice(monkeypatch):
+    for nombre in ("GOVEE_API_KEY", "TAPO_USUARIO", "TAPO_PASSWORD", "ROUTER_PASSWORD"):
+        monkeypatch.setattr(config, nombre, "")
+    d = cliente(usuarios.por_identificador("admin")).get("/api/hogar").json()
+    assert d["luces"]["configurado"] is False and d["router"]["configurado"] is False
+    assert d["camaras"]["configurado"] is False
+
+
+# --- Herramientas del chat ----------------------------------------------------------------------------------------
+def test_herramienta_luces_busca_sin_acentos(monkeypatch):
+    cambios = []
+
+    async def luces():
+        return [{"nombre": "Tira del Salón", "id": "AA:BB", "encendida": True},
+                {"nombre": "Bombilla cocina", "id": "CC:DD", "encendida": False}]
+
+    async def cambiar(ident, encendida=None, brillo=None, color=None):
+        cambios.append((ident, encendida, brillo, color))
+        return {"ok": True}
+    monkeypatch.setattr(hogar_govee, "luces", luces)
+    monkeypatch.setattr(hogar_govee, "cambiar", cambiar)
+    assert "Tira del Salón" in asyncio.run(tools.luces("salon", encendida=False))
+    assert cambios == [("AA:BB", False, None, None)]
+    asyncio.run(tools.luces("", encendida=False))                    # «apaga todas»
+    assert len(cambios) == 3
+    assert "luces" in tools.permitidas("usuario") and "router_invitados" not in tools.permitidas("usuario")
+    assert "luces" not in tools.RUTINAS                               # una rutina programada no toca la casa
+
+
+def test_herramienta_camara_sin_ip(monkeypatch):
+    _tapo(monkeypatch, CamaraFalsa())
+    assert asyncio.run(tools.camara_privacidad(True)) == "He tapado Jardín."
+    assert "camara_privacidad" not in tools.permitidas("usuario")

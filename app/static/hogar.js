@@ -78,24 +78,33 @@ const Hogar = (() => {
     return tarjeta("Luces", el("div", { class: "hogar-luces" }, ...lista.map(filaLuz)), el("div", { class: "botones" }, apagar));
   }
 
+  // Cuadrícula como la de la app Tapo: imagen de cada cámara (reciente, sin despertar a las de batería a cada visita)
+  // y, al tocarla, el directo con sus controles.
   function camaras(d) {
-    if (!d.configurado) return sinConfigurar("Cámaras", ["ARIA_TAPO_USUARIO", "ARIA_TAPO_PASSWORD", "ARIA_TAPO_CAMARAS (opcional: IPs)"]);
+    if (!d.configurado) return sinConfigurar("Cámaras", ["ARIA_TAPO_USUARIO", "ARIA_TAPO_PASSWORD", "ARIA_TAPO_CAMARAS (IPs)"]);
     if (d.error) return tarjeta("Cámaras", nota(d.error));
     if (!(d.datos || []).length) return tarjeta("Cámaras", nota("No he encontrado cámaras Tapo en la red."));
-    const verDirecto = (c) => {
-      const b = el("button", { type: "button", class: "fantasma pequeno", disabled: !c.en_linea }, "Ver en directo");
-      b.addEventListener("click", () => CamaraDirecto.abrir(c));
+    const mosaico = el("div", { class: "camaras-mosaico" }, ...d.datos.map((c) => {
+      const img = el("img", { alt: "", loading: "lazy", class: "camara-mini-img" });
+      const aviso = el("span", { class: "camara-mini-aviso" }, c.en_linea ? (c.privacidad ? "Privacidad activada" : "Cargando imagen…") : "Sin respuesta (¿dormida?)");
+      if (c.en_linea && !c.privacidad) {
+        img.addEventListener("load", () => { aviso.hidden = true; });
+        img.addEventListener("error", () => { img.hidden = true; aviso.textContent = "Toca para ver en directo"; });
+        img.src = "/api/hogar/camaras/foto?miniatura=1&ip=" + encodeURIComponent(c.ip);
+      }
+      const insignias = el("span", { class: "camara-mini-insignias" },
+        c.privacidad ? el("span", { class: "pildora" }, "Privacidad") : null,
+        c.bateria !== undefined ? el("span", { class: "pildora" + (c.bateria < 20 ? " mal" : "") }, "Batería " + c.bateria + " %") : null,
+        c.ptz ? el("span", { class: "pildora" }, "Motorizada") : null);
+      const b = el("button", { type: "button", class: "camara-mini", disabled: !c.en_linea, ariaLabel: "Ver en directo " + c.nombre },
+        el("span", { class: "camara-mini-imagen" }, img, aviso, el("span", { class: "camara-mini-play", ariaHidden: "true" }, "▶")),
+        el("span", { class: "camara-mini-pie" }, el("strong", null, c.nombre), el("span", { class: "muted" }, c.modelo)), insignias);
+      b.addEventListener("click", () => CamaraDirecto.abrir(c, () => pintar()));
       return b;
-    };
-    return tarjeta("Cámaras", ...d.datos.map((c) => el("div", { class: "hogar-fila" },
-      el("div", null, el("strong", null, c.nombre), el("span", { class: "muted" }, " · " + c.modelo + " · " + (c.en_linea ? "en línea" : "sin respuesta"))),
-      verDirecto(c),
-      c.privacidad === undefined ? nota("Sin modo privacidad") : interruptor("Privacidad (lente tapada)", c.privacidad, async (si) => {
-        const r = await api("/api/hogar/camaras/privacidad", { method: "POST", json: { ip: c.ip, activa: si } });
-        if (!r.ok) toast(r.data.error || "No se pudo cambiar la privacidad.", "mal");
-        else toast(si ? "Cámara tapada." : "Cámara destapada.");
-        return r.ok;
-      }, !c.en_linea))));
+    }));
+    const t = tarjeta("Cámaras", mosaico, nota("Toca una cámara para verla en directo y controlarla."));
+    t.classList.add("hogar-camaras");
+    return t;
   }
 
   function router(d) {
@@ -163,8 +172,9 @@ const Hogar = (() => {
     const r = await api("/api/hogar");
     if (!activo) return;
     if (!r.ok) { cuerpo.replaceChildren(nota(r.data.error || "No se pudo consultar el hogar.")); return; }
-    const partes = [luces(r.data.luces)];
-    if (r.data.camaras) partes.push(camaras(r.data.camaras));
+    const partes = [];
+    if (r.data.camaras) partes.push(camaras(r.data.camaras));   // las cámaras, arriba y a todo el ancho
+    partes.push(luces(r.data.luces));
     if (r.data.router) partes.push(router(r.data.router));
     if (Sesion.esAdmin) {
       const v = await api("/api/hogar/vigilancia");

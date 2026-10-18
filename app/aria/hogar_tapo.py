@@ -46,16 +46,38 @@ async def _ips() -> list:
             type(d).__name__ == "SmartCamDevice"]
 
 
+# Ajustes que se pueden cambiar desde ARIA: campo de la API -> (módulo de python-kasa, lectura, escritura).
+AJUSTES = {
+    "privacidad": ("LensMask", "enabled", "set_enabled"),
+    "movimiento": ("MotionDetection", "enabled", "set_enabled"),
+    "personas": ("PersonDetection", "enabled", "set_enabled"),
+    "led": ("Led", "led", "set_led"),
+}
+PASO_GIRO, PASO_INCLINACION = 30, 10
+MOVIMIENTOS = {"izquierda": (PASO_GIRO, 0), "derecha": (-PASO_GIRO, 0), "arriba": (0, PASO_INCLINACION),
+               "abajo": (0, -PASO_INCLINACION)}
+
+
 def _fila(ip: str, dev) -> dict:
     modulos = getattr(dev, "modules", {})
+    obtener = modulos.get if hasattr(modulos, "get") else (lambda _: None)
     fila = {"ip": ip, "modelo": getattr(dev, "model", "") or "Tapo", "nombre": (getattr(dev, "alias", "") or "").strip() or ip,
-            "en_linea": True}
-    mascara = modulos.get("LensMask") if hasattr(modulos, "get") else None
-    if mascara is not None:
-        fila["privacidad"] = bool(mascara.enabled)
-    movimiento = modulos.get("MotionDetection") if hasattr(modulos, "get") else None
-    if movimiento is not None and hasattr(movimiento, "enabled"):
-        fila["deteccion_movimiento"] = bool(movimiento.enabled)
+            "en_linea": True, "ptz": obtener("PanTilt") is not None}
+    for campo, (modulo, lectura, _) in AJUSTES.items():
+        m = obtener(modulo)
+        if m is not None:
+            try:
+                fila[campo] = bool(getattr(m, lectura))
+            except Exception:  # noqa: BLE001 - un dato que falta no tumba la ficha
+                pass
+    if "movimiento" in fila:
+        fila["deteccion_movimiento"] = fila["movimiento"]   # nombre antiguo (pantalla anterior)
+    bateria = obtener("Battery")
+    if bateria is not None:
+        try:
+            fila["bateria"] = int(bateria.battery_percent)
+        except Exception:  # noqa: BLE001
+            pass
     return fila
 
 
@@ -75,7 +97,7 @@ async def camaras() -> list:
     return salida
 
 
-async def privacidad(ip: str, activa: bool) -> dict:
+async def privacidad(ip: str, activa: bool) -> dict:   # (se mantiene: la usan la vigilancia y el chat)
     if ip not in config.TAPO_CAMARAS and ip not in _conocidas:
         raise TapoError("Cámara no encontrada.")
     dev = await _conectar(ip)
@@ -89,6 +111,44 @@ async def privacidad(ip: str, activa: bool) -> dict:
         _conexiones.pop(ip, None)
         raise TapoError("La cámara no ha respondido.") from e
     return _fila(ip, dev)
+
+
+async def ajustar(ip: str, campo: str, valor: bool) -> dict:
+    """Cambia privacidad, detección de movimiento o personas, o el LED. Solo cámaras conocidas."""
+    if campo not in AJUSTES:
+        raise TapoError("Ajuste no válido.")
+    if ip not in config.TAPO_CAMARAS and ip not in _conocidas:
+        raise TapoError("Cámara no encontrada.")
+    dev = await _conectar(ip)
+    modulo, _, escritura = AJUSTES[campo]
+    m = dev.modules.get(modulo) if hasattr(dev.modules, "get") else None
+    if m is None:
+        raise TapoError("Esta cámara no tiene ese ajuste.")
+    try:
+        await asyncio.wait_for(getattr(m, escritura)(bool(valor)), TIMEOUT)
+        await asyncio.wait_for(dev.update(), TIMEOUT)
+    except Exception as e:  # noqa: BLE001
+        _conexiones.pop(ip, None)
+        raise TapoError("La cámara no ha respondido.") from e
+    return _fila(ip, dev)
+
+
+async def mover(ip: str, direccion: str) -> None:
+    """Gira o inclina una cámara motorizada (C520WS…) un paso."""
+    if direccion not in MOVIMIENTOS:
+        raise TapoError("Dirección no válida.")
+    if ip not in config.TAPO_CAMARAS and ip not in _conocidas:
+        raise TapoError("Cámara no encontrada.")
+    dev = await _conectar(ip)
+    motor = dev.modules.get("PanTilt") if hasattr(dev.modules, "get") else None
+    if motor is None:
+        raise TapoError("Esta cámara no se puede mover.")
+    giro, inclinacion = MOVIMIENTOS[direccion]
+    try:
+        await asyncio.wait_for(motor.move(pan=giro, tilt=inclinacion), TIMEOUT)
+    except Exception as e:  # noqa: BLE001
+        _conexiones.pop(ip, None)
+        raise TapoError("La cámara no ha respondido.") from e
 
 
 async def cerrar() -> None:

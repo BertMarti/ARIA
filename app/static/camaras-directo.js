@@ -14,11 +14,57 @@ const CamaraDirecto = (() => {
     return d;
   }
 
-  function abrir(camara) {
-    const video = el("video", { class: "camara-video", autoplay: true, muted: true, playsInline: true, controls: true });
+  // Controles como en la app Tapo: mover (si tiene motor), privacidad, detecciones, LED, foto, sonido y pantalla completa.
+  function controles(camara, video, alCambiar) {
+    const enviar = async (ruta, json) => {
+      const r = await api(ruta, { method: "POST", json });
+      if (!r.ok) toast(r.data.error || "La cámara no ha respondido.", "mal");
+      return r;
+    };
+    const boton = (texto, titulo, accion, clase = "fantasma pequeno") => {
+      const b = el("button", { type: "button", class: clase, title: titulo, ariaLabel: titulo }, texto);
+      b.addEventListener("click", async () => { b.disabled = true; try { await accion(); } finally { b.disabled = false; } });
+      return b;
+    };
+    const partes = [];
+    if (camara.ptz) {
+      const mover = (dir) => () => enviar("/api/hogar/camaras/mover", { ip: camara.ip, direccion: dir });
+      partes.push(el("div", { class: "camara-ptz", role: "group", ariaLabel: "Mover la cámara" },
+        el("span"), boton("▲", "Arriba", mover("arriba")), el("span"),
+        boton("◀", "Izquierda", mover("izquierda")), el("span", { class: "camara-ptz-centro" }), boton("▶", "Derecha", mover("derecha")),
+        el("span"), boton("▼", "Abajo", mover("abajo")), el("span")));
+    }
+    const ajustes = [["privacidad", "Privacidad (lente tapada)"], ["movimiento", "Detección de movimiento"], ["personas", "Detección de personas"], ["led", "Luz indicadora (LED)"]]
+      .filter(([campo]) => camara[campo] !== undefined)
+      .map(([campo, texto]) => {
+        const c = el("input", { type: "checkbox", checked: !!camara[campo] });
+        c.addEventListener("change", async () => {
+          c.disabled = true;
+          const r = await enviar("/api/hogar/camaras/ajuste", { ip: camara.ip, campo, valor: c.checked });
+          if (r.ok) { Object.assign(camara, r.data.camara); alCambiar?.(camara); } else c.checked = !c.checked;
+          c.disabled = false;
+        });
+        return el("label", { class: "interruptor hogar-interruptor" }, c, el("span", null, texto));
+      });
+    const sonido = boton("Activar sonido", "Activar o quitar el sonido", () => { video.muted = !video.muted; sonido.textContent = video.muted ? "Activar sonido" : "Quitar sonido"; });
+    const completa = boton("Pantalla completa", "Pantalla completa", () => (video.requestFullscreen || video.webkitEnterFullscreen)?.call(video));
+    const instantanea = boton("Guardar foto", "Guardar una foto", async () => {
+      const r = await fetch("/api/hogar/camaras/foto?ip=" + encodeURIComponent(camara.ip));
+      if (!r.ok) { toast("La cámara no ha enviado imagen.", "mal"); return; }
+      const a = el("a", { href: URL.createObjectURL(await r.blob()), download: camara.nombre.replace(/[^\wáéíóúñ -]/gi, "") + " " + new Date().toLocaleString("es-ES").replace(/[/:]/g, "-") + ".jpg" });
+      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    });
+    const bateria = camara.bateria !== undefined ? el("span", { class: "camara-bateria" + (camara.bateria < 20 ? " baja" : "") }, "Batería: " + camara.bateria + " %") : null;
+    return el("div", { class: "camara-controles" }, ...partes,
+      el("div", { class: "camara-ajustes" }, ...ajustes),
+      el("div", { class: "botones camara-botones" }, sonido, completa, instantanea, bateria));
+  }
+
+  function abrir(camara, alCambiar) {
+    const video = el("video", { class: "camara-video", autoplay: true, muted: true, playsInline: true });
     const estado = el("p", { class: "muted camara-estado", role: "status" }, "Conectando con la cámara… (las de batería tardan unos segundos en despertar)");
     const foto = el("img", { class: "camara-video", alt: "Última imagen de " + camara.nombre, hidden: true });
-    const d = dialogo(camara.nombre, video, foto, estado);
+    const d = dialogo(camara.nombre, el("div", { class: "camara-visor" }, el("div", null, video, foto, estado), controles(camara, video, alCambiar)));
     let ws = null, url = null, cerrado = false;
     const fin = () => { cerrado = true; try { ws?.close(); } catch (_) { /* ya cerrado */ } if (url) URL.revokeObjectURL(url); d.remove(); };
     d.addEventListener("close", fin);

@@ -47,6 +47,7 @@ public class AriaWidget extends AppWidgetProvider {
         actualizar(context);
         AriaWidgetAgenda.actualizar(context);
         AriaWidgetCasa.actualizar(context);
+        AriaWidgetHogar.actualizar(context);
     }
 
     static void actualizar(Context context) {

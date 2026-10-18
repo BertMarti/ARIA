@@ -39,6 +39,12 @@ async def _refrescar(clave, funcion):
         log.info("No se pudo refrescar %s", clave)
 
 
+def ultimo(clave: str):
+    """Lo último conocido, sin esperar ni pedir nada (para el resumen del móvil). None si aún no hay."""
+    guardado = _datos.get(clave)
+    return guardado[1] if guardado else None
+
+
 def invalidar(*claves: str) -> None:
     """Tras un cambio hecho desde ARIA: la siguiente lectura va a buscar el dato real."""
     for c in claves:

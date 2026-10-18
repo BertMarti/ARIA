@@ -181,8 +181,24 @@ async def _datos_resumen(u: dict) -> dict:
         proximos = [{"titulo": e.get("titulo"), "inicio": e.get("inicio")} for e in futuro[:3]]   # widget de Agenda
         proximo = proximos[0] if proximos else None
     casa = await _casa() if u["rol"] == "admin" else None   # widget de Casa: solo quien administra la red
+    hogar = await asyncio.to_thread(_hogar) if u["rol"] == "admin" else None   # widget de Hogar
     return {"avisos": pendientes, "tiempo": tiempo_mini, "proximo": proximo, "proximos": proximos, "casa": casa,
-            "generado": ahora}
+            "hogar": hogar, "generado": ahora}
+
+
+def _hogar() -> dict:
+    """Cámaras, luces y vigilancia con lo último que ARIA ya sabe (no despierta cámaras ni espera al router)."""
+    from . import hogar_cache, hogar_vigilancia
+    camaras = hogar_cache.ultimo("camaras") or []
+    luces = hogar_cache.ultimo("luces") or []
+    try:
+        a = hogar_vigilancia.resumen(None)
+        vig = {"activa": a["activa"], "estado": a["estado"]} if a["moviles"] else None
+    except Exception:  # noqa: BLE001
+        vig = None
+    return {"camaras": len(camaras), "tapadas": sum(1 for c in camaras if c.get("privacidad")),
+            "sin_respuesta": sum(1 for c in camaras if not c.get("en_linea")),
+            "luces": len(luces), "luces_encendidas": sum(1 for x in luces if x.get("encendida")), "vigilancia": vig}
 
 
 async def _casa() -> dict:

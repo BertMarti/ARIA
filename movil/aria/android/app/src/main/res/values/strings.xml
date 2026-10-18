@@ -33,4 +33,6 @@
     <string name="widget_casa">Casa</string>
     <string name="widget_casa_desc">Anuncios bloqueados, VPN y estado de los servicios</string>
     <string name="widget_resumen">Resumen de ARIA</string>
+    <string name="widget_hogar">Hogar</string>
+    <string name="widget_hogar_desc">Vigilancia, cámaras y luces de casa</string>
 </resources>

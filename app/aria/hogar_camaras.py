@@ -34,6 +34,15 @@ def flujo(ip: str) -> str | None:
         return None
 
 
+def lan_ip_valida() -> bool:
+    import ipaddress
+    try:
+        ip = ipaddress.ip_address(config.LAN_IP)
+    except ValueError:
+        return False
+    return ip.is_private and not ip.is_loopback
+
+
 def ruta_config() -> Path:
     return config.DATA_DIR / "camaras" / "go2rtc.yaml"
 
@@ -41,8 +50,13 @@ def ruta_config() -> Path:
 def escribir_config() -> bool:
     """Genera la configuración de go2rtc. Devuelve si ha cambiado (entonces hay que reiniciar el contenedor)."""
     ruta = ruta_config()
+    # WebRTC solo para hablar por la cámara (el vídeo va por MSE a través de ARIA): el audio va del navegador a go2rtc
+    # por el puerto 8555, publicado únicamente en la IP de casa (con la VPN también llega; desde Cloudflare, no).
+    webrtc = ["webrtc:", '  listen: ""']
+    if lan_ip_valida():
+        webrtc = ["webrtc:", '  listen: ":8555"', "  candidates:", f"    - {config.LAN_IP}:8555"]
     lineas = ["# Generado por ARIA (hogar_camaras.py): no editar. Contiene la contraseña de Tapo.",
-              "api:", '  listen: ":1984"', "rtsp:", '  listen: ""', "webrtc:", '  listen: ""', "srtp:", '  listen: ""',
+              "api:", '  listen: ":1984"', "rtsp:", '  listen: ""', *webrtc, "srtp:", '  listen: ""',
               "log:", "  level: warn", "streams:"]
     if disponible():
         clave = quote(config.TAPO_PASSWORD, safe="")
@@ -107,7 +121,7 @@ async def reenviar(ws_navegador, ip: str) -> None:
                     mensaje = await ws_navegador.receive()
                     if mensaje.get("type") == "websocket.disconnect":
                         return
-                    if mensaje.get("text") is not None and len(mensaje["text"]) < 2000:   # solo control (codecs)
+                    if mensaje.get("text") is not None and len(mensaje["text"]) < 20000:   # control: codecs o SDP de WebRTC
                         await camara.send(mensaje["text"])
 
             async def bajar():

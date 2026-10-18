@@ -156,6 +156,9 @@ services:
     security_opt: ["no-new-privileges:true"]
     tmpfs: [/tmp]
     working_dir: /tmp
+    ports:   # solo WebRTC para hablar por la cámara, y solo en la IP de casa (nunca en todas las interfaces)
+      - "${ARIA_LAN_IP:-127.0.0.1}:8555:8555/tcp"
+      - "${ARIA_LAN_IP:-127.0.0.1}:8555:8555/udp"
     volumes:
       - ./data/camaras:/config:ro
     depends_on:

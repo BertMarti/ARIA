@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
+from . import hogar_camaras
 from . import agenda, agentes, api_acceso, api_agenda, api_app, api_automatizaciones, api_avisos, api_cerebro, api_control, api_disponibilidad, api_documentos, api_finanzas, api_hogar, api_informacion, api_listas, api_medios, api_modulos, api_notas, api_premium, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, disponibilidad, dispositivos_app, documentos, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, listas, mapas, medios, memoria, mis_datos, modelos, modulos, notas, permisos, premium, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
@@ -113,6 +114,10 @@ async def _arranque():
     app.state.premium = asyncio.create_task(premium.bucle())
     from . import hogar_vigilancia
     hogar_vigilancia.iniciar()
+    try:
+        await asyncio.to_thread(hogar_camaras.escribir_config)   # go2rtc (contenedor «camaras») la lee al arrancar
+    except OSError:
+        log.exception("No se pudo escribir la configuración de las cámaras")
     app.state.vigilancia = asyncio.create_task(hogar_vigilancia.bucle())
     # Avisos: tablas, chequeos, canales y planificador (recordatorios, resumen programado). Telegram con long polling.
     avisos.iniciar()
@@ -872,6 +877,20 @@ async def ws_despertar(ws: WebSocket):
         voz._escuchas[u["id"]] -= 1
         if not voz._escuchas[u["id"]]:
             voz._escuchas.pop(u["id"], None)
+
+
+@app.websocket("/api/hogar/camaras/directo")
+async def ws_camara(ws: WebSocket):
+    """Vídeo en directo de una cámara Tapo (vía go2rtc). Solo administradores, como el resto de las cámaras."""
+    u = auth.sesion_usuario(ws.cookies.get(auth.COOKIE))
+    ip = ws.query_params.get("ip", "")
+    if (not voz.origen_ws_permitido(ws.headers.get("origin"), ws.headers.get("host")) or u is None
+            or ws.cookies.get(VISTA_COOKIE) or u["rol"] != "admin"
+            or not permisos.permitido(u["rol"], "GET", ws.url.path) or not hogar_camaras.flujo(ip)):
+        await ws.close(code=1008)
+        return
+    await ws.accept()
+    await hogar_camaras.reenviar(ws, ip)
 
 
 @app.websocket("/api/tele/canal")

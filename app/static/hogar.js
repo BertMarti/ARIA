@@ -82,8 +82,14 @@ const Hogar = (() => {
     if (!d.configurado) return sinConfigurar("Cámaras", ["ARIA_TAPO_USUARIO", "ARIA_TAPO_PASSWORD", "ARIA_TAPO_CAMARAS (opcional: IPs)"]);
     if (d.error) return tarjeta("Cámaras", nota(d.error));
     if (!(d.datos || []).length) return tarjeta("Cámaras", nota("No he encontrado cámaras Tapo en la red."));
+    const verDirecto = (c) => {
+      const b = el("button", { type: "button", class: "fantasma pequeno", disabled: !c.en_linea }, "Ver en directo");
+      b.addEventListener("click", () => CamaraDirecto.abrir(c));
+      return b;
+    };
     return tarjeta("Cámaras", ...d.datos.map((c) => el("div", { class: "hogar-fila" },
       el("div", null, el("strong", null, c.nombre), el("span", { class: "muted" }, " · " + c.modelo + " · " + (c.en_linea ? "en línea" : "sin respuesta"))),
+      verDirecto(c),
       c.privacidad === undefined ? nota("Sin modo privacidad") : interruptor("Privacidad (lente tapada)", c.privacidad, async (si) => {
         const r = await api("/api/hogar/camaras/privacidad", { method: "POST", json: { ip: c.ip, activa: si } });
         if (!r.ok) toast(r.data.error || "No se pudo cambiar la privacidad.", "mal");

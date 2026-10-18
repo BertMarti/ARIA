@@ -4,9 +4,9 @@ import re
 import time
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
-from . import hogar_govee as govee, hogar_router as router_hogar, hogar_tapo as tapo, hogar_vigilancia as vigilancia
+from . import hogar_camaras as camaras_video, hogar_govee as govee, hogar_router as router_hogar, hogar_tapo as tapo, hogar_vigilancia as vigilancia
 
 router = APIRouter()
 _acciones = []
@@ -110,3 +110,15 @@ async def cambiar_vigilancia(request: Request):
     except ValueError as e:
         return _error(str(e))
     return {"disponible": True, **await asyncio.to_thread(vigilancia.resumen, candidatos)}
+
+
+@router.get("/api/hogar/camaras/foto")
+async def foto_camara(ip: str = ""):
+    """Imagen actual de una cámara (solo administradores: no está en la lista blanca de `usuario`)."""
+    if not camaras_video.disponible() or not camaras_video.flujo(ip):
+        return _error("Cámara no encontrada.", 404)
+    try:
+        datos = await camaras_video.foto(ip)
+    except Exception:  # noqa: BLE001
+        return _error("La cámara no ha enviado imagen (puede estar dormida o en modo privacidad).", 502)
+    return Response(datos, media_type="image/jpeg", headers={"Cache-Control": "no-store"})

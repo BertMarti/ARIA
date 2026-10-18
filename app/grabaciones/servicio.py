@@ -155,12 +155,8 @@ async def clip(request):
                 return JSONResponse({"error": "El fragmento no existe."}, 404)
             CACHE.mkdir(parents=True, exist_ok=True)
             if not destino.exists():
-                tz = await run_in_threadpool(cliente.getTimeCorrection)
-                from pytapo.media_stream.downloader import Downloader
                 with tempfile.TemporaryDirectory() as temporal:
-                    descargador = Downloader(cliente, inicio, fin, tz, outputDirectory=temporal,
-                                             output="ts", overwriteFiles=True)
-                    await asyncio.wait_for(_descargar(descargador), 120)
+                    await asyncio.wait_for(run_in_threadpool(_bajar_ts, ip, inicio, fin, temporal), 130)
                     entrada = next(Path(temporal).glob("*.ts"), None)
                     if entrada is None:
                         raise RuntimeError("La cámara no ha enviado el vídeo.")
@@ -189,9 +185,20 @@ async def clip(request):
             return JSONResponse({"error": "No se ha podido preparar el vídeo."}, 502)
 
 
-async def _descargar(descargador):
-    async for _ in descargador.download():
-        pass
+def _bajar_ts(ip, inicio, fin, carpeta):
+    """Descarga el clip en .ts. En un hilo propio y con su propio bucle: las funciones síncronas de pytapo montan un
+    bucle asyncio para iniciar sesión y fallan si ya hay otro en marcha. Por eso la sesión y el identificador de
+    usuario se piden ANTES de arrancar el descargador (que si no los pediría con el bucle ya en marcha)."""
+    from pytapo.media_stream.downloader import Downloader
+    camara = _cliente(ip)
+    zona = camara.getTimeCorrection()
+    camara.getUserID()
+
+    async def correr():
+        descargador = Downloader(camara, inicio, fin, zona, outputDirectory=carpeta + "/", output="ts", overwriteFiles=True)
+        async for _ in descargador.download():
+            pass
+    asyncio.run(asyncio.wait_for(correr(), 120))
 
 
 app = Starlette(routes=[

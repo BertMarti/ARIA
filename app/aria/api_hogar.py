@@ -6,7 +6,7 @@ import time
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from . import hogar_govee as govee, hogar_router as router_hogar, hogar_tapo as tapo
+from . import hogar_govee as govee, hogar_router as router_hogar, hogar_tapo as tapo, hogar_vigilancia as vigilancia
 
 router = APIRouter()
 _acciones = []
@@ -82,3 +82,31 @@ async def reiniciar():
     if not _limite(): return _error("Demasiadas acciones; espera un minuto.", 429)
     try: return await router_hogar.reiniciar()
     except router_hogar.RouterError as e: return _error(str(e), 502)
+
+
+async def _candidatos() -> list:
+    try:
+        return await router_hogar.conectados()
+    except Exception:  # noqa: BLE001 - sin router se muestra lo guardado
+        return []
+
+
+@router.get("/api/hogar/vigilancia")
+async def ver_vigilancia():
+    if not router_hogar.configurado():
+        return {"disponible": False}
+    return {"disponible": True, **await asyncio.to_thread(vigilancia.resumen, await _candidatos())}
+
+
+@router.post("/api/hogar/vigilancia")
+async def cambiar_vigilancia(request: Request):
+    if not _limite(): return _error("Demasiadas acciones; espera un minuto.", 429)
+    try: d = await request.json()
+    except ValueError: return _error("Datos no válidos.")
+    if not isinstance(d, dict): return _error("Datos no válidos.")
+    candidatos = await _candidatos()
+    try:
+        await asyncio.to_thread(vigilancia.configurar, d, candidatos)
+    except ValueError as e:
+        return _error(str(e))
+    return {"disponible": True, **await asyncio.to_thread(vigilancia.resumen, candidatos)}

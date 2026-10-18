@@ -115,6 +115,38 @@ const Hogar = (() => {
     return tarjeta("Router", el("p", null, el("strong", null, r.modelo || "TP-Link")), invitados, clientes, el("div", { class: "botones" }, reiniciar));
   }
 
+  // Vigilancia automática: cámaras destapadas solo cuando todos los móviles elegidos llevan un rato fuera de casa.
+  function vigilancia(v, camarasHogar) {
+    if (!v || !v.disponible) return null;
+    const hace = (ts) => { if (!ts) return "aún no visto"; const m = Math.round((Date.now() / 1000 - ts) / 60); return m < 3 ? "en casa" : "fuera hace " + (m < 120 ? m + " min" : Math.round(m / 60) + " h"); };
+    const moviles = [...v.moviles.map((m) => ({ ...m, elegido: true })), ...v.candidatos.map((c) => ({ ...c, elegido: false }))];
+    const casillas = moviles.map((m) => {
+      const c = el("input", { type: "checkbox", checked: m.elegido, value: m.id });
+      const info = m.elegido ? (m.en_casa ? "en casa" : hace(m.ultima_vez)) : (m.ip || "");
+      return el("label", { class: "hogar-opcion" }, c, el("span", null, m.nombre), el("span", { class: "muted" }, " · " + info));
+    });
+    const cams = (camarasHogar || []).filter((c) => c.privacidad !== undefined).map((c) =>
+      el("label", { class: "hogar-opcion" }, el("input", { type: "checkbox", checked: v.camaras.includes(c.ip), value: c.ip }), el("span", null, c.nombre)));
+    const minutos = el("select", { ariaLabel: "Minutos fuera antes de vigilar" }, ...[5, 10, 15, 20, 30, 60].map((n) => el("option", { value: n, selected: n === v.minutos }, n + " minutos")));
+    const guardar = async (activa) => {
+      const json = { activa, minutos: Number(minutos.value),
+        moviles: casillas.map((l) => l.querySelector("input")).filter((c) => c.checked).map((c) => c.value),
+        camaras: cams.map((l) => l.querySelector("input")).filter((c) => c.checked).map((c) => c.value) };
+      const r = await api("/api/hogar/vigilancia", { method: "POST", json });
+      if (!r.ok) { toast(r.data.error || "No se pudo guardar.", "mal"); return false; }
+      toast(activa ? "Vigilancia automática activada." : "Guardado."); return true;
+    };
+    const activa = interruptor("Activada", v.activa, (si) => guardar(si));
+    const boton = el("button", { type: "button", class: "fantasma" }, "Guardar cambios");
+    boton.addEventListener("click", () => guardar(activa.querySelector("input").checked));
+    const estado = v.activa ? el("p", null, el("strong", null, v.estado === "fuera" ? "No hay nadie en casa: la cámara vigila." : "Hay alguien en casa: la cámara está tapada.")) : null;
+    return tarjeta("Vigilancia automática", activa, estado,
+      nota("Cuando todos estos móviles lleven el tiempo elegido fuera de la wifi, ARIA destapa las cámaras marcadas; en cuanto vuelve uno, las tapa otra vez. Si el router no responde, no cambia nada."),
+      el("h3", null, "Móviles de la familia"), el("div", { class: "hogar-opciones" }, ...casillas),
+      el("h3", null, "Cámaras"), cams.length ? el("div", { class: "hogar-opciones" }, ...cams) : nota("No hay cámaras con modo privacidad."),
+      el("label", { class: "hogar-opcion" }, el("span", null, "Tiempo fuera: "), minutos), el("div", { class: "botones" }, boton));
+  }
+
   async function pintar() {
     const cuerpo = $("hogar-cuerpo");
     const r = await api("/api/hogar");
@@ -123,7 +155,12 @@ const Hogar = (() => {
     const partes = [luces(r.data.luces)];
     if (r.data.camaras) partes.push(camaras(r.data.camaras));
     if (r.data.router) partes.push(router(r.data.router));
-    cuerpo.replaceChildren(...partes);
+    if (Sesion.esAdmin) {
+      const v = await api("/api/hogar/vigilancia");
+      if (!activo) return;
+      if (v.ok) partes.push(vigilancia(v.data, r.data.camaras?.datos));
+    }
+    cuerpo.replaceChildren(...partes.filter(Boolean));
   }
   return { iniciar() {}, activar(si) { const antes = activo; activo = si; if (si && !antes) pintar(); } };
 })();

@@ -43,6 +43,7 @@ TIPOS = {
     "copia": ("Copia de seguridad fuera de casa atrasada", True, True),
     "sistema": ("Raspberry: temperatura, disco o RAM", True, True),
     "app": ("La app de Android se ha cerrado", True, True),
+    "vigilancia": ("Vigilancia automática: cámara destapada o tapada al salir o volver", True, True),
     "cerebros": ("Solo responde el cerebro local", True, True),
     "vpn_conexion": ("Un dispositivo se conecta a la VPN", True, False),
     "vpn_ubicacion": ("Conexión VPN desde un sitio nuevo", True, True),

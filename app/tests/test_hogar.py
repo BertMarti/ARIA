@@ -24,7 +24,7 @@ def cliente(u):
 def limpio(monkeypatch):
     monkeypatch.setattr(hogar_govee, "_cache", {"cuando": 0.0, "dispositivos": []})
     monkeypatch.setattr(hogar_govee, "_ultimo", {})
-    monkeypatch.setattr(hogar_router, "_cache", {"cuando": 0.0, "estado": None})
+    monkeypatch.setattr(hogar_router, "_cache", {"cuando": 0.0, "estado": None, "completos": []})
     monkeypatch.setattr(hogar_tapo, "_conexiones", {})
     monkeypatch.setattr(hogar_tapo, "_conocidas", set())
     monkeypatch.setattr(api_hogar, "_acciones", [])
@@ -257,3 +257,85 @@ def test_herramienta_camara_sin_ip(monkeypatch):
     _tapo(monkeypatch, CamaraFalsa())
     assert asyncio.run(tools.camara_privacidad(True)) == "He tapado Jardín."
     assert "camara_privacidad" not in tools.permitidas("usuario")
+
+
+# --- Vigilancia automática -----------------------------------------------------------------------------------------
+MOVILES = [{"mac": "AA:BB:CC:00:00:01", "nombre": "Pixel", "ip": "192.168.1.40"},
+           {"mac": "AA:BB:CC:00:00:02", "nombre": "Xiaomi", "ip": "192.168.1.41"},
+           {"mac": "AA:BB:CC:00:00:03", "nombre": "Galaxy", "ip": "192.168.1.42"}]
+
+
+def _vigilancia(monkeypatch, conectados: list, falla_router=False):
+    from aria import hogar_vigilancia as hv
+    hv.iniciar()
+    estado = {"conectados": conectados, "falla": falla_router}
+    cambios, emitidos = [], []
+
+    async def router_conectados():
+        if estado["falla"]:
+            raise hogar_router.RouterError("no responde")
+        return list(estado["conectados"])
+
+    async def privacidad(ip, activa):
+        cambios.append((ip, activa))
+        return {}
+
+    async def emitir(tipo, severidad, texto, enlace="", destinatarios=None, **kw):
+        emitidos.append((tipo, texto))
+        return []
+    monkeypatch.setattr(hogar_router, "conectados", router_conectados)
+    monkeypatch.setattr(hogar_tapo, "privacidad", privacidad)
+    monkeypatch.setattr(hv.avisos, "emitir", emitir)
+    hv.configurar({"activa": True, "minutos": 10, "camaras": ["192.168.1.30"],
+                   "moviles": [hv.ident(m["mac"]) for m in MOVILES]}, MOVILES)
+    return hv, estado, cambios, emitidos
+
+
+def test_vigilancia_destapa_solo_cuando_todos_llevan_10_min_fuera_y_tapa_al_volver(monkeypatch):
+    import time
+    hv, estado, cambios, emitidos = _vigilancia(monkeypatch, MOVILES)
+    t = time.time()
+    assert asyncio.run(hv.ciclo(t)) is None                              # todos en casa
+    estado["conectados"] = [MOVILES[2]]                                  # se van dos; queda el Galaxy
+    assert asyncio.run(hv.ciclo(t + 30 * 60)) is None
+    estado["conectados"] = []                                            # se va el último
+    assert asyncio.run(hv.ciclo(t + 31 * 60)) is None                    # aún no han pasado 10 min desde que se fue
+    assert asyncio.run(hv.ciclo(t + 42 * 60)) == "fuera"
+    assert cambios == [("192.168.1.30", False)] and emitidos[0][0] == "vigilancia"
+    assert asyncio.run(hv.ciclo(t + 50 * 60)) is None                    # no repite
+    estado["conectados"] = [MOVILES[1]]
+    assert asyncio.run(hv.ciclo(t + 60 * 60)) == "casa"
+    assert cambios[-1] == ("192.168.1.30", True) and "Xiaomi" in emitidos[-1][1]
+
+
+def test_vigilancia_no_toca_nada_si_el_router_no_responde(monkeypatch):
+    import time
+    hv, estado, cambios, emitidos = _vigilancia(monkeypatch, [], falla_router=True)
+    assert asyncio.run(hv.ciclo(time.time() + 3 * 3600)) is None
+    assert cambios == [] and emitidos == []
+
+
+def test_vigilancia_un_movil_nunca_visto_cuenta_desde_que_se_activa(monkeypatch):
+    import time
+    hv, estado, cambios, emitidos = _vigilancia(monkeypatch, [])
+    t = time.time()
+    assert asyncio.run(hv.ciclo(t + 60)) is None                         # recién activada: no destapa de golpe
+    assert asyncio.run(hv.ciclo(t + 11 * 60)) == "fuera"
+
+
+def test_vigilancia_valida_y_no_envia_macs_enteras(monkeypatch):
+    hv, estado, cambios, emitidos = _vigilancia(monkeypatch, MOVILES)
+    with pytest.raises(ValueError):
+        hv.configurar({"minutos": 2}, MOVILES)
+    with pytest.raises(ValueError):
+        hv.configurar({"moviles": ["inventado"]}, MOVILES)
+    with pytest.raises(ValueError):
+        hv.configurar({"moviles": []}, MOVILES)                          # activa y sin móviles: no
+    monkeypatch.setattr(config, "ROUTER_PASSWORD", PASS_FALSA)
+    admin = usuarios.por_identificador("admin")
+    d = cliente(admin).get("/api/hogar/vigilancia").json()
+    assert d["activa"] is True and [m["nombre"] for m in d["moviles"]] == ["Pixel", "Xiaomi", "Galaxy"]
+    assert "AA:BB:CC" not in json.dumps(d)
+    ana = usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
+    assert cliente(ana).get("/api/hogar/vigilancia").status_code == 403
+    assert cliente(ana).post("/api/hogar/vigilancia", json={"activa": False}).status_code == 403

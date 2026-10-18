@@ -564,4 +564,4 @@ def test_config_go2rtc_webrtc_solo_con_ip_de_casa(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "LAN_IP", "192.168.1.50")
     hogar_camaras.escribir_config()
     texto = hogar_camaras.ruta_config().read_text()
-    assert 'webrtc:\n  listen: ":8555"\n  candidates:\n    - 192.168.1.50:8555' in texto
+    assert 'webrtc:\n  listen: ":8555"\n  candidates:\n    - 192.168.1.50:8555\n  ice_servers: []' in texto

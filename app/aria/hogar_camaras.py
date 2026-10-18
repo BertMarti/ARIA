@@ -54,7 +54,8 @@ def escribir_config() -> bool:
     # por el puerto 8555, publicado únicamente en la IP de casa (con la VPN también llega; desde Cloudflare, no).
     webrtc = ["webrtc:", '  listen: ""']
     if lan_ip_valida():
-        webrtc = ["webrtc:", '  listen: ":8555"', "  candidates:", f"    - {config.LAN_IP}:8555"]
+        # Sin STUN: no se consulta a servidores de fuera ni se anuncia la IP pública (solo se habla dentro de casa).
+        webrtc = ["webrtc:", '  listen: ":8555"', "  candidates:", f"    - {config.LAN_IP}:8555", "  ice_servers: []"]
     lineas = ["# Generado por ARIA (hogar_camaras.py): no editar. Contiene la contraseña de Tapo.",
               "api:", '  listen: ":1984"', "rtsp:", '  listen: ""', *webrtc, "srtp:", '  listen: ""',
               "log:", "  level: warn", "streams:"]

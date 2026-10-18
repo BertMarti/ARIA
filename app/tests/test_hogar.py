@@ -28,6 +28,8 @@ def limpio(monkeypatch):
     monkeypatch.setattr(hogar_tapo, "_conexiones", {})
     monkeypatch.setattr(hogar_tapo, "_conocidas", set())
     monkeypatch.setattr(api_hogar, "_acciones", [])
+    from aria import hogar_cache
+    hogar_cache.limpiar()
 
     async def sin_espera(_segundos, result=None):
         return result
@@ -510,3 +512,39 @@ def test_proxy_grabacion_reenvia_range_y_respuesta(monkeypatch):
                      headers={"Range": "bytes=2-5"})
     assert r.status_code == 206 and r.content == b"abcd"
     assert r.headers["content-range"] == "bytes 2-5/10" and recibido[-1][2] == "bytes=2-5"
+
+
+def test_cache_responde_con_lo_ultimo_y_refresca_detras(monkeypatch):
+    from aria import hogar_cache
+    import time
+    llamadas = []
+
+    async def lento():
+        llamadas.append(1)
+        return len(llamadas)
+
+    async def flujo():
+        assert await hogar_cache.obtener("x", lento, fresco=60) == 1
+        assert await hogar_cache.obtener("x", lento, fresco=60) == 1          # fresco: ni llama
+        hogar_cache._datos["x"] = (time.monotonic() - 120, 1)                   # viejo pero válido
+        assert await hogar_cache.obtener("x", lento, fresco=60) == 1          # responde ya con lo viejo…
+        await hogar_cache._tareas["x"]
+        assert hogar_cache._datos["x"][1] == 2                                  # …y lo refrescó detrás
+        hogar_cache.invalidar("x")
+        assert await hogar_cache.obtener("x", lento) == 3
+    asyncio.run(flujo())
+
+
+def test_secciones_por_separado_y_por_rol(monkeypatch):
+    _govee(monkeypatch, {"user/devices": lambda r: httpx.Response(200, json=DISPOSITIVOS), "device/state": _estado})
+    _router(monkeypatch, RouterFalso())
+    _tapo(monkeypatch, CamaraFalsa())
+    admin = usuarios.por_identificador("admin")
+    c = cliente(admin)
+    assert c.get("/api/hogar/luces").json()["datos"][0]["nombre"] == "Tira del Salón"
+    assert c.get("/api/hogar/camaras").json()["datos"][0]["nombre"] == "Jardín"
+    assert c.get("/api/hogar/router").json()["datos"]["conectados"] == 2
+    ana = usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
+    a = cliente(ana)
+    assert a.get("/api/hogar/luces").status_code == 200
+    assert a.get("/api/hogar/camaras").status_code == 403 and a.get("/api/hogar/router").status_code == 403

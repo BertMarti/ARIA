@@ -149,7 +149,7 @@ def test_toda_ruta_registrada_esta_cubierta():
                     ("DELETE", "/api/lista-items/{item_id}"),
                     ("GET", "/api/documentos"), ("POST", "/api/documentos"), ("GET", "/api/documentos/{doc_id}/archivo"),
                     ("DELETE", "/api/documentos/{doc_id}"), ("POST", "/api/documentos/buscar"),
-                    ("DELETE", "/api/ubicacion"), ("GET", "/api/info"), ("GET", "/api/premium"), ("GET", "/api/app/casa"), ("GET", "/api/hogar"), ("POST", "/api/hogar/luces/{identificador}"), ("GET", "/api/services"),
+                    ("DELETE", "/api/ubicacion"), ("GET", "/api/info"), ("GET", "/api/premium"), ("GET", "/api/app/casa"), ("GET", "/api/hogar"), ("GET", "/api/hogar/luces"), ("POST", "/api/hogar/luces/{identificador}"), ("GET", "/api/services"),
                     ("GET", "/api/shield"), ("GET", "/api/system"), ("GET", "/api/vpn/clients"),
                     ("GET", "/api/spotify/status"), ("GET", "/api/certificado"), ("POST", "/api/password"),
                     ("POST", "/api/chat"), ("GET", "/api/conversations"), ("GET", "/api/conversations/{cid}"),

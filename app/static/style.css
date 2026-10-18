@@ -1436,3 +1436,6 @@ body.app { height: 100vh; height: 100dvh; }
 .hogar-clientes summary { cursor: pointer; font-weight: 600; }
 .hogar-clientes .filas { max-height: 18rem; overflow-y: auto; margin-top: .5rem; }
 .hogar-variables { margin: 0; padding-left: 1.2rem; }
+.hogar-opciones { display: grid; gap: .45rem; }
+.hogar-opcion { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.hogar-tarjeta h3 { margin: .4rem 0 0; font-size: .95rem; }

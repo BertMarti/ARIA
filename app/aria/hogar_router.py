@@ -9,7 +9,7 @@ import time
 from . import config
 
 _candado = asyncio.Lock()
-_cache = {"cuando": 0.0, "estado": None}
+_cache = {"cuando": 0.0, "estado": None, "completos": []}   # «completos»: MAC enteras, solo para uso interno
 TIMEOUT = 8
 
 
@@ -52,6 +52,10 @@ def _mac(mac) -> str:
     return ":".join(partes[-3:]).upper() if len(partes) >= 3 else ""
 
 
+def mac_completa(mac) -> str:
+    return str(mac or "").replace("-", ":").upper()
+
+
 def _banda(tipo) -> str:
     nombre = getattr(tipo, "name", str(tipo or ""))
     if nombre == "WIRED":
@@ -86,8 +90,17 @@ async def estado() -> dict:
         valor = getattr(s, atributo, None)
         if valor is not None:
             d[clave] = bool(valor)
-    _cache.update(cuando=time.monotonic(), estado=d)
+    completos = [{"mac": mac_completa(getattr(x, "macaddress", "")), "nombre": getattr(x, "hostname", "") or "Dispositivo",
+                  "ip": str(getattr(x, "ipaddress", "") or "")}
+                 for x in (getattr(s, "devices", None) or []) if getattr(x, "active", True)]
+    _cache.update(cuando=time.monotonic(), estado=d, completos=completos)
     return d
+
+
+async def conectados() -> list:
+    """[{mac (entera), nombre, ip}] de lo que está conectado ahora (para la vigilancia; no sale al navegador)."""
+    await estado()
+    return list(_cache["completos"])
 
 
 async def invitados(activa: bool) -> dict:

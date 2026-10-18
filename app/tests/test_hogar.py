@@ -268,7 +268,8 @@ MOVILES = [{"mac": "AA:BB:CC:00:00:01", "nombre": "Pixel", "ip": "192.168.1.40"}
 def _vigilancia(monkeypatch, conectados: list, falla_router=False):
     from aria import hogar_vigilancia as hv
     hv.iniciar()
-    estado = {"conectados": conectados, "falla": falla_router}
+    estado = {"conectados": conectados, "falla": falla_router, "ping": set()}
+    monkeypatch.setattr(hv, "_responde", lambda ip: ip in estado["ping"])
     cambios, emitidos = [], []
 
     async def router_conectados():
@@ -382,3 +383,24 @@ def test_foto_y_directo_solo_admin_y_solo_camaras_conocidas(monkeypatch):
         with pytest.raises(WebSocketDisconnect):
             with c.websocket_connect(f"/api/hogar/camaras/directo?ip={ip}", headers={"origin": LAN}) as ws:
                 ws.receive_text()
+
+
+def test_vigilancia_el_ping_cubre_al_movil_que_falta_en_la_lista_de_la_malla(monkeypatch):
+    import time
+    hv, estado, cambios, emitidos = _vigilancia(monkeypatch, MOVILES)
+    t = time.time()
+    asyncio.run(hv.ciclo(t))                                             # aprende las IP de los tres
+    estado["conectados"] = []                                            # el router no lista a nadie…
+    estado["ping"] = {"192.168.1.40"}                                    # …pero el Pixel contesta (otro nodo)
+    assert asyncio.run(hv.ciclo(t + 30 * 60)) is None and cambios == []  # no se destapa
+    estado["ping"] = set()
+    asyncio.run(hv.ciclo(t + 31 * 60))
+    assert asyncio.run(hv.ciclo(t + 42 * 60)) == "fuera"
+    estado["falla"], estado["ping"] = True, {"192.168.1.41"}            # router caído, pero el Xiaomi contesta
+    assert asyncio.run(hv.ciclo(t + 50 * 60)) == "casa"                  # para taparla basta con el ping
+
+
+def test_vigilancia_sin_router_nunca_destapa_aunque_nadie_conteste(monkeypatch):
+    import time
+    hv, estado, cambios, emitidos = _vigilancia(monkeypatch, [], falla_router=True)
+    assert asyncio.run(hv.ciclo(time.time() + 5 * 3600)) is None and cambios == []

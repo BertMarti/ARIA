@@ -10,7 +10,7 @@ from . import config
 
 _candado = asyncio.Lock()
 _cache = {"cuando": 0.0, "estado": None, "completos": []}   # «completos»: MAC enteras, solo para uso interno
-TIMEOUT = 8
+TIMEOUT = 20   # con la malla (varios nodos) la lista de clientes tarda unos segundos
 
 
 class RouterError(Exception):
@@ -81,7 +81,7 @@ async def estado() -> dict:
         return estado_, modelo
 
     s, modelo = await _usar(leer)
-    clientes = [{"nombre": getattr(d, "hostname", "") or "Dispositivo", "mac": _mac(getattr(d, "macaddress", "")),
+    clientes = [{"nombre": (getattr(d, "hostname", "") or "").strip() or "Dispositivo", "mac": _mac(getattr(d, "macaddress", "")),
                  "ip": str(getattr(d, "ipaddress", "") or ""), "banda": _banda(getattr(d, "type", None))}
                 for d in (getattr(s, "devices", None) or []) if getattr(d, "active", True)]
     d = {"modelo": modelo, "conectados": getattr(s, "clients_total", None) or len(clientes),
@@ -90,7 +90,7 @@ async def estado() -> dict:
         valor = getattr(s, atributo, None)
         if valor is not None:
             d[clave] = bool(valor)
-    completos = [{"mac": mac_completa(getattr(x, "macaddress", "")), "nombre": getattr(x, "hostname", "") or "Dispositivo",
+    completos = [{"mac": mac_completa(getattr(x, "macaddress", "")), "nombre": (getattr(x, "hostname", "") or "").strip() or "Dispositivo",
                   "ip": str(getattr(x, "ipaddress", "") or "")}
                  for x in (getattr(s, "devices", None) or []) if getattr(x, "active", True)]
     _cache.update(cuando=time.monotonic(), estado=d, completos=completos)

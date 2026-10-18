@@ -1457,5 +1457,7 @@ body.app { height: 100vh; height: 100dvh; }
 .camara-video { display: block; width: 100%; max-height: 75vh; background: #000; border-radius: 10px; aspect-ratio: 16 / 9; object-fit: contain; }
 .camara-estado { margin: .6rem 0 0; }
 .hogar-opciones { display: grid; gap: .45rem; }
+.hogar-anadir summary { cursor: pointer; color: var(--acento); font-size: .9rem; }
+.hogar-anadir .hogar-opciones { margin-top: .5rem; max-height: 14rem; overflow-y: auto; }
 .hogar-opcion { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .hogar-tarjeta h3 { margin: .4rem 0 0; font-size: .95rem; }

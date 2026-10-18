@@ -77,7 +77,8 @@ def configurar(datos: dict, candidatos: list) -> dict:
             c = por_id.get(i) or previos.get(i)
             if c is None:
                 raise ValueError("Ese móvil no está en la lista del router.")
-            nuevos.append({"mac": hogar_router.mac_completa(c["mac"]), "nombre": c["nombre"][:60]})
+            nuevos.append({"mac": hogar_router.mac_completa(c["mac"]), "nombre": c["nombre"].strip()[:60],
+                           "ip": c.get("ip", "")})
         actual["moviles"] = nuevos
     if actual["activa"] and (not actual["moviles"] or not actual["camaras"]):
         raise ValueError("Elige al menos un móvil y una cámara antes de activarla.")
@@ -113,23 +114,46 @@ async def _poner_privacidad(camaras: list, activa: bool) -> list:
     return fallidas
 
 
+def _responde(ip: str) -> bool:
+    """¿Contesta al ping? (segunda señal: con la malla, un móvil que cambia de nodo puede faltar un momento en la lista)."""
+    from . import red
+    if not ip:
+        return False
+    try:
+        return any(red._ping_icmp(ip, n, timeout=1.5) is not None for n in (1, 2))
+    except OSError:
+        return False
+
+
 async def ciclo(ahora: float | None = None) -> str | None:
-    """Una vuelta. Devuelve el cambio hecho («fuera», «casa») o None."""
+    """Una vuelta. Devuelve el cambio hecho («fuera», «casa») o None.
+
+    Un móvil está en casa si sale en la lista del router o si contesta al ping en su última IP. Para destapar la cámara
+    hace falta que el router responda (si no se sabe, no se destapa); para taparla basta con cualquiera de las dos."""
     ahora = time.time() if ahora is None else ahora
     f = await asyncio.to_thread(_fila)
     a = f["ajustes"]
     if not a["activa"] or not a["moviles"] or not a["camaras"]:
         return None
     try:
-        conectados = {hogar_router.mac_completa(c["mac"]) for c in await hogar_router.conectados()}
-    except Exception:  # noqa: BLE001 - sin router no se sabe quién está: no se toca nada
-        return None
-    vistos = f["vistos"]
+        lista = await hogar_router.conectados()
+        router_ok = True
+    except Exception:  # noqa: BLE001
+        lista, router_ok = [], False
+    por_mac = {hogar_router.mac_completa(c["mac"]): c for c in lista}
+    vistos, presentes = f["vistos"], set()
     for m in a["moviles"]:
-        if m["mac"] in conectados:
-            vistos[m["mac"]] = ahora
-    await asyncio.to_thread(_guardar, vistos=vistos)
-    alguien = any(m["mac"] in conectados for m in a["moviles"])
+        if m["mac"] in por_mac:
+            presentes.add(m["mac"])
+            m["ip"] = por_mac[m["mac"]].get("ip") or m.get("ip", "")
+        elif await asyncio.to_thread(_responde, m.get("ip", "")):
+            presentes.add(m["mac"])
+    for mac in presentes:
+        vistos[mac] = ahora
+    await asyncio.to_thread(_guardar, vistos=vistos, ajustes=a)
+    alguien = bool(presentes)
+    if not router_ok and not alguien:
+        return None   # sin router no se puede afirmar que no hay nadie
     # Un móvil que nunca se ha visto cuenta desde que se activó la vigilancia (no como «fuera desde siempre»).
     todos_fuera = all(ahora - vistos.get(m["mac"], f["desde"] or ahora) >= a["minutos"] * 60 for m in a["moviles"])
     if f["estado"] == "casa" and not alguien and todos_fuera:
@@ -141,7 +165,7 @@ async def ciclo(ahora: float | None = None) -> str | None:
         await avisos.emitir("vigilancia", "aviso", texto, "hogar")
         return "fuera"
     if f["estado"] == "fuera" and alguien:
-        quien = next(m["nombre"] for m in a["moviles"] if m["mac"] in conectados)
+        quien = next(m["nombre"] for m in a["moviles"] if m["mac"] in presentes)
         fallidas = await _poner_privacidad(a["camaras"], True)
         await asyncio.to_thread(_guardar, estado="casa", desde=ahora)
         texto = f"Ya hay alguien en casa ({quien}): he vuelto a tapar la cámara."

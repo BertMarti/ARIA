@@ -60,6 +60,8 @@
     if (accion && !accionEjecutada) { accionEjecutada = true; ejecutarAccion(hash.split("?")[0]); }
   }
   document.querySelectorAll(".nav-btn[data-vista]").forEach((b) => b.addEventListener("click", () => { location.hash = b.dataset.vista; }));
+  // Con mucho zoom la barra lateral solo enseña iconos: el nombre sale al pasar el ratón.
+  document.querySelectorAll(".nav .nav-btn").forEach((b) => { if (!b.title) b.title = b.textContent.trim(); });
   window.addEventListener("hashchange", mostrar);
   (async () => {
     await cargarSesion();

@@ -6,7 +6,7 @@ RUN apt-get update \
     && apt-get install --no-install-recommends -y ffmpeg \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --uid 1000 --no-create-home --shell /usr/sbin/nologin aria \
-    && mkdir /cache /tmp \
+    && mkdir -p /cache /tmp \
     && chown aria:aria /cache /tmp
 
 WORKDIR /srv

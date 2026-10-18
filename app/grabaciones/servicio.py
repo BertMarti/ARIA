@@ -122,7 +122,7 @@ def _recortar_cache():
     CACHE.mkdir(parents=True, exist_ok=True)
     archivos = [p for p in CACHE.glob("*.mp4") if p.is_file()]
     total = sum(p.stat().st_size for p in archivos)
-    for archivo in sorted(archivos, key=lambda p: p.stat().st_atime):
+    for archivo in sorted(archivos, key=lambda p: p.stat().st_mtime):   # mtime = último uso (se «toca» al servirlo)
         if total <= CACHE_MAX_BYTES:
             break
         tamano = archivo.stat().st_size
@@ -139,6 +139,7 @@ async def clip(request):
     dia = request.query_params.get("dia", "")
     destino = CACHE / f"{_clave(nombre, inicio, fin)}.mp4"
     if destino.exists():   # ya preparado: ni se despierta a la cámara
+        os.utime(destino)  # cuenta como usado: la caché borra primero lo que lleva más tiempo sin verse
         return FileResponse(destino, media_type="video/mp4", filename=f"{nombre}-{inicio}.mp4",
                             headers={"Cache-Control": "no-store", "Accept-Ranges": "bytes"})
     candado = _candados[nombre]

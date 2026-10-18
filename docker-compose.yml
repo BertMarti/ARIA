@@ -165,7 +165,9 @@ services:
 
   # Acceso interno a las grabaciones de la tarjeta SD de Tapo. Nunca se publica en el host.
   grabaciones:
-    build: ./app/grabaciones
+    build:
+      context: ./app
+      dockerfile: grabaciones/Dockerfile
     image: aria-grabaciones:local
     container_name: aria-grabaciones
     restart: unless-stopped

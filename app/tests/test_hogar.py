@@ -508,10 +508,12 @@ def test_proxy_grabacion_reenvia_range_y_respuesta(monkeypatch):
 
     monkeypatch.setattr(hogar_grabaciones, "cliente_stream", stream)
     admin = usuarios.por_identificador("admin")
-    r = cliente(admin).get("/api/hogar/camaras/grabaciones/clip?ip=192.168.1.30&inicio=10&fin=20",
+    r = cliente(admin).get("/api/hogar/camaras/grabaciones/clip?ip=192.168.1.30&dia=2026-07-16&inicio=10&fin=20",
                      headers={"Range": "bytes=2-5"})
     assert r.status_code == 206 and r.content == b"abcd"
     assert r.headers["content-range"] == "bytes 2-5/10" and recibido[-1][2] == "bytes=2-5"
+    assert recibido[-1][1]["dia"] == "2026-07-16"                      # solo se valida ese día en la cámara
+    assert cliente(admin).get("/api/hogar/camaras/grabaciones/clip?ip=192.168.1.30&inicio=10&fin=20").status_code == 400
 
 
 def test_cache_responde_con_lo_ultimo_y_refresca_detras(monkeypatch):

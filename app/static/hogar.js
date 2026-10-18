@@ -82,8 +82,14 @@ const Hogar = (() => {
     if (!d.configurado) return sinConfigurar("Cámaras", ["ARIA_TAPO_USUARIO", "ARIA_TAPO_PASSWORD", "ARIA_TAPO_CAMARAS (opcional: IPs)"]);
     if (d.error) return tarjeta("Cámaras", nota(d.error));
     if (!(d.datos || []).length) return tarjeta("Cámaras", nota("No he encontrado cámaras Tapo en la red."));
+    const verDirecto = (c) => {
+      const b = el("button", { type: "button", class: "fantasma pequeno", disabled: !c.en_linea }, "Ver en directo");
+      b.addEventListener("click", () => CamaraDirecto.abrir(c));
+      return b;
+    };
     return tarjeta("Cámaras", ...d.datos.map((c) => el("div", { class: "hogar-fila" },
       el("div", null, el("strong", null, c.nombre), el("span", { class: "muted" }, " · " + c.modelo + " · " + (c.en_linea ? "en línea" : "sin respuesta"))),
+      verDirecto(c),
       c.privacidad === undefined ? nota("Sin modo privacidad") : interruptor("Privacidad (lente tapada)", c.privacidad, async (si) => {
         const r = await api("/api/hogar/camaras/privacidad", { method: "POST", json: { ip: c.ip, activa: si } });
         if (!r.ok) toast(r.data.error || "No se pudo cambiar la privacidad.", "mal");
@@ -119,12 +125,17 @@ const Hogar = (() => {
   function vigilancia(v, camarasHogar) {
     if (!v || !v.disponible) return null;
     const hace = (ts) => { if (!ts) return "aún no visto"; const m = Math.round((Date.now() / 1000 - ts) / 60); return m < 3 ? "en casa" : "fuera hace " + (m < 120 ? m + " min" : Math.round(m / 60) + " h"); };
-    const moviles = [...v.moviles.map((m) => ({ ...m, elegido: true })), ...v.candidatos.map((c) => ({ ...c, elegido: false }))];
-    const casillas = moviles.map((m) => {
-      const c = el("input", { type: "checkbox", checked: m.elegido, value: m.id });
-      const info = m.elegido ? (m.en_casa ? "en casa" : hace(m.ultima_vez)) : (m.ip || "");
-      return el("label", { class: "hogar-opcion" }, c, el("span", null, m.nombre), el("span", { class: "muted" }, " · " + info));
-    });
+    // Solo los móviles elegidos a la vista; el resto de la red, plegado (los que parecen móviles, primero).
+    const pareceMovil = (n) => /pixel|galaxy|s2\d|xiaomi|redmi|poco|iphone|android|oppo|realme|oneplus|motorola|honor|huawei/i.test(n);
+    const fila = (m, elegido) => {
+      const c = el("input", { type: "checkbox", checked: elegido, value: m.id });
+      const info = elegido ? (m.en_casa ? "en casa" : hace(m.ultima_vez)) : "";
+      return el("label", { class: "hogar-opcion" }, c, el("span", null, m.nombre), info ? el("span", { class: "muted" }, " · " + info) : null);
+    };
+    const elegidos = v.moviles.map((m) => fila(m, true));
+    const otros = [...v.candidatos].sort((a, b) => pareceMovil(b.nombre) - pareceMovil(a.nombre) || a.nombre.localeCompare(b.nombre)).map((m) => fila(m, false));
+    const casillas = [...elegidos, ...otros];
+    const anadir = otros.length ? el("details", { class: "hogar-anadir" }, el("summary", null, "Añadir otro móvil"), el("div", { class: "hogar-opciones" }, ...otros)) : null;
     const cams = (camarasHogar || []).filter((c) => c.privacidad !== undefined).map((c) =>
       el("label", { class: "hogar-opcion" }, el("input", { type: "checkbox", checked: v.camaras.includes(c.ip), value: c.ip }), el("span", null, c.nombre)));
     const minutos = el("select", { ariaLabel: "Minutos fuera antes de vigilar" }, ...[5, 10, 15, 20, 30, 60].map((n) => el("option", { value: n, selected: n === v.minutos }, n + " minutos")));
@@ -142,7 +153,7 @@ const Hogar = (() => {
     const estado = v.activa ? el("p", null, el("strong", null, v.estado === "fuera" ? "No hay nadie en casa: la cámara vigila." : "Hay alguien en casa: la cámara está tapada.")) : null;
     return tarjeta("Vigilancia automática", activa, estado,
       nota("Cuando todos estos móviles lleven el tiempo elegido fuera de la wifi, ARIA destapa las cámaras marcadas; en cuanto vuelve uno, las tapa otra vez. Si el router no responde, no cambia nada."),
-      el("h3", null, "Móviles de la familia"), el("div", { class: "hogar-opciones" }, ...casillas),
+      el("h3", null, "Móviles de la familia"), elegidos.length ? el("div", { class: "hogar-opciones" }, ...elegidos) : nota("Aún no has elegido ninguno."), anadir,
       el("h3", null, "Cámaras"), cams.length ? el("div", { class: "hogar-opciones" }, ...cams) : nota("No hay cámaras con modo privacidad."),
       el("label", { class: "hogar-opcion" }, el("span", null, "Tiempo fuera: "), minutos), el("div", { class: "botones" }, boton));
   }

@@ -143,6 +143,26 @@ services:
       - descubre:/descubre
     mem_limit: 96m
 
+  # Vídeo de las cámaras Tapo (go2rtc): solo en la red interna, sin puertos publicados. ARIA escribe su
+  # configuración en data/camaras/ y hace de intermediario con sesión; el navegador nunca llega aquí.
+  # Si cambias ARIA_TAPO_CAMARAS o la contraseña: docker compose up -d && docker compose restart camaras
+  camaras:
+    image: alexxit/go2rtc:1.9.14
+    container_name: aria-camaras
+    restart: unless-stopped
+    user: "65534:${ARIA_GID:-1000}"   # nobody; grupo de la app para leer la configuración (640)
+    cap_drop: [ALL]
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    working_dir: /tmp
+    volumes:
+      - ./data/camaras:/config:ro
+    depends_on:
+      app:
+        condition: service_healthy   # la configuración la escribe la app al arrancar
+    mem_limit: 128m
+
   caddy:
     image: caddy:2-alpine
     container_name: aria-caddy

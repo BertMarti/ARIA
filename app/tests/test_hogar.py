@@ -268,7 +268,8 @@ MOVILES = [{"mac": "AA:BB:CC:00:00:01", "nombre": "Pixel", "ip": "192.168.1.40"}
 def _vigilancia(monkeypatch, conectados: list, falla_router=False):
     from aria import hogar_vigilancia as hv
     hv.iniciar()
-    estado = {"conectados": conectados, "falla": falla_router}
+    estado = {"conectados": conectados, "falla": falla_router, "ping": set()}
+    monkeypatch.setattr(hv, "_responde", lambda ip: ip in estado["ping"])
     cambios, emitidos = [], []
 
     async def router_conectados():
@@ -339,3 +340,67 @@ def test_vigilancia_valida_y_no_envia_macs_enteras(monkeypatch):
     ana = usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
     assert cliente(ana).get("/api/hogar/vigilancia").status_code == 403
     assert cliente(ana).post("/api/hogar/vigilancia", json={"activa": False}).status_code == 403
+
+
+# --- Vídeo de las cámaras (go2rtc) ----------------------------------------------------------------------------------
+def test_config_go2rtc_con_clave_codificada_y_permisos_640(monkeypatch, tmp_path):
+    import os, stat
+    from aria import hogar_camaras
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(config, "TAPO_USUARIO", "usuario@example.com")
+    monkeypatch.setattr(config, "TAPO_PASSWORD", "con@raro/#%")
+    monkeypatch.setattr(config, "TAPO_CAMARAS", ["192.168.1.30", "192.168.1.31"])
+    assert hogar_camaras.escribir_config() is True
+    texto = hogar_camaras.ruta_config().read_text()
+    assert "c1: tapo://con%40raro%2F%23%25@192.168.1.30" in texto and "c2: tapo://" in texto
+    assert 'rtsp:\n  listen: ""' in texto                                      # nada escucha fuera de la API interna
+    assert stat.S_IMODE(os.stat(hogar_camaras.ruta_config()).st_mode) == 0o640
+    assert hogar_camaras.escribir_config() is False                          # sin cambios: no hay que reiniciar
+    assert hogar_camaras.flujo("192.168.1.31") == "c2" and hogar_camaras.flujo("192.168.1.99") is None
+    monkeypatch.setattr(config, "TAPO_PASSWORD", "")
+    hogar_camaras.escribir_config()
+    assert "tapo://" not in hogar_camaras.ruta_config().read_text()          # sin credenciales, sin flujos
+
+
+def test_foto_y_directo_solo_admin_y_solo_camaras_conocidas(monkeypatch):
+    from aria import hogar_camaras
+    monkeypatch.setattr(config, "TAPO_USUARIO", "usuario@example.com")
+    monkeypatch.setattr(config, "TAPO_PASSWORD", PASS_FALSA)
+    monkeypatch.setattr(config, "TAPO_CAMARAS", ["192.168.1.30"])
+
+    async def foto(ip):
+        return b"\xff\xd8imagen"
+    monkeypatch.setattr(hogar_camaras, "foto", foto)
+    admin = usuarios.por_identificador("admin")
+    r = cliente(admin).get("/api/hogar/camaras/foto?ip=192.168.1.30")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg" and r.headers["cache-control"] == "no-store"
+    assert cliente(admin).get("/api/hogar/camaras/foto?ip=192.168.1.99").status_code == 404
+    ana = usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
+    assert cliente(ana).get("/api/hogar/camaras/foto?ip=192.168.1.30").status_code == 403
+    from starlette.websockets import WebSocketDisconnect
+    for quien, ip in ((ana, "192.168.1.30"), (admin, "192.168.1.99")):
+        c = cliente(quien)
+        with pytest.raises(WebSocketDisconnect):
+            with c.websocket_connect(f"/api/hogar/camaras/directo?ip={ip}", headers={"origin": LAN}) as ws:
+                ws.receive_text()
+
+
+def test_vigilancia_el_ping_cubre_al_movil_que_falta_en_la_lista_de_la_malla(monkeypatch):
+    import time
+    hv, estado, cambios, emitidos = _vigilancia(monkeypatch, MOVILES)
+    t = time.time()
+    asyncio.run(hv.ciclo(t))                                             # aprende las IP de los tres
+    estado["conectados"] = []                                            # el router no lista a nadie…
+    estado["ping"] = {"192.168.1.40"}                                    # …pero el Pixel contesta (otro nodo)
+    assert asyncio.run(hv.ciclo(t + 30 * 60)) is None and cambios == []  # no se destapa
+    estado["ping"] = set()
+    asyncio.run(hv.ciclo(t + 31 * 60))
+    assert asyncio.run(hv.ciclo(t + 42 * 60)) == "fuera"
+    estado["falla"], estado["ping"] = True, {"192.168.1.41"}            # router caído, pero el Xiaomi contesta
+    assert asyncio.run(hv.ciclo(t + 50 * 60)) == "casa"                  # para taparla basta con el ping
+
+
+def test_vigilancia_sin_router_nunca_destapa_aunque_nadie_conteste(monkeypatch):
+    import time
+    hv, estado, cambios, emitidos = _vigilancia(monkeypatch, [], falla_router=True)
+    assert asyncio.run(hv.ciclo(time.time() + 5 * 3600)) is None and cambios == []

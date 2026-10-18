@@ -86,7 +86,7 @@ async def reiniciar():
 
 async def _candidatos() -> list:
     try:
-        return await router_hogar.conectados()
+        return await router_hogar.conocidos()
     except Exception:  # noqa: BLE001 - sin router se muestra lo guardado
         return []
 

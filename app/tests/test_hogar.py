@@ -113,12 +113,12 @@ class RouterFalso:
         from tplinkrouterc6u import Connection
 
         class Disp:
-            def __init__(self, nombre, ip, tipo):
-                self.hostname, self.ipaddress, self.macaddress, self.type, self.active = nombre, ip, "AA-BB-CC-DD-EE-FF", tipo, True
+            def __init__(self, nombre, ip, tipo, mac="AA-BB-CC-DD-EE-FF"):
+                self.hostname, self.ipaddress, self.macaddress, self.type, self.active = nombre, ip, mac, tipo, True
 
         class Estado:
             clients_total, guest_2g_enable, guest_5g_enable = 2, False, None
-            devices = [Disp("Portátil", "192.168.1.20", Connection.HOST_5G), Disp("Tele", "192.168.1.21", Connection.WIRED)]
+            devices = [Disp("Portátil", "192.168.1.20", Connection.HOST_5G), Disp("Tele", "192.168.1.21", Connection.WIRED, "AA-BB-CC-DD-EE-01")]
         if self.falla:
             raise RuntimeError("se cayó a mitad")
         return Estado()
@@ -133,6 +133,11 @@ class RouterFalso:
 
     def reboot(self):
         self.log.append("reboot")
+
+    def get_ipv4_dhcp_leases(self):
+        class Concesion:
+            hostname, macaddress, ipaddress = "Xiaomi-dormido ", "AA-BB-CC-00-00-09", "192.168.1.29"
+        return [Concesion()]
 
 
 def _router(monkeypatch, falso):
@@ -404,3 +409,9 @@ def test_vigilancia_sin_router_nunca_destapa_aunque_nadie_conteste(monkeypatch):
     import time
     hv, estado, cambios, emitidos = _vigilancia(monkeypatch, [], falla_router=True)
     assert asyncio.run(hv.ciclo(time.time() + 5 * 3600)) is None and cambios == []
+
+
+def test_router_conocidos_incluye_concesiones_dhcp(monkeypatch):
+    _router(monkeypatch, RouterFalso())
+    nombres = {c["nombre"] for c in asyncio.run(hogar_router.conocidos())}
+    assert {"Portátil", "Tele", "Xiaomi-dormido"} <= nombres        # el que duerme también se puede elegir

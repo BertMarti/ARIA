@@ -117,3 +117,22 @@ async def reiniciar() -> dict:
     await _usar(lambda c: c.reboot())
     _cache["cuando"] = 0.0
     return {"ok": True}
+
+
+async def conocidos() -> list:
+    """Conectados ahora y, además, los que tienen concesión de IP (DHCP): un móvil con la pantalla apagada puede faltar
+    un rato en la lista de conectados, pero sigue con su concesión. Para elegir móviles en la vigilancia."""
+    vistos = {c["mac"]: c for c in await conectados()}
+
+    def leer(c):
+        return c.get_ipv4_dhcp_leases()
+    try:
+        concesiones = await _usar(leer)
+    except RouterError:
+        concesiones = []
+    for x in concesiones or []:
+        mac = mac_completa(getattr(x, "macaddress", ""))
+        if mac and mac not in vistos:
+            vistos[mac] = {"mac": mac, "nombre": (getattr(x, "hostname", "") or "").strip() or "Dispositivo",
+                           "ip": str(getattr(x, "ipaddress", "") or "")}
+    return list(vistos.values())

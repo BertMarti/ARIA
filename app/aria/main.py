@@ -1232,7 +1232,8 @@ async def api_usuarios_crear(request: Request):
                                     d.get("password") or None)
     except usuarios.UsuarioError as e:
         return _err_usuario(e)
-    return {"usuario": u}
+    # Sin esto no podría entrar desde fuera: Cloudflare Access solo deja pasar a los emails de su grupo.
+    return {"usuario": u, "cloudflare": await api_acceso._cf("anadir", u["email"])}
 
 
 @app.patch("/api/users/{uid}")
@@ -1263,11 +1264,15 @@ async def api_usuarios_password(uid: int, request: Request):
 
 @app.delete("/api/users/{uid}")
 async def api_usuarios_borrar(uid: int):
+    u = await asyncio.to_thread(usuarios.por_id, uid)
     try:
         await asyncio.to_thread(usuarios.borrar, uid)
     except usuarios.UsuarioError as e:
         return _err_usuario(e)
-    return {"ok": True}
+    # Los emails de ARIA_ADMIN_EMAILS nunca se sacan de Cloudflare (aunque fuera una ficha duplicada de un alias).
+    if u["email"] in config.ADMIN_EMAILS:
+        return {"ok": True, "cloudflare": "sin cambios"}
+    return {"ok": True, "cloudflare": await api_acceso._cf("quitar", u["email"])}
 
 
 # --- Centro de control ---

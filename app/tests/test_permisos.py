@@ -2,6 +2,7 @@
 import asyncio
 
 import re
+from contextlib import closing
 
 import pytest
 from fastapi.testclient import TestClient
@@ -140,7 +141,7 @@ def test_toda_ruta_registrada_esta_cubierta():
             if permisos.permitido("usuario", m, ruta):
                 assert (m, camino) in {
                     ("GET", "/"), ("POST", "/logout"), ("GET", "/api/mis-datos/exportar"),
-                    ("POST", "/api/mis-datos/borrar-cuenta"), ("GET", "/api/ubicacion"), ("POST", "/api/ubicacion"), ("GET", "/api/tele/dispositivos"), ("POST", "/api/tele/dispositivos"),
+                    ("POST", "/api/mis-datos/borrar-cuenta"), ("GET", "/api/cerebro"), ("GET", "/api/cerebro/actividad"), ("GET", "/api/ubicacion"), ("POST", "/api/ubicacion"), ("GET", "/api/tele/dispositivos"), ("POST", "/api/tele/dispositivos"),
                     ("POST", "/api/tele/enviar"), ("POST", "/api/tele/control"), ("GET", "/api/tele/estado"),
                     ("GET", "/api/medios/progreso"), ("POST", "/api/medios/progreso"),
                     ("GET", "/api/listas"), ("POST", "/api/listas"), ("PATCH", "/api/listas/{lista_id}"),
@@ -373,6 +374,43 @@ def test_ultimo_admin_y_emails_protegidos(admin, monkeypatch):
     assert c.delete(f"/api/users/{otro['id']}").status_code == 400
     # ahora el primero deja de ser el último admin
     assert c.patch(f"/api/users/{admin['id']}", json={"rol": "usuario"}).status_code == 200
+
+
+def test_alias_del_admin_no_crea_ficha_y_el_duplicado_se_puede_borrar(admin, monkeypatch):
+    from aria import api_acceso
+    llamadas = []
+
+    async def cf(op, email):
+        llamadas.append((op, email))
+        return "hecho"
+    monkeypatch.setattr(api_acceso, "_cf", cf)
+    monkeypatch.setattr(config, "ADMIN_EMAILS", ["jefe@example.com", "jefe2@example.com"])
+    c = cliente_de(admin)
+    assert c.post("/api/users", json={"email": "jefe2@example.com", "nombre": "Alias"}).status_code == 400
+    # Ficha duplicada como la que quedó en producción (creada antes de esta comprobación)
+    with closing(db._con()) as con, con:
+        con.execute("INSERT INTO usuarios (email, nombre, rol, activo, version, creado) VALUES (?,?,?,1,1,0)",
+                    ("jefe2@example.com", "Alias", "usuario"))
+    dup = usuarios.por_email("jefe2@example.com")
+    assert not dup["protegido"]
+    r = c.delete(f"/api/users/{dup['id']}")
+    assert r.status_code == 200 and usuarios.por_email("jefe2@example.com") is None
+    assert llamadas == []   # nunca se saca a un email del administrador de Cloudflare
+
+
+def test_alta_y_baja_en_usuarios_tocan_cloudflare(admin, monkeypatch):
+    from aria import api_acceso
+    llamadas = []
+
+    async def cf(op, email):
+        llamadas.append((op, email))
+        return "hecho"
+    monkeypatch.setattr(api_acceso, "_cf", cf)
+    c = cliente_de(admin)
+    r = c.post("/api/users", json={"email": "hermano@example.com", "nombre": "Hermano", "rol": "admin"})
+    assert r.status_code == 200 and r.json()["cloudflare"] == "hecho"
+    assert c.delete(f"/api/users/{r.json()['usuario']['id']}").json()["cloudflare"] == "hecho"
+    assert llamadas == [("anadir", "hermano@example.com"), ("quitar", "hermano@example.com")]
 
 
 def test_desactivar_por_api_mata_la_sesion(admin, ana):

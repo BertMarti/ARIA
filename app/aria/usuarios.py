@@ -22,7 +22,8 @@ def _fila(r, interno: bool = False) -> dict | None:
     d = {"id": r["id"], "email": r["email"], "usuario": r["usuario"], "nombre": r["nombre"], "rol": r["rol"],
          "activo": bool(r["activo"]), "version": r["version"], "creado": r["creado"],
          "ultimo_acceso": r["ultimo_acceso"], "tiene_password": bool(r["pass_hash"]) or _es_admin_env(r),
-         "protegido": r["email"] in config.ADMIN_EMAILS}
+         # Solo el email principal: una ficha suelta con un alias es un duplicado y se puede borrar.
+         "protegido": bool(config.ADMIN_EMAILS) and r["email"] == config.ADMIN_EMAILS[0]}
     if interno:
         d["pass_hash"] = r["pass_hash"]
     return d
@@ -153,6 +154,9 @@ def _comprobar_password(p) -> str:
 # --- Altas, cambios y bajas ---
 def crear(email, nombre, rol="usuario", password=None) -> dict:
     e, r = email_valido(email), _rol(rol)
+    if canonico(e) != e:
+        raise UsuarioError("Ese email es un alias del administrador principal (ARIA_ADMIN_EMAILS): al entrar con él "
+                           "ya se usa su cuenta, no hace falta crearlo.")
     h = auth.hashear(_comprobar_password(password)) if password else None
     # La comprobación vive aquí también para cubrir invitaciones y otros flujos internos.
     from . import premium

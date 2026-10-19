@@ -2,7 +2,7 @@
 // Navegación entre vistas (Chat, Centro de control, Ajustes) con #hash.
 (() => {
   const VISTAS = ["inicio", "chat", "finanzas", "informacion", "red", "seguridad", "cerebro", "control", "hogar", "ajustes", "agenda", "notas", "compartir", "mapa", "hud"];
-  const SOLO_ADMIN = ["control", "red", "seguridad", "cerebro"];
+  const SOLO_ADMIN = ["control", "red", "seguridad"];
   const ACCIONES = { hablar: "chat", "manos-libres": "inicio", nota: "notas", hud: "hud", compartir: "compartir" };
   let accionEjecutada = false;
   function prepararHablar() {

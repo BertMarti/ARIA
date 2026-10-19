@@ -122,6 +122,8 @@ _USUARIO = [
     ("DELETE", r"/api/informacion/seguimiento/\d+"),
     # Mapas: intermediario de solo lectura para los dos roles.
     ("GET", r"/api/mapa/(buscar|ruta|cerca)"),
+    # Cerebro: versión recortada (sus agentes, herramientas, actividad y datos; nada de infraestructura).
+    ("GET", r"/api/cerebro"), ("GET", r"/api/cerebro/actividad"),
     # Sistema en directo y reinicio: nunca se abren al rol usuario.
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]

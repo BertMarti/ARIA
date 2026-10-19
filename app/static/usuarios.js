@@ -12,7 +12,9 @@ const Usuarios = (() => {
   async function eliminar(u) {
     if (!(await confirmar("Eliminar usuario", "Se eliminará a " + u.nombre + " (" + u.email + ") y todas sus conversaciones. No se puede deshacer.", "Eliminar"))) return;
     const r = await api("/api/users/" + u.id, { method: "DELETE" });
-    toast(r.ok ? "Usuario eliminado." : (r.data.error || "No se pudo eliminar."), r.ok ? "" : "mal");
+    const cf = r.ok ? r.data.cloudflare : null;
+    toast(!r.ok ? (r.data.error || "No se pudo eliminar.") : (cf === "hecho" || cf === "sin cambios") ? "Usuario eliminado." :
+      cf === "manual" ? "Usuario eliminado. Quita también su email de Cloudflare Access." : "Usuario eliminado, pero Cloudflare no lo quitó: " + cf, r.ok && (cf === "hecho" || cf === "sin cambios") ? "" : "mal");
     lista();
   }
 
@@ -55,7 +57,14 @@ const Usuarios = (() => {
       const msg = $("inv-msg"); msg.className = "muted"; msg.textContent = "";
       const r = await api("/api/users", { method: "POST", json: {
         email: $("inv-email").value.trim(), nombre: $("inv-nombre").value.trim(), rol: $("inv-rol").value } });
-      if (r.ok) { $("form-invitar").reset(); msg.className = "ok-txt"; msg.textContent = "Usuario invitado. Recuerda autorizar también su email en Cloudflare Access."; lista(); }
+      if (r.ok) {
+        const cf = r.data.cloudflare;
+        $("form-invitar").reset(); msg.className = "ok-txt";
+        msg.textContent = cf === "hecho" ? "Usuario invitado y autorizado en Cloudflare: ya puede entrar con su email."
+          : cf === "manual" ? "Usuario invitado. Autoriza también su email en Cloudflare Access (ARIA no tiene token para hacerlo sola)."
+          : "Usuario invitado, pero Cloudflare no aceptó su email: " + cf + " Añádelo a mano en Cloudflare Access.";
+        lista();
+      }
       else { msg.className = "error"; msg.textContent = r.data.error || "No se pudo invitar."; }
     });
     $("form-passuser").addEventListener("submit", async (e) => {

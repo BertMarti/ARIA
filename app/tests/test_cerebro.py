@@ -40,8 +40,24 @@ def test_nodos_tienen_descripcion_y_mejoras_sin_ips(admin):
     assert not any(__import__("re").search(r"\b\d{1,3}(?:\.\d{1,3}){3}\b", texto) for texto in textos)
 
 
-def test_usuario_no_ve_el_mapa(ana):
-    assert cliente_de(ana).get("/api/cerebro").status_code == 403
+def test_usuario_ve_un_mapa_recortado(ana, monkeypatch):
+    vistos = []
+    monkeypatch.setattr(api_cerebro.registro, "listar", lambda **kw: vistos.append(kw.get("user_id")) or [])
+    r = cliente_de(ana).get("/api/cerebro")
+    assert r.status_code == 200
+    nodos = r.json()["nodos"]
+    ids = {n["id"] for n in nodos}
+    assert "aria" in ids and "agente-seguridad" not in ids
+    assert not any(i.startswith("servicio-") or i in ("tunel", "copias", "datos-db") for i in ids)
+    assert "usuarios activos" not in next(n for n in nodos if n["id"] == "aria")["datos"]
+    assert vistos == [ana["id"]]   # solo su actividad
+
+
+def test_actividad_del_usuario_solo_la_suya(ana, monkeypatch):
+    vistos = []
+    monkeypatch.setattr(api_cerebro.registro, "listar", lambda **kw: vistos.append(kw.get("user_id")) or [])
+    assert cliente_de(ana).get("/api/cerebro/actividad?desde=0").status_code == 200
+    assert vistos == [ana["id"]]
 
 
 def test_fuente_rota_no_rompe_la_respuesta(admin, monkeypatch):

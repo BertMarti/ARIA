@@ -2,7 +2,8 @@
 const Ubicacion = (() => {
   const CLAVE = "aria_ubicacion_activa";
   let temporizador;
-  const leer = () => { try { return localStorage.getItem(CLAVE) === "1"; } catch (_) { return false; } };
+  // Activada por defecto: el navegador pide permiso la primera vez; si se rechaza, se apaga y se usa la de casa.
+  const leer = () => { try { return localStorage.getItem(CLAVE) !== "0"; } catch (_) { return true; } };
   const guardar = (v) => { try { localStorage.setItem(CLAVE, v ? "1" : "0"); } catch (_) {} };
   function pintar(d) { const x = $("ubicacion-estado"); if (x) x.textContent = d ? (d.origen === "dispositivo" ? "📍 " : "🏠 ") + (d.nombre || "Ubicación") : "🏠 Casa"; }
   async function pedir() {

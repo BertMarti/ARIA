@@ -112,13 +112,15 @@ async def _arranque():
     # Diario: planificador interno (03:30 locales + recuperación de días perdidos). Sin contenedor nuevo.
     app.state.diario = asyncio.create_task(diario.bucle())
     app.state.premium = asyncio.create_task(premium.bucle())
-    from . import hogar_vigilancia
+    from . import hogar_eventos, hogar_vigilancia
     hogar_vigilancia.iniciar()
+    hogar_eventos.iniciar()
     try:
         await asyncio.to_thread(hogar_camaras.escribir_config)   # go2rtc (contenedor «camaras») la lee al arrancar
     except OSError:
         log.exception("No se pudo escribir la configuración de las cámaras")
     app.state.vigilancia = asyncio.create_task(hogar_vigilancia.bucle())
+    app.state.eventos = asyncio.create_task(hogar_eventos.bucle())   # detecciones con la casa vacía
     app.state.hogar = asyncio.create_task(api_hogar.precalentar())
     # Avisos: tablas, chequeos, canales y planificador (recordatorios, resumen programado). Telegram con long polling.
     avisos.iniciar()
@@ -146,7 +148,7 @@ async def _arranque():
 
 @app.on_event("shutdown")
 async def _parada():
-    for nombre in ("diario", "premium", "vigilancia", "hogar", "avisos", "telegram", "control", "arranque", "embeddings"):
+    for nombre in ("diario", "premium", "vigilancia", "eventos", "hogar", "avisos", "telegram", "control", "arranque", "embeddings"):
         tarea = getattr(app.state, nombre, None)
         if tarea:
             tarea.cancel()

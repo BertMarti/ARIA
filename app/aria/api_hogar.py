@@ -6,9 +6,9 @@ import time
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
-from . import (config, hogar_cache as cache, hogar_camaras as camaras_video, hogar_govee as govee,
-               hogar_grabaciones as grabaciones, hogar_router as router_hogar, hogar_tapo as tapo,
-               hogar_salud as salud, hogar_vigilancia as vigilancia)
+from . import (config, hogar_cache as cache, hogar_camaras as camaras_video, hogar_eventos as eventos,
+               hogar_govee as govee, hogar_grabaciones as grabaciones, hogar_router as router_hogar,
+               hogar_salud as salud, hogar_tapo as tapo, hogar_vigilancia as vigilancia)
 
 router = APIRouter()
 _acciones: dict = {}   # (usuario, tipo) -> instantes: el límite es por persona (uno no bloquea al otro)
@@ -258,6 +258,24 @@ async def clip_grabacion(request: Request, ip: str = "", dia: str = "", inicio: 
     except Exception:
         await cliente.__aexit__(None, None, None)
         return _error("No se pudo preparar el vídeo.", 502)
+
+
+# Eventos (detecciones con la casa vacía): solo administradores, como el resto del hogar (no están en la lista blanca).
+@router.get("/api/hogar/eventos")
+async def listar_eventos(limite: int = 50):
+    return {"eventos": await asyncio.to_thread(eventos.listar, limite)}
+
+
+@router.get("/api/hogar/eventos/{evento_id}/foto")
+async def foto_evento(evento_id: int):
+    datos = await asyncio.to_thread(eventos.foto, evento_id)
+    if not datos: return _error("Ese evento no tiene foto.", 404)
+    return Response(datos, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+@router.post("/api/hogar/eventos/vistos")
+async def eventos_vistos():
+    return {"vistos": await asyncio.to_thread(eventos.marcar_vistos)}
 
 
 async def precalentar() -> None:

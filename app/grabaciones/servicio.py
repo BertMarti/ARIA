@@ -3,8 +3,8 @@ import asyncio
 import datetime as dt
 import hashlib
 import os
-import shutil
 import tempfile
+import time
 from pathlib import Path
 
 from starlette.applications import Starlette
@@ -118,6 +118,16 @@ def _clave(nombre, inicio, fin):
     return hashlib.sha256(f"{nombre}:{inicio}:{fin}".encode()).hexdigest()
 
 
+def _fragmento_de(fragmentos: list, inicio: int, fin: int, margen: int = 10):
+    """El fragmento pedido: el exacto o, si no, el que empieza a menos de `margen` s (los eventos de detección y los
+    fragmentos de la tarjeta no siempre coinciden al segundo)."""
+    exacto = next((x for x in fragmentos if x["inicio"] == inicio and x["fin"] == fin), None)
+    if exacto:
+        return exacto
+    cerca = [x for x in fragmentos if abs(x["inicio"] - inicio) <= margen]
+    return min(cerca, key=lambda x: abs(x["inicio"] - inicio)) if cerca else None
+
+
 def _recortar_cache():
     CACHE.mkdir(parents=True, exist_ok=True)
     archivos = [p for p in CACHE.glob("*.mp4") if p.is_file()]
@@ -150,12 +160,17 @@ async def clip(request):
             # Solo se piden fragmentos que existen, y solo se mira el día indicado (mirar todos los días eran
             # decenas de consultas a la cámara por cada clip).
             _, cliente = await run_in_threadpool(lambda: (None, _cliente(ip)))
-            valido = any(x["inicio"] == inicio and x["fin"] == fin for x in await _fragmentos(nombre, dia, cliente))
-            if not valido:
+            fragmento = _fragmento_de(await _fragmentos(nombre, dia, cliente), inicio, fin)
+            if fragmento is None:
                 return JSONResponse({"error": "El fragmento no existe."}, 404)
+            inicio, fin = fragmento["inicio"], fragmento["fin"]   # los eventos llegan con 1-2 s de diferencia
+            destino = CACHE / f"{_clave(nombre, inicio, fin)}.mp4"
             CACHE.mkdir(parents=True, exist_ok=True)
             if not destino.exists():
-                with tempfile.TemporaryDirectory() as temporal:
+                # En disco (no en /tmp, que es memoria y cuenta contra el límite del contenedor) y en la misma
+                # carpeta que la caché, para dejar el MP4 en su sitio de una vez (nadie sirve uno a medias).
+                (CACHE / ".tmp").mkdir(exist_ok=True)
+                with tempfile.TemporaryDirectory(dir=CACHE / ".tmp") as temporal:
                     await asyncio.wait_for(run_in_threadpool(_bajar_ts, ip, inicio, fin, temporal), 130)
                     entrada = next(Path(temporal).glob("*.ts"), None)
                     if entrada is None:
@@ -173,7 +188,7 @@ async def clip(request):
                         raise
                     if proceso.returncode:
                         raise RuntimeError("No se ha podido preparar el vídeo.")
-                    shutil.copyfile(temporal_mp4, destino)
+                    os.replace(temporal_mp4, destino)
                 _recortar_cache()
             return FileResponse(destino, media_type="video/mp4", filename=f"{nombre}-{inicio}.mp4",
                                 headers={"Cache-Control": "no-store", "Accept-Ranges": "bytes"})
@@ -201,8 +216,50 @@ def _bajar_ts(ip, inicio, fin, carpeta):
     asyncio.run(asyncio.wait_for(correr(), 120))
 
 
+def _eventos(ip, desde, hasta):
+    """Detecciones (movimiento, personas…) entre dos instantes reales. La cámara trabaja con su propia hora: se le
+    pide en la suya y pytapo devuelve los instantes ya corregidos."""
+    cliente = _cliente(ip)
+    correccion = cliente.getTimeCorrection()
+    if correccion is False:
+        raise RuntimeError("Sin hora de la cámara.")
+    resultado = []
+    for evento in cliente.getEvents(desde - correccion, hasta - correccion) or []:
+        try:
+            inicio, fin, tipo = int(evento["start_time"]), int(evento["end_time"]), int(evento.get("alarm_type", 0))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if 0 <= inicio <= fin:
+            resultado.append({"inicio": inicio, "fin": fin, "tipo": tipo})
+    return sorted(resultado, key=lambda x: (x["inicio"], x["fin"]))
+
+
+async def eventos(request):
+    """Detecciones de una cámara: ?cam=cN&desde=<epoch>&hasta=<epoch>. Como mucho una hora (la cámara falla con
+    rangos largos) y nunca en el futuro."""
+    try:
+        nombre, ip = camara(request.query_params.get("cam", ""))
+        desde = _numero(request.query_params.get("desde"), "Inicio")
+        hasta = _numero(request.query_params.get("hasta"), "Fin")
+        if hasta <= desde or hasta - desde > 3600 or hasta > int(time.time()) + 120:
+            return JSONResponse({"error": "El intervalo debe ser de hasta una hora y no estar en el futuro."}, 400)
+        candado = _candados[nombre]
+        if candado.locked():
+            return JSONResponse({"error": "La cámara ya está preparando otra grabación."}, 409)
+        async with candado:
+            resultado = await asyncio.wait_for(run_in_threadpool(_eventos, ip, desde, hasta), 30)
+        return JSONResponse({"eventos": resultado})
+    except asyncio.TimeoutError:
+        return JSONResponse({"error": "La cámara ha tardado demasiado en responder."}, 504)
+    except HTTPException as e:
+        return JSONResponse({"error": e.detail}, e.status_code)
+    except Exception:
+        return JSONResponse({"error": "No se han podido consultar las detecciones."}, 502)
+
+
 app = Starlette(routes=[
     Route("/dias", dias),
     Route("/fragmentos", fragmentos),
     Route("/clip", clip),
+    Route("/eventos", eventos),
 ])

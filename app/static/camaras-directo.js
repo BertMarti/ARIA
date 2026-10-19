@@ -113,7 +113,8 @@ const CamaraDirecto = (() => {
       el("div", { class: "botones camara-botones" }, admin ? botonHablar : null, sonido, completa, instantanea, bateria), admin ? avisoHablar : null);
   }
 
-  function abrir(camara, alCambiar) {
+  // `fragmento` ({dia, inicio, fin}): se abre directamente en Grabaciones reproduciendo ese clip (sin arrancar el directo).
+  function abrir(camara, alCambiar, fragmento) {
     const video = el("video", { class: "camara-video", autoplay: true, muted: true, playsInline: true });
     const estado = el("p", { class: "muted camara-estado", role: "status" }, "Conectando con la cámara… (las de batería tardan unos segundos en despertar)");
     const foto = el("img", { class: "camara-video", alt: "Última imagen de " + camara.nombre, hidden: true });
@@ -126,12 +127,13 @@ const CamaraDirecto = (() => {
       pestañaDirecto.ariaPressed = String(!mostrarGrabaciones); pestañaGrabaciones.ariaPressed = String(mostrarGrabaciones);
       if (mostrarGrabaciones) { if (soportados()) pararDirecto(); if (!grabaciones.dataset.cargadas) cargarGrabaciones(); }
       else if (soportados() && pausado) iniciarDirecto();
+      else if (!soportados() && !foto.src) refrescarFoto?.();
     };
     pestañaDirecto.addEventListener("click", () => seleccionar(false));
     pestañaGrabaciones.addEventListener("click", () => seleccionar(true));
     const d = dialogo(camara.nombre, Sesion.esAdmin ? el("div", { class: "camara-pestanas" }, pestañaDirecto, pestañaGrabaciones) : null,
       el("div", { class: "camara-visor" }, directo, grabaciones));
-    let ws = null, url = null, cerrado = false;
+    let ws = null, url = null, cerrado = false, refrescarFoto = null;
     const fin = () => { video.dispatchEvent(new Event("aria:cerrar-camara")); cerrado = true; try { ws?.close(); } catch (_) { /* ya cerrado */ } if (url) URL.revokeObjectURL(url); d.remove(); };
     d.addEventListener("close", fin);
 
@@ -179,7 +181,8 @@ const CamaraDirecto = (() => {
       const refrescar = () => { if (cerrado) return; foto.src = "/api/hogar/camaras/foto?ip=" + encodeURIComponent(camara.ip) + "&t=" + Date.now(); };
       foto.addEventListener("load", () => { estado.textContent = "Imagen cada 5 segundos (este navegador no reproduce el directo)."; setTimeout(refrescar, 5000); });
       foto.addEventListener("error", () => { estado.textContent = "La cámara no ha enviado imagen."; });
-      refrescar();
+      refrescarFoto = refrescar;
+      if (fragmento && Sesion.esAdmin) { seleccionar(true); reproducir(fragmento); } else refrescar();
       return;
     }
     // El directo se para al ver las grabaciones: la cámara (sobre todo las de batería) no atiende las dos cosas a la vez.
@@ -236,7 +239,9 @@ const CamaraDirecto = (() => {
         ws.addEventListener("close", () => { if (cerrado || pausado) return; estado.textContent = estado.textContent !== "En directo" ? "No se ha podido abrir el directo de esta cámara." : "Directo terminado."; });
       }, { once: true });
     }
-    iniciarDirecto();
+    if (fragmento && Sesion.esAdmin) { pausado = true; seleccionar(true); reproducir(fragmento); } else iniciarDirecto();
   }
-  return { abrir };
+  // Desde la lista de eventos: el visor de la cámara abierto en Grabaciones con ese fragmento.
+  function abrirGrabacion(camara, dia, inicio, fin, alCambiar) { return abrir(camara, alCambiar, { dia, inicio, fin }); }
+  return { abrir, abrirGrabacion };
 })();

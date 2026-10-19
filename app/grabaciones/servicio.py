@@ -5,6 +5,7 @@ import hashlib
 import os
 import shutil
 import tempfile
+import time
 from pathlib import Path
 
 from starlette.applications import Starlette
@@ -201,8 +202,50 @@ def _bajar_ts(ip, inicio, fin, carpeta):
     asyncio.run(asyncio.wait_for(correr(), 120))
 
 
+def _eventos(ip, desde, hasta):
+    """Detecciones (movimiento, personas…) entre dos instantes reales. La cámara trabaja con su propia hora: se le
+    pide en la suya y pytapo devuelve los instantes ya corregidos."""
+    cliente = _cliente(ip)
+    correccion = cliente.getTimeCorrection()
+    if correccion is False:
+        raise RuntimeError("Sin hora de la cámara.")
+    resultado = []
+    for evento in cliente.getEvents(desde - correccion, hasta - correccion) or []:
+        try:
+            inicio, fin, tipo = int(evento["start_time"]), int(evento["end_time"]), int(evento.get("alarm_type", 0))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if 0 <= inicio <= fin:
+            resultado.append({"inicio": inicio, "fin": fin, "tipo": tipo})
+    return sorted(resultado, key=lambda x: (x["inicio"], x["fin"]))
+
+
+async def eventos(request):
+    """Detecciones de una cámara: ?cam=cN&desde=<epoch>&hasta=<epoch>. Como mucho una hora (la cámara falla con
+    rangos largos) y nunca en el futuro."""
+    try:
+        nombre, ip = camara(request.query_params.get("cam", ""))
+        desde = _numero(request.query_params.get("desde"), "Inicio")
+        hasta = _numero(request.query_params.get("hasta"), "Fin")
+        if hasta <= desde or hasta - desde > 3600 or hasta > int(time.time()) + 120:
+            return JSONResponse({"error": "El intervalo debe ser de hasta una hora y no estar en el futuro."}, 400)
+        candado = _candados[nombre]
+        if candado.locked():
+            return JSONResponse({"error": "La cámara ya está preparando otra grabación."}, 409)
+        async with candado:
+            resultado = await asyncio.wait_for(run_in_threadpool(_eventos, ip, desde, hasta), 30)
+        return JSONResponse({"eventos": resultado})
+    except asyncio.TimeoutError:
+        return JSONResponse({"error": "La cámara ha tardado demasiado en responder."}, 504)
+    except HTTPException as e:
+        return JSONResponse({"error": e.detail}, e.status_code)
+    except Exception:
+        return JSONResponse({"error": "No se han podido consultar las detecciones."}, 502)
+
+
 app = Starlette(routes=[
     Route("/dias", dias),
     Route("/fragmentos", fragmentos),
     Route("/clip", clip),
+    Route("/eventos", eventos),
 ])

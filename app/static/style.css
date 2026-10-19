@@ -1528,6 +1528,16 @@ body.app { height: 100vh; height: 100dvh; }
 .camara-reproductor { margin-bottom: 1rem; }
 .camara-reproductor .fantasma { display: inline-block; margin-top: .5rem; }
 .hogar-opciones { display: grid; gap: .45rem; }
+/* Eventos: detecciones con la casa vacía (miniatura, cámara, hora y el vídeo) */
+.hogar-eventos { display: grid; gap: .5rem; }
+.hogar-evento { display: flex; align-items: center; gap: .7rem; padding: .45rem 0; border-bottom: 1px solid var(--borde); min-width: 0; }
+.hogar-evento:last-child { border-bottom: 0; }
+.hogar-evento.nuevo .hogar-evento-info strong { color: var(--warn); }
+.hogar-evento-foto { flex: none; width: 6.5rem; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; background: #000; display: grid; place-items: center; font-size: .75rem; }
+.hogar-evento-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hogar-evento-info { flex: 1; min-width: 0; display: grid; gap: .15rem; }
+.hogar-evento-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 600px) { .hogar-evento-foto { width: 5rem; } }
 .hogar-anadir summary { cursor: pointer; color: var(--acento); font-size: .9rem; }
 .hogar-anadir .hogar-opciones { margin-top: .5rem; max-height: 14rem; overflow-y: auto; }
 .hogar-opcion { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }

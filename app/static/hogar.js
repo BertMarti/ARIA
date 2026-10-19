@@ -116,6 +116,8 @@ const Hogar = (() => {
     if (v?.disponible) chip(!v.activa ? "Vigilancia desactivada" : v.estado === "fuera" ? "No hay nadie: la cámara vigila" : "Hay alguien en casa", "casa", v.activa && v.estado === "fuera" ? "aviso" : "");
     const r = estado.router?.datos;
     if (r && r.conectados !== undefined) chip(r.conectados + " dispositivos en la wifi", "casa");
+    const nuevos = (estado.eventos || []).filter((e) => !e.visto).length;
+    if (nuevos) chip(nuevos + (nuevos > 1 ? " detecciones nuevas" : " detección nueva"), "eventos", "aviso");
     $("hogar-resumen")?.replaceChildren(...chips);
   }
 
@@ -160,6 +162,39 @@ const Hogar = (() => {
       return b;
     }));
     return mosaico;
+  }
+
+  // --- Eventos: detecciones de las cámaras con la casa vacía --------------------------------------------------------
+  const cuando = (ts) => {
+    const f = new Date(ts * 1000), hoy = new Date(), hora = f.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    const dia = (x) => x.toDateString();
+    if (dia(f) === dia(hoy)) return "hoy " + hora;
+    const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1);
+    if (dia(f) === dia(ayer)) return "ayer " + hora;
+    return f.toLocaleDateString("es-ES", { day: "numeric", month: "short" }) + " " + hora;
+  };
+  function eventos(lista) {
+    return el("div", { class: "hogar-eventos" }, ...lista.slice(0, 10).map((e) => {
+      const miniatura = el("span", { class: "hogar-evento-foto" }, e.tiene_foto ? el("img", { alt: "", loading: "lazy", src: "/api/hogar/eventos/" + e.id + "/foto" }) : el("span", { class: "muted" }, "Sin foto"));
+      const ver = el("button", { type: "button", class: "fantasma pequeno" }, "Ver vídeo");
+      ver.addEventListener("click", () => {
+        const camara = (estado.camaras?.datos || []).find((c) => c.ip === e.ip) || { ip: e.ip, nombre: e.nombre };
+        CamaraDirecto.abrirGrabacion(camara, e.dia, e.inicio, e.fin, () => cargarCamaras());
+      });
+      return el("div", { class: "hogar-evento" + (e.visto ? "" : " nuevo") }, miniatura,
+        el("div", { class: "hogar-evento-info" }, el("strong", null, "Movimiento · " + e.nombre), el("span", { class: "muted" }, cuando(e.inicio))), ver);
+    }));
+  }
+  async function cargarEventos() {
+    const r = await cargar("/api/hogar/eventos?limite=10");
+    if (!r) return;
+    const s = $("hogar-eventos");
+    estado.eventos = r.ok ? r.data.eventos || [] : [];
+    if (!estado.eventos.length) { s?.remove(); pintarResumen(); return; }   // la sección solo aparece si hay algo
+    if (s) s.hidden = false;
+    rellenar("eventos", eventos(estado.eventos), nota("Detecciones de las cámaras mientras no había nadie en casa (últimos 30 días)."));
+    pintarResumen();
+    if (estado.eventos.some((e) => !e.visto)) api("/api/hogar/eventos/vistos", { method: "POST" });
   }
 
   // --- Casa: vigilancia automática y wifi ---------------------------------------------------------------------------
@@ -261,12 +296,13 @@ const Hogar = (() => {
     const cuerpo = $("hogar-cuerpo");
     const partes = [el("div", { class: "hogar-resumen", id: "hogar-resumen", role: "status" })];
     if (Sesion.verCamaras) partes.push(seccion("camaras", "Cámaras"));
+    if (Sesion.esAdmin) { const ev = seccion("eventos", "Eventos"); ev.hidden = true; partes.push(ev); }
     // Luces y Casa: solo administradores. Un usuario con permiso solo ve las cámaras.
     if (Sesion.esAdmin) partes.push(el("div", { class: "hogar-columnas" }, seccion("luces", "Luces"), seccion("casa", "Casa")));
     else if (!Sesion.verCamaras) partes.push(nota("Aquí no tienes nada que ver todavía: pídele al administrador acceso a las cámaras."));
     cuerpo.replaceChildren(...partes);
     if (Sesion.verCamaras) cargarCamaras();
-    if (Sesion.esAdmin) { cargarCasa(); cargarLuces(); }
+    if (Sesion.esAdmin) { cargarCasa(); cargarLuces(); cargarEventos(); }
   }
   return { iniciar() {}, activar(si) { const antes = activo; activo = si; if (si && !antes) pintar(); } };
 })();

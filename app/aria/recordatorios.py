@@ -19,6 +19,8 @@ from . import avisos, db, tiempo
 
 MAX_TEXTO = 200
 MAX_ACTIVOS = 100
+MAX_REINTENTOS = 3
+INTERVALO_INSISTENCIA = 15 * 60
 REPETICIONES = ("diario", "semanal", "laborables")
 NOMBRE_REPETIR = {"diario": "todos los días", "semanal": "cada semana", "laborables": "de lunes a viernes"}
 POSPONER_MIN = (10, 60)
@@ -40,6 +42,11 @@ def iniciar() -> None:
             CREATE INDEX IF NOT EXISTS idx_record_pend ON recordatorios(estado, cuando);
             CREATE INDEX IF NOT EXISTS idx_record_user ON recordatorios(user_id, cuando);
         """)
+        columnas = {r[1] for r in con.execute("PRAGMA table_info(recordatorios)")}
+        if "insistir" not in columnas:
+            con.execute("ALTER TABLE recordatorios ADD COLUMN insistir INTEGER NOT NULL DEFAULT 0")
+        if "reintentos" not in columnas:
+            con.execute("ALTER TABLE recordatorios ADD COLUMN reintentos INTEGER NOT NULL DEFAULT 0")
 
 
 # --- Interpretar fechas en español ------------------------------------------------------------------
@@ -265,7 +272,8 @@ def describir(cuando: float, repetir: str | None = None, ref: datetime | None = 
 # --- CRUD ----------------------------------------------------------------------------------------------
 def _fila(r, ref: datetime | None = None) -> dict:
     return {"id": r["id"], "texto": r["texto"], "cuando": r["cuando"], "repetir": r["repetir"],
-            "estado": r["estado"], "descripcion": describir(r["cuando"], r["repetir"], ref)}
+            "estado": r["estado"], "insistir": bool(r["insistir"]), "reintentos": r["reintentos"],
+            "descripcion": describir(r["cuando"], r["repetir"], ref)}
 
 
 def limpiar_texto(texto) -> str:
@@ -276,11 +284,13 @@ def limpiar_texto(texto) -> str:
     return t[:MAX_TEXTO]
 
 
-def crear(uid: int, texto, cuando, repetir=None, ref: datetime | None = None) -> dict:
+def crear(uid: int, texto, cuando, repetir=None, insistir=False, ref: datetime | None = None) -> dict:
     """`cuando`: ISO local («2026-10-09T09:00») o una frase («mañana a las 9»). `repetir`: diario|semanal|laborables."""
     ref = (ref.astimezone(tiempo.zona()) if ref else tiempo.ahora())
     t = limpiar_texto(texto)
     rep_txt = _norm(repetir or "")
+    if not isinstance(insistir, bool):
+        raise RecordatorioError("La insistencia debe ser booleana.")
     rep = {"diario": "diario", "diaria": "diario", "daily": "diario", "semanal": "semanal", "weekly": "semanal",
            "laborables": "laborables", "": None, "no": None, "ninguna": None, "nunca": None}.get(rep_txt, "?")
     if rep == "?":
@@ -296,8 +306,8 @@ def crear(uid: int, texto, cuando, repetir=None, ref: datetime | None = None) ->
     with closing(db._con()) as con, con:
         if con.execute("SELECT COUNT(*) FROM recordatorios WHERE user_id=? AND estado='pendiente'", (uid,)).fetchone()[0] >= MAX_ACTIVOS:
             raise RecordatorioError(f"Ya tienes {MAX_ACTIVOS} recordatorios pendientes; borra alguno.")
-        rid = con.execute("INSERT INTO recordatorios (user_id, texto, cuando, repetir, creado) VALUES (?,?,?,?,?)",
-                          (uid, t, momento.timestamp(), rep, time.time())).lastrowid
+        rid = con.execute("INSERT INTO recordatorios (user_id, texto, cuando, repetir, insistir, creado) VALUES (?,?,?,?,?,?)",
+                          (uid, t, momento.timestamp(), rep, int(insistir), time.time())).lastrowid
         r = con.execute("SELECT * FROM recordatorios WHERE id=?", (rid,)).fetchone()
     return _fila(r, ref)
 
@@ -336,38 +346,62 @@ def posponer(uid: int, rid: int, minutos: int) -> dict | None:
             return None
         nuevo = time.time() + max(1, min(int(minutos), 24 * 60)) * 60
         if r["repetir"]:
-            nid = con.execute("INSERT INTO recordatorios (user_id, texto, cuando, creado) VALUES (?,?,?,?)",
-                              (uid, r["texto"], nuevo, time.time())).lastrowid
+            # Se pospone una copia suelta; el repetitivo conserva su hora de siempre.
+            nid = con.execute("INSERT INTO recordatorios (user_id, texto, cuando, insistir, creado) VALUES (?,?,?,?,?)",
+                              (uid, r["texto"], nuevo, r["insistir"], time.time())).lastrowid
+            if r["insistir"] and r["estado"] == "avisado":
+                origen = datetime.fromtimestamp(r["cuando"], tiempo.zona())
+                prox = siguiente(origen, r["repetir"], origen + timedelta(seconds=1))
+                con.execute("UPDATE recordatorios SET cuando=?, estado='pendiente', avisado=NULL, reintentos=0 "
+                            "WHERE id=? AND user_id=?", (prox.timestamp(), rid, uid))
         else:
             nid = rid
-            con.execute("UPDATE recordatorios SET cuando=?, estado='pendiente' WHERE id=?", (nuevo, rid))
+            con.execute("UPDATE recordatorios SET cuando=?, estado='pendiente', avisado=NULL, reintentos=0 WHERE id=? AND user_id=?",
+                        (nuevo, rid, uid))
         return _fila(con.execute("SELECT * FROM recordatorios WHERE id=?", (nid,)).fetchone())
 
 
 def hecho(uid: int, rid: int) -> bool:
     with closing(db._con()) as con, con:
-        r = con.execute("SELECT repetir FROM recordatorios WHERE id=? AND user_id=?", (rid, uid)).fetchone()
+        r = con.execute("SELECT * FROM recordatorios WHERE id=? AND user_id=?", (rid, uid)).fetchone()
         if not r:
             return False
         if not r["repetir"]:
-            con.execute("UPDATE recordatorios SET estado='hecho' WHERE id=?", (rid,))
+            con.execute("UPDATE recordatorios SET estado='hecho' WHERE id=? AND user_id=?", (rid, uid))
+        elif r["insistir"] and r["estado"] == "avisado":
+            # Solo el que insiste se queda en su hora hasta que se marca; el resto ya pasó a la siguiente al avisar.
+            origen = datetime.fromtimestamp(r["cuando"], tiempo.zona())
+            prox = siguiente(origen, r["repetir"], origen + timedelta(seconds=1))
+            con.execute("UPDATE recordatorios SET cuando=?, estado='pendiente', avisado=NULL, reintentos=0 "
+                        "WHERE id=? AND user_id=?", (prox.timestamp(), rid, uid))
         return True
 
 
 def vencidos(ahora: float) -> list:
     with closing(db._con()) as con:
         return [dict(r) for r in con.execute(
-            "SELECT * FROM recordatorios WHERE estado='pendiente' AND cuando<=? ORDER BY cuando LIMIT 50", (ahora,))]
+            "SELECT * FROM recordatorios WHERE (estado='pendiente' AND cuando<=?) OR "
+            "(estado='avisado' AND insistir=1 AND avisado<=? AND reintentos<?) ORDER BY cuando LIMIT 50",
+            (ahora, ahora - INTERVALO_INSISTENCIA, MAX_REINTENTOS))]
 
 
 def _avanzar(r: dict, ahora: float) -> None:
     with closing(db._con()) as con, con:
-        if r["repetir"]:
+        reaviso = r["estado"] == "avisado"
+        agotado = reaviso and r["reintentos"] + 1 >= MAX_REINTENTOS
+        if r["repetir"] and (not r["insistir"] or agotado):
             prox = siguiente(datetime.fromtimestamp(r["cuando"], tiempo.zona()), r["repetir"],
                              datetime.fromtimestamp(ahora, tiempo.zona()))
-            con.execute("UPDATE recordatorios SET cuando=?, avisado=? WHERE id=?", (prox.timestamp(), ahora, r["id"]))
+            con.execute("UPDATE recordatorios SET cuando=?, estado='pendiente', avisado=NULL, reintentos=0 WHERE id=? AND user_id=?",
+                        (prox.timestamp(), r["id"], r["user_id"]))
+        elif reaviso:
+            con.execute("UPDATE recordatorios SET reintentos=reintentos+1, avisado=? WHERE id=? AND user_id=?",
+                        (ahora, r["id"], r["user_id"]))
+        elif r["insistir"]:
+            con.execute("UPDATE recordatorios SET estado='avisado', avisado=?, reintentos=0 WHERE id=? AND user_id=?",
+                        (ahora, r["id"], r["user_id"]))
         else:
-            con.execute("UPDATE recordatorios SET estado='avisado', avisado=? WHERE id=?", (ahora, r["id"]))
+            con.execute("UPDATE recordatorios SET estado='avisado', avisado=? WHERE id=? AND user_id=?", (ahora, r["id"], r["user_id"]))
         con.execute("DELETE FROM recordatorios WHERE estado IN ('avisado','hecho') AND cuando<?", (ahora - 30 * 86400,))
 
 
@@ -378,7 +412,8 @@ async def disparar_vencidos(ahora: float | None = None) -> list:
     for r in await asyncio.to_thread(vencidos, ahora):
         await asyncio.to_thread(_avanzar, r, ahora)  # primero: si la entrega falla, no se repite en bucle
         retraso = ahora - r["cuando"]
-        texto = f"Recordatorio: {r['texto']}" + (" (con retraso: ARIA estaba apagada)" if retraso > 3600 else "")
+        prefijo = "Otra vez: " if r["estado"] == "avisado" else "Recordatorio: "
+        texto = prefijo + r["texto"] + (" (con retraso: ARIA estaba apagada)" if retraso > 3600 else "")
         await avisos.emitir("recordatorio", "aviso", texto, "ajustes", [r["user_id"]], ignorar_silencio=True,
                             extra={"recordatorio": r["id"], "repetir": r["repetir"]})
         hechos.append(r["id"])

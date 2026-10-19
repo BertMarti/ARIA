@@ -289,6 +289,8 @@ Pídeselos a ARIA en el chat o por Telegram:
 
 También se ven y se crean en **Ajustes → Recordatorios**. Llegan por la campana, Telegram y notificación, incluso en horas de silencio.
 
+Si marcas «Insistir hasta que lo marque como hecho», ARIA vuelve a avisarte cada 15 minutos hasta tres veces más. Al marcarlo como hecho o posponerlo se reinicia la insistencia; las medicinas y pastillas creadas desde el chat insisten por defecto.
+
 ## Rutinas
 
 Una rutina es una pregunta que ARIA se hace sola a una hora y te manda la respuesta. Por ejemplo: «cada mañana a las 8, dime el tiempo en Madrid y 3 titulares de tecnología».

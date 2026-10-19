@@ -199,7 +199,8 @@ const Avisos = (() => {
     if (!data.recordatorios.length) ul.append(el("li", { class: "muted" }, "No tienes recordatorios pendientes."));
     for (const r of data.recordatorios) {
       ul.append(el("li", { class: "fila" },
-        el("div", { class: "fila-info" }, el("span", null, r.texto), el("span", { class: "muted pequeno-txt" }, r.descripcion)),
+        el("div", { class: "fila-info" }, el("span", null, r.texto), el("span", { class: "muted pequeno-txt" }, r.descripcion),
+          ...(r.insistir ? [el("span", { class: "muted pequeno-txt" }, "Insistente")] : [])),
         el("div", { class: "fila-acc" }, el("button", { type: "button", class: "peligro pequeno", onclick: () => borrarRec(r) }, "Borrar"))));
     }
   }
@@ -247,7 +248,7 @@ const Avisos = (() => {
     });
     $("form-rec").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const x = await api("/api/recordatorios", { method: "POST", json: { texto: $("rec-texto").value, cuando: $("rec-cuando").value, repetir: $("rec-repetir").value } });
+      const x = await api("/api/recordatorios", { method: "POST", json: { texto: $("rec-texto").value, cuando: $("rec-cuando").value, repetir: $("rec-repetir").value, insistir: $("rec-insistir").checked } });
       if (!x.ok) { msg("rec-msg", x.data.error || "No se pudo crear.", true); return; }
       $("rec-texto").value = ""; msg("rec-msg", "Te lo recordaré " + x.data.recordatorio.descripcion + ".");
       cargarRecordatorios();

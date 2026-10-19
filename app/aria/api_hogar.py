@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from . import (config, hogar_cache as cache, hogar_camaras as camaras_video, hogar_govee as govee,
                hogar_grabaciones as grabaciones, hogar_router as router_hogar, hogar_tapo as tapo,
-               hogar_vigilancia as vigilancia)
+               hogar_salud as salud, hogar_vigilancia as vigilancia)
 
 router = APIRouter()
 _acciones = []
@@ -137,6 +137,12 @@ async def ver_vigilancia(candidatos: int = 0):
     return {"disponible": True, **await asyncio.to_thread(vigilancia.resumen, lista)}
 
 
+@router.get("/api/hogar/vigilancia/historial")
+async def historial_vigilancia(limite: int = 30):
+    """Quién ha llegado y quién se ha ido (solo administradores, como el resto de la vigilancia)."""
+    return {"historial": await asyncio.to_thread(vigilancia.historial, limite)}
+
+
 @router.post("/api/hogar/vigilancia")
 async def cambiar_vigilancia(request: Request):
     if not _limite(): return _error("Demasiadas acciones; espera un minuto.", 429)
@@ -261,6 +267,7 @@ async def precalentar() -> None:
                 await cache.refrescar("luces", govee.luces)
             if tapo.configurado() and vuelta % 5 == 0:
                 await cache.refrescar("camaras", tapo.camaras)
+                await salud.revisar(cache.ultimo("camaras") or [])
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001 - nunca para: la pantalla seguirá funcionando bajo demanda

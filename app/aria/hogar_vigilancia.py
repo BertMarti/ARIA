@@ -12,11 +12,12 @@ import logging
 import time
 from contextlib import closing
 
-from . import avisos, db, hogar_router, hogar_tapo
+from . import avisos, db, hogar_govee, hogar_router, hogar_tapo
 
 log = logging.getLogger("aria.vigilancia")
 INTERVALO_S = 120
 MINUTOS_DEFECTO = 10
+HISTORIAL_MAX = 500
 
 
 def iniciar() -> None:
@@ -26,6 +27,9 @@ def iniciar() -> None:
             desde REAL, vistos TEXT NOT NULL DEFAULT '{}')""")
         con.execute("INSERT OR IGNORE INTO hogar_vigilancia(id, ajustes, desde) VALUES(1, ?, ?)",
                     (json.dumps({"activa": False, "minutos": MINUTOS_DEFECTO, "camaras": [], "moviles": []}), time.time()))
+        # Quién llega y quién se va (por móvil), para el historial de Hogar.
+        con.execute("""CREATE TABLE IF NOT EXISTS hogar_presencia (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, nombre TEXT NOT NULL, evento TEXT NOT NULL)""")
 
 
 def _fila() -> dict:
@@ -63,6 +67,10 @@ def configurar(datos: dict, candidatos: list) -> dict:
         if isinstance(m, bool) or not isinstance(m, int) or not 5 <= m <= 120:
             raise ValueError("Los minutos deben estar entre 5 y 120.")
         actual["minutos"] = m
+    if "apagar_luces" in datos:
+        if not isinstance(datos["apagar_luces"], bool):
+            raise ValueError("«apagar_luces» no es válido.")
+        actual["apagar_luces"] = datos["apagar_luces"]
     if "camaras" in datos:
         if not isinstance(datos["camaras"], list) or not all(isinstance(x, str) for x in datos["camaras"]):
             raise ValueError("Cámaras no válidas.")
@@ -98,7 +106,7 @@ def resumen(candidatos: list | None = None) -> dict:
                for m in a["moviles"]]
     elegidos = {m["id"] for m in moviles}
     return {"activa": a["activa"], "minutos": a["minutos"], "camaras": a["camaras"], "moviles": moviles,
-            "estado": f["estado"], "desde": f["desde"],
+            "apagar_luces": bool(a.get("apagar_luces")), "estado": f["estado"], "desde": f["desde"],
             "candidatos": [{"id": ident(c["mac"]), "nombre": c["nombre"], "ip": c["ip"]}
                            for c in (candidatos or []) if ident(c["mac"]) not in elegidos]}
 
@@ -112,6 +120,44 @@ async def _poner_privacidad(camaras: list, activa: bool) -> list:
             log.warning("Vigilancia: no se pudo cambiar la privacidad de una cámara")
             fallidas.append(ip)
     return fallidas
+
+
+def historial(limite: int = 30) -> list:
+    iniciar()
+    with closing(db._con()) as con:
+        filas = con.execute("SELECT ts, nombre, evento FROM hogar_presencia ORDER BY ts DESC, id DESC LIMIT ?",
+                            (max(1, min(limite, 200)),)).fetchall()
+    return [{"ts": f["ts"], "nombre": f["nombre"], "evento": f["evento"]} for f in filas]
+
+
+def _anotar(eventos: list) -> None:
+    if not eventos:
+        return
+    with closing(db._con()) as con, con:
+        con.executemany("INSERT INTO hogar_presencia(ts, nombre, evento) VALUES(?, ?, ?)", eventos)
+        con.execute("DELETE FROM hogar_presencia WHERE id NOT IN "
+                    "(SELECT id FROM hogar_presencia ORDER BY ts DESC, id DESC LIMIT ?)", (HISTORIAL_MAX,))
+
+
+async def _apagar_luces() -> int:
+    """Apaga las luces Govee encendidas. Devuelve cuántas; un fallo no detiene la vigilancia."""
+    if not hogar_govee.configurado():
+        return 0
+    apagadas = 0
+    try:
+        for luz in await hogar_govee.luces():
+            if luz.get("encendida") and luz.get("id"):
+                try:
+                    await hogar_govee.cambiar(luz["id"], encendida=False)
+                    apagadas += 1
+                except Exception:  # noqa: BLE001
+                    log.warning("Vigilancia: no se pudo apagar una luz")
+    except Exception:  # noqa: BLE001
+        log.warning("Vigilancia: no se pudieron consultar las luces")
+    if apagadas:
+        from . import hogar_cache
+        hogar_cache.invalidar("luces")
+    return apagadas
 
 
 def _responde(ip: str) -> bool:
@@ -150,6 +196,20 @@ async def ciclo(ahora: float | None = None) -> str | None:
             presentes.add(m["mac"])
     for mac in presentes:
         vistos[mac] = ahora
+    # Historial por móvil: llega en cuanto aparece; se va cuando lleva el tiempo elegido sin verse (con la hora en que
+    # se le vio por última vez). Sin router no se apunta ninguna salida.
+    cambios = []
+    for m in a["moviles"]:
+        if m["mac"] in presentes and m.get("en_casa") is False:
+            cambios.append((ahora, m["nombre"], "llega"))
+        elif m["mac"] not in presentes and m.get("en_casa") and router_ok \
+                and ahora - vistos.get(m["mac"], ahora) >= a["minutos"] * 60:
+            cambios.append((vistos[m["mac"]], m["nombre"], "sale"))
+        if m["mac"] in presentes:
+            m["en_casa"] = True
+        elif router_ok and ahora - vistos.get(m["mac"], f["desde"] or ahora) >= a["minutos"] * 60:
+            m["en_casa"] = False
+    await asyncio.to_thread(_anotar, cambios)
     await asyncio.to_thread(_guardar, vistos=vistos, ajustes=a)
     alguien = bool(presentes)
     if not router_ok and not alguien:
@@ -160,6 +220,10 @@ async def ciclo(ahora: float | None = None) -> str | None:
         fallidas = await _poner_privacidad(a["camaras"], False)
         await asyncio.to_thread(_guardar, estado="fuera", desde=ahora)
         texto = "No queda nadie en casa: he destapado la cámara para que vigile."
+        if a.get("apagar_luces"):
+            n = await _apagar_luces()
+            if n:
+                texto += f" También he apagado {n} luz{'es' if n > 1 else ''}."
         if fallidas:
             texto += " Ojo: alguna cámara no ha respondido."
         await avisos.emitir("vigilancia", "aviso", texto, "hogar")

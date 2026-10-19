@@ -169,11 +169,33 @@ const Hogar = (() => {
     const titulo = !v.activa ? "Desactivada" : v.estado === "fuera" ? "No hay nadie en casa: la cámara vigila" : "Hay alguien en casa: la cámara está tapada";
     const configurar = el("button", { type: "button", class: "fantasma pequeno" }, "Configurar");
     configurar.addEventListener("click", () => configurarVigilancia(v));
+    const ver = el("button", { type: "button", class: "fantasma pequeno" }, "Historial");
+    ver.addEventListener("click", historialPresencia);
     return el("div", { class: "hogar-bloque" },
-      el("div", { class: "hogar-bloque-cab" }, el("h3", null, "Vigilancia automática"), configurar),
+      el("div", { class: "hogar-bloque-cab" }, el("h3", null, "Vigilancia automática"), el("div", { class: "botones" }, v.moviles.length ? ver : null, configurar)),
       el("p", { class: "hogar-estado" + (v.activa ? (v.estado === "fuera" ? " aviso" : " ok") : "") }, el("span", { class: "hogar-punto", ariaHidden: "true" }), titulo),
       v.moviles.length ? el("div", { class: "hogar-moviles" }, ...v.moviles.map((m) =>
         el("span", { class: "pildora" + (m.en_casa || hace(m.ultima_vez) === "en casa" ? " ok" : "") }, m.nombre + " · " + (m.en_casa ? "en casa" : hace(m.ultima_vez))))) : nota("Elige los móviles de la familia en «Configurar»."));
+  }
+  const cuando = (ts) => {
+    const f = new Date(ts * 1000), hoy = new Date(), ayer = new Date(Date.now() - 864e5);
+    const hora = f.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    if (f.toDateString() === hoy.toDateString()) return "hoy " + hora;
+    if (f.toDateString() === ayer.toDateString()) return "ayer " + hora;
+    return f.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" }) + " " + hora;
+  };
+  async function historialPresencia() {
+    const cuerpo = el("div", null, nota("Cargando…"));
+    const d = dialogo("Quién llega y quién se va", cuerpo);
+    const r = await api("/api/hogar/vigilancia/historial");
+    if (!d.open) return;
+    const filas = r.ok ? r.data.historial : [];
+    cuerpo.replaceChildren(!r.ok ? nota(r.data.error || "No se pudo cargar el historial.")
+      : !filas.length ? nota("Aún no hay movimientos: se apuntan a partir de ahora, cuando un móvil sale o vuelve a casa.")
+        : el("ul", { class: "filas hogar-historial" }, ...filas.map((h) => el("li", { class: "fila" },
+          el("span", { class: "pildora" + (h.evento === "llega" ? " ok" : "") }, h.evento === "llega" ? "Llega" : "Se va"),
+          el("div", { class: "fila-info" }, el("strong", null, h.nombre), el("span", { class: "muted" }, cuando(h.ts)))))),
+      nota("La salida se apunta con la hora en que el móvil se vio por última vez en la wifi."));
   }
   async function configurarVigilancia(v) {
     const cuerpo = el("div", { class: "hogar-config" }, nota("Buscando los dispositivos de la red…"));
@@ -189,10 +211,11 @@ const Hogar = (() => {
       el("label", { class: "hogar-opcion" }, el("input", { type: "checkbox", checked: datos.camaras.includes(c.ip), value: c.ip }), el("span", null, c.nombre)));
     const minutos = el("select", { ariaLabel: "Minutos fuera antes de vigilar" }, ...[5, 10, 15, 20, 30, 60].map((n) => el("option", { value: n, selected: n === datos.minutos }, n + " minutos")));
     const activa = el("input", { type: "checkbox", checked: datos.activa });
+    const luces = el("input", { type: "checkbox", checked: !!datos.apagar_luces });
     const guardar = el("button", { type: "button", class: "primario" }, "Guardar");
     guardar.addEventListener("click", async () => {
       const marcados = (filas) => filas.map((l) => l.querySelector("input")).filter((c) => c.checked).map((c) => c.value);
-      const res = await api("/api/hogar/vigilancia", { method: "POST", json: { activa: activa.checked, minutos: Number(minutos.value), moviles: marcados([...elegidos, ...otros]), camaras: marcados(cams) } });
+      const res = await api("/api/hogar/vigilancia", { method: "POST", json: { activa: activa.checked, apagar_luces: luces.checked, minutos: Number(minutos.value), moviles: marcados([...elegidos, ...otros]), camaras: marcados(cams) } });
       if (!res.ok) { toast(res.data.error || "No se pudo guardar.", "mal"); return; }
       toast("Vigilancia guardada."); d.close(); cargarCasa();
     });
@@ -203,6 +226,7 @@ const Hogar = (() => {
       otros.length ? el("details", { class: "hogar-anadir" }, el("summary", null, "Añadir otro móvil"), el("div", { class: "hogar-opciones" }, ...otros)) : null,
       el("h3", null, "Cámaras"), cams.length ? el("div", { class: "hogar-opciones" }, ...cams) : nota("No hay cámaras con modo privacidad."),
       el("label", { class: "hogar-opcion" }, el("span", null, "Tiempo fuera:"), minutos),
+      el("label", { class: "hogar-opcion" }, luces, el("span", null, "Al irnos todos, apagar las luces que se hayan quedado encendidas")),
       el("div", { class: "botones" }, guardar));
   }
   function wifi(d) {

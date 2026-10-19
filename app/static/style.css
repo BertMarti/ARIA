@@ -1445,6 +1445,9 @@ body.app { height: 100vh; height: 100dvh; }
 .hogar-estado.aviso .hogar-punto { background: var(--warn); box-shadow: 0 0 .5rem var(--warn); }
 .hogar-moviles { display: flex; flex-wrap: wrap; gap: .35rem; }
 .hogar-moviles .pildora.ok { border-color: color-mix(in srgb, var(--ok) 50%, transparent); color: var(--ok); }
+.hogar-historial .fila { align-items: center; gap: .6rem; }
+.hogar-historial .pildora { min-width: 4.5rem; text-align: center; }
+.hogar-historial .pildora.ok { border-color: color-mix(in srgb, var(--ok) 50%, transparent); color: var(--ok); }
 .hogar-cifra { margin: 0; font-size: 1rem; }
 .hogar-cifra strong { font-size: 1.8rem; color: var(--acento); }
 .hogar-dialogo { width: min(94vw, 34rem); }

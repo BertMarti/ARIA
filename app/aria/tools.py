@@ -120,6 +120,8 @@ _INTENCIONES = [
     ((r"\b(luces?|l[aá]mparas?|bombillas?|tira led|brillo|azul|rojo|verde|enciende|apaga)\b",
       r"\b(luz|luces?|l[aá]mpara|bombilla|tira|sal[oó]n|habitaci[oó]n|casa)\b"), {"luces"}),
     ((r"\b(c[aá]mara|c[aá]maras|privacidad|tapar)\b",), {"camara_privacidad"}),
+    ((r"\b(qui[eé]n (hay|est[aá]|queda)|hay alguien|alguien en casa|ha (llegado|vuelto|salido)|se ha ido|"
+      r"est[aá] en casa|vigilancia)\b",), {"quien_en_casa"}),
     ((r"\b(router|wifi|wi-fi|invitados?)\b",), {"router_invitados"}),
     ((r"\b(agenda|calendario|evento|eventos|cita|cumplea[nñ]os|qué tengo|que tengo)\b",), set(AGENDA)),
     ((r"\b(mapa|mapas|ubicaci[oó]n|sitios? cerca|farmacia|gasolinera|supermercado|restaurante|cajero)\b",),
@@ -426,6 +428,37 @@ async def camara_privacidad(activa: bool, nombre: str = "") -> str:
         await hogar_tapo.privacidad(c["ip"], activa)
     nombres = ", ".join(c["nombre"] for c in elegidas)
     return ("He tapado " if activa else "He destapado ") + nombres + "."
+
+
+@tool("quien_en_casa", "Dice qué móviles de la familia están en casa (wifi del router), desde cuándo falta cada uno y "
+      "las últimas llegadas y salidas. Solo administrador.", {})
+async def quien_en_casa() -> str:
+    import time as _t
+    from . import hogar_cache, hogar_vigilancia
+    if not hogar_router.configurado():
+        return "No tengo el router configurado, así que no sé quién está en casa."
+    try:
+        lista = await hogar_cache.obtener("router-conectados", hogar_router.conectados, 90)
+    except Exception:  # noqa: BLE001
+        lista = None
+    v = await asyncio.to_thread(hogar_vigilancia.resumen, lista)
+    if not v["moviles"]:
+        return "Aún no hay móviles elegidos: elígelos en Hogar → Vigilancia automática → Configurar."
+    def hace(ts):
+        if not ts: return "sin ver todavía"
+        m = round((_t.time() - ts) / 60)
+        return "fuera hace " + (f"{m} min" if m < 120 else f"{round(m / 60)} h")
+    lineas = [f"- {m['nombre']}: " + ("en casa" if m["en_casa"] else hace(m["ultima_vez"])) for m in v["moviles"]]
+    if lista is None:
+        lineas.append("(El router no ha respondido: es lo último que sé.)")
+    if v["activa"]:
+        lineas.append("Vigilancia: " + ("no hay nadie, la cámara vigila." if v["estado"] == "fuera" else "hay alguien, la cámara está tapada."))
+    ultimos = await asyncio.to_thread(hogar_vigilancia.historial, 4)
+    if ultimos:
+        lineas.append("Últimos movimientos: " + "; ".join(
+            f"{h['nombre']} {'llegó' if h['evento'] == 'llega' else 'se fue'} a las {_t.strftime('%H:%M', _t.localtime(h['ts']))}"
+            for h in ultimos) + ".")
+    return "\n".join(lineas)
 
 
 @tool("router_invitados", "Activa o desactiva la red wifi de invitados del router (solo administrador).",

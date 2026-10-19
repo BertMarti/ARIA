@@ -117,7 +117,7 @@ const Inicio = (() => {
         check.addEventListener("change", () => { if (check.checked) preferenciasTarjetas.ocultas = preferenciasTarjetas.ocultas.filter((x) => x !== id); else if (!preferenciasTarjetas.ocultas.includes(id)) preferenciasTarjetas.ocultas.push(id); });
         subir.addEventListener("click", () => { [orden[i - 1], orden[i]] = [orden[i], orden[i - 1]]; pintar(); });
         bajar.addEventListener("click", () => { [orden[i], orden[i + 1]] = [orden[i + 1], orden[i]]; pintar(); });
-        return el("div", { class: "fila" }, el("label", { class: "check-info" }, check, el("span", null, meta[1])),
+        return el("div", { class: "fila" }, el("label", { class: "inicio-tarjeta-check" }, check, el("span", null, meta[1])),
           el("div", { class: "inicio-tarjeta-acciones" }, subir, bajar));
       }));
     };

@@ -193,7 +193,9 @@ def _hogar() -> dict:
     luces = hogar_cache.ultimo("luces") or []
     try:
         a = hogar_vigilancia.resumen(None)
-        vig = {"activa": a["activa"], "estado": a["estado"]} if a["moviles"] else None
+        # Quién está en casa según la última vuelta de la vigilancia (primer nombre: cabe en el widget).
+        en_casa = [m["nombre"].split()[0] for m in hogar_vigilancia.ajustes()["moviles"] if m.get("en_casa") and m["nombre"].split()]
+        vig = {"activa": a["activa"], "estado": a["estado"], "en_casa": en_casa} if a["moviles"] else None
     except Exception:  # noqa: BLE001
         vig = None
     return {"camaras": len(camaras), "tapadas": sum(1 for c in camaras if c.get("privacidad")),

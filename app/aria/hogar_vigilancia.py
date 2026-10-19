@@ -39,7 +39,12 @@ def _fila() -> dict:
     return {"ajustes": json.loads(f["ajustes"]), "estado": f["estado"], "desde": f["desde"], "vistos": json.loads(f["vistos"])}
 
 
+_CAMPOS = frozenset({"ajustes", "estado", "desde", "vistos"})
+
+
 def _guardar(**campos) -> None:
+    if not set(campos) <= _CAMPOS:   # el nombre de columna va en el SQL: solo los conocidos
+        raise ValueError("Campo de vigilancia no válido.")
     with closing(db._con()) as con, con:
         for k, v in campos.items():
             con.execute(f"UPDATE hogar_vigilancia SET {k}=? WHERE id=1",

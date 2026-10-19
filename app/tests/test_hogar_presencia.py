@@ -172,3 +172,63 @@ def test_quien_en_casa_sin_moviles(monkeypatch):
         return []
     monkeypatch.setattr(hogar_router, "conectados", conectados)
     assert "Aún no hay móviles" in asyncio.run(tools.quien_en_casa())
+
+
+# --- Límites por persona (revisión de seguridad del 19/10) ---------------------------------------------------------
+def _camara_falsa(monkeypatch):
+    from aria import hogar_camaras
+    monkeypatch.setattr(config, "TAPO_USUARIO", "usuario@example.com")
+    monkeypatch.setattr(config, "TAPO_PASSWORD", PASS_FALSA)
+    monkeypatch.setattr(config, "TAPO_CAMARAS", ["192.168.1.30"])
+
+    async def foto(ip, max_edad=0):
+        return b"\xff\xd8imagen"
+    monkeypatch.setattr(hogar_camaras, "foto", foto)
+
+
+def test_fotos_limitadas_por_persona_sin_bloquear_a_las_demas(monkeypatch):
+    _camara_falsa(monkeypatch)
+    admin = usuarios.por_identificador("admin")
+    pepa = usuarios.actualizar(usuarios.crear("pepa@example.com", "Pepa", "usuario", "clave-larga-pepa")["id"], ver_camaras=True)
+    c = cliente(pepa)
+    estados = [c.get("/api/hogar/camaras/foto?ip=192.168.1.30").status_code for _ in range(41)]
+    assert estados[:40] == [200] * 40 and estados[40] == 429
+    assert cliente(admin).get("/api/hogar/camaras/foto?ip=192.168.1.30").status_code == 200
+
+
+def test_mover_tiene_limite(monkeypatch):
+    from aria import api_hogar
+    _camara_falsa(monkeypatch)
+
+    async def mover(ip, direccion):
+        return None
+    monkeypatch.setattr(api_hogar.tapo, "mover", mover)
+    c = cliente(usuarios.por_identificador("admin"))
+    estados = [c.post("/api/hogar/camaras/mover", json={"ip": "192.168.1.30", "direccion": "izquierda"}).status_code
+               for _ in range(61)]
+    assert estados[:60] == [200] * 60 and estados[60] == 429
+
+
+def test_directo_maximo_por_persona(monkeypatch):
+    from starlette.websockets import WebSocketDisconnect
+    from aria import main
+    _camara_falsa(monkeypatch)
+    admin = usuarios.por_identificador("admin")
+    monkeypatch.setattr(main.hogar_camaras, "flujo", lambda ip: "c1")
+    monkeypatch.setattr(main, "_directos", {admin["id"]: main.DIRECTOS_MAX})
+    with pytest.raises(WebSocketDisconnect) as e:
+        with cliente(admin).websocket_connect("/api/hogar/camaras/directo?ip=192.168.1.30",
+                                              headers={"origin": "http://testserver"}) as ws:
+            ws.receive_text()
+    assert e.value.code == 1013
+
+
+def test_resumen_del_movil_dice_quien_esta_en_casa(monkeypatch):
+    from aria import api_app
+    hv, estado, cambios, emitidos = _vigilancia(monkeypatch, MOVILES)
+    estado["conectados"] = MOVILES[:1]
+    t = time.time()
+    asyncio.run(hv.ciclo(t))
+    asyncio.run(hv.ciclo(t + 15 * 60))                                   # Xiaomi y Galaxy llevan 15 min sin verse
+    v = api_app._hogar()["vigilancia"]
+    assert v["en_casa"] == ["Pixel"] and v["estado"] == "casa"

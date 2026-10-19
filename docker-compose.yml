@@ -57,7 +57,7 @@ services:
       OLLAMA_URL: http://ollama:11434
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    networks: [default, voz]
+    networks: [default, voz, camaras]
     volumes:
       - ./data:/data
       - escaner:/escaner   # peticiones/resultados del escáner (sin red ni socket entre ambos)
@@ -159,6 +159,7 @@ services:
     ports:   # solo WebRTC para hablar por la cámara, y solo en la IP de casa (nunca en todas las interfaces)
       - "${ARIA_LAN_IP:-127.0.0.1}:8555:8555/tcp"
       - "${ARIA_LAN_IP:-127.0.0.1}:8555:8555/udp"
+    networks: [camaras]   # red propia con la app: ni Caddy ni SearXNG ni Ollama llegan a su API (lleva la clave)
     volumes:
       - ./data/camaras:/config:ro
     depends_on:
@@ -182,6 +183,7 @@ services:
     environment:
       ARIA_TAPO_PASSWORD: ${ARIA_TAPO_PASSWORD:-}
       ARIA_TAPO_CAMARAS: ${ARIA_TAPO_CAMARAS:-}
+    networks: [camaras]
     volumes:
       - ./data/grabaciones:/cache
     depends_on:
@@ -217,6 +219,7 @@ services:
 networks:
   voz:
     internal: true
+  camaras:   # no interna: go2rtc y las grabaciones tienen que llegar a las cámaras de la red de casa
 
 volumes:
   escaner:

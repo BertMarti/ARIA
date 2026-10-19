@@ -27,7 +27,7 @@ def limpio(monkeypatch):
     monkeypatch.setattr(hogar_router, "_cache", {"cuando": 0.0, "estado": None, "completos": []})
     monkeypatch.setattr(hogar_tapo, "_conexiones", {})
     monkeypatch.setattr(hogar_tapo, "_conocidas", set())
-    monkeypatch.setattr(api_hogar, "_acciones", [])
+    monkeypatch.setattr(api_hogar, "_acciones", {})
     from aria import hogar_cache
     hogar_cache.limpiar()
 
@@ -431,7 +431,7 @@ def test_foto_y_directo_solo_admin_y_solo_camaras_conocidas(monkeypatch):
     for quien, ip in ((ana, "192.168.1.30"), (admin, "192.168.1.99"), (pepa, "192.168.1.99")):
         c = cliente(quien)
         with pytest.raises(WebSocketDisconnect):
-            with c.websocket_connect(f"/api/hogar/camaras/directo?ip={ip}", headers={"origin": LAN}) as ws:
+            with c.websocket_connect(f"/api/hogar/camaras/directo?ip={ip}", headers={"origin": "http://testserver"}) as ws:   # el Host de los WebSocket de prueba
                 ws.receive_text()
 
 

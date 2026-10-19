@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.widget.RemoteViews;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /** Widget de Hogar: vigilancia automática, cámaras y luces (lo que ARIA ya sabe). Solo para administradores. */
@@ -38,6 +39,12 @@ public class AriaWidgetHogar extends AppWidgetProvider {
                         : !v.optBoolean("activa") ? "Vigilancia desactivada"
                         : "fuera".equals(v.optString("estado")) ? "No hay nadie: la cámara vigila"
                         : "Hay alguien en casa";
+                JSONArray quien = v == null ? null : v.optJSONArray("en_casa");
+                if (quien != null && quien.length() > 0) {
+                    StringBuilder nombres = new StringBuilder();
+                    for (int i = 0; i < quien.length(); i++) nombres.append(i == 0 ? "" : ", ").append(quien.optString(i));
+                    vigilancia = "fuera".equals(v.optString("estado")) ? vigilancia : "En casa: " + nombres;
+                }
                 views.setTextViewText(R.id.hogar_vigilancia, vigilancia);
                 int camaras = hogar.optInt("camaras"), tapadas = hogar.optInt("tapadas"), dormidas = hogar.optInt("sin_respuesta");
                 if (camaras > 0) {

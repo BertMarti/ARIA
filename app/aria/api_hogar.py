@@ -11,7 +11,7 @@ from . import (config, hogar_cache as cache, hogar_camaras as camaras_video, hog
                hogar_salud as salud, hogar_vigilancia as vigilancia)
 
 router = APIRouter()
-_acciones = []
+_acciones: dict = {}   # (usuario, tipo) -> instantes: el límite es por persona (uno no bloquea al otro)
 
 
 def _error(texto, estado=400): return JSONResponse({"error": texto}, status_code=estado)
@@ -57,15 +57,19 @@ async def hogar(request: Request):
     return resultado
 
 
-def _limite():
-    ahora = time.monotonic(); _acciones[:] = [x for x in _acciones if ahora - x < 60]
-    if len(_acciones) >= 30: return False
-    _acciones.append(ahora); return True
+def _limite(request: Request, tipo: str = "accion", maximo: int = 30):
+    ahora = time.monotonic()
+    clave = (request.state.usuario["id"], tipo)
+    lista = [x for x in _acciones.get(clave, []) if ahora - x < 60]
+    if len(lista) >= maximo:
+        _acciones[clave] = lista
+        return False
+    lista.append(ahora); _acciones[clave] = lista; return True
 
 
 @router.post("/api/hogar/luces/{identificador}")
 async def cambiar_luz(identificador: str, request: Request):
-    if not _limite(): return _error("Demasiadas acciones; espera un minuto.", 429)
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
     try: d = await request.json()
     except ValueError: return _error("Datos no válidos.")
     if not isinstance(d, dict): return _error("Datos no válidos.")
@@ -84,7 +88,7 @@ async def cambiar_luz(identificador: str, request: Request):
 
 @router.post("/api/hogar/camaras/privacidad")
 async def privacidad(request: Request):
-    if not _limite(): return _error("Demasiadas acciones; espera un minuto.", 429)
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
     try: d = await request.json()
     except ValueError: return _error("Datos no válidos.")
     if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or not isinstance(d.get("activa"), bool):
@@ -99,7 +103,7 @@ async def privacidad(request: Request):
 
 @router.post("/api/hogar/router/invitados")
 async def invitados(request: Request):
-    if not _limite(): return _error("Demasiadas acciones; espera un minuto.", 429)
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
     try: d = await request.json()
     except ValueError: return _error("Datos no válidos.")
     if not isinstance(d, dict) or not isinstance(d.get("activa"), bool): return _error("Datos no válidos.")
@@ -111,8 +115,8 @@ async def invitados(request: Request):
 
 
 @router.post("/api/hogar/router/reiniciar")
-async def reiniciar():
-    if not _limite(): return _error("Demasiadas acciones; espera un minuto.", 429)
+async def reiniciar(request: Request):
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
     try: return await router_hogar.reiniciar()
     except router_hogar.RouterError as e: return _error(str(e), 502)
 
@@ -145,7 +149,7 @@ async def historial_vigilancia(limite: int = 30):
 
 @router.post("/api/hogar/vigilancia")
 async def cambiar_vigilancia(request: Request):
-    if not _limite(): return _error("Demasiadas acciones; espera un minuto.", 429)
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
     try: d = await request.json()
     except ValueError: return _error("Datos no válidos.")
     if not isinstance(d, dict): return _error("Datos no válidos.")
@@ -158,9 +162,11 @@ async def cambiar_vigilancia(request: Request):
 
 
 @router.get("/api/hogar/camaras/foto")
-async def foto_camara(ip: str = "", miniatura: int = 0):
-    """Imagen de una cámara (solo administradores: no está en la lista blanca de `usuario`). Con `miniatura=1` vale una
-    de los últimos 10 minutos (para la cuadrícula, sin despertar a las de batería cada vez)."""
+async def foto_camara(request: Request, ip: str = "", miniatura: int = 0):
+    """Imagen de una cámara (administradores y usuarios con «ver cámaras»). Con `miniatura=1` vale una de los últimos
+    10 minutos (para la cuadrícula, sin despertar a las de batería cada vez). Limitada por persona: cada foto nueva
+    despierta la cámara."""
+    if not _limite(request, "foto", 40): return _error("Demasiadas fotos seguidas; espera un minuto.", 429)
     if not camaras_video.disponible() or not camaras_video.flujo(ip):
         return _error("Cámara no encontrada.", 404)
     try:
@@ -172,7 +178,7 @@ async def foto_camara(ip: str = "", miniatura: int = 0):
 
 @router.post("/api/hogar/camaras/ajuste")
 async def ajuste_camara(request: Request):
-    if not _limite(): return _error("Demasiadas acciones; espera un minuto.", 429)
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
     try: d = await request.json()
     except ValueError: return _error("Datos no válidos.")
     if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or not isinstance(d.get("valor"), bool) \
@@ -189,6 +195,7 @@ async def ajuste_camara(request: Request):
 
 @router.post("/api/hogar/camaras/mover")
 async def mover_camara(request: Request):
+    if not _limite(request, "mover", 60): return _error("Demasiados movimientos; espera un minuto.", 429)
     try: d = await request.json()
     except ValueError: return _error("Datos no válidos.")
     if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or d.get("direccion") not in tapo.MOVIMIENTOS:

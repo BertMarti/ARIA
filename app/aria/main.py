@@ -881,6 +881,10 @@ async def ws_despertar(ws: WebSocket):
             voz._escuchas.pop(u["id"], None)
 
 
+DIRECTOS_MAX = 4   # vídeos en directo a la vez por persona (las tres cámaras y una pestaña de más)
+_directos: dict = {}
+
+
 @app.websocket("/api/hogar/camaras/directo")
 async def ws_camara(ws: WebSocket):
     """Vídeo en directo de una cámara Tapo (vía go2rtc). Administradores, y usuarios con «ver cámaras» solo para mirar:
@@ -893,8 +897,17 @@ async def ws_camara(ws: WebSocket):
             or not permisos.permitido(u["rol"], "GET", ws.url.path, bool(u.get("ver_camaras"))) or not hogar_camaras.flujo(ip)):
         await ws.close(code=1008)
         return
+    if _directos.get(u["id"], 0) >= DIRECTOS_MAX:   # cada directo abre una conexión con la cámara
+        await ws.close(code=1013)
+        return
     await ws.accept()
-    await hogar_camaras.reenviar(ws, ip, solo_ver=u["rol"] != "admin")
+    _directos[u["id"]] = _directos.get(u["id"], 0) + 1
+    try:
+        await hogar_camaras.reenviar(ws, ip, solo_ver=u["rol"] != "admin")
+    finally:
+        _directos[u["id"]] -= 1
+        if not _directos[u["id"]]:
+            _directos.pop(u["id"], None)
 
 
 @app.websocket("/api/tele/canal")

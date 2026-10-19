@@ -87,6 +87,57 @@ const Inicio = (() => {
     return el("article", { class: "rd-card " + (clase || "") },
       el("header", { class: "rd-cab" }, el("span", { class: "rd-emoji" }, ico(icono)), el("h3", null, titulo)), ...hijos);
   }
+  const TARJETAS = [
+    ["tiempo", "El tiempo"], ["luz", "Precio de la luz"], ["apps", "Tus aplicaciones"],
+    ["red", "Red"], ["finanzas", "Finanzas"], ["compra", "La compra"],
+    ["inversiones", "Mis inversiones"], ["hoy", "Hoy"],
+  ];
+  let preferenciasTarjetas = { orden: [], ocultas: [] }, datosResumen = null;
+  const ordenTarjetas = () => [...new Set([...(preferenciasTarjetas.orden || []), ...TARJETAS.map((x) => x[0])])];
+  async function cargarPreferenciasTarjetas() {
+    const r = await api("/api/inicio/tarjetas");
+    if (r.ok && Array.isArray(r.data.orden) && Array.isArray(r.data.ocultas)) preferenciasTarjetas = r.data;
+  }
+  async function guardarPreferenciasTarjetas() {
+    const r = await api("/api/inicio/tarjetas", { method: "PUT", json: preferenciasTarjetas });
+    if (!r.ok) { toast(r.data.error || "No se pudieron guardar las tarjetas.", "mal"); return false; }
+    return true;
+  }
+  function personalizarTarjetas() {
+    const dialogo = el("dialog", { class: "dialogo" });
+    const lista = el("div", { class: "dialogo-opciones" });
+    let orden = ordenTarjetas();
+    const ocultasAntes = [...preferenciasTarjetas.ocultas];
+    const pintar = () => {
+      lista.replaceChildren(...orden.map((id, i) => {
+        const meta = TARJETAS.find((x) => x[0] === id), disponible = datosResumen && tarjetaDisponible(id);
+        const check = el("input", { type: "checkbox", checked: disponible && !preferenciasTarjetas.ocultas.includes(id), disabled: !disponible });
+        const subir = el("button", { type: "button", class: "fantasma pequeno", ariaLabel: "Subir " + meta[1], disabled: i === 0 }, "↑");
+        const bajar = el("button", { type: "button", class: "fantasma pequeno", ariaLabel: "Bajar " + meta[1], disabled: i === orden.length - 1 }, "↓");
+        check.addEventListener("change", () => { if (check.checked) preferenciasTarjetas.ocultas = preferenciasTarjetas.ocultas.filter((x) => x !== id); else if (!preferenciasTarjetas.ocultas.includes(id)) preferenciasTarjetas.ocultas.push(id); });
+        subir.addEventListener("click", () => { [orden[i - 1], orden[i]] = [orden[i], orden[i - 1]]; pintar(); });
+        bajar.addEventListener("click", () => { [orden[i], orden[i + 1]] = [orden[i + 1], orden[i]]; pintar(); });
+        return el("div", { class: "fila" }, el("label", { class: "check-info" }, check, el("span", null, meta[1])),
+          el("div", { class: "inicio-tarjeta-acciones" }, subir, bajar));
+      }));
+    };
+    const cerrar = async () => { preferenciasTarjetas.orden = orden; if (await guardarPreferenciasTarjetas()) { dialogo.close(); pintarResumen(datosResumen); } };
+    const guardar = el("button", { type: "button", class: "primario pequeno" }, "Guardar");
+    const restablecer = el("button", { type: "button", class: "fantasma pequeno" }, "Restablecer");
+    const cancelar = el("button", { type: "button", class: "dialogo-cerrar", ariaLabel: "Cerrar" }, "×");
+    const descartar = () => { preferenciasTarjetas.ocultas = ocultasAntes; dialogo.close(); };   // cerrar sin guardar
+    guardar.addEventListener("click", cerrar); cancelar.addEventListener("click", descartar);
+    restablecer.addEventListener("click", () => { orden = TARJETAS.map((x) => x[0]); preferenciasTarjetas.ocultas = []; pintar(); });
+    dialogo.append(el("header", { class: "dialogo-cab" }, el("h2", null, "Personalizar resumen"), cancelar),
+      el("div", { class: "dialogo-cuerpo" }, el("p", { class: "dialogo-intro" }, "Elige qué tarjetas ves y en qué orden."), lista,
+        el("div", { class: "dialogo-pie" }, restablecer, guardar)));
+    document.body.append(dialogo); pintar();
+    dialogo.addEventListener("cancel", (e) => { e.preventDefault(); descartar(); });
+    dialogo.addEventListener("close", () => dialogo.remove()); dialogo.showModal();
+  }
+  function tarjetaDisponible(id) {
+    return id === "compra" ? Boolean(datosResumen?.compra?.pendientes) : id === "hoy" ? true : Boolean(datosResumen?.[{ tiempo: "tiempo", luz: "luz", apps: "aplicaciones", red: "red", finanzas: "finanzas", inversiones: "inversiones" }[id]]);
+  }
   function barra(valor, aviso) {
     const b = el("div", { class: "rd-barra" + (aviso ? " aviso" : "") }), f = el("span");
     f.style.width = Math.max(0, Math.min(100, Number(valor) || 0)) + "%"; b.append(f); return b;
@@ -94,9 +145,10 @@ const Inicio = (() => {
   function fila(icono, etq, valor, clase) { return el("div", { class: "rd-fila " + (clase || "") }, el("span", { class: "muted rd-etq" }, icono ? ico(icono, "rd-ico-p") : null, etq), el("strong", null, valor)); }
   function chipCambio(c) { return c == null ? null : el("span", { class: "rd-chip " + (c >= 0 ? "sube" : "baja") }, (c >= 0 ? "▲ " : "▼ ") + pct(c)); }
   function pintarResumen(d) {
-    const c = $("resumen-cuerpo"); c.replaceChildren();
+    const c = $("resumen-cuerpo"), tarjetas = {}; datosResumen = d;
+    const anadir = (id, tarjeta) => { if (tarjeta && !preferenciasTarjetas.ocultas.includes(id)) { tarjeta.dataset.tarjeta = id; tarjetas[id] = tarjeta; } };
     const t = d.tiempo;
-    if (t) c.append(tarjetaR("tiempo", "El tiempo · " + (t.origen === "dispositivo" ? "📍 " : "🏠 ") + t.ciudad, "rd-tiempo",
+    if (t) anadir("tiempo", tarjetaR("tiempo", "El tiempo · " + (t.origen === "dispositivo" ? "📍 " : "🏠 ") + t.ciudad, "rd-tiempo",
       el("div", { class: "rd-grande" }, (t.actual ?? t.max) + " °C"), el("p", { class: "rd-sub" }, t.cielo.charAt(0).toUpperCase() + t.cielo.slice(1)),
       el("div", { class: "rd-mini" }, el("span", null, "↓ " + t.min + " °C"), el("span", null, "↑ " + t.max + " °C"), el("span", null, "Lluvia " + (t.lluvia ?? "—") + " %")),
       t.aviso_manana ? el("p", { class: "rd-alerta" }, "⚠ " + t.aviso_manana) : null));
@@ -112,7 +164,7 @@ const Inicio = (() => {
         r.setAttribute("class", (p <= lz.media * .9 ? "barata" : p >= lz.media * 1.1 ? "cara" : "media") + (i === hAct ? " ahora" : ""));
         svg.append(r);
       });
-      c.append(tarjetaR("rayo", "Precio de la luz", "rd-luz",
+      anadir("luz", tarjetaR("rayo", "Precio de la luz", "rd-luz",
         el("div", { class: "rd-grande" }, (lz.ahora ? lz.ahora.precio : lz.media).toLocaleString("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + " €"),
         el("p", { class: "rd-sub" }, "por kWh · " + (lz.ahora ? "ahora, " + ({ barata: "hora barata", media: "precio medio", cara: "hora cara" }[lz.nivel] || "") : "media de hoy")),
         svg, el("div", { class: "rd-luz-ejes" }, el("span", null, "0 h"), el("span", null, "12 h"), el("span", null, "23 h")),
@@ -135,13 +187,13 @@ const Inicio = (() => {
         if (r.disco != null) filas.push(el("div", { class: "rd-medidor" }, el("span", { class: "muted" }, "Disco " + r.disco + " %"), barra(r.disco, r.disco > 85)));
       }
       if (a.copia) filas.push(fila("disco", "Copia", a.copia.disponible ? "hace " + a.copia.hace : "no disponible", a.copia.antigua ? "aviso" : ""));
-      c.append(tarjetaR("apps", "Tus aplicaciones", "rd-apps", ...filas));
+      anadir("apps", tarjetaR("apps", "Tus aplicaciones", "rd-apps", ...filas));
     }
     if (d.red) {
       const rd = d.red, cuerpo = [el("div", { class: "rd-grande" }, String(rd.total)), el("p", { class: "rd-sub" }, "dispositivos en la red")];
       cuerpo.push(el("p", null, rd.nuevos.length ? rd.nuevos.length + " nuevos en 24 h: " + rd.nuevos.slice(0, 4).map((x) => x.nombre).join(", ") : "Sin dispositivos nuevos en 24 h"));
       if (rd.n_desconocidos) cuerpo.push(el("a", { class: "rd-alerta", href: "#red" }, rd.n_desconocidos + " sin identificar →"));
-      c.append(tarjetaR("red", "Red", "rd-red", ...cuerpo));
+      anadir("red", tarjetaR("red", "Red", "rd-red", ...cuerpo));
     }
     const f = d.finanzas;
     if (f) {
@@ -152,14 +204,14 @@ const Inicio = (() => {
       }
       for (const p of (f.presupuestos || []).slice().sort((x, y) => y.porcentaje - x.porcentaje).slice(0, 3))
         cuerpo.push(el("div", { class: "rd-medidor" }, el("span", { class: "muted" }, p.categoria + " · " + Math.round(p.porcentaje) + " %"), barra(p.porcentaje, p.superado)));
-      c.append(tarjetaR("dinero", "Finanzas", "rd-fin", ...cuerpo));
+      anadir("finanzas", tarjetaR("dinero", "Finanzas", "rd-fin", ...cuerpo));
     }
-    if (d.compra?.pendientes) c.append(tarjetaR("agenda", "La compra", "rd-hoy", el("p", { class: "rd-grande" }, "🛒 " + d.compra.pendientes), el("p", { class: "rd-sub" }, "cosas pendientes"), el("a", { class: "rd-enlace", href: "#notas" }, "Abrir listas →")));
+    if (d.compra?.pendientes) anadir("compra", tarjetaR("agenda", "La compra", "rd-hoy", el("p", { class: "rd-grande" }, "🛒 " + d.compra.pendientes), el("p", { class: "rd-sub" }, "cosas pendientes"), el("a", { class: "rd-enlace", href: "#notas" }, "Abrir listas →")));
     const inv = d.inversiones;
     if (inv) {
       const lista = el("ul", { class: "rd-inv" }, ...inv.valores.map((v) => el("li", null,
         el("span", { class: "rd-inv-nombre" }, v.nombre || v.simbolo), el("strong", null, eur(v.precio, v.precio >= 1000 ? 0 : 2)), chipCambio(v.variacion_dia))));
-      c.append(tarjetaR("bolsa", "Mis inversiones", "rd-inv-card", lista,
+      anadir("inversiones", tarjetaR("bolsa", "Mis inversiones", "rd-inv-card", lista,
         inv.total_posiciones ? fila(null, "Total de tus posiciones", eur(inv.total_posiciones)) : null,
         el("a", { class: "rd-enlace", href: "#informacion" }, "Ver gráficas →")));
     }
@@ -167,8 +219,9 @@ const Inicio = (() => {
     for (const e of ag.eventos || []) items.push(el("li", null, el("span", { class: "rd-hora" }, e.todo_el_dia ? "Día" : hora(e.inicio)), el("span", null, e.titulo + (e.lugar ? " · " + e.lugar : ""))));
     for (const r of d.recordatorios || []) items.push(el("li", null, el("span", { class: "rd-hora" }, hora(r.cuando)), el("span", null, r.texto)));
     for (const cu of ag.cumpleanos || []) items.push(el("li", null, el("span", { class: "rd-hora" }, "Cumple"), el("span", null, cu.nombre + (cu.edad ? " (" + cu.edad + ")" : "") + " · " + new Date(cu.fecha + "T12:00").toLocaleDateString("es-ES", { weekday: "long", day: "numeric" }))));
-    c.append(tarjetaR("agenda", "Hoy", "rd-hoy", items.length ? el("ul", { class: "rd-agenda" }, ...items) : el("p", { class: "muted" }, "Día despejado: sin eventos ni recordatorios."),
+    anadir("hoy", tarjetaR("agenda", "Hoy", "rd-hoy", items.length ? el("ul", { class: "rd-agenda" }, ...items) : el("p", { class: "muted" }, "Día despejado: sin eventos ni recordatorios."),
       el("a", { class: "rd-enlace", href: "#agenda" }, "Abrir la agenda →")));
+    c.replaceChildren(...ordenTarjetas().map((id) => tarjetas[id]).filter(Boolean));
     if (d.cierre) c.append(el("p", { class: "rd-cierre" }, d.cierre));
   }
   // --- Menú principal en tarjetas numeradas (mismo sistema visual que el escaparate) ---
@@ -320,7 +373,7 @@ const Inicio = (() => {
   function activar(si) {
     clearInterval(temporizador); temporizador = null;
     if (!si) return;
-    saludo(); reloj(); estados(); resumen(false); propuestas(); Modulos.pintarInicio();
+    saludo(); reloj(); estados(); cargarPreferenciasTarjetas().then(() => resumen(false)); propuestas(); Modulos.pintarInicio();
     let vueltas = 0;
     temporizador = setInterval(() => {
       reloj();
@@ -348,6 +401,7 @@ const Inicio = (() => {
     pintarMenu(null);
     $("menu-inicio").addEventListener("pointermove", luzRaton, { passive: true });
     $("resumen-cerrar").addEventListener("click", () => { Prefs.set("resumen_cerrado", $("resumen-hoy").dataset.fecha || ""); $("resumen-hoy").hidden = true; });
+    $("resumen-personalizar").addEventListener("click", personalizarTarjetas);
     $("resumen-actualizar").addEventListener("click", async () => { await resumen(true); toast("Resumen actualizado."); });
     const escuchar = $("resumen-escuchar");
     escuchar.addEventListener("click", async () => {

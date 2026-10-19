@@ -101,6 +101,9 @@ def iniciar() -> None:
                 cuando REAL NOT NULL, version TEXT NOT NULL, android INTEGER NOT NULL,
                 modelo TEXT NOT NULL, excepcion TEXT NOT NULL, traza TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS idx_app_fallos_cuando ON app_fallos(cuando DESC);
+            CREATE TABLE IF NOT EXISTS inicio_tarjetas (
+                user_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+                orden TEXT NOT NULL, ocultas TEXT NOT NULL);
         """)
         # Migración: etiqueta del cerebro que respondió (p. ej. "Ollama Cloud · gpt-oss:120b").
         if "cerebro" not in {r["name"] for r in con.execute("PRAGMA table_info(mensajes)")}:
@@ -209,3 +212,20 @@ def historial_modelo(cid: str, maximo: int) -> list:
 
 def herramienta_json(nombre: str, args: dict, texto: str = "") -> str:
     return json.dumps({"name": nombre, "args": args, "text": texto[:1600]}, ensure_ascii=False)
+
+
+def tarjetas_inicio(uid: int) -> dict:
+    """Preferencias del resumen diario; la fila siempre pertenece al usuario indicado."""
+    with closing(_con()) as con:
+        fila = con.execute("SELECT orden, ocultas FROM inicio_tarjetas WHERE user_id=?", (uid,)).fetchone()
+    if not fila:
+        return {"orden": [], "ocultas": []}
+    return {"orden": json.loads(fila["orden"]), "ocultas": json.loads(fila["ocultas"])}
+
+
+def guardar_tarjetas_inicio(uid: int, orden: list, ocultas: list) -> dict:
+    with closing(_con()) as con, con:
+        con.execute("INSERT INTO inicio_tarjetas (user_id, orden, ocultas) VALUES (?,?,?) "
+                    "ON CONFLICT(user_id) DO UPDATE SET orden=excluded.orden, ocultas=excluded.ocultas",
+                    (uid, json.dumps(orden), json.dumps(ocultas)))
+    return {"orden": orden, "ocultas": ocultas}

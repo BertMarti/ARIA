@@ -1102,6 +1102,27 @@ async def api_resumen_diario(request: Request, refrescar: int = 0):
     return invitados.recortar_resumen(d, getattr(request.state, "limites", None))
 
 
+INICIO_TARJETAS = ("tiempo", "luz", "apps", "red", "finanzas", "compra", "inversiones", "hoy")
+
+
+@app.get("/api/inicio/tarjetas")
+async def api_inicio_tarjetas(request: Request):
+    return await asyncio.to_thread(db.tarjetas_inicio, request.state.usuario["id"])
+
+
+@app.put("/api/inicio/tarjetas")
+async def api_guardar_inicio_tarjetas(request: Request):
+    d = await _json(request)
+    orden, ocultas = d.get("orden"), d.get("ocultas")
+    if not isinstance(orden, list) or not isinstance(ocultas, list) or len(orden) > 30 or len(ocultas) > 30:
+        return JSONResponse({"error": "Preferencias no válidas."}, status_code=400)
+    if any(not isinstance(x, str) or x not in INICIO_TARJETAS for x in [*orden, *ocultas]):
+        return JSONResponse({"error": "Tarjeta desconocida."}, status_code=400)
+    if len(set(orden)) != len(orden) or len(set(ocultas)) != len(ocultas):
+        return JSONResponse({"error": "No se permiten tarjetas repetidas."}, status_code=400)
+    return await asyncio.to_thread(db.guardar_tarjetas_inicio, request.state.usuario["id"], orden, ocultas)
+
+
 @app.get("/api/resumen-diario/hablado")
 async def api_resumen_hablado(request: Request, refrescar: int = 0):
     """Guion del briefing hablado de esta franja del día (fijo hasta que se refresque)."""

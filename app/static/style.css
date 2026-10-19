@@ -798,6 +798,8 @@ body.modo-hud > .nav, body.modo-hud > .manos-libres, body.modo-hud .campana-zona
 .dialogo-pie { display: flex; justify-content: flex-end; gap: .6rem; padding-top: .3rem; }
 .dialogo-pie button { min-width: 7rem; }
 .dialogo-vacio { padding: 1.2rem .5rem; text-align: center; }
+.inicio-tarjeta-acciones { display: flex; gap: .25rem; }
+.inicio-tarjeta-acciones button { min-width: 2rem; padding: .25rem .45rem; }
 @keyframes dialogo-entrada { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 @media (max-width: 600px) { .dialogo { width: 100vw; min-height: 100dvh; border: 0; border-radius: 0; } .dialogo-cuerpo { flex: 1; } .dialogo-opciones { max-height: none; } .dialogo-pie { margin-top: auto; } }
 @media (prefers-reduced-motion: reduce) { .dialogo { animation: none; } }

@@ -902,9 +902,9 @@ async def ws_camara(ws: WebSocket):
     if _directos.get(u["id"], 0) >= DIRECTOS_MAX:   # cada directo abre una conexión con la cámara
         await ws.close(code=1013)
         return
-    await ws.accept()
-    _directos[u["id"]] = _directos.get(u["id"], 0) + 1
+    _directos[u["id"]] = _directos.get(u["id"], 0) + 1   # antes del accept: varios a la vez no se cuelan
     try:
+        await ws.accept()
         await hogar_camaras.reenviar(ws, ip, solo_ver=u["rol"] != "admin")
     finally:
         _directos[u["id"]] -= 1

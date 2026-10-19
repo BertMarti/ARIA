@@ -104,3 +104,17 @@ def test_fragmento_de_acepta_el_exacto_o_el_mas_cercano_por_poco():
     assert servicio._fragmento_de(frags, 524, 544) == frags[1]      # evento con 1 s de diferencia
     assert servicio._fragmento_de(frags, 529, 559) == frags[2]
     assert servicio._fragmento_de(frags, 300, 320) is None          # nada cerca: no se pide un rango arbitrario
+
+
+def test_limpiar_temporales_borra_solo_lo_viejo(monkeypatch, tmp_path):
+    import os
+    monkeypatch.setattr(servicio, "CACHE", tmp_path)
+    viejo, nuevo = tmp_path / ".tmp" / "a", tmp_path / ".tmp" / "b"
+    viejo.mkdir(parents=True)
+    nuevo.mkdir()
+    (viejo / "x.ts").write_bytes(b"x")
+    os.utime(viejo, (1, 1))
+    servicio._recortar_cache()
+    assert not viejo.exists() and nuevo.exists()
+    servicio._limpiar_temporales(0)
+    assert not nuevo.exists()

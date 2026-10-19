@@ -232,3 +232,26 @@ def test_resumen_del_movil_dice_quien_esta_en_casa(monkeypatch):
     asyncio.run(hv.ciclo(t + 15 * 60))                                   # Xiaomi y Galaxy llevan 15 min sin verse
     v = api_app._hogar()["vigilancia"]
     assert v["en_casa"] == ["Pixel"] and v["estado"] == "casa"
+
+
+def test_directo_cuenta_antes_de_aceptar(monkeypatch):
+    """La plaza se reserva antes del accept (si no, varios a la vez superaban el tope) y se libera al acabar."""
+    from aria import main
+    _camara_falsa(monkeypatch)
+    admin = usuarios.por_identificador("admin")
+    monkeypatch.setattr(main.hogar_camaras, "flujo", lambda ip: "c1")
+    monkeypatch.setattr(main, "_directos", {})
+    vistos = []
+
+    async def reenviar(ws, ip, solo_ver=False):
+        vistos.append(main._directos.get(admin["id"]))
+    monkeypatch.setattr(main.hogar_camaras, "reenviar", reenviar)
+    aceptar = main.WebSocket.accept
+
+    async def accept(self, *a, **k):
+        vistos.append(("al aceptar", main._directos.get(admin["id"])))
+        return await aceptar(self, *a, **k)
+    monkeypatch.setattr(main.WebSocket, "accept", accept)
+    with cliente(admin).websocket_connect("/api/hogar/camaras/directo?ip=192.168.1.30", headers={"origin": "http://testserver"}):
+        pass
+    assert vistos[0] == ("al aceptar", 1) and main._directos == {}

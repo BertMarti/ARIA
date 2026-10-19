@@ -3,6 +3,7 @@ import asyncio
 import datetime as dt
 import hashlib
 import os
+import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -128,8 +129,23 @@ def _fragmento_de(fragmentos: list, inicio: int, fin: int, margen: int = 10):
     return min(cerca, key=lambda x: abs(x["inicio"] - inicio)) if cerca else None
 
 
+def _limpiar_temporales(edad: float = 600) -> None:
+    """Borra lo que quedó a medias en .tmp (p. ej. si el contenedor se paró preparando un clip)."""
+    base = CACHE / ".tmp"
+    if not base.is_dir():
+        return
+    limite = time.time() - edad
+    for carpeta in base.iterdir():
+        try:
+            if carpeta.stat().st_mtime < limite:
+                shutil.rmtree(carpeta, ignore_errors=True) if carpeta.is_dir() else carpeta.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def _recortar_cache():
     CACHE.mkdir(parents=True, exist_ok=True)
+    _limpiar_temporales()
     archivos = [p for p in CACHE.glob("*.mp4") if p.is_file()]
     total = sum(p.stat().st_size for p in archivos)
     for archivo in sorted(archivos, key=lambda p: p.stat().st_mtime):   # mtime = último uso (se «toca» al servirlo)
@@ -262,4 +278,4 @@ app = Starlette(routes=[
     Route("/fragmentos", fragmentos),
     Route("/clip", clip),
     Route("/eventos", eventos),
-])
+], on_startup=[lambda: _limpiar_temporales(0)])   # al arrancar no hay ningún clip en preparación

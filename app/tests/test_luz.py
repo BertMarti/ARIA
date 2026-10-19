@@ -87,6 +87,7 @@ def test_aviso_de_la_luz_una_vez_por_dia_y_solo_por_la_tarde(monkeypatch):
     monkeypatch.setattr(luz, "precios", precios)
     monkeypatch.setattr(luz, "activo", lambda: True)
     monkeypatch.setattr(avisos, "_luz_reintento", 0.0)
+    avisos.guardar_ajustes(1, {"tipos": {"luz": True}})
     tarde = datetime(2026, 10, 17, 18, 0, tzinfo=tiempo.zona())
     assert asyncio.run(avisos.luz_de_manana(tarde)) is False          # antes de las 20:45: aún no
     noche = datetime(2026, 10, 17, 21, 0, tzinfo=tiempo.zona())
@@ -108,7 +109,7 @@ def test_aviso_de_la_luz_espera_si_aun_no_hay_precios(monkeypatch):
     monkeypatch.setattr(luz, "precios", precios)
     monkeypatch.setattr(luz, "activo", lambda: True)
     monkeypatch.setattr(avisos, "_luz_reintento", 0.0)
-    noche = datetime(2026, 10, 17, 20, 50, tzinfo=tiempo.zona())
+    noche = datetime(2026, 10, 17, 21, 0, tzinfo=tiempo.zona())
     assert asyncio.run(avisos.luz_de_manana(noche)) is False
     assert asyncio.run(avisos.luz_de_manana(noche)) is False          # no vuelve a preguntar hasta 15 min después
     assert len(llamadas) == 1

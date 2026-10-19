@@ -52,7 +52,7 @@ TIPOS = {
     "telemetria": ("Picos de CPU, temperatura o contenedores", True, True),
     "agenda": ("Eventos y cumpleaños de tu agenda", False, True),
     "meteo": ("Avisos meteorológicos naranja o rojo de tu zona", False, True),
-    "luz": ("Horas baratas de la luz de mañana (cada tarde)", False, True),
+    "luz": ("Horas baratas de la luz: mañana (cada tarde) y al empezar la de hoy", False, True),
 }
 # Tipos que no se pueden silenciar con los interruptores (los pide el propio usuario).
 SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina", "agenda"}
@@ -479,6 +479,10 @@ async def tick(ahora: float | None = None) -> None:
     except Exception:  # noqa: BLE001
         log.exception("Falló el aviso de la luz de mañana")
     try:
+        await luz_inicio_franja()
+    except Exception:  # noqa: BLE001
+        log.exception("Falló el aviso de inicio de la hora barata")
+    try:
         from . import rutinas
         await rutinas.disparar_vencidas(ahora)
     except Exception:  # noqa: BLE001
@@ -570,32 +574,73 @@ def briefing_toca(a: dict, ref: datetime) -> bool:
 _tareas_voz: set = set()   # referencias a las tareas de voz en curso (si no, el recolector podría cortarlas)
 
 
-# --- Horas baratas de la luz de mañana -------------------------------------------------------------------------
+# --- Horas baratas de la luz -----------------------------------------------------------------------------------
 HORA_LUZ = (20, 45)        # Red Eléctrica publica el PVPC de mañana hacia las 20:15
+HORA_LUZ_FIN = (23, 0)     # si a las 23:00 no ha publicado, ese día no se avisa
+_luz_hoy_reintento = 0.0
 _luz_reintento = 0.0       # si aún no está publicado, se vuelve a mirar a los 15 minutos (no en cada vuelta)
 
 
 async def luz_de_manana(ref: datetime | None = None) -> bool:
-    """Una vez al día, por la tarde: la franja más barata y la más cara de mañana. Devuelve si se ha enviado."""
+    """Avisa de las franjas de mañana cuando Red Eléctrica ya ha publicado sus precios."""
     global _luz_reintento
     from . import luz
     if not luz.activo():
         return False
     ref = (ref.astimezone(tiempo.zona()) if ref else tiempo.ahora())
-    if (ref.hour, ref.minute) < HORA_LUZ or time.time() < _luz_reintento:
+    if not (HORA_LUZ <= (ref.hour, ref.minute) < HORA_LUZ_FIN) or time.time() < _luz_reintento:
         return False
     manana = ref.date() + timedelta(days=1)
-    clave = f"luz:{manana.isoformat()}"
-    if await asyncio.to_thread(_ya_enviado, clave):
+    ids = await asyncio.to_thread(_destinatarios_con_tipo, "luz")
+    pendientes = []
+    for uid in ids:
+        clave = f"luz:manana:{uid}:{manana.isoformat()}"
+        if not await asyncio.to_thread(_ya_enviado, clave):
+            pendientes.append(uid)
+    if not pendientes:
         return False
     try:
         serie = await luz.precios(manana)
     except luz.LuzError:
         _luz_reintento = time.time() + 15 * 60
         return False
-    await asyncio.to_thread(_anotar_enviado, clave)
-    ids = [u["id"] for u in await asyncio.to_thread(_usuarios_activos)]
-    await emitir("luz", "info", luz.texto_manana(serie), "inicio", ids)
+    texto = luz.texto_manana(serie)
+    for uid in pendientes:
+        clave = f"luz:manana:{uid}:{manana.isoformat()}"
+        await asyncio.to_thread(_anotar_enviado, clave)
+        await emitir("luz", "info", texto, "inicio", [uid], ref=ref)
+    return True
+
+
+async def luz_inicio_franja(ref: datetime | None = None) -> bool:
+    """Avisa al comenzar la franja de tres horas más barata de hoy."""
+    global _luz_hoy_reintento
+    from . import luz
+    if not luz.activo() or time.time() < _luz_hoy_reintento:
+        return False
+    ref = (ref.astimezone(tiempo.zona()) if ref else tiempo.ahora())
+    ids = await asyncio.to_thread(_destinatarios_con_tipo, "luz")
+    pendientes = []
+    for uid in ids:
+        clave = f"luz:inicio:{uid}:{ref.date().isoformat()}"
+        if not await asyncio.to_thread(_ya_enviado, clave):
+            pendientes.append(uid)
+    if not pendientes:
+        return False
+    try:
+        serie = await luz.precios(ref.date())
+    except luz.LuzError:
+        _luz_hoy_reintento = time.time() + 15 * 60
+        return False
+    tramo = luz.franja(serie)
+    if not tramo or ref.hour != tramo["desde"]:
+        return False
+    precio = f"{tramo['media']:.3f}".replace(".", ",")
+    texto = f"Empieza la hora barata de la luz: {precio} €/kWh hasta las {tramo['hasta']}:00."
+    for uid in pendientes:
+        clave = f"luz:inicio:{uid}:{ref.date().isoformat()}"
+        await asyncio.to_thread(_anotar_enviado, clave)
+        await emitir("luz", "info", texto, "inicio", [uid], ref=ref)
     return True
 
 

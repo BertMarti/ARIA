@@ -373,7 +373,9 @@ const Inicio = (() => {
   function activar(si) {
     clearInterval(temporizador); temporizador = null;
     if (!si) return;
-    saludo(); reloj(); estados(); cargarPreferenciasTarjetas().then(() => resumen(false)); propuestas(); Modulos.pintarInicio();
+    saludo(); reloj(); estados();
+    $("resumen-personalizar").hidden = !!Sesion.limites;   // los invitados ven el resumen tal cual (su perfil no lo guarda)
+    (Sesion.limites ? Promise.resolve() : cargarPreferenciasTarjetas()).then(() => resumen(false)); propuestas(); Modulos.pintarInicio();
     let vueltas = 0;
     temporizador = setInterval(() => {
       reloj();

@@ -113,3 +113,18 @@ def test_posponer_repetitivo_que_insiste_conserva_su_hora(admin, monkeypatch):
     copia = rec.posponer(admin["id"], r["id"], 10)
     assert copia["id"] != r["id"] and copia["insistir"] and not copia["repetir"]
     assert rec.obtener(admin["id"], r["id"])["cuando"] == datetime(2026, 10, 8, 11, tzinfo=Z).timestamp()
+
+
+def test_marcado_hecho_mientras_se_dispara_no_resucita(admin, monkeypatch):
+    enviados = []
+
+    async def emitir(*a, **k):
+        enviados.append(a)
+        return []
+    monkeypatch.setattr(avisos, "emitir", emitir)
+    r = rec.crear(admin["id"], "pastilla", "en 10 minutos", insistir=True, ref=REF)
+    leidos = rec.vencidos(r["cuando"])
+    assert rec.hecho(admin["id"], r["id"])                       # el usuario lo marca justo entre leer y avanzar
+    monkeypatch.setattr(rec, "vencidos", lambda ahora: leidos)
+    assert correr(rec.disparar_vencidos(r["cuando"])) == []
+    assert enviados == [] and rec.obtener(admin["id"], r["id"])["estado"] == "hecho"

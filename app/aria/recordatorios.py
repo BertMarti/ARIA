@@ -385,24 +385,26 @@ def vencidos(ahora: float) -> list:
             (ahora, ahora - INTERVALO_INSISTENCIA, MAX_REINTENTOS))]
 
 
-def _avanzar(r: dict, ahora: float) -> None:
+def _avanzar(r: dict, ahora: float) -> bool:
+    """Avanza el recordatorio solo si sigue como se leyó: si entretanto se marcó hecho o se pospuso, no se avisa."""
     with closing(db._con()) as con, con:
         reaviso = r["estado"] == "avisado"
         agotado = reaviso and r["reintentos"] + 1 >= MAX_REINTENTOS
+        igual = " AND estado=? AND cuando=? AND reintentos=?"
+        antes = (r["estado"], r["cuando"], r["reintentos"])
         if r["repetir"] and (not r["insistir"] or agotado):
             prox = siguiente(datetime.fromtimestamp(r["cuando"], tiempo.zona()), r["repetir"],
                              datetime.fromtimestamp(ahora, tiempo.zona()))
-            con.execute("UPDATE recordatorios SET cuando=?, estado='pendiente', avisado=NULL, reintentos=0 WHERE id=? AND user_id=?",
-                        (prox.timestamp(), r["id"], r["user_id"]))
+            cur = con.execute("UPDATE recordatorios SET cuando=?, estado='pendiente', avisado=NULL, reintentos=0 "
+                              "WHERE id=? AND user_id=?" + igual, (prox.timestamp(), r["id"], r["user_id"], *antes))
         elif reaviso:
-            con.execute("UPDATE recordatorios SET reintentos=reintentos+1, avisado=? WHERE id=? AND user_id=?",
-                        (ahora, r["id"], r["user_id"]))
-        elif r["insistir"]:
-            con.execute("UPDATE recordatorios SET estado='avisado', avisado=?, reintentos=0 WHERE id=? AND user_id=?",
-                        (ahora, r["id"], r["user_id"]))
+            cur = con.execute("UPDATE recordatorios SET reintentos=reintentos+1, avisado=? WHERE id=? AND user_id=?" + igual,
+                              (ahora, r["id"], r["user_id"], *antes))
         else:
-            con.execute("UPDATE recordatorios SET estado='avisado', avisado=? WHERE id=? AND user_id=?", (ahora, r["id"], r["user_id"]))
+            cur = con.execute("UPDATE recordatorios SET estado='avisado', avisado=?, reintentos=0 WHERE id=? AND user_id=?" + igual,
+                              (ahora, r["id"], r["user_id"], *antes))
         con.execute("DELETE FROM recordatorios WHERE estado IN ('avisado','hecho') AND cuando<?", (ahora - 30 * 86400,))
+        return cur.rowcount == 1
 
 
 async def disparar_vencidos(ahora: float | None = None) -> list:
@@ -410,7 +412,8 @@ async def disparar_vencidos(ahora: float | None = None) -> list:
     ahora = time.time() if ahora is None else ahora
     hechos = []
     for r in await asyncio.to_thread(vencidos, ahora):
-        await asyncio.to_thread(_avanzar, r, ahora)  # primero: si la entrega falla, no se repite en bucle
+        if not await asyncio.to_thread(_avanzar, r, ahora):  # primero: si la entrega falla, no se repite en bucle
+            continue                                         # se marcó hecho o se pospuso mientras tanto
         retraso = ahora - r["cuando"]
         prefijo = "Otra vez: " if r["estado"] == "avisado" else "Recordatorio: "
         texto = prefijo + r["texto"] + (" (con retraso: ARIA estaba apagada)" if retraso > 3600 else "")

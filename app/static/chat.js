@@ -319,7 +319,18 @@ const Chat = (() => {
     if (!ok) return;
     const ul = $("lista-convs");
     ul.replaceChildren();
-    if (!data.conversaciones.length) ul.append(el("li", { class: "muted vacio" }, "Aún no hay conversaciones."));
+    if (!data.conversaciones.length) {
+      const vacio = document.createElement("li");
+      vacio.className = "muted vacio";
+      vacio.textContent = "Aún no hay conversaciones.";
+      const nueva = document.createElement("button");
+      nueva.type = "button";
+      nueva.className = "pequeno";
+      nueva.textContent = "Nueva conversación";
+      nueva.addEventListener("click", () => $("nuevo").click());
+      vacio.append(nueva);
+      ul.append(vacio);
+    }
     for (const c of data.conversaciones) ul.append(itemConv(c));
   }
 

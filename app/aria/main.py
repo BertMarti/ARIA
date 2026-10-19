@@ -1,6 +1,7 @@
 """ARIA: aplicacion FastAPI (login, chat con Ollama, panel de servicios, Spotify)."""
 import asyncio
 import base64
+from contextlib import asynccontextmanager
 import hashlib
 import html
 import json
@@ -22,7 +23,18 @@ from . import hogar_camaras
 from . import agenda, agentes, api_acceso, api_agenda, api_app, api_automatizaciones, api_avisos, api_cerebro, api_control, api_disponibilidad, api_documentos, api_finanzas, api_hogar, api_informacion, api_listas, api_medios, api_modulos, api_notas, api_premium, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, disponibilidad, dispositivos_app, documentos, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, listas, mapas, medios, memoria, mis_datos, modelos, modulos, notas, permisos, premium, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
-app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    await _arranque()
+    try:
+        yield
+    finally:
+        await _parada()
+
+
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 
 
 @app.exception_handler(premium.PremiumRequired)
@@ -87,7 +99,6 @@ def _html_versionado(nombre: str) -> HTMLResponse:
                                   lambda m: f'{m.group(1)}?v={_VERSION_ESTATICOS}"', contenido)
     return HTMLResponse(_PAGINAS[nombre], headers={"Cache-Control": "no-store"})
 
-@app.on_event("startup")
 async def _arranque():
     if not auth.habilitado():
         log.error("Faltan ARIA_USER / ARIA_PASSWORD o ARIA_SECRET (>=16 caracteres): login deshabilitado.")
@@ -146,7 +157,6 @@ async def _arranque():
     app.state.arranque = asyncio.create_task(arranque.bucle())
 
 
-@app.on_event("shutdown")
 async def _parada():
     for nombre in ("diario", "premium", "vigilancia", "eventos", "hogar", "avisos", "telegram", "control", "arranque", "embeddings"):
         tarea = getattr(app.state, nombre, None)

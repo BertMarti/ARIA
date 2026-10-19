@@ -118,3 +118,10 @@ def test_heimdall_se_verifica_con_su_autoridad_si_esta(tmp_path, monkeypatch):
     monkeypatch.setattr(vpn, "_contexto", None)
     assert vpn._verificacion() == "contexto"     # con certificado: se exige (contexto SSL con esa autoridad)
     assert vpn._verificacion() == "contexto" and usados == [str(ca)]   # se crea una vez y se reutiliza
+
+
+def test_mensaje_del_servidor_de_licencias_se_acota():
+    from aria import premium
+    assert premium._texto_servidor({"html": "<b>x</b>"}) is None
+    assert premium._texto_servidor("a\x00b\x1b[31mc" + "d" * 500) == ("ab[31mc" + "d" * 500)[:200]
+    assert premium._texto_servidor("   ") is None

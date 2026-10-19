@@ -180,6 +180,7 @@ _INTENCIONES = [
     # Recordatorios: «recuérdame mañana a las 9…», «avísame en 20 minutos», «ponme un recordatorio».
     ((r"\b(recu[eé]rdame|av[ií]same|recordatorio|alarma)\b", r"!\b(mis|qu[eé]|cu[aá]les|borra\w*|quita\w*|elimina\w*|cancela\w*)\b"),
      {"recordatorio"}),
+    ((r"\b(pastill\w*|medicin\w*|medicament\w*)\b",), {"recordatorio"}),
     ((r"\b(recuerda|apunta|anota)\b", _CUANDO, r"!\bque\b"), {"recordatorio"}),
     ((r"\brecordatorios?\b", r"\b(mis|qu[eé]|cu[aá]les|tengo|lista\w*|pendientes?)\b"), {"mis_recordatorios"}),
     ((r"\brecordatorios?\b", r"\b(borra\w*|quita\w*|elimina\w*|cancela\w*)\b"), {"borrar_recordatorio", "mis_recordatorios"}),
@@ -1324,11 +1325,14 @@ _INTENCIONES += [
        "cuando": ("string", "Fecha y hora LOCAL en formato ISO AAAA-MM-DDTHH:MM (p. ej. 2026-10-09T09:00). «Por la "
                             "tarde» = 17:00, «por la mañana» = 09:00, «por la noche» = 21:00. Si es recurrente, la "
                             "primera vez."),
-       "repetir": ("string", "Vacío si es una sola vez; «diario», «semanal» (mismo día de la semana) o «laborables»")},
-      ("texto", "cuando"), usa_uid=True)
-async def recordatorio(uid, texto, cuando, repetir="") -> str:
+        "repetir": ("string", "Vacío si es una sola vez; «diario», «semanal» (mismo día de la semana) o «laborables"),
+        "insistir": ("boolean", "True para volver a avisar cada 15 minutos hasta 3 veces si no se marca como hecho")},
+       ("texto", "cuando"), usa_uid=True)
+async def recordatorio(uid, texto, cuando, repetir="", insistir=False) -> str:
     try:
-        r = await asyncio.to_thread(recordatorios.crear, uid, texto, cuando, repetir or None)
+        automatico = bool(re.search(r"\b(pastill\w*|medicin\w*|medicament\w*)\b|insist\w*", f"{texto} {cuando}".lower()))
+        r = await asyncio.to_thread(recordatorios.crear, uid, texto, cuando, repetir or None,
+                                     (insistir if isinstance(insistir, bool) else False) or automatico)
     except recordatorios.RecordatorioError as e:
         return str(e)
     return f"Recordatorio {r['id']} programado: «{r['texto']}», {r['descripcion']}."

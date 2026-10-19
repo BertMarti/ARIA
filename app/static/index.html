@@ -580,7 +580,8 @@
         <form id="form-rec" class="formulario" autocomplete="off">
           <label>Qué <input id="rec-texto" maxlength="200" placeholder="Llamar al taller" required></label>
           <label>Cuándo <input id="rec-cuando" type="datetime-local" required></label>
-          <label>Repetir <select id="rec-repetir"><option value="">No</option><option value="diario">Todos los días</option><option value="laborables">De lunes a viernes</option><option value="semanal">Cada semana</option></select></label>
+           <label>Repetir <select id="rec-repetir"><option value="">No</option><option value="diario">Todos los días</option><option value="laborables">De lunes a viernes</option><option value="semanal">Cada semana</option></select></label>
+           <label class="interruptor"><input type="checkbox" id="rec-insistir"><span>Insistir hasta que lo marque como hecho</span></label>
           <button type="submit" class="primario">Añadir recordatorio</button>
         </form>
         <p id="rec-msg" class="muted" role="status"></p>

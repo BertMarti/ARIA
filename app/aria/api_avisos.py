@@ -107,10 +107,12 @@ async def api_recordatorio_crear(request: Request):
     if not _lim_recordatorio.permitir(u["id"]):
         return _demasiadas()
     d = await _json(request)
-    if not all(isinstance(d.get(k, ""), str) for k in ("texto", "cuando", "repetir")):
+    if (not all(isinstance(d.get(k, ""), str) for k in ("texto", "cuando", "repetir"))
+            or not isinstance(d.get("insistir", False), bool)):
         return JSONResponse({"error": "Datos no válidos."}, status_code=400)
     try:
-        r = await asyncio.to_thread(recordatorios.crear, u["id"], d.get("texto"), d.get("cuando"), d.get("repetir") or None)
+        r = await asyncio.to_thread(recordatorios.crear, u["id"], d.get("texto"), d.get("cuando"),
+                                     d.get("repetir") or None, d.get("insistir", False))
     except recordatorios.RecordatorioError as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     return {"recordatorio": r}

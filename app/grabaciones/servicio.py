@@ -1,5 +1,6 @@
 """Servicio interno para listar y descargar grabaciones de cámaras Tapo."""
 import asyncio
+import contextlib
 import datetime as dt
 import hashlib
 import os
@@ -273,9 +274,15 @@ async def eventos(request):
         return JSONResponse({"error": "No se han podido consultar las detecciones."}, 502)
 
 
+@contextlib.asynccontextmanager
+async def _arranque(_app):
+    _limpiar_temporales(0)   # al arrancar no hay ningún clip en preparación: lo de .tmp quedó a medias
+    yield
+
+
 app = Starlette(routes=[
     Route("/dias", dias),
     Route("/fragmentos", fragmentos),
     Route("/clip", clip),
     Route("/eventos", eventos),
-], on_startup=[lambda: _limpiar_temporales(0)])   # al arrancar no hay ningún clip en preparación
+], lifespan=_arranque)

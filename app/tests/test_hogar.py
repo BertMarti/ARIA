@@ -223,12 +223,53 @@ def test_api_por_rol_y_sin_credenciales(monkeypatch):
     texto = json.dumps(d)
     assert CLAVE_FALSA not in texto and PASS_FALSA not in texto
     c = cliente(ana)
-    assert set(c.get("/api/hogar").json()) == {"luces"}              # un usuario no ve router ni cámaras
+    assert c.get("/api/hogar").json() == {}                           # un usuario no ve luces, router ni cámaras
     assert c.post("/api/hogar/router/reiniciar").status_code == 403
     assert c.post("/api/hogar/router/invitados", json={"activa": True}).status_code == 403
     assert c.post("/api/hogar/camaras/privacidad", json={"ip": "192.168.1.30", "activa": True}).status_code == 403
-    assert c.post("/api/hogar/luces/AA:BB", json={"brillo": 101}).status_code == 400
-    assert c.post("/api/hogar/luces/AA:BB", json={"color": "rojo"}).status_code == 400
+    assert c.get("/api/hogar/luces").status_code == 403                # las luces, solo administradores
+    assert c.post("/api/hogar/luces/AA:BB", json={"encendida": True}).status_code == 403
+    assert c.get("/api/hogar/camaras").status_code == 403              # sin el permiso «ver cámaras»
+    assert cliente(admin).post("/api/hogar/luces/AA:BB", json={"brillo": 101}).status_code == 400
+    assert cliente(admin).post("/api/hogar/luces/AA:BB", json={"color": "rojo"}).status_code == 400
+
+
+def test_usuario_con_ver_camaras_solo_mira_y_enciende_la_luz(monkeypatch):
+    _govee(monkeypatch, {"user/devices": lambda r: httpx.Response(200, json=DISPOSITIVOS), "device/state": _estado})
+    _router(monkeypatch, RouterFalso())
+    _tapo(monkeypatch, CamaraFalsa())
+    ajustes = []
+
+    async def ajustar(ip, campo, valor):
+        ajustes.append((campo, valor))
+        return {"ip": ip, campo: valor}
+    monkeypatch.setattr(hogar_tapo, "ajustar", ajustar)
+    ana = usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
+    ana = usuarios.actualizar(ana["id"], ver_camaras=True)
+    c = cliente(ana)
+    assert set(c.get("/api/hogar").json()) == {"camaras"}             # ni luces ni router
+    assert c.get("/api/hogar/camaras").status_code == 200
+    assert c.get("/api/info").json()["ver_camaras"] is True
+    assert c.post("/api/hogar/camaras/ajuste", json={"ip": "192.168.1.30", "campo": "led", "valor": True}).status_code == 200
+    for campo in ("privacidad", "movimiento", "personas"):
+        assert c.post("/api/hogar/camaras/ajuste", json={"ip": "192.168.1.30", "campo": campo, "valor": False}).status_code == 403
+    assert ajustes == [("led", True)]
+    assert c.post("/api/hogar/camaras/mover", json={"ip": "192.168.1.30", "direccion": "arriba"}).status_code == 403
+    assert c.post("/api/hogar/camaras/privacidad", json={"ip": "192.168.1.30", "activa": False}).status_code == 403
+    assert c.get("/api/hogar/camaras/grabaciones/dias?ip=192.168.1.30").status_code == 403
+    assert c.get("/api/hogar/vigilancia").status_code == 403
+    assert c.get("/api/hogar/luces").status_code == 403
+    # Quitar el permiso lo cierra al momento
+    usuarios.actualizar(ana["id"], ver_camaras=False)
+    assert c.get("/api/hogar/camaras").status_code == 403
+
+
+def test_directo_de_quien_solo_mira_no_sube_mas_que_la_peticion_de_video():
+    from aria import hogar_camaras
+    assert hogar_camaras._solo_video(json.dumps({"type": "mse", "value": "avc1.640029,opus"}))
+    for m in ({"type": "webrtc/offer", "value": "v=0"}, {"type": "webrtc/candidate", "value": "x"},
+              {"type": "mse", "value": "x", "extra": 1}, ["mse"], "no es json"):
+        assert not hogar_camaras._solo_video(m if isinstance(m, str) else json.dumps(m))
 
 
 def test_sin_configurar_lo_dice(monkeypatch):
@@ -256,7 +297,7 @@ def test_herramienta_luces_busca_sin_acentos(monkeypatch):
     assert cambios == [("AA:BB", False, None, None)]
     asyncio.run(tools.luces("", encendida=False))                    # «apaga todas»
     assert len(cambios) == 3
-    assert "luces" in tools.permitidas("usuario") and "router_invitados" not in tools.permitidas("usuario")
+    assert "luces" not in tools.permitidas("usuario") and "router_invitados" not in tools.permitidas("usuario")
     assert "luces" not in tools.RUTINAS                               # una rutina programada no toca la casa
 
 
@@ -384,8 +425,10 @@ def test_foto_y_directo_solo_admin_y_solo_camaras_conocidas(monkeypatch):
     assert cliente(admin).get("/api/hogar/camaras/foto?ip=192.168.1.99").status_code == 404
     ana = usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
     assert cliente(ana).get("/api/hogar/camaras/foto?ip=192.168.1.30").status_code == 403
+    pepa = usuarios.actualizar(usuarios.crear("pepa@example.com", "Pepa", "usuario", "clave-larga-pepa")["id"], ver_camaras=True)
+    assert cliente(pepa).get("/api/hogar/camaras/foto?ip=192.168.1.30").status_code == 200   # con permiso, sí
     from starlette.websockets import WebSocketDisconnect
-    for quien, ip in ((ana, "192.168.1.30"), (admin, "192.168.1.99")):
+    for quien, ip in ((ana, "192.168.1.30"), (admin, "192.168.1.99"), (pepa, "192.168.1.99")):
         c = cliente(quien)
         with pytest.raises(WebSocketDisconnect):
             with c.websocket_connect(f"/api/hogar/camaras/directo?ip={ip}", headers={"origin": LAN}) as ws:
@@ -548,7 +591,7 @@ def test_secciones_por_separado_y_por_rol(monkeypatch):
     assert c.get("/api/hogar/router").json()["datos"]["conectados"] == 2
     ana = usuarios.crear("ana@example.com", "Ana", "usuario", "clave-larga-ana")
     a = cliente(ana)
-    assert a.get("/api/hogar/luces").status_code == 200
+    assert a.get("/api/hogar/luces").status_code == 403               # luces de casa: solo administradores
     assert a.get("/api/hogar/camaras").status_code == 403 and a.get("/api/hogar/router").status_code == 403
 
 

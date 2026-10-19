@@ -9,9 +9,7 @@ _USUARIO = [
     ("POST", r"/api/mis-datos/borrar-cuenta"),
     ("GET", r"/static/.*"),
     ("GET", r"/api/info"),
-    ("GET", r"/api/hogar"),
-    ("GET", r"/api/hogar/luces"),
-    ("POST", r"/api/hogar/luces/[^/]+"),
+    ("GET", r"/api/hogar"),   # sin luces: un `usuario` no las controla (las cámaras, solo con permiso; ver abajo)
     ("GET", r"/api/premium"),
     ("GET", r"/api/services"),
     ("GET", r"/api/shield"),
@@ -128,6 +126,14 @@ _USUARIO = [
 ]
 _PATRONES = [(m, re.compile(p)) for m, p in _USUARIO]
 
+# Cámaras para un `usuario` con el permiso «ver cámaras» (lo da el administrador en Ajustes → Usuarios): ver la lista,
+# las imágenes y el directo, y encender o apagar la luz LED (api_hogar.py solo le deja el campo `led`). Nada de mover,
+# privacidad, detecciones, grabaciones, vigilancia ni hablar por la cámara (el directo solo le reenvía el vídeo).
+_CAMARAS = [(m, re.compile(p)) for m, p in [
+    ("GET", r"/api/hogar/camaras"), ("GET", r"/api/hogar/camaras/foto"), ("GET", r"/api/hogar/camaras/directo"),
+    ("POST", r"/api/hogar/camaras/ajuste"),
+]]
+
 
 # Rutas de módulos que su manifiesto abre a `usuario` (las añade modulos.py al cargar). Solo pueden estar bajo
 # /api/modulos/<id>/: un módulo nunca puede abrir rutas del núcleo.
@@ -159,13 +165,14 @@ def rutas_modulos_usuario() -> set:
     return {(m, plantilla) for m, _, plantilla in _MODULOS}
 
 
-def permitido(rol: str, metodo: str, ruta: str) -> bool:
+def permitido(rol: str, metodo: str, ruta: str, ver_camaras: bool = False) -> bool:
     if rol == "admin":
         return True
     if rol != "usuario":
         return False
     metodo = "GET" if metodo == "HEAD" else metodo
     return (any(m == metodo and p.fullmatch(ruta) for m, p in _PATRONES)
+            or (ver_camaras is True and any(m == metodo and p.fullmatch(ruta) for m, p in _CAMARAS))
             or any(m == metodo and p.fullmatch(ruta) for m, p, _ in _MODULOS))
 
 # Control parental (api_control.py): TODAS sus rutas /api/red/control/... son solo de admin. No están en la lista

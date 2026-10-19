@@ -25,6 +25,13 @@ const Usuarios = (() => {
     $("dlg-passuser").showModal(); $("passuser-valor").focus();
   }
 
+  // Permiso por persona: ver las cámaras en directo y encender su luz (nada más de las cámaras).
+  function camaras(u) {
+    const c = el("input", { type: "checkbox", checked: !!u.ver_camaras });
+    c.addEventListener("change", () => cambiar(u, { ver_camaras: c.checked }, c.checked ? "Ya puede ver las cámaras." : "Ya no ve las cámaras."));
+    return el("label", { class: "interruptor", title: "Ver las cámaras en directo y encender su luz; nada más" }, c, el("span", null, "Ver cámaras"));
+  }
+
   async function lista() {
     const ul = $("usuarios-lista");
     const { ok, data } = await api("/api/users");
@@ -43,6 +50,7 @@ const Usuarios = (() => {
         el("div", { class: "fila-acc" },
           el("span", { class: "estado-usuario" + (u.activo ? " ok" : " apagado") }, el("span", { class: "punto " + (u.activo ? "ok" : "apagado") }), u.activo ? "Activo" : "Desactivado"),
           rol,
+          u.rol === "usuario" ? camaras(u) : null,
           el("button", { type: "button", class: "fantasma pequeno", disabled: u.protegido,
             onclick: () => cambiar(u, { activo: !u.activo }, u.activo ? "Usuario desactivado." : "Usuario activado.") }, u.activo ? "Desactivar" : "Activar"),
           el("button", { type: "button", class: "fantasma pequeno", title: "Contraseña para entrar desde casa (sin Cloudflare)", onclick: () => ponerPassword(u) }, "Contraseña de casa"),

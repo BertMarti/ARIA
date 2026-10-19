@@ -263,7 +263,7 @@ async def seguridad(request: Request, call_next):
             if vista and path != "/api/vista":
                 usuario = {**usuario, "rol": "usuario"}
                 request.state.usuario = usuario
-            if not permisos.permitido(usuario["rol"], request.method, path):
+            if not permisos.permitido(usuario["rol"], request.method, path, bool(usuario.get("ver_camaras"))):
                 return JSONResponse({"error": "No tienes permiso para esto."}, status_code=403)
             # Invitados: además del rol, sus límites (secciones, opciones y caducidad)
             if vista in invitados.PERFILES and path != "/api/vista":
@@ -581,6 +581,7 @@ async def api_info(request: Request):
     primero = cerebros.cadena()[0]
     return {"version": config.VERSION, "modelo": config.modelo_activo(), "usuario": u["nombre"],
             "email": u["email"], "rol": u["rol"], "tiene_password": u["tiene_password"],
+            "ver_camaras": u["rol"] == "admin" or bool(u.get("ver_camaras")),
             "cerebro": {"id": primero.id, "etiqueta": primero.etiqueta()},
             "puertos": {"shield_web": config.SHIELD_WEB_PORT, "vpn": config.HEIMDALL_PORT},
             "funciones": {"spotify": config.SPOTIFY, "netflix": config.NETFLIX, "vision": vision.disponible()},
@@ -882,16 +883,18 @@ async def ws_despertar(ws: WebSocket):
 
 @app.websocket("/api/hogar/camaras/directo")
 async def ws_camara(ws: WebSocket):
-    """Vídeo en directo de una cámara Tapo (vía go2rtc). Solo administradores, como el resto de las cámaras."""
+    """Vídeo en directo de una cámara Tapo (vía go2rtc). Administradores, y usuarios con «ver cámaras» solo para mirar:
+    a ellos no se les reenvía nada más que la petición del vídeo (ni hablar por la cámara ni otros controles)."""
     u = auth.sesion_usuario(ws.cookies.get(auth.COOKIE))
     ip = ws.query_params.get("ip", "")
     if (not voz.origen_ws_permitido(ws.headers.get("origin"), ws.headers.get("host")) or u is None
-            or ws.cookies.get(VISTA_COOKIE) or u["rol"] != "admin"
-            or not permisos.permitido(u["rol"], "GET", ws.url.path) or not hogar_camaras.flujo(ip)):
+            or ws.cookies.get(VISTA_COOKIE) or u["rol"] not in ("admin", "usuario")
+            or (u["rol"] == "usuario" and (not u.get("ver_camaras") or await asyncio.to_thread(invitados.de, u["id"])))
+            or not permisos.permitido(u["rol"], "GET", ws.url.path, bool(u.get("ver_camaras"))) or not hogar_camaras.flujo(ip)):
         await ws.close(code=1008)
         return
     await ws.accept()
-    await hogar_camaras.reenviar(ws, ip)
+    await hogar_camaras.reenviar(ws, ip, solo_ver=u["rol"] != "admin")
 
 
 @app.websocket("/api/tele/canal")
@@ -1242,8 +1245,11 @@ async def api_usuarios_cambiar(uid: int, request: Request):
     activo = d.get("activo")
     if activo is not None and not isinstance(activo, bool):
         return JSONResponse({"error": "Valor de «activo» no válido."}, status_code=400)
+    ver_camaras = d.get("ver_camaras")
+    if ver_camaras is not None and not isinstance(ver_camaras, bool):
+        return JSONResponse({"error": "Valor de «ver_camaras» no válido."}, status_code=400)
     try:
-        u = await asyncio.to_thread(usuarios.actualizar, uid, d.get("rol"), activo, d.get("nombre"))
+        u = await asyncio.to_thread(usuarios.actualizar, uid, d.get("rol"), activo, d.get("nombre"), ver_camaras)
     except usuarios.UsuarioError as e:
         return _err_usuario(e)
     return {"usuario": u}

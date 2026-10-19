@@ -260,13 +260,13 @@ const Hogar = (() => {
     generacion++;
     const cuerpo = $("hogar-cuerpo");
     const partes = [el("div", { class: "hogar-resumen", id: "hogar-resumen", role: "status" })];
-    if (Sesion.esAdmin) partes.push(seccion("camaras", "Cámaras"));
-    const fila = el("div", { class: "hogar-columnas" }, seccion("luces", "Luces"));
-    if (Sesion.esAdmin) fila.append(seccion("casa", "Casa"));
-    partes.push(fila);
+    if (Sesion.verCamaras) partes.push(seccion("camaras", "Cámaras"));
+    // Luces y Casa: solo administradores. Un usuario con permiso solo ve las cámaras.
+    if (Sesion.esAdmin) partes.push(el("div", { class: "hogar-columnas" }, seccion("luces", "Luces"), seccion("casa", "Casa")));
+    else if (!Sesion.verCamaras) partes.push(nota("Aquí no tienes nada que ver todavía: pídele al administrador acceso a las cámaras."));
     cuerpo.replaceChildren(...partes);
-    if (Sesion.esAdmin) { cargarCamaras(); cargarCasa(); }
-    cargarLuces();
+    if (Sesion.verCamaras) cargarCamaras();
+    if (Sesion.esAdmin) { cargarCasa(); cargarLuces(); }
   }
   return { iniciar() {}, activar(si) { const antes = activo; activo = si; if (si && !antes) pintar(); } };
 })();

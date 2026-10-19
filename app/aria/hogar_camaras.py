@@ -6,6 +6,7 @@ ARIA escribe su configuración (con la contraseña de Tapo, en un archivo que so
 intermediario: el navegador nunca habla con go2rtc ni con las cámaras.
 """
 import asyncio
+import json
 import logging
 import os
 from pathlib import Path
@@ -110,7 +111,16 @@ async def _foto_nueva(nombre: str) -> bytes:
     return r.content
 
 
-async def reenviar(ws_navegador, ip: str) -> None:
+def _solo_video(texto: str) -> bool:
+    """Para quien solo puede mirar: el único mensaje que sube es la petición del vídeo MSE (nada de WebRTC/hablar)."""
+    try:
+        m = json.loads(texto)
+    except ValueError:
+        return False
+    return isinstance(m, dict) and m.get("type") == "mse" and set(m) <= {"type", "value"} and isinstance(m.get("value", ""), str)
+
+
+async def reenviar(ws_navegador, ip: str, solo_ver: bool = False) -> None:
     """Vídeo en directo (MSE por WebSocket) de go2rtc al navegador y los mensajes de control en sentido contrario."""
     import websockets
     nombre = flujo(ip)
@@ -123,6 +133,8 @@ async def reenviar(ws_navegador, ip: str) -> None:
                     if mensaje.get("type") == "websocket.disconnect":
                         return
                     if mensaje.get("text") is not None and len(mensaje["text"]) < 20000:   # control: codecs o SDP de WebRTC
+                        if solo_ver and not _solo_video(mensaje["text"]):
+                            continue
                         await camara.send(mensaje["text"])
 
             async def bajar():

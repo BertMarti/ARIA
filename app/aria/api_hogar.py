@@ -43,13 +43,17 @@ async def hogar_router_estado():
 
 @router.get("/api/hogar")
 async def hogar(request: Request):
-    es_admin = request.state.usuario["rol"] == "admin"
+    u = request.state.usuario
+    es_admin = u["rol"] == "admin"
+    ver = es_admin or bool(u.get("ver_camaras"))
+    nada = asyncio.sleep(0, result=None)
     luces, router_d, camaras = await asyncio.gather(
-        _integracion(govee, govee.luces, "Govee", "luces", 30),
+        _integracion(govee, govee.luces, "Govee", "luces", 30) if es_admin else nada,
         _integracion(router_hogar, router_hogar.estado, "el router", "router", 90) if es_admin else asyncio.sleep(0, result=None),
-        _integracion(tapo, tapo.camaras, "las cámaras", "camaras", 120) if es_admin else asyncio.sleep(0, result=None))
-    resultado = {"luces": luces}
-    if es_admin: resultado.update(router=router_d, camaras=camaras)
+        _integracion(tapo, tapo.camaras, "las cámaras", "camaras", 120) if ver else asyncio.sleep(0, result=None))
+    resultado = {}
+    if es_admin: resultado.update(luces=luces, router=router_d)
+    if ver: resultado["camaras"] = camaras
     return resultado
 
 
@@ -168,6 +172,8 @@ async def ajuste_camara(request: Request):
     if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or not isinstance(d.get("valor"), bool) \
             or d.get("campo") not in tapo.AJUSTES:
         return _error("Datos no válidos.")
+    if request.state.usuario["rol"] != "admin" and d["campo"] != "led":   # quien solo mira: solo la luz de la cámara
+        return _error("No tienes permiso para esto.", 403)
     try:
         fila = await tapo.ajustar(d["ip"], d["campo"], d["valor"])
         cache.invalidar("camaras")

@@ -9,7 +9,7 @@ ROLES = ("admin", "usuario")
 MAX_NOMBRE = 40
 _EMAIL = re.compile(r"^[^@\s<>\"',;]{1,64}@[^@\s<>\"',;]+\.[^@\s<>\"',;]{2,}$")
 
-_CAMPOS = "id, email, usuario, nombre, rol, activo, pass_hash, version, creado, ultimo_acceso"
+_CAMPOS = "id, email, usuario, nombre, rol, activo, pass_hash, version, creado, ultimo_acceso, ver_camaras"
 
 
 class UsuarioError(Exception):
@@ -23,7 +23,9 @@ def _fila(r, interno: bool = False) -> dict | None:
          "activo": bool(r["activo"]), "version": r["version"], "creado": r["creado"],
          "ultimo_acceso": r["ultimo_acceso"], "tiene_password": bool(r["pass_hash"]) or _es_admin_env(r),
          # Solo el email principal: una ficha suelta con un alias es un duplicado y se puede borrar.
-         "protegido": bool(config.ADMIN_EMAILS) and r["email"] == config.ADMIN_EMAILS[0]}
+         "protegido": bool(config.ADMIN_EMAILS) and r["email"] == config.ADMIN_EMAILS[0],
+         # Solo para `usuario`: ver las cámaras en directo y encender su luz (LED). Nada más de las cámaras.
+         "ver_camaras": bool(r["ver_camaras"])}
     if interno:
         d["pass_hash"] = r["pass_hash"]
     return d
@@ -48,6 +50,8 @@ def iniciar() -> None:
             version INTEGER NOT NULL DEFAULT 1,
             creado REAL NOT NULL,
             ultimo_acceso REAL)""")
+        if "ver_camaras" not in {c[1] for c in con.execute("PRAGMA table_info(usuarios)")}:
+            con.execute("ALTER TABLE usuarios ADD COLUMN ver_camaras INTEGER NOT NULL DEFAULT 0")
         nombre_admin = (config.USER or "").strip().lower()
         if not nombre_admin:
             return
@@ -200,7 +204,7 @@ def tocar_acceso(uid: int) -> None:
         con.execute("UPDATE usuarios SET ultimo_acceso=? WHERE id=?", (time.time(), uid))
 
 
-def actualizar(uid: int, rol=None, activo=None, nombre=None) -> dict:
+def actualizar(uid: int, rol=None, activo=None, nombre=None, ver_camaras=None) -> dict:
     u = por_id(uid)
     if not u:
         raise UsuarioError("Usuario no encontrado.")
@@ -216,6 +220,8 @@ def actualizar(uid: int, rol=None, activo=None, nombre=None) -> dict:
             con.execute("UPDATE usuarios SET rol=? WHERE id=?", (_rol(rol), uid))
         if nombre is not None:
             con.execute("UPDATE usuarios SET nombre=? WHERE id=?", (nombre_limpio(nombre, u["email"]), uid))
+        if ver_camaras is not None:
+            con.execute("UPDATE usuarios SET ver_camaras=? WHERE id=?", (1 if ver_camaras else 0, uid))
         if activo is not None:
             # Al desactivar o reactivar cambia la versión: las sesiones anteriores dejan de valer.
             con.execute("UPDATE usuarios SET activo=?, version=version+1 WHERE id=?", (1 if activo else 0, uid))

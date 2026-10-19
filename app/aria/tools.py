@@ -54,7 +54,7 @@ SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador",
                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
                           "resumir_enlace", "resumen_noticias", "precio", "mis_mercados", "mis_inversiones",
                           "mapa_ir", "ruta", "sitios_cerca", "gasolineras", "buscar_en_documentos"})
-# Luces de casa: cualquier usuario puede encenderlas o apagarlas (no es solo lectura: no entra en las rutinas).
+# Luces de casa: solo administradores (Alberto, 19/10/2026: un `usuario` no las controla).
 HOGAR = frozenset({"luces"})
 # Memoria personal: la tiene todo rol y siempre actúa sobre los datos del usuario que habla.
 MEMORIA = frozenset({"recordar", "olvidar"})
@@ -86,7 +86,7 @@ def permitidas(rol: str) -> set:
         return set(_REGISTRO)
     if rol == "usuario":
         de_modulos = {n for n, i in _DE_MODULOS.items() if i["usuario"]}
-    return set(SOLO_LECTURA | HOGAR | MEMORIA | PROYECTOS | RECORDATORIOS | NOTAS | LISTAS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
+    return set(SOLO_LECTURA | MEMORIA | PROYECTOS | RECORDATORIOS | NOTAS | LISTAS | AGENDA | GESTION_RUTINAS | DE_USUARIO | de_modulos) & set(_REGISTRO)
     return set()
 
 

@@ -71,7 +71,8 @@ const CamaraDirecto = (() => {
       return b;
     };
     const partes = [];
-    if (camara.ptz) {
+    const admin = Sesion.esAdmin;   // quien solo mira: ver, sonido, foto, pantalla completa y la luz LED
+    if (camara.ptz && admin) {
       const mover = (dir) => () => enviar("/api/hogar/camaras/mover", { ip: camara.ip, direccion: dir });
       partes.push(el("div", { class: "camara-ptz", role: "group", ariaLabel: "Mover la cámara" },
         el("span"), boton("▲", "Arriba", mover("arriba")), el("span"),
@@ -79,7 +80,7 @@ const CamaraDirecto = (() => {
         el("span"), boton("▼", "Abajo", mover("abajo")), el("span")));
     }
     const ajustes = [["privacidad", "Privacidad (lente tapada)"], ["movimiento", "Detección de movimiento"], ["personas", "Detección de personas"], ["led", "Luz indicadora (LED)"]]
-      .filter(([campo]) => camara[campo] !== undefined)
+      .filter(([campo]) => camara[campo] !== undefined && (admin || campo === "led"))
       .map(([campo, texto]) => {
         const c = el("input", { type: "checkbox", checked: !!camara[campo] });
         c.addEventListener("change", async () => {
@@ -109,7 +110,7 @@ const CamaraDirecto = (() => {
     const bateria = camara.bateria !== undefined ? el("span", { class: "camara-bateria" + (camara.bateria < 20 ? " baja" : "") }, "Batería: " + camara.bateria + " %") : null;
     return el("div", { class: "camara-controles" }, ...partes,
       el("div", { class: "camara-ajustes" }, ...ajustes),
-      el("div", { class: "botones camara-botones" }, botonHablar, sonido, completa, instantanea, bateria), avisoHablar);
+      el("div", { class: "botones camara-botones" }, admin ? botonHablar : null, sonido, completa, instantanea, bateria), admin ? avisoHablar : null);
   }
 
   function abrir(camara, alCambiar) {
@@ -128,7 +129,7 @@ const CamaraDirecto = (() => {
     };
     pestañaDirecto.addEventListener("click", () => seleccionar(false));
     pestañaGrabaciones.addEventListener("click", () => seleccionar(true));
-    const d = dialogo(camara.nombre, el("div", { class: "camara-pestanas" }, pestañaDirecto, pestañaGrabaciones),
+    const d = dialogo(camara.nombre, Sesion.esAdmin ? el("div", { class: "camara-pestanas" }, pestañaDirecto, pestañaGrabaciones) : null,
       el("div", { class: "camara-visor" }, directo, grabaciones));
     let ws = null, url = null, cerrado = false;
     const fin = () => { video.dispatchEvent(new Event("aria:cerrar-camara")); cerrado = true; try { ws?.close(); } catch (_) { /* ya cerrado */ } if (url) URL.revokeObjectURL(url); d.remove(); };

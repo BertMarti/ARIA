@@ -25,3 +25,5 @@ app/aria/usuarios.py | MEDIUM | Possible SQL injection vector through string-bas
 app/escaner/escaner.py | MEDIUM | Chmod setting a permissive mask 0o2770 on file (NOT PARSED).
 sistema/host-agente.py | MEDIUM | Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.
 sistema/host-agente.py | MEDIUM | Chmod setting a permissive mask 0o770 on file (PETICIONES).
+app/aria/hogar_vigilancia.py | MEDIUM | Possible SQL injection vector through string-based query construction.
+app/aria/recordatorios.py | MEDIUM | Possible SQL injection vector through string-based query construction.

@@ -6,7 +6,7 @@
 
 # Plan de futuro de ARIA
 
-Ideas de nuevas aplicaciones y funciones para ARIA. **Nada de esto está hecho todavía**: es una hoja de ruta para elegir qué viene después.
+Ideas de nuevas aplicaciones y funciones para ARIA. Las filas marcadas como hechas describen lo que ya está disponible hoy.
 
 Todas siguen las mismas reglas que el resto del proyecto:
 - **Gratis y autoalojado.** Si hace falta la nube, solo con capas gratuitas y siempre con un respaldo local.
@@ -32,17 +32,17 @@ Cómo leer las tablas:
 | Idea | Qué haría ARIA | Tipo | Esfuerzo | RAM |
 |---|---|---|---|---|
 | **Home Assistant** | Encender y apagar luces o enchufes, consultar sensores, lanzar escenas con la voz («Aria, apaga el salón») | Módulo + contenedor | M | ~300 MB |
-| **Govee / Tapo / TP-Link** (sin Home Assistant) | Control directo de las luces Govee y los enchufes Tapo de casa mediante sus APIs locales o de nube | Módulo | M | — |
+| **Govee / Tapo / TP-Link** (sin Home Assistant) | ✅ Hecho en parte: controla luces Govee, cámaras Tapo y algunas funciones del router TP-Link desde Hogar | Núcleo | M | — |
 | **Robot aspirador (Roborock)** | «Aria, aspira la cocina», estado y aviso al terminar (a través de Home Assistant o de la API local) | Módulo | M | — |
 | **Impresora 3D (Anycubic / OctoPrint)** | Progreso de la impresión, aviso al terminar o si falla, foto de la cámara | Módulo + contenedor | M | ~150 MB |
-| **Cámaras (Frigate)** | Detección de personas o coches en local y aviso por Telegram con la foto | Módulo + contenedor | L | 1 GB o más (mejor con un acelerador Coral) |
+| **Cámaras (Frigate)** | ✅ Hecho, sin Frigate: cámaras Tapo con detección, vigilancia cuando no hay nadie, eventos con foto y avisos | Núcleo | L | — |
 | **Consumo eléctrico** | ✅ Hecho: precio de la luz por horas (PVPC de REE), aviso de las horas baratas de mañana cada tarde y al empezar la de hoy | Núcleo | S | — |
 
 ### 1.2 Multimedia
 
 | Idea | Qué haría ARIA | Tipo | Esfuerzo | RAM |
 |---|---|---|---|---|
-| **Spotify** (aparcado) | Ya está escrito; se reactiva con `ARIA_SPOTIFY=1` (necesita cuenta Premium) | Ya existe | S | — |
+| **Spotify** (aparcado) | ✅ Hecho pero aparcado: se reactiva con `ARIA_SPOTIFY=1` (necesita cuenta Premium) | Ya existe | S | — |
 | **Jellyfin** | Biblioteca de películas y series propia; «¿qué película vemos?» con recomendaciones | Módulo + contenedor | M | ~400 MB |
 | **Navidrome** | Música propia en streaming, controlable por voz | Módulo + contenedor | M | ~100 MB |
 | **Audiobookshelf** | Audiolibros y podcasts | Módulo + contenedor | S | ~150 MB |
@@ -52,11 +52,11 @@ Cómo leer las tablas:
 
 | Idea | Qué haría ARIA | Tipo | Esfuerzo | RAM |
 |---|---|---|---|---|
-| **Calendario (Radicale, CalDAV)** | La agenda propia y la suscripción iCalendar ya están hechas; CalDAV añadiría editar desde el móvil | Módulo + contenedor | M | ~50 MB |
+| **Calendario (Radicale, CalDAV)** | ✅ Hecho en parte: agenda propia, suscripción iCalendar y descarga `.ics`; falta editar desde el móvil por CalDAV | Núcleo | M | — |
 | **Paperless-ngx** | Documentos escaneados con búsqueda: «¿cuándo caduca el seguro del coche?» | Módulo + contenedor | L | ~700 MB |
 | **Nextcloud / archivos** | Buscar y resumir documentos propios | Módulo + contenedor | L | ~500 MB |
 | **Correo (IMAP, solo lectura)** | Resumen de correos importantes en el resumen de buenos días | Módulo | M | — |
-| **Notas y listas de la compra** | Listas compartidas en la familia («añade leche a la compra») | Núcleo | S | — |
+| **Notas y listas de la compra** | ✅ Hecho: listas de casa compartidas, listas privadas y gestión desde web, chat y Telegram | Núcleo | S | — |
 | **Vaultwarden** | Gestor de contraseñas propio. ARIA solo mostraría su estado: **nunca leería contraseñas** | Módulo + contenedor | S | ~50 MB |
 
 ### 1.4 Red y seguridad
@@ -65,9 +65,9 @@ Cómo leer las tablas:
 |---|---|---|---|---|
 | **Uptime Kuma** | Panel de disponibilidad de webs y servicios, con avisos | Módulo + contenedor | S | ~150 MB |
 | **CrowdSec** | Bloqueo colaborativo de IPs atacantes ante el túnel y la VPN | Módulo + contenedor | M | ~150 MB |
-| **Router TP-Link** | Lista de clientes con nombre real, reinicio programado del mesh (si la API lo permite) | Módulo | M | — |
-| **Copias de seguridad** | Estado de las copias diarias, restaurar un archivo concreto, aviso si una copia falla | Núcleo / módulo | S | — |
-| **Speedtest histórico** | Gráfica de velocidad de internet por días, para reclamar a la operadora | Módulo | S | ~50 MB |
+| **Router TP-Link** | ✅ Hecho en parte: lista clientes, red de invitados y reinicio; falta el reinicio programado del mesh | Núcleo | M | — |
+| **Copias de seguridad** | ✅ Hecho en parte: estado de la última copia, copia manual y aviso si está atrasada; falta restaurar un archivo concreto | Núcleo | S | — |
+| **Speedtest histórico** | ✅ Hecho: test limitado cada 10 minutos y gráfica de velocidad de los últimos días | Núcleo | S | — |
 
 ### 1.5 Finanzas y vida diaria
 
@@ -75,9 +75,9 @@ Cómo leer las tablas:
 |---|---|---|---|---|
 | **Bancos (PSD2: GoCardless Bank Account Data)** | Importar movimientos automáticamente, sin subir CSV | Módulo | L | — |
 | **Precios y ofertas** | Vigilar el precio de un producto y avisar cuando baje | Módulo (usa Rutinas) | S | — |
-| **Gasolineras** | Gasolinera más barata cerca de casa (datos abiertos del Ministerio) | Módulo | S | — |
+| **Gasolineras** | ✅ Hecho: precios oficiales del Ministerio y gasolineras más baratas en un radio configurable | Núcleo | S | — |
 | **Tráfico y transporte** | Incidencias de la DGT en tu ruta; horarios de autobús | Módulo | M | — |
-| **Salud** | Recordatorios de medicación con confirmación por Telegram | Módulo | S | — |
+| **Salud** | ✅ Hecho en parte: recordatorios de medicación que insisten y se confirman o posponen desde Telegram; no hay un módulo de salud separado | Núcleo | S | — |
 
 ---
 
@@ -85,12 +85,12 @@ Cómo leer las tablas:
 
 | Idea | Para qué | Esfuerzo |
 |---|---|---|
-| **Documentos propios (RAG)** | Subir PDFs o notas y preguntar sobre ellos, usando embeddings gratuitos o en local | L |
+| **Documentos propios (RAG)** | ✅ Hecho: subir PDF, TXT o MD, indexarlos con embeddings locales y preguntar con citas | L |
 | **Voz sin internet de calidad** | Voz más natural en local cuando la Pi tenga margen (modelos TTS pequeños optimizados para ARM) | M |
 | **Altavoz satélite** | Una Raspberry Pi Zero o un ESP32 con micrófono en otra habitación que despierte con «Aria» | L |
-| **Modo familia** | Perfiles infantiles con control parental propio y respuestas adaptadas | M |
-| **Panel personalizable** | Elegir y ordenar las tarjetas de Inicio, incluidas las de los módulos | M |
-| **Historial de la red** | Gráficas por dispositivo: consultas, bloqueos y horas de uso | M |
+| **Modo familia** | ✅ Hecho en parte: perfiles de invitados y control parental por dispositivo; faltan respuestas adaptadas a perfiles infantiles | M |
+| **Panel personalizable** | ✅ Hecho: elegir y ordenar las tarjetas de Inicio; se guarda en la cuenta y se aplica en tus dispositivos | M |
+| **Historial de la red** | ✅ Hecho en parte: estadísticas por dispositivo de consultas y bloqueos a 24 horas o 7 días; no hay una gráfica de horas de uso | M |
 | **Agentes a medida** | Crear agentes nuevos desde Ajustes (nombre, instrucciones y herramientas) sin programar | M |
 | **Catálogo de módulos** | Instalar módulos de la comunidad desde un repositorio, con firma y revisión | L |
 | **App de escritorio** | Atajo global en Windows para hablar con ARIA (a partir de la web instalable) | M |

@@ -28,23 +28,24 @@ Esta guía explica qué hay en cada parte de ARIA y cómo sacarle partido en el 
 16. [Rutinas](#rutinas)
 17. [Finanzas](#finanzas)
 18. [Red](#red)
-19. [Control parental](#control-parental)
-20. [Seguridad](#seguridad)
-21. [Centro de control](#centro-de-control)
-22. [Cerebro](#cerebro)
-23. [Modo HUD](#modo-hud)
-24. [Agenda y cumpleaños](#agenda-y-cumpleaños)
-25. [Mapa](#mapa)
-26. [Información e inversiones](#información-e-inversiones)
-27. [Precio de la luz](#precio-de-la-luz)
-28. [Ajustes](#ajustes)
-29. [Avisos](#avisos)
-30. [Telegram](#telegram)
-31. [Notificaciones push](#notificaciones-push)
-32. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
-33. [Acceso por invitación](#acceso-por-invitación)
-34. [Usuarios y roles](#usuarios-y-roles)
-35. [Cuando algo falla](#cuando-algo-falla)
+19. [Hogar](#hogar)
+20. [Control parental](#control-parental)
+21. [Seguridad](#seguridad)
+22. [Centro de control](#centro-de-control)
+23. [Cerebro](#cerebro)
+24. [Modo HUD](#modo-hud)
+25. [Agenda y cumpleaños](#agenda-y-cumpleaños)
+26. [Mapa](#mapa)
+27. [Información e inversiones](#información-e-inversiones)
+28. [Precio de la luz](#precio-de-la-luz)
+29. [Ajustes](#ajustes)
+30. [Avisos](#avisos)
+31. [Telegram](#telegram)
+32. [Notificaciones push](#notificaciones-push)
+33. [Atajos: Ctrl+K y Compartir](#atajos-ctrlk-y-compartir)
+34. [Acceso por invitación](#acceso-por-invitación)
+35. [Usuarios y roles](#usuarios-y-roles)
+36. [Cuando algo falla](#cuando-algo-falla)
 
 ## Un vistazo rápido
 
@@ -289,7 +290,7 @@ Pídeselos a ARIA en el chat o por Telegram:
 
 También se ven y se crean en **Ajustes → Recordatorios**. Llegan por la campana, Telegram y notificación, incluso en horas de silencio.
 
-Si marcas «Insistir hasta que lo marque como hecho», ARIA vuelve a avisarte cada 15 minutos hasta tres veces más. Al marcarlo como hecho o posponerlo se reinicia la insistencia; las medicinas y pastillas creadas desde el chat insisten por defecto.
+Si marcas «Insistir hasta que lo marque como hecho», ARIA vuelve a avisarte cada 15 minutos hasta tres veces más. Al marcarlo como hecho o posponerlo se reinicia la insistencia; las medicinas y pastillas creadas desde el chat insisten por defecto. En Telegram puedes pulsar **Hecho** o posponer el aviso.
 
 ## Rutinas
 
@@ -329,6 +330,16 @@ Solo para administradores. Necesita SHIELD-DNS para ver los dispositivos.
 
 <p align="center"><img alt="Red en el móvil" src="img/captura-movil-red.png" width="260"></p>
 - Botón **Control** de cada dispositivo: el [control parental](#control-parental).
+
+## Hogar
+
+Solo para administradores. En **Hogar** puedes consultar las luces Govee, las cámaras Tapo y el router TP-Link.
+
+- **Quién está en casa**: historial de quién llega y quién se va. También puedes preguntarlo en el chat.
+- **Vigilancia**: apaga las luces cuando se van todos y vuelve a tapar las cámaras cuando alguien llega.
+- **Avisos**: batería baja de una cámara o cámara sin responder.
+- **Eventos**: detecciones de vigilancia con una foto y acceso a la grabación.
+- El router muestra sus clientes y permite gestionar la red de invitados y reiniciarlo cuando la API lo admite.
 
 ## Control parental
 
@@ -475,6 +486,7 @@ Si vives en España, ARIA consulta cada día el precio de la tarifa regulada (**
 - En **Inicio** y en el **HUD**: el precio de ahora, un gráfico de barras de las 24 horas (verde = barata, rojo = cara), la hora más barata y la más cara, y las mejores horas que quedan.
 - En el **resumen diario** de Telegram.
 - Por **chat**: «¿cuándo pongo la lavadora?», «¿está cara la luz ahora?».
+- Cada tarde, desde las **20:45**, ARIA avisa de la franja barata y la cara de mañana. También avisa cuando empieza la franja barata de hoy. Se activa o desactiva en **Ajustes → Avisos**.
 
 Fuera de España, apágalo con `ARIA_LUZ=0` en `.env`.
 
@@ -590,6 +602,10 @@ Comandos:
 <p align="center"><img alt="Resumen diario en Telegram" src="img/captura-telegram.png" width="320"></p>
 
 Las acciones de administración piden **Confirmar**. Cada chat tiene su conversación («Telegram · …» en el historial de la web).
+
+### App de Android 3.3.0
+
+La app incluye un widget de **Casa** con quién está en casa. Solo aparece para administradores.
 
 ### Vigilante del túnel
 

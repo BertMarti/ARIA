@@ -36,7 +36,7 @@ Cómo leer las tablas:
 | **Robot aspirador (Roborock)** | «Aria, aspira la cocina», estado y aviso al terminar (a través de Home Assistant o de la API local) | Módulo | M | — |
 | **Impresora 3D (Anycubic / OctoPrint)** | Progreso de la impresión, aviso al terminar o si falla, foto de la cámara | Módulo + contenedor | M | ~150 MB |
 | **Cámaras (Frigate)** | Detección de personas o coches en local y aviso por Telegram con la foto | Módulo + contenedor | L | 1 GB o más (mejor con un acelerador Coral) |
-| **Consumo eléctrico** | ✅ Hecho: precio de la luz por horas (PVPC de REE). Pendiente: aviso automático de las horas baratas | Núcleo | S | — |
+| **Consumo eléctrico** | ✅ Hecho: precio de la luz por horas (PVPC de REE), aviso de las horas baratas de mañana cada tarde y al empezar la de hoy | Núcleo | S | — |
 
 ### 1.2 Multimedia
 
@@ -149,7 +149,7 @@ Lo que aún no tiene ARIA y más aportaría (gratis, privado y viable en la Pi),
 | 4 | **Avisos meteorológicos oficiales** (Meteoalarm, sin clave) con propuestas | Útil y proactivo | S | ✅ Hecho |
 | 5 | **Gasolineras más baratas** cerca (datos del Ministerio, sin clave) | Ahorro diario | S | ✅ Hecho |
 | 6 | **Salud del sistema**: historial de disponibilidad de cada servicio y del túnel | Saber qué falló y cuándo | S | ✅ Hecho |
-| 7 | **Atajos de Siri y Android** con tokens personales limitados | ARIA desde cualquier sitio | M | Pendiente |
+| 7 | **Atajos de Siri y Android** con tokens personales limitados | ARIA desde cualquier sitio | M | ✅ Hecho (ARIA 3.5) |
 | 8 | **Tus documentos**: subir PDF, TXT o MD y preguntar sobre ellos (búsqueda local) | Un cerebro para tus papeles | M/L | ✅ Hecho |
 | 9 | **Hogar con Home Assistant** (si se instala) | Luces y enchufes | M | Pendiente |
 | 10 | **Ubicación para el tiempo** (opcional, ~1 km, 12 h) | El tiempo y los avisos de donde estés | S | ✅ Hecho |

@@ -118,7 +118,8 @@ def _post(ruta: str, clave: str, instalacion: str) -> dict:
                                json={"clave": clave, "instalacion": instalacion}, timeout=10)
         if respuesta.status_code >= 400:
             try:
-                detalle = respuesta.json().get("error")
+                cuerpo = respuesta.json()
+                detalle = _texto_servidor(cuerpo.get("error") if isinstance(cuerpo, dict) else None)
             except (ValueError, TypeError):
                 detalle = None
             raise PremiumError(detalle or "El servidor de licencias ha rechazado la clave.")
@@ -238,3 +239,11 @@ def requiere(funcion: str):
         if not tiene(funcion):
             raise PremiumRequired(funcion)
     return dependencia
+
+
+def _texto_servidor(valor) -> str | None:
+    """El mensaje de error viene de un servidor externo: solo texto, sin caracteres de control y acotado."""
+    if not isinstance(valor, str):
+        return None
+    limpio = "".join(c for c in valor if c.isprintable()).strip()
+    return limpio[:200] or None

@@ -200,3 +200,39 @@ def test_herramienta_camara_posicion(monkeypatch):
 def test_herramienta_camara_posicion_sin_motor(monkeypatch):
     _tapo(monkeypatch, CamaraFalsa())
     assert asyncio.run(tools.camara_posicion("puerta")) == "No he encontrado ninguna cámara con motor."
+
+
+def test_tapada_explica_por_que_no_se_mueve(monkeypatch):
+    """Con la privacidad puesta la C520WS rechaza el movimiento con un error genérico (visto en la cámara real)."""
+    from aria import hogar_tapo as t
+
+    class Lente:
+        enabled = True
+
+    class Motor:
+        async def move(self, pan, tilt):
+            raise RuntimeError("INTERNAL_UNKNOWN_ERROR")
+
+        async def get_presets(self):
+            return {"getPresetConfig": {"preset": {"preset": {"id": ["1"], "name": ["Puerta"], "read_only": ["0"]}}}}
+
+        async def goto_preset(self, ident):
+            raise RuntimeError("INTERNAL_UNKNOWN_ERROR")
+
+    class Dev:
+        modules = {"PanTilt": Motor(), "LensMask": Lente()}
+
+        async def update(self):
+            return None
+
+    async def conectar(ip):
+        return Dev()
+    monkeypatch.setattr(t, "_conectar", conectar)
+    monkeypatch.setattr(t.config, "TAPO_CAMARAS", ["192.168.1.30"])
+    with pytest.raises(t.TapoError, match="tapada"):
+        asyncio.run(t.mover("192.168.1.30", "izquierda"))
+    with pytest.raises(t.TapoError, match="tapada"):
+        asyncio.run(t.ir_a_posicion("192.168.1.30", "1"))
+    Lente.enabled = False
+    with pytest.raises(t.TapoError, match="no ha respondido"):
+        asyncio.run(t.ir_a_posicion("192.168.1.30", "1"))

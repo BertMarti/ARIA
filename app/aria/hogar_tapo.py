@@ -147,8 +147,25 @@ async def mover(ip: str, direccion: str) -> None:
     try:
         await asyncio.wait_for(motor.move(pan=giro, tilt=inclinacion), TIMEOUT)
     except Exception as e:  # noqa: BLE001
+        if await _tapada(ip):
+            raise TapoError(TAPADA) from e
         _conexiones.pop(ip, None)
         raise TapoError("La cámara no ha respondido.") from e
+
+
+TAPADA = "La cámara está tapada (modo privacidad): destápala para moverla."
+
+
+async def _tapada(ip: str) -> bool:
+    """Con la privacidad puesta el motor no obedece (la C520WS contesta con un error genérico): se pregunta para
+    explicarlo bien en lugar de decir que no ha respondido."""
+    try:
+        dev = await _conectar(ip)
+        await asyncio.wait_for(dev.update(), TIMEOUT)
+        lente = dev.modules.get("LensMask") if hasattr(dev.modules, "get") else None
+        return bool(lente is not None and lente.enabled)
+    except Exception:  # noqa: BLE001
+        return False
 
 
 # Posiciones guardadas (como en la app Tapo): la cámara las guarda en su memoria; ARIA solo las lista y las usa.
@@ -216,7 +233,12 @@ async def ir_a_posicion(ip: str, ident: str) -> None:
     _, motor = await _motor(ip)
     if not any(p["id"] == str(ident) for p in _parsear_posiciones(await _orden(ip, motor.get_presets()))):
         raise TapoError("Posición no encontrada.")
-    await _orden(ip, motor.goto_preset(str(ident)))
+    try:
+        await _orden(ip, motor.goto_preset(str(ident)))
+    except TapoError:
+        if await _tapada(ip):
+            raise TapoError(TAPADA) from None
+        raise
 
 
 async def guardar_posicion(ip: str, nombre: str) -> list:

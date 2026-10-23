@@ -251,6 +251,55 @@ async def mover_camara(request: Request):
     except tapo.TapoError as e: return _error(str(e), 400 if "no encontrada" in str(e) or "no se puede" in str(e) else 502)
 
 
+# Posiciones guardadas de las cámaras con motor: solo administradores (ir a una es moverla; no están en la lista
+# blanca de `usuario` ni en la de «ver cámaras»).
+_ID_POSICION = re.compile(r"\d{1,10}")
+
+
+def _estado_posicion(e: tapo.TapoError) -> int:
+    s = str(e)
+    return 400 if any(x in s for x in ("no encontrada", "no se puede", "Ya hay", "Ya existe", "nombre", "fija")) else 502
+
+
+@router.get("/api/hogar/camaras/posiciones")
+async def posiciones_camara(ip: str = ""):
+    try: return {"posiciones": await tapo.posiciones(ip)}
+    except tapo.TapoError as e: return _error(str(e), _estado_posicion(e))
+
+
+@router.post("/api/hogar/camaras/posiciones")
+async def guardar_posicion_camara(request: Request):
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
+    try: d = await request.json()
+    except ValueError: return _error("Datos no válidos.")
+    if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or not isinstance(d.get("nombre"), str):
+        return _error("Datos no válidos.")
+    try: return {"posiciones": await tapo.guardar_posicion(d["ip"], d["nombre"])}
+    except tapo.TapoError as e: return _error(str(e), _estado_posicion(e))
+
+
+@router.post("/api/hogar/camaras/posiciones/ir")
+async def ir_posicion_camara(request: Request):
+    if not _limite(request, "mover", 60): return _error("Demasiados movimientos; espera un minuto.", 429)
+    try: d = await request.json()
+    except ValueError: return _error("Datos no válidos.")
+    if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or not isinstance(d.get("id"), str) \
+            or not _ID_POSICION.fullmatch(d["id"]):
+        return _error("Datos no válidos.")
+    try:
+        await tapo.ir_a_posicion(d["ip"], d["id"])
+        return {"ok": True}
+    except tapo.TapoError as e: return _error(str(e), _estado_posicion(e))
+
+
+@router.delete("/api/hogar/camaras/posiciones")
+async def borrar_posicion_camara(request: Request, ip: str = "", id: str = ""):
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
+    if not _ID_POSICION.fullmatch(id): return _error("Datos no válidos.")
+    try: return {"posiciones": await tapo.borrar_posicion(ip, id)}
+    except tapo.TapoError as e: return _error(str(e), _estado_posicion(e))
+
+
 def _camara_grabacion(ip):
     nombre = camaras_video.flujo(ip)
     return nombre if nombre and ip in config.TAPO_CAMARAS else None

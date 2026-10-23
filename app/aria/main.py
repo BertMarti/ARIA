@@ -132,6 +132,8 @@ async def _arranque():
         log.exception("No se pudo escribir la configuración de las cámaras")
     app.state.vigilancia = asyncio.create_task(hogar_vigilancia.bucle())
     app.state.eventos = asyncio.create_task(hogar_eventos.bucle())   # detecciones con la casa vacía
+    from . import hogar_escenas
+    app.state.escenas = asyncio.create_task(hogar_escenas.bucle())   # escenas programadas
     app.state.hogar = asyncio.create_task(api_hogar.precalentar())
     # Avisos: tablas, chequeos, canales y planificador (recordatorios, resumen programado). Telegram con long polling.
     avisos.iniciar()
@@ -158,7 +160,7 @@ async def _arranque():
 
 
 async def _parada():
-    for nombre in ("diario", "premium", "vigilancia", "eventos", "hogar", "avisos", "telegram", "control", "arranque", "embeddings"):
+    for nombre in ("diario", "premium", "vigilancia", "eventos", "escenas", "hogar", "avisos", "telegram", "control", "arranque", "embeddings"):
         tarea = getattr(app.state, nombre, None)
         if tarea:
             tarea.cancel()

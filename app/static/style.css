@@ -1583,7 +1583,7 @@ body.app { height: 100vh; height: 100dvh; }
 .hogar-anadir .hogar-opciones { margin-top: .5rem; max-height: 14rem; overflow-y: auto; }
 .hogar-opcion { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .hogar-escenas { display: flex; flex-wrap: wrap; gap: .5rem; }
-.hogar-escena-caja { display: flex; align-items: stretch; border: 1px solid var(--borde, color-mix(in srgb, currentColor 18%, transparent)); border-radius: .8rem; overflow: hidden; }
+.hogar-escena-caja { display: flex; align-items: stretch; border: 1px solid var(--borde); border-radius: var(--r-m); overflow: hidden; }
 .hogar-escena { display: flex; align-items: center; gap: .45rem; min-height: 44px; padding: .4rem .8rem; background: transparent; border: 0; color: inherit; font: inherit; cursor: pointer; }
 .hogar-escena .svg-ico { width: 1.25rem; height: 1.25rem; color: var(--acento); }
 .hogar-escena:hover, .hogar-escena:focus-visible { background: color-mix(in srgb, var(--acento) 12%, transparent); }
@@ -1597,6 +1597,14 @@ body.app { height: 100vh; height: 100dvh; }
 .hogar-escena-fila { display: grid; grid-template-columns: 1fr auto; gap: .4rem .6rem; align-items: center; }
 .hogar-escena-extra { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .hogar-escena-extra input[type=range] { flex: 1 1 8rem; }
+.hogar-escena-prog { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .6rem; }
+.hogar-dias { display: flex; gap: .25rem; }
+.hogar-dia { display: grid; place-items: center; position: relative; }
+.hogar-dia input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.hogar-dia span { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); font-size: .85rem; }
+.hogar-dia input:checked + span { background: var(--acento); border-color: var(--acento); color: var(--acento-txt); font-weight: 600; }
+.hogar-dia input:focus-visible + span { outline: 2px solid var(--acento); outline-offset: 2px; }
+.hogar-escena-prog-chip { font-size: .75rem; padding: .05rem .4rem; border-radius: 1rem; background: color-mix(in srgb, var(--acento) 15%, transparent); color: var(--acento); }
 .hogar-campo { display: grid; gap: .3rem; }
 .hogar-campo input { width: 100%; }
 .hogar-tarjeta h3 { margin: .4rem 0 0; font-size: .95rem; }

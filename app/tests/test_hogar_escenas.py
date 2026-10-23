@@ -175,3 +175,52 @@ def test_al_llegar_de_noche_activa_la_escena_elegida(casa, monkeypatch):
     estado["conectados"] = MOVILES[:1]
     assert asyncio.run(hv.ciclo(t + 60 * 60)) == "casa"
     assert casa["luces"] == [] and "escena" not in emitidos[-1][1]
+
+
+# --- Escenas programadas -------------------------------------------------------------------------------------------
+def _local(fecha_hora: str) -> float:
+    from zoneinfo import ZoneInfo
+    return dt.datetime.fromisoformat(fecha_hora).replace(tzinfo=ZoneInfo("Europe/Madrid")).timestamp()
+
+
+def test_programa_valida(casa, monkeypatch):
+    from aria import hogar_escenas as he
+    monkeypatch.setattr(config, "LAT", None)
+    for malo, error in (({"hora": "25:00", "dias": [0]}, "HH:MM"), ({"hora": "23:30", "dias": []}, "día"),
+                        ({"hora": "23:30", "dias": [7]}, "día"), ({"dias": [0]}, "qué momento"),
+                        ({"sol": "anochecer", "dias": [0]}, "ARIA_LAT")):
+        with pytest.raises(he.EscenaError, match=error):
+            he.crear({**CINE, "programa": malo}, asyncio.run(he.conocidas()))
+    monkeypatch.setattr(config, "LAT", 40.4)
+    monkeypatch.setattr(config, "LON", -3.7)
+    with pytest.raises(he.EscenaError, match="desfase"):
+        he.crear({**CINE, "programa": {"sol": "anochecer", "desfase": 500, "dias": [0]}}, asyncio.run(he.conocidas()))
+    e = he.crear({**CINE, "programa": {"sol": "anochecer", "desfase": -30, "dias": [4, 4, 5]}}, asyncio.run(he.conocidas()))
+    assert e["programa"] == {"sol": "anochecer", "desfase": -30, "dias": [4, 5]}
+
+
+def test_programada_a_una_hora_se_lanza_una_vez_y_solo_sus_dias(casa, monkeypatch):
+    from aria import hogar_escenas as he
+    monkeypatch.setattr(config, "TZ", "Europe/Madrid")
+    he.crear({**CINE, "programa": {"hora": "23:30", "dias": [4]}}, asyncio.run(he.conocidas()))   # viernes
+    viernes = "2026-10-23"
+    assert asyncio.run(he.lanzar_programadas(_local(viernes + "T23:29:00"))) == []
+    assert asyncio.run(he.lanzar_programadas(_local(viernes + "T23:31:00"))) == ["Cine"]
+    assert asyncio.run(he.lanzar_programadas(_local(viernes + "T23:32:00"))) == []          # no repite
+    assert asyncio.run(he.lanzar_programadas(_local("2026-10-24T23:31:00"))) == []          # sábado no toca
+    assert asyncio.run(he.lanzar_programadas(_local("2026-10-30T23:50:00"))) == []          # pasado el margen
+    assert asyncio.run(he.lanzar_programadas(_local("2026-10-30T23:40:00"))) == ["Cine"]    # el viernes siguiente
+    assert len(casa["camaras"]) == 2
+
+
+def test_programada_al_anochecer(casa, monkeypatch):
+    from aria import hogar_escenas as he
+    monkeypatch.setattr(config, "LAT", 40.4)
+    monkeypatch.setattr(config, "LON", -3.7)
+    monkeypatch.setattr(config, "TZ", "Europe/Madrid")
+    he.crear({**CINE, "programa": {"sol": "anochecer", "desfase": 0, "dias": list(range(7))}}, asyncio.run(he.conocidas()))
+    cuando = he.momento({"sol": "anochecer", "desfase": 0, "dias": list(range(7))}, dt.date(2026, 6, 21))
+    from zoneinfo import ZoneInfo
+    local = dt.datetime.fromtimestamp(cuando, ZoneInfo("Europe/Madrid"))
+    assert (local.hour, local.minute // 10) == (21, 4)                                       # ~21:4x en Madrid en junio
+    assert asyncio.run(he.lanzar_programadas(cuando + 60)) == ["Cine"]

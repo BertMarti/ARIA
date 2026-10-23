@@ -222,7 +222,9 @@ const Hogar = (() => {
     nueva.addEventListener("click", () => editarEscena(null, d.iconos));
     if (!lista.length) return [nota("Crea una escena para cambiar varias luces y cámaras de un toque (por ejemplo «Cine» o «Buenas noches»). También puedes pedírsela a ARIA en el chat."), el("div", { class: "botones" }, nueva)];
     const botones = lista.map((e) => {
-      const b = el("button", { type: "button", class: "hogar-escena" }, iconoEscena(e.icono), el("span", null, e.nombre));
+      const prog = e.programa ? (e.programa.hora || (e.programa.sol === "anochecer" ? "anochecer" : "amanecer")) : "";
+      const b = el("button", { type: "button", class: "hogar-escena" }, iconoEscena(e.icono), el("span", null, e.nombre),
+        prog ? el("span", { class: "hogar-escena-prog-chip", title: "Se activa sola" }, prog) : null);
       b.addEventListener("click", async () => {
         b.disabled = true; b.classList.add("activando");
         const r = await api("/api/hogar/escenas/" + e.id + "/activar", { method: "POST" });
@@ -273,17 +275,36 @@ const Hogar = (() => {
       filas.push({ fila: el("div", { class: "hogar-escena-fila" }, el("strong", null, c.nombre), que),
         leer: () => que.value === "" ? null : { tipo: "camara", ip: c.ip, privacidad: que.value === "tapar" } });
     }
+    // Programación: a una hora o con el sol, los días elegidos.
+    const p = escena?.programa;
+    const modo = el("select", { ariaLabel: "Cuándo se activa sola" },
+      el("option", { value: "", selected: !p }, "Solo cuando la active"), el("option", { value: "hora", selected: !!p?.hora }, "A una hora"),
+      el("option", { value: "anochecer", selected: p?.sol === "anochecer" }, "Al anochecer"), el("option", { value: "amanecer", selected: p?.sol === "amanecer" }, "Al amanecer"));
+    const hora = el("input", { type: "time", value: p?.hora || "23:30", ariaLabel: "Hora" });
+    const desfase = el("select", { ariaLabel: "Antes o después" }, ...[[-60, "1 h antes"], [-30, "30 min antes"], [0, "en el momento"], [30, "30 min después"], [60, "1 h después"]]
+      .map(([v, t]) => el("option", { value: v, selected: (p?.desfase || 0) === v }, t)));
+    const NOMBRES_DIAS = ["L", "M", "X", "J", "V", "S", "D"];
+    const dias = NOMBRES_DIAS.map((n, i) => el("label", { class: "hogar-dia" }, el("input", { type: "checkbox", value: i, checked: p ? p.dias.includes(i) : true }), el("span", null, n)));
+    const opcionesProg = el("div", { class: "hogar-escena-prog" }, hora, desfase, el("div", { class: "hogar-dias", role: "group", ariaLabel: "Días" }, ...dias));
+    const verProg = () => { opcionesProg.hidden = !modo.value; hora.hidden = modo.value !== "hora"; desfase.hidden = !["anochecer", "amanecer"].includes(modo.value); };
+    modo.addEventListener("change", verProg); verProg();
+    const leerPrograma = () => {
+      if (!modo.value) return null;
+      const d = dias.map((l) => l.querySelector("input")).filter((c) => c.checked).map((c) => Number(c.value));
+      return modo.value === "hora" ? { hora: hora.value, dias: d } : { sol: modo.value, desfase: Number(desfase.value), dias: d };
+    };
     const guardar = el("button", { type: "button", class: "primario" }, "Guardar");
     const borrar = escena ? el("button", { type: "button", class: "peligro" }, "Borrar") : null;
     const d = dialogo(escena ? "Editar escena" : "Nueva escena",
       el("label", { class: "hogar-campo" }, el("span", null, "Nombre"), nombre), iconosFila,
       filas.length ? el("div", { class: "hogar-escena-filas" }, ...filas.map((f) => f.fila)) : nota("No hay luces ni cámaras cargadas todavía."),
+      el("h3", null, "Programar"), el("label", { class: "hogar-opcion" }, modo), opcionesProg,
       el("div", { class: "botones" }, borrar, guardar));
     guardar.addEventListener("click", async () => {
       const acciones = filas.map((f) => f.leer()).filter(Boolean);
       if (!acciones.length) { toast("Elige qué hacer con al menos una luz o cámara.", "mal"); return; }
       guardar.disabled = true;
-      const r = await api("/api/hogar/escenas" + (escena ? "/" + escena.id : ""), { method: escena ? "PUT" : "POST", json: { nombre: nombre.value, icono, acciones } });
+      const r = await api("/api/hogar/escenas" + (escena ? "/" + escena.id : ""), { method: escena ? "PUT" : "POST", json: { nombre: nombre.value, icono, acciones, programa: leerPrograma() } });
       guardar.disabled = false;
       if (!r.ok) { toast(r.data.error || "No se pudo guardar.", "mal"); return; }
       toast("Escena guardada."); d.close(); cargarEscenas();

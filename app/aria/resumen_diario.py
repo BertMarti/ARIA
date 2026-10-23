@@ -48,9 +48,10 @@ def _finanzas(uid: int, hoy: date) -> dict:
     # Comparación justa: lo gastado el mes pasado hasta el mismo día del mes
     previo = sum(-m["importe"] for m in finanzas.listar(uid, mes=_mes_anterior(hoy))
                  if m.get("importe", 0) < 0 and str(m.get("fecha", ""))[8:10] <= f"{hoy.day:02d}")
+    fijos = finanzas.gastos_fijos(uid, hoy)
     return {"mes": mes, "mes_texto": _MESES[hoy.month - 1], "gastos": actual["gastos"], "ingresos": actual["ingresos"],
             "mes_anterior": anterior["gastos"], "mes_anterior_mismo_dia": previo,
-            "presupuestos": finanzas.estado_presupuestos(uid, mes)}
+            "presupuestos": finanzas.estado_presupuestos(uid, mes), "fijos": fijos}
 
 
 def _agenda(uid: int, hoy: date) -> dict:
@@ -311,6 +312,9 @@ def secciones(d: dict, e=str) -> list[tuple[str, str, list[str]]]:
             linea += (" (igual que el mes pasado a estas alturas)" if dif == 0
                       else f" ({'▲' if dif > 0 else '▼'} {abs(dif)} % vs. el mes pasado a estas alturas)")
         lineas = [linea]
+        if f.get("fijos", {}).get("fijos"):
+            lineas.append(f"Comprometido este mes: {_euros(f['fijos']['total_mensual'] / 100)} en "
+                          f"{len(f['fijos']['fijos'])} recibos fijos (quedan {_euros(f['fijos']['queda_mes'] / 100)} por cargar)")
         if f.get("ingresos"):
             lineas.append(f"Ingresos: {_euros(f['ingresos'] / 100)}")
         for p in sorted(f.get("presupuestos") or [], key=lambda x: -x.get("porcentaje", 0))[:3]:

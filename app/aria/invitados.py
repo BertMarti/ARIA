@@ -67,7 +67,7 @@ HERRAMIENTAS_POR = {
     "memoria": {"recordar", "olvidar"},
     "rutinas": {"crear_rutina", "mis_rutinas", "borrar_rutina"},
     "finanzas": {"resumen_mes", "gastos_por_categoria", "comparar_meses", "estado_presupuestos", "buscar_movimientos",
-                 "registrar_movimiento"},
+                 "registrar_movimiento", "gastos_fijos"},
 }
 
 

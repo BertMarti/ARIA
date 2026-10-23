@@ -47,7 +47,7 @@ _USUARIO = [
     ("GET", r"/api/agentes/herramientas-disponibles"),
     ("GET", r"/api/buscar"),
     # Finanzas: cada usuario solo sus datos (las funciones filtran por user_id de la sesión).
-    ("GET", r"/api/finanzas/(resumen|movimientos|reglas)"),
+    ("GET", r"/api/finanzas/(resumen|movimientos|reglas|fijos)"),
     ("POST", r"/api/finanzas/(movimientos|presupuestos|reglas|importar|importar/previa|sugerir)"),
     ("PATCH", r"/api/finanzas/movimientos/\d+"),
     ("DELETE", r"/api/finanzas/(movimientos|reglas)/\d+"),

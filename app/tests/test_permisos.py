@@ -74,7 +74,7 @@ RUTAS_USUARIO_AGENTES = {
     ("GET", "/api/agentes"), ("GET", "/api/agentes/propios"), ("POST", "/api/agentes/propios"),
     ("PUT", "/api/agentes/propios/{aid}"), ("DELETE", "/api/agentes/propios/{aid}"),
     ("GET", "/api/agentes/herramientas-disponibles"), ("GET", "/api/red/salud"),
-    ("GET", "/api/finanzas/resumen"), ("GET", "/api/finanzas/movimientos"), ("GET", "/api/finanzas/reglas"),
+    ("GET", "/api/finanzas/resumen"), ("GET", "/api/finanzas/movimientos"), ("GET", "/api/finanzas/reglas"), ("GET", "/api/finanzas/fijos"),
     ("POST", "/api/finanzas/movimientos"), ("POST", "/api/finanzas/presupuestos"), ("POST", "/api/finanzas/reglas"),
     ("POST", "/api/finanzas/importar"), ("POST", "/api/finanzas/importar/previa"), ("POST", "/api/finanzas/sugerir"),
     ("PATCH", "/api/finanzas/movimientos/{mid}"), ("DELETE", "/api/finanzas/movimientos/{mid}"),

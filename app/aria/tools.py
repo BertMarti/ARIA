@@ -72,12 +72,12 @@ GESTION_RUTINAS = frozenset({"crear_rutina", "mis_rutinas", "borrar_rutina"})
 RUTINAS = frozenset(SOLO_LECTURA | {
     "estado_red", "dispositivos_red", "dispositivos_nuevos", "medir_latencia", "informe_seguridad", "estado_escaneo",
     "bloqueos_por_cliente", "resumen_mes", "gastos_por_categoria", "comparar_meses", "estado_presupuestos",
-    "buscar_movimientos", "mis_recordatorios", "mis_rutinas"})
+    "buscar_movimientos", "gastos_fijos", "mis_recordatorios", "mis_rutinas"})
 
 
 # Además, el rol `usuario` puede usar sus finanzas (solo sus datos) y la salud de la red (solo lectura).
 DE_USUARIO = frozenset({"registrar_movimiento", "resumen_mes", "gastos_por_categoria", "comparar_meses",
-                        "presupuesto", "estado_presupuestos", "buscar_movimientos", "estado_red"})
+                        "presupuesto", "estado_presupuestos", "buscar_movimientos", "gastos_fijos", "estado_red"})
 
 
 def permitidas(rol: str) -> set:
@@ -1062,6 +1062,17 @@ async def buscar_movimientos(uid, texto=None, mes=None, categoria=None) -> str:
         f"{m['fecha']} {m['concepto']} {finanzas.euros(m['importe'])}" for m in r) + "."
 
 
+@tool("gastos_fijos", "Muestra tus recibos fijos y suscripciones detectados localmente y cuánto queda por cargar este mes.",
+      usa_uid=True, especialista=True)
+async def gastos_fijos(uid) -> str:
+    d = await asyncio.to_thread(finanzas.gastos_fijos, uid)
+    if not d["fijos"]:
+        return "No he detectado recibos fijos todavía."
+    lista = "; ".join(f"{x['concepto']}: {finanzas.euros(x['importe_habitual'])} el día {x['dia_habitual']}"
+                       for x in d["fijos"])
+    return f"Recibos fijos: {lista}. Comprometido al mes: {finanzas.euros(d['total_mensual'])}; queda por cargar: {finanzas.euros(d['queda_mes'])}."
+
+
 
 # --- Redes ---------------------------------------------------------------------------------------------
 def _lat_texto(lat: dict) -> str:
@@ -1209,7 +1220,8 @@ _INTENCIONES += [
      {"presupuesto"}),
     ((r"\bpresupuest\w*\b", r"\b(c[oó]mo|estado|llevo|queda|superad\w*|voy)\b"), {"estado_presupuestos"}),
     ((r"\b(busca\w*|movimientos?|cargos?|recibos?)\b", r"\b(gast\w*|pag\w*|movimientos?|cargos?|recibos?|compr\w*)\b"),
-     {"buscar_movimientos"}),
+      {"buscar_movimientos"}),
+    ((r"\b(suscripciones?|recibos? fijos?|gastos? fijos?|pagos? mensuales?)\b",), {"gastos_fijos"}),
 ]
 
 _INTENCIONES += [

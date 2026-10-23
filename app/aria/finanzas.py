@@ -4,12 +4,15 @@ TODA función recibe `uid` y filtra por `user_id`: cada usuario solo ve y cambia
 Los importes se guardan en céntimos (enteros): gasto < 0, ingreso > 0.
 Sin bancos ni APIs financieras: los datos llegan a mano, por el chat o importando un CSV.
 """
+import asyncio
 import re
 import time
 import unicodedata
 from collections import Counter
 from contextlib import closing
-from datetime import date
+from datetime import date, timedelta
+import calendar
+from statistics import median
 
 from . import db
 
@@ -288,6 +291,99 @@ def meses(uid: int) -> list:
     with closing(db._con()) as con:
         return [r[0] for r in con.execute("SELECT DISTINCT substr(fecha,1,7) m FROM fin_movimientos WHERE user_id=? "
                                           "ORDER BY m DESC LIMIT 60", (uid,))]
+
+
+def _meses_ultimos(hoy: date | None = None, seis: int = 6) -> list[str]:
+    hoy = (hoy or date.today()).replace(day=1)
+    out = []
+    for i in range(seis):
+        m = hoy.month - i
+        y = hoy.year + (m - 1) // 12
+        out.append(f"{y:04d}-{(m - 1) % 12 + 1:02d}")
+    return out
+
+
+def _proximo_cargo(dia: int, hoy: date) -> str:
+    ano, mes = hoy.year, hoy.month
+    if dia < hoy.day:
+        mes += 1
+        if mes == 13:
+            ano, mes = ano + 1, 1
+    return date(ano, mes, min(dia, calendar.monthrange(ano, mes)[1])).isoformat()
+
+
+def _meses_consecutivos(meses: list[str]) -> bool:
+    valores = sorted((int(m[:4]) * 12 + int(m[5:]) for m in meses))
+    return bool(valores) and all(b - a == 1 for a, b in zip(valores, valores[1:]))
+
+
+def gastos_fijos(uid: int, hoy: date | None = None) -> dict:
+    """Detecta gastos recurrentes sin salir de la base de datos local del usuario."""
+    hoy = hoy or date.today()
+    meses_ventana = _meses_ultimos(hoy)
+    with closing(db._con()) as con:
+        filas = con.execute("SELECT fecha, concepto, concepto_norm, importe, categoria FROM fin_movimientos "
+                            "WHERE user_id=? AND importe<0 AND fecha>=? AND fecha<=? ORDER BY fecha",
+                            (uid, meses_ventana[-1] + "-01", hoy.isoformat())).fetchall()
+    grupos = {}
+    for r in filas:
+        mes = r["fecha"][:7]
+        if mes not in meses_ventana:
+            continue
+        clave = _clave_similar(r["concepto"]) or normalizar(r["concepto"])
+        if not clave:
+            continue
+        grupos.setdefault(clave, {}).setdefault(mes, []).append(r)
+    resultado = []
+    for registros in grupos.values():
+        # Una fila por mes evita que duplicados del extracto falseen la recurrencia.
+        por_mes = [max(rs, key=lambda r: r["fecha"]) for rs in registros.values()]
+        if len(por_mes) < 3:
+            continue
+        importes = [abs(r["importe"]) for r in por_mes]
+        habitual = median(importes)
+        if any(abs(i - habitual) > habitual * 0.15 for i in importes):
+            continue
+        dias = [int(r["fecha"][8:10]) for r in por_mes]
+        dia = round(median(dias))
+        if any(abs(d - dia) > 5 for d in dias):
+            continue
+        ultimo = max(por_mes, key=lambda r: r["fecha"])
+        cambio = round((abs(ultimo["importe"]) - habitual) * 100 / habitual, 1) if habitual else 0
+        resultado.append({"concepto": ultimo["concepto"], "categoria": ultimo["categoria"] or "Suscripciones",
+                          "importe_habitual": round(habitual), "ultimo_importe": abs(ultimo["importe"]),
+                          "dia_habitual": dia, "meses": sorted(registros), "cambio_pct": cambio,
+                          "proximo_cargo": _proximo_cargo(dia, hoy)})
+    resultado.sort(key=lambda x: (x["dia_habitual"], normalizar(x["concepto"])))
+    total = sum(x["importe_habitual"] for x in resultado)
+    cargado = 0
+    for x in resultado:
+        clave = _clave_similar(x["concepto"]) or normalizar(x["concepto"])
+        cargado += sum(abs(r["importe"]) for r in filas if r["fecha"][:7] == hoy.strftime("%Y-%m")
+                       and (_clave_similar(r["concepto"]) or normalizar(r["concepto"])) == clave)
+    return {"fijos": resultado, "total_mensual": total, "queda_mes": max(0, total - cargado)}
+
+
+async def avisar_gastos_fijos(uid: int) -> None:
+    """Emite los cambios detectados, deduplicados por recibo y mes."""
+    from . import avisos
+    datos = await asyncio.to_thread(gastos_fijos, uid)   # lectura de la base de datos fuera del bucle de eventos
+    mes = date.today().strftime("%Y-%m")
+    for fijo in datos["fijos"]:
+        cambio = fijo["cambio_pct"]
+        nuevo = len(fijo["meses"]) == 3 and _meses_consecutivos(fijo["meses"])
+        if cambio <= 10 and not nuevo:
+            continue
+        clave = f"fijo:{uid}:{_clave_similar(fijo['concepto']) or normalizar(fijo['concepto'])}:{mes}"
+        if await asyncio.to_thread(avisos._ya_enviado, clave):
+            continue
+        await asyncio.to_thread(avisos._anotar_enviado, clave)
+        if cambio > 10:
+            texto = (f"{fijo['concepto']} ha subido de {euros(fijo['importe_habitual'])} a "
+                     f"{euros(fijo['ultimo_importe'])} ({cambio:+g} %).")
+        else:
+            texto = f"Nuevo recibo fijo detectado: {fijo['concepto']} ({euros(fijo['ultimo_importe'])})."
+        await avisos.emitir("fijos", "aviso", texto, "finanzas", [uid])
 
 
 # --- Importación ------------------------------------------------------------------------------------

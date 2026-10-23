@@ -49,7 +49,22 @@ const Finanzas = (() => {
     else pc.replaceChildren(...data.presupuestos.map((p) => el("div", { class: "metrica" },
       el("div", { class: "metrica-cab" }, el("span", null, p.categoria),
         el("span", { class: p.superado ? "error" : "muted" }, euros(p.gastado) + " de " + euros(p.presupuesto))),
-      barra(p.porcentaje, 80, 100))));
+       barra(p.porcentaje, 80, 100))));
+    cargarFijos();
+  }
+
+  async function cargarFijos() {
+    const cuerpo = $("fin-fijos").querySelector(".cuerpo");
+    const r = await api("/api/finanzas/fijos");
+    if (!r.ok) { cuerpo.textContent = r.data.error || "No se pudieron cargar."; return; }
+    const d = r.data;
+    if (!d.fijos.length) { cuerpo.replaceChildren(el("p", { class: "muted" }, "Aún no hay recibos fijos detectados.")); return; }
+    cuerpo.replaceChildren(
+      el("ul", { class: "filas" }, ...d.fijos.map((f) => el("li", { class: "fila" },
+        el("div", { class: "fila-info" }, el("strong", null, f.concepto),
+          el("span", { class: "muted" }, "Día " + f.dia_habitual + " · " + f.categoria)),
+        el("strong", { class: f.cambio_pct > 0 ? "error" : "" }, euros(f.importe_habitual) + (f.cambio_pct > 0 ? " ▲" : ""))))),
+      el("p", { class: "muted" }, "Comprometido al mes: " + euros(d.total_mensual) + " · Queda por cargar: " + euros(d.queda_mes)));
   }
 
   async function cargarMovimientos() {

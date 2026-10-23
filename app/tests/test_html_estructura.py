@@ -41,3 +41,9 @@ def test_cada_vista_es_hija_de_main():
     assert a.vistas, "no se encontraron vistas"
     mal = {v: p for v, p in a.vistas.items() if p != "main"}
     assert not mal, f"vistas anidadas dentro de otra sección: {mal}"
+
+
+def test_navegacion_movil_tiene_mas_y_hoja():
+    texto = HTML.read_text(encoding="utf-8")
+    assert 'class="nav-btn nav-mas"' in texto
+    assert 'class="dialogo hoja-mas"' in texto

@@ -317,6 +317,7 @@ Tus cuentas personales. Cada usuario solo ve las suyas. ARIA **no se conecta a n
   3. ARIA detecta el formato. Revisa qué columna es la fecha, el concepto y el importe, y mira la vista previa.
   4. Pulsa **Importar**. Lo que ya estaba no se duplica.
 - **Sugerir categorías (nube)**: opcional. Envía solo los conceptos sin categoría (sin importes ni fechas) a un cerebro de la nube. Nada se aplica hasta que aceptas cada sugerencia.
+- **Gastos fijos**: ARIA detecta localmente recibos y suscripciones recurrentes de los últimos seis meses.
 
 ## Red
 

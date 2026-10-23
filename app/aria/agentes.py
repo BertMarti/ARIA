@@ -46,7 +46,7 @@ _COMUNES = frozenset({"fecha_hora", "recordar", "olvidar", "buscar_en_internet",
                       "recordatorio", "mis_recordatorios", "borrar_recordatorio"})
 
 FINANZAS_TOOLS = frozenset({"registrar_movimiento", "resumen_mes", "gastos_por_categoria", "comparar_meses",
-                            "presupuesto", "estado_presupuestos", "buscar_movimientos"})
+                             "presupuesto", "estado_presupuestos", "buscar_movimientos", "gastos_fijos"})
 REDES_TOOLS = frozenset({"estado_red", "dispositivos_red", "dispositivos_nuevos", "marcar_dispositivo_conocido",
                          "estadisticas_dispositivo",
                          "medir_latencia", "test_velocidad", "pausar_internet", "reanudar_internet",

@@ -54,6 +54,7 @@ TIPOS = {
     "agenda": ("Eventos y cumpleaños de tu agenda", False, True),
     "meteo": ("Avisos meteorológicos naranja o rojo de tu zona", False, True),
     "luz": ("Horas baratas de la luz: mañana (cada tarde) y al empezar la de hoy", False, True),
+    "fijos": ("Cambios en tus recibos fijos", False, True),
 }
 # Tipos que no se pueden silenciar con los interruptores (los pide el propio usuario).
 SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina", "agenda"}
@@ -533,6 +534,12 @@ async def tick(ahora: float | None = None) -> None:
             await asyncio.to_thread(registro.purgar)
         except Exception:  # noqa: BLE001
             log.exception("Falló la purga del registro de herramientas")
+        try:
+            from . import finanzas
+            for u in await asyncio.to_thread(_usuarios_activos):
+                await finanzas.avisar_gastos_fijos(u["id"])
+        except Exception:  # noqa: BLE001
+            log.exception("Falló la comprobación de recibos fijos")
 
 
 async def bucle(retraso: float = 30) -> None:

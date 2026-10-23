@@ -63,6 +63,11 @@ async def movimientos(request: Request, mes: str = "", categoria: str = "", text
         return _err(e)
 
 
+@router.get("/fijos")
+async def fijos(request: Request):
+    return await asyncio.to_thread(finanzas.gastos_fijos, _uid(request))
+
+
 @router.post("/movimientos")
 async def crear(request: Request):
     d = await _json(request)
@@ -152,6 +157,7 @@ async def importar(request: Request):
     if not conv["movimientos"]:
         return _err(Exception("No hay ninguna fila válida con ese mapeo."))
     r = await asyncio.to_thread(finanzas.importar, _uid(request), conv["movimientos"], d.get("cuenta"))
+    await finanzas.avisar_gastos_fijos(_uid(request))
     r["errores"] = len(conv["errores"])
     return r
 

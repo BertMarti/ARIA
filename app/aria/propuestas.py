@@ -149,15 +149,17 @@ async def _luz(u: dict, ahora: datetime) -> list:
     from . import luz
     if not luz.activo() or not (8 <= ahora.hour < 13):
         return []
-    r = await luz.hoy()
-    h = r["barata"]["hora"]
+    tramo = luz.franja(await luz.precios(ahora.date()))   # la misma franja de 3 h que el aviso «empieza la hora barata»
+    if not tramo:
+        return []
+    h = tramo["desde"]
     if h <= ahora.hour:
         return []
     cuando = ahora.replace(hour=h, minute=0, second=0, microsecond=0)
-    precio = f"{r['barata']['precio']:.3f}".replace(".", ",")
+    precio = f"{tramo['media']:.3f}".replace(".", ",")
     return [dict(clave=f"luz:{ahora.date().isoformat()}", tipo="luz",
                  titulo=f"¿Te aviso a las {h}:00 para poner la lavadora?",
-                 detalle=f"Es la hora más barata de la luz hoy ({precio} €/kWh). Te pongo un recordatorio.",
+                 detalle=f"Empieza la franja más barata de la luz hoy (de {h}:00 a {tramo['hasta']}:00, {precio} €/kWh de media). Te pongo un recordatorio.",
                  herramienta="recordatorio",
                  args={"texto": "Poner la lavadora o el lavavajillas (hora más barata de la luz)", "cuando": cuando.strftime("%Y-%m-%dT%H:%M")},
                  caduca=_ts(cuando))]

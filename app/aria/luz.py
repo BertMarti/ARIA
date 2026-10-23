@@ -46,7 +46,7 @@ async def precios(dia: date | None = None) -> list[dict]:
             continue
     if len(out) < 20:
         raise LuzError("Los datos del precio de la luz están incompletos.")
-    for k in [k for k in _cache if k != clave]:
+    for k in sorted(k for k in _cache if k != clave)[:-2]:   # hoy, mañana y uno más: «hoy» y «mañana» no se expulsan entre sí
         _cache.pop(k, None)
     _cache[clave] = (time.monotonic(), out)
     return out

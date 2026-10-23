@@ -620,6 +620,14 @@ async def luz_inicio_franja(ref: datetime | None = None) -> bool:
     if not luz.activo() or time.time() < _luz_hoy_reintento:
         return False
     ref = (ref.astimezone(tiempo.zona()) if ref else tiempo.ahora())
+    try:
+        serie = await luz.precios(ref.date())   # en caché: primero se mira la hora y solo entonces la base de datos
+    except luz.LuzError:
+        _luz_hoy_reintento = time.time() + 15 * 60
+        return False
+    tramo = luz.franja(serie)
+    if not tramo or ref.hour != tramo["desde"]:
+        return False
     ids = await asyncio.to_thread(_destinatarios_con_tipo, "luz")
     pendientes = []
     for uid in ids:
@@ -627,14 +635,6 @@ async def luz_inicio_franja(ref: datetime | None = None) -> bool:
         if not await asyncio.to_thread(_ya_enviado, clave):
             pendientes.append(uid)
     if not pendientes:
-        return False
-    try:
-        serie = await luz.precios(ref.date())
-    except luz.LuzError:
-        _luz_hoy_reintento = time.time() + 15 * 60
-        return False
-    tramo = luz.franja(serie)
-    if not tramo or ref.hour != tramo["desde"]:
         return False
     precio = f"{tramo['media']:.3f}".replace(".", ",")
     texto = f"Empieza la hora barata de la luz: {precio} €/kWh hasta las {tramo['hasta']}:00."

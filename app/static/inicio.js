@@ -150,8 +150,9 @@ const Inicio = (() => {
     const t = d.tiempo;
     if (t) anadir("tiempo", tarjetaR("tiempo", "El tiempo · " + (t.origen === "dispositivo" ? "📍 " : "🏠 ") + t.ciudad, "rd-tiempo",
       el("div", { class: "rd-grande" }, (t.actual ?? t.max) + " °C"), el("p", { class: "rd-sub" }, t.cielo.charAt(0).toUpperCase() + t.cielo.slice(1)),
-      el("div", { class: "rd-mini" }, el("span", null, "↓ " + t.min + " °C"), el("span", null, "↑ " + t.max + " °C"), el("span", null, "Lluvia " + (t.lluvia ?? "—") + " %")),
-      t.aviso_manana ? el("p", { class: "rd-alerta" }, "⚠ " + t.aviso_manana) : null));
+       el("div", { class: "rd-mini" }, el("span", null, "↓ " + t.min + " °C"), el("span", null, "↑ " + t.max + " °C"), el("span", null, "Lluvia " + (t.lluvia ?? "—") + " %")),
+       t.aire ? el("p", { class: "rd-sub" }, "Aire: " + (t.aire.nivel_aqi || "—") + " · Polen: " + ((t.aire.polen || []).filter((p) => p.nivel !== "bajo").slice(0, 2).map((p) => p.tipo + " " + p.nivel).join(", ") || "bajo")) : null,
+       t.aviso_manana ? el("p", { class: "rd-alerta" }, "⚠ " + t.aviso_manana) : null));
     const lz = d.luz;
     if (lz) {
       const kwh = (p) => p.toLocaleString("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + " €/kWh";

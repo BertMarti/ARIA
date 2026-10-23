@@ -5,7 +5,7 @@ from contextlib import closing
 
 import httpx
 
-from . import avisos, avisos_meteo, cerebros, config, db, services, sistema, telemetria, vpn, vpn_ubicaciones
+from . import aire, avisos, avisos_meteo, cerebros, config, db, services, sistema, telemetria, tiempo, vpn, vpn_ubicaciones
 from .avisos import Chequeo, Problema
 
 TEMP_MAX = 75.0
@@ -176,6 +176,27 @@ async def telemetria_picos() -> list | None:
     return problemas
 
 
+async def polen() -> list | None:
+    if tiempo.ahora().hour < 8:
+        return []
+    dato = await aire.resumen()
+    if not dato:
+        return None
+    altos = {x["tipo"]: x["nivel"] for x in dato.get("polen", []) if x["nivel"] in ("alto", "muy alto")}
+    if not altos:
+        return []
+    out = []
+    for u in avisos._usuarios_activos():
+        alergias = avisos.ajustes(u["id"]).get("alergias", [])
+        for tipo, nivel in altos.items():
+            if tipo in alergias:
+                out.append(avisos.Problema(
+                    f"{u['id']}:{tipo}:{tiempo.hoy().isoformat()}",
+                    f"Hoy hay mucho polen de {tipo} ({nivel}). Si te da alergia, ojo al salir.",
+                    "aviso", [u["id"]]))
+    return out
+
+
 def registrar() -> None:
     """Registra los chequeos iniciales (idempotente)."""
     for c in (
@@ -208,5 +229,7 @@ def registrar() -> None:
                  texto_ok="Los picos del sistema han vuelto a la normalidad.", enlace="control"),
         Chequeo("meteo", "meteo", "aviso", avisos_meteo.problemas, intervalo_s=1800,
                  evento=True, enlace="inicio", solo_admin=False),
+        Chequeo("polen", "polen", "aviso", polen, intervalo_s=1800, evento=True,
+                 enlace="inicio", solo_admin=False),
     ):
         avisos.registrar_chequeo(c)

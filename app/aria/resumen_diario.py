@@ -10,7 +10,7 @@ import html
 import time
 from datetime import date, timedelta
 
-from . import (agenda, avisos_meteo, briefing, cerebros, disponibilidad, estadisticas, finanzas, informacion, listas, luz,
+from . import (agenda, aire, avisos_meteo, briefing, cerebros, disponibilidad, estadisticas, finanzas, informacion, listas, luz,
                memoria, proyectos, recordatorios, red, sistema, tiempo, ubicacion, vpn)
 
 CACHE_S = 600
@@ -153,14 +153,17 @@ async def construir_resumen_diario(usuario: dict, refrescar: bool = False) -> di
     c = _cache.get(clave)
     if c and not refrescar and time.monotonic() - c[0] < CACHE_S and c[1]["fecha"] == hoy.isoformat():
         return c[1]
-    tiempo_d, mercados, prevision, luz_d, meteo_d = await asyncio.gather(
-        _async_seguro(lambda: briefing._tiempo(lugar)), _async_seguro(lambda: informacion.mercados(uid)),
+    tiempo_d, calidad, mercados, prevision, luz_d, meteo_d = await asyncio.gather(
+        _async_seguro(lambda: briefing._tiempo(lugar)), _async_seguro(lambda: aire.resumen(lugar)),
+        _async_seguro(lambda: informacion.mercados(uid)),
         _async_seguro(lambda: briefing.prevision(2, lugar=lugar)), _async_seguro(luz.hoy) if luz.activo() else _nada(),
         _async_seguro(lambda: avisos_meteo.avisos(provincia=(lugar or {}).get("provincia") if lugar and lugar.get("origen") == "dispositivo" else None), []))
     if tiempo_d and prevision and len(prevision.get("dias", [])) > 1:
         manana = prevision["dias"][1]
         if abs(manana.get("max", 0) - tiempo_d.get("max", 0)) >= 5 or abs(manana.get("min", 0) - tiempo_d.get("min", 0)) >= 5:
             tiempo_d["aviso_manana"] = f"Mañana cambia bastante: {manana['min']}–{manana['max']} °C."
+    if tiempo_d and calidad:
+        tiempo_d["aire"] = calidad
     nombre = _seguro(lambda: memoria.limpiar(usuario.get("nombre") or ""), "")
     datos = {"fecha": hoy.isoformat(), "fecha_texto": tiempo.texto_fecha(hoy), "generado": time.time(),
              "saludo": f"{tiempo.saludo_horario()}, {nombre}" if nombre else tiempo.saludo_horario(),
@@ -235,6 +238,10 @@ def secciones(d: dict, e=str) -> list[tuple[str, str, list[str]]]:
     if t:
         lineas = [e(str(t["cielo"]).capitalize()) + (f", {t['actual']} °C ahora" if t.get("actual") is not None else ""),
                   f"Mín {t['min']} °C · Máx {t['max']} °C · Lluvia {t.get('lluvia', '—')} %"]
+        if t.get("aire"):
+            a = t["aire"]
+            polen = ", ".join(f"{x['tipo']} {x['nivel']}" for x in a.get("polen", []))
+            lineas.append("Aire: " + a["nivel_aqi"] + (" · Polen: " + polen if polen else ""))
         if t.get("aviso_manana"):
             lineas.append("⚠️ " + e(t["aviso_manana"]))
         out.append(("🌤️", f"El tiempo · {e(t['ciudad'])}", lineas))

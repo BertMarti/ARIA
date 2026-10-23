@@ -56,6 +56,7 @@ const Avisos = (() => {
     a.silencio = { activo: $("av-silencio").checked, desde: $("av-desde").value || "23:00", hasta: $("av-hasta").value || "08:00" };
     a.briefing = { activo: $("av-briefing").checked, hora: $("av-briefing-hora").value || "08:00", canal: $("av-briefing-canal").value, voz: $("av-briefing-voz").checked };
     a.informe = { activo: $("av-informe").checked, dia: Number($("av-informe-dia").value), hora: $("av-informe-hora").value || "20:00", canal: $("av-informe-canal").value };
+    a.alergias = [...document.querySelectorAll("#av-alergias input[data-alergia]")].filter((c) => c.checked).map((c) => c.dataset.alergia);
     const tgc = $("av-canal-telegram"), pc = $("av-canal-push"), vz = $("av-voz");
     if (tgc) a.canales.telegram = tgc.checked;
     if (pc) a.canales.push = pc.checked;
@@ -223,6 +224,12 @@ const Avisos = (() => {
       i.addEventListener("change", guardar);
       tipos.append(el("label", { class: "interruptor" }, i, el("span", null, t.nombre)));
     }
+    const alergias = $("av-alergias");
+    alergias.replaceChildren(...["olivo", "gramíneas", "abedul", "aliso", "artemisa", "ambrosía"].map((tipo) => {
+      const i = el("input", { type: "checkbox", checked: a.alergias.includes(tipo), dataset: { alergia: tipo } });
+      i.addEventListener("change", guardar);
+      return el("label", { class: "interruptor" }, i, el("span", null, tipo.charAt(0).toUpperCase() + tipo.slice(1)));
+    }));
     $("av-silencio").checked = a.silencio.activo; $("av-desde").value = a.silencio.desde; $("av-hasta").value = a.silencio.hasta;
     $("av-briefing").checked = a.briefing.activo; $("av-briefing-hora").value = a.briefing.hora; $("av-briefing-canal").value = a.briefing.canal; $("av-briefing-voz").checked = a.briefing.voz !== false;
     const informe = a.informe || { activo: true, dia: 6, hora: "20:00", canal: "telegram" };

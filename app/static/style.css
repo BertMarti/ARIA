@@ -1595,3 +1595,11 @@ body.app { height: 100vh; height: 100dvh; }
 .hogar-anadir .hogar-opciones { margin-top: .5rem; max-height: 14rem; overflow-y: auto; }
 .hogar-opcion { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
 .hogar-tarjeta h3 { margin: .4rem 0 0; font-size: .95rem; }
+
+/* Ajustes → Tus agentes: herramientas plegadas, con buscador */
+.agente-hs-det { border: 1px solid var(--borde); border-radius: var(--r-m, 12px); padding: .6rem .8rem; }
+.agente-hs-det summary { cursor: pointer; font-weight: 600; }
+.agente-hs-det input[type="search"] { margin: .6rem 0; }
+.agente-hs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: .25rem .8rem; max-height: 18rem; overflow-y: auto; }
+.agente-hs-item { display: flex; align-items: flex-start; gap: .55rem; margin: 0; padding: .35rem 0; font-size: .88rem; color: var(--txt); }
+.agente-hs-item input { width: auto; flex: 0 0 auto; margin: .15rem 0 0; }

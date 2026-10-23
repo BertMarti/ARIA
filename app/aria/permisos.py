@@ -42,6 +42,9 @@ _USUARIO = [
     ("POST", r"/api/tele/(enviar|control)"), ("GET", r"/api/tele/estado"),
     # Agentes: la lista ya viene filtrada por rol; el chat rechaza @seguridad a un usuario.
     ("GET", r"/api/agentes"),
+    ("GET", r"/api/agentes/propios"), ("POST", r"/api/agentes/propios"),
+    ("PUT", r"/api/agentes/propios/\d+"), ("DELETE", r"/api/agentes/propios/\d+"),
+    ("GET", r"/api/agentes/herramientas-disponibles"),
     ("GET", r"/api/buscar"),
     # Finanzas: cada usuario solo sus datos (las funciones filtran por user_id de la sesión).
     ("GET", r"/api/finanzas/(resumen|movimientos|reglas)"),

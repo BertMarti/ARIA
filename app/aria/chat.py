@@ -116,15 +116,16 @@ async def elegir_agente(usuario: dict, conv_agente: str | None, texto: str) -> t
     """(agente, texto_sin_prefijo, motivo, aviso). Aplica el prefijo @agente, el de la conversación
     o el enrutado automático de ARIA. Nunca devuelve un agente que el rol no pueda usar."""
     rol = usuario["rol"]
-    pedido, limpio = agentes.separar_prefijo(texto)
+    pedido, limpio = agentes.separar_prefijo(texto, usuario["id"])
     aviso = None
     if pedido:
-        if agentes.permitido(pedido, rol):
-            return agentes.obtener(pedido), limpio, "elegido con @", None
-        aviso = f"El agente «{agentes.obtener(pedido).nombre}» es solo para administradores; te responde ARIA."
+        if agentes.permitido(pedido, rol, usuario["id"]):
+            return agentes.obtener(pedido, usuario["id"]), limpio, "elegido con @", None
+        conocido = agentes.obtener(pedido, usuario["id"])
+        aviso = f"El agente «{conocido.nombre}» es solo para administradores; te responde ARIA."
         return agentes.obtener(agentes.AUTO), limpio, "sin permiso", aviso
-    if conv_agente and conv_agente != agentes.AUTO and agentes.permitido(conv_agente, rol):
-        return agentes.obtener(conv_agente), texto, "elegido en la conversación", None
+    if conv_agente and conv_agente != agentes.AUTO and agentes.permitido(conv_agente, rol, usuario["id"]):
+        return agentes.obtener(conv_agente, usuario["id"]), texto, "elegido en la conversación", None
     aid, motivo = await agentes.enrutar(texto, rol)
     return agentes.obtener(aid), texto, motivo, None
 
@@ -142,7 +143,7 @@ async def conversar(usuario: dict, cid: str | None, texto: str, agente: str | No
     uid = usuario["id"]
     if not cid or not db.existe(cid, uid):
         cid = db.crear(uid)
-    if agente is not None and (agente == agentes.AUTO or agentes.permitido(agente, usuario["rol"])):
+    if agente is not None and (agente == agentes.AUTO or agentes.permitido(agente, usuario["rol"], uid)):
         db.fijar_agente(cid, uid, agente)
     if db.es_primer_mensaje(cid):
         db.renombrar(cid, uid, db.titulo_desde(texto))
@@ -167,7 +168,9 @@ async def conversar(usuario: dict, cid: str | None, texto: str, agente: str | No
             yield {"type": "token", "text": hablado}
             yield {"type": "fin"}
             return
-    ag, limpio, motivo, aviso = await elegir_agente(usuario, conv.get("agente"), texto)
+    ag, limpio, motivo, aviso = await elegir_agente(usuario, agentes.AUTO if limites else conv.get("agente"), texto)
+    if limites and ag.propietario is not None:
+        ag, limpio, motivo, aviso = agentes.obtener(agentes.AUTO), texto, "sin permiso", "Los invitados no pueden usar agentes propios."
     if aviso:
         yield {"type": "aviso", "text": aviso}
     yield {"type": "agente", **ag.publico(), "motivo": motivo}

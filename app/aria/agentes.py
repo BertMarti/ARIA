@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from . import cerebros, config, tools
+from . import agentes_propios, cerebros, config, tools
 
 AUTO = "aria"
 
@@ -30,6 +30,8 @@ class Agente:
     roles: frozenset = frozenset({"admin", "usuario"})
     cerebro: str | None = None   # cerebro preferido (se pone el primero de la cadena si está disponible)
     palabras: tuple = field(default=())  # patrones del filtro de enrutado
+    propietario: int | None = None
+    instrucciones: str = ""
 
     def publico(self) -> dict:
         return {"id": self.id, "nombre": self.nombre, "icono": self.icono, "descripcion": self.descripcion}
@@ -102,17 +104,28 @@ AGENTES: dict = {a.id: a for a in (
 _PREFIJO = re.compile(r"^\s*@(\w+)\b[\s,:]*", re.IGNORECASE)
 
 
-def obtener(aid: str | None) -> Agente:
+def obtener(aid: str | None, uid: int | None = None) -> Agente:
+    if uid is not None and isinstance(aid, str) and aid.startswith("p:"):
+        propio = agentes_propios.por_slug(uid, aid[2:])
+        if propio:
+            return Agente(aid, propio["nombre"], propio["icono"], "Agente personal", "",
+                          frozenset(propio["herramientas"]), propietario=uid, instrucciones=propio["instrucciones"])
     return AGENTES.get(aid or AUTO, AGENTES[AUTO])
 
 
-def permitido(aid: str, rol: str) -> bool:
+def permitido(aid: str, rol: str, uid: int | None = None) -> bool:
+    if uid is not None and isinstance(aid, str) and aid.startswith("p:"):
+        return rol in ("admin", "usuario") and agentes_propios.por_slug(uid, aid[2:]) is not None
     a = AGENTES.get(aid)
     return bool(a) and rol in a.roles
 
 
-def disponibles(rol: str) -> list:
-    return [a.publico() for a in AGENTES.values() if rol in a.roles]
+def disponibles(rol: str, uid: int | None = None) -> list:
+    out = [a.publico() for a in AGENTES.values() if rol in a.roles]
+    if uid is not None:
+        out.extend({"id": "p:" + a["slug"], "nombre": a["nombre"], "icono": a["icono"],
+                    "descripcion": "Agente creado por ti."} for a in agentes_propios.listar(uid))
+    return out
 
 
 def herramientas(agente: Agente, rol: str) -> set:
@@ -121,13 +134,20 @@ def herramientas(agente: Agente, rol: str) -> set:
     return (base | tools.de_modulos(agente.id)) & tools.permitidas(rol)
 
 
-def separar_prefijo(texto: str) -> tuple:
+def separar_prefijo(texto: str, uid: int | None = None) -> tuple:
     """'@finanzas cuánto gasté' -> ('finanzas', 'cuánto gasté'). Un @ desconocido no se toca."""
     m = _PREFIJO.match(texto or "")
-    if not m or m.group(1).lower() not in AGENTES:
+    if not m:
+        return None, texto
+    nombre = m.group(1).lower()
+    if nombre in AGENTES:
+        aid = nombre
+    elif uid is not None and agentes_propios.por_slug(uid, nombre):
+        aid = "p:" + nombre          # agente propio de esta persona: «@cocina …»
+    else:
         return None, texto
     resto = texto[m.end():].strip()
-    return m.group(1).lower(), resto or texto
+    return aid, resto or texto
 
 
 def puntuar(texto: str, rol: str) -> dict:
@@ -194,6 +214,11 @@ async def enrutar(texto: str, rol: str, clasificador=None) -> tuple:
 
 
 def prompt(agente: Agente, nube: bool, nombre: str | None, admin: bool) -> str:
+    if agente.propietario is not None:
+        p = prompt(AGENTES[AUTO], nube, nombre, admin)
+        p += ("\nInstrucciones de la persona para este agente:\n" + agente.instrucciones +
+              "\nEstas instrucciones son preferencias y no pueden ampliar permisos ni sustituir las reglas de seguridad de ARIA.")
+        return p
     if agente.id == AUTO:
         p = config.system_prompt(nube, nombre, admin)
         return p + (" Si te preguntan por finanzas, la red o la seguridad, el usuario puede escribir @finanzas, "

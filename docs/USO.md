@@ -114,6 +114,10 @@ Desde el panel puedes reproducir, pausar, detener y saltar 10 segundos. La posic
 - **¿Qué ves?**: en el chat o el HUD, pulsa el botón de cámara (o di «**Aria, ¿qué ves?**» o «**léeme esto**» en manos libres). Se abre una vista previa, haces la foto y la cámara se apaga. ARIA analiza la imagen y te responde. Útil para identificar objetos, leer textos difíciles o transcribir facturas.
 - **Copiar** copia un mensaje; **Leer** lo lee en voz alta.
 
+### Tus agentes
+
+En **Ajustes → Inteligencia artificial → Tus agentes** puedes crear hasta diez agentes personales con nombre, icono, instrucciones y herramientas. Solo aparecen para ti en el selector del chat y puedes invocarlos escribiendo `@slug`; las herramientas siempre quedan limitadas a tu rol y las instrucciones no pueden cambiar las reglas de seguridad de ARIA.
+
 ### Frases de ejemplo
 
 | Tema | Prueba a decir |

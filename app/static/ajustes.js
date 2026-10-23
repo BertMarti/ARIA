@@ -35,6 +35,33 @@ const Ajustes = (() => {
     toast(r.ok ? "Modelo activo: " + nombre : (r.data.error || "No se pudo cambiar."), r.ok ? "" : "mal");
     modelos();
   }
+
+  async function agentesPropios() {
+    const lista = $("agentes-propios-lista"), form = $("form-agente-propio");
+    if (!lista || !form) return;
+    const r = await api("/api/agentes/propios");
+    if (!r.ok) { lista.replaceChildren(el("li", { class: "muted" }, r.data.error || "No disponible.")); return; }
+    const hs = await api("/api/agentes/herramientas-disponibles"), zona = $("agente-propio-herramientas");
+    const resumenHs = () => { const n = zona.querySelectorAll("input:checked").length; $("agente-propio-hs-resumen").textContent = "Herramientas que puede usar (" + (n ? n + (n === 1 ? " elegida" : " elegidas") : "ninguna") + ")"; };
+    zona.replaceChildren(...(Array.isArray(hs.data) ? hs.data : []).map((h) => {
+      const c = el("input", { type: "checkbox", value: h.id });
+      c.addEventListener("change", resumenHs);
+      const frase = String(h.descripcion || h.id).split(/(?<=\.)\s/)[0];   // solo la primera frase, sin el nombre técnico
+      return el("label", { class: "agente-hs-item", title: h.id }, c, el("span", null, frase));
+    }));
+    $("agente-propio-hs-buscar").oninput = (e) => { const q = e.target.value.trim().toLowerCase(); for (const l of zona.children) l.hidden = !!q && !l.textContent.toLowerCase().includes(q) && !l.title.includes(q); };
+    const pintar = () => lista.replaceChildren(...r.data.agentes.map((a) => {
+      const editar = el("button", { type: "button", class: "fantasma pequeno" }, "Editar");
+      editar.onclick = () => { $("agente-propio-id").value = a.id; $("agente-propio-nombre").value = a.nombre; $("agente-propio-slug").value = a.slug; $("agente-propio-icono").value = a.icono; $("agente-propio-instrucciones").value = a.instrucciones; for (const c of zona.querySelectorAll("input")) c.checked = a.herramientas.includes(c.value); contador(); resumenHs(); };
+      const borrar = el("button", { type: "button", class: "peligro pequeno" }, "Borrar");
+      borrar.onclick = async () => { if (await confirmar("Borrar agente", "Se eliminará «" + a.nombre + "».", "Borrar")) { await api("/api/agentes/propios/" + a.id, { method: "DELETE" }); agentesPropios(); } };
+      return el("li", { class: "fila" }, el("div", { class: "fila-info" }, el("strong", null, a.nombre), el("span", { class: "muted" }, "@" + a.slug)), el("div", { class: "fila-acc" }, editar, borrar));
+    }));
+    form.onsubmit = async (e) => { e.preventDefault(); const id = $("agente-propio-id").value; const datos = { nombre: $("agente-propio-nombre").value, slug: $("agente-propio-slug").value, icono: $("agente-propio-icono").value, instrucciones: $("agente-propio-instrucciones").value, herramientas: [...zona.querySelectorAll("input:checked")].map((c) => c.value) }; const x = await api(id ? "/api/agentes/propios/" + id : "/api/agentes/propios", { method: id ? "PUT" : "POST", json: datos }); $("agente-propio-msg").textContent = x.ok ? "Guardado." : (x.data.error || "No se pudo guardar."); if (x.ok) { form.reset(); $("agente-propio-id").value = ""; resumenHs(); agentesPropios(); Chat.cargarAgentes?.(); } };
+    $("agente-propio-cancelar").onclick = () => { form.reset(); $("agente-propio-id").value = ""; resumenHs(); };
+    function contador() { $("agente-propio-contador").textContent = $("agente-propio-instrucciones").value.length + "/1500"; }
+    $("agente-propio-instrucciones").oninput = contador; contador(); pintar();
+  }
   async function borrar(nombre) {
     if (!(await confirmar("Borrar modelo", "Se eliminará «" + nombre + "» del disco. Podrás volver a descargarlo.", "Borrar"))) return;
     const r = await api("/api/models", { method: "DELETE", json: { model: nombre } });
@@ -352,6 +379,7 @@ const Ajustes = (() => {
     pintarSecciones(); dosPasos(); if (!voces) cargarVoces();
     estadoVoz(); listarMics().catch(() => {});
     if (Sesion.esAdmin) { cerebros(); modelos(); if (Sesion.funciones.spotify) spotify(); acerca(); }
+    agentesPropios();
     if (!Sesion.tienePassword) { $("pass-actual").required = false; $("pass-actual-et").hidden = true; }
   }
   // --- Verificación en dos pasos ---
@@ -402,7 +430,7 @@ const Ajustes = (() => {
     { id: "avisos", nombre: "Avisos", desc: "Campana, Telegram, notificaciones, resumen diario y recordatorios.", ico: "M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0", tarjetas: ["ajustes-avisos", "ajustes-recordatorios"] },
     { id: "automatizar", nombre: "Automatización", desc: "Rutinas programadas y reglas «si pasa esto, haz aquello».", ico: "M13 3 4 14h7l-1 7 9-11h-7z", tarjetas: ["ajustes-rutinas", "ajustes-automatizaciones"] },
     { id: "memoria", nombre: "Memoria", desc: "Lo que ARIA recuerda de ti, tu diario y tus proyectos.", ico: "M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4.5A3 3 0 0 0 9 4zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1", tarjetas: ["ajustes-memoria"] },
-    { id: "ia", nombre: "Inteligencia artificial", desc: "Cerebros en la nube y modelos locales.", ico: "M7 7h10v10H7zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4", tarjetas: ["ajustes-cerebros", "ajustes-modelos"] },
+    { id: "ia", nombre: "Inteligencia artificial", desc: "Cerebros, modelos y tus agentes.", ico: "M7 7h10v10H7zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4", tarjetas: ["ajustes-cerebros", "ajustes-modelos", "ajustes-agentes-propios"] },
      { id: "usuarios", nombre: "Usuarios", desc: "Quién puede entrar y con qué permisos.", ico: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a5 5 0 0 0-5-5", tarjetas: ["ajustes-usuarios", "ajustes-accesos", "ajustes-registro"] },
     { id: "apps", nombre: "Aplicaciones", desc: "Módulos, integraciones y certificado HTTPS.", ico: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", tarjetas: ["ajustes-modulos", "ajustes-spotify", "ajustes-certificado"] },
     { id: "premium", nombre: "ARIA Premium", desc: "Funciones avanzadas, prueba y licencia local.", ico: "m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17l-5.6 3.2 1.1-6.2L3 9.6l6.2-.9z", tarjetas: ["ajustes-premium"] },

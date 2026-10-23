@@ -20,6 +20,8 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 
 from .origen import origen_permitido
 from . import hogar_camaras
+from . import agentes_propios
+from . import tools
 from . import agenda, agentes, api_acceso, api_agenda, api_app, api_automatizaciones, api_avisos, api_cerebro, api_control, api_disponibilidad, api_documentos, api_finanzas, api_hogar, api_informacion, api_listas, api_medios, api_modulos, api_notas, api_premium, api_red, api_rutinas, api_sistema, api_tele, arranque, auth, automatizaciones, avisos, avisos_chequeos, briefing, briefing_voz, buscador, cerebros, chat, config, control, cve, db, diario, disponibilidad, dispositivos_app, documentos, dos_pasos, embeddings, estadisticas, finanzas, informacion, invitados, listas, mapas, medios, memoria, mis_datos, modelos, modulos, notas, permisos, premium, propuestas, proyectos, push, recordatorios, red, registro, remedios, resumen_diario, rutinas, services, shield, sistema, spotify, sso, telegram, telemetria, tiempo, ubicacion, usuarios, vision, voz, vpn, vpn_ubicaciones
 
 log = logging.getLogger("aria")
@@ -103,6 +105,7 @@ async def _arranque():
     if not auth.habilitado():
         log.error("Faltan ARIA_USER / ARIA_PASSWORD o ARIA_SECRET (>=16 caracteres): login deshabilitado.")
     db.iniciar()
+    agentes_propios.iniciar()
     premium.iniciar()
     registro.iniciar()
     remedios.iniciar()
@@ -699,10 +702,13 @@ async def api_chat(request: Request):
     if cid is not None and (not isinstance(cid, str) or not db.existe(cid, u["id"])):
         cid = None
     agente = d.get("agente")
-    if agente is not None and (not isinstance(agente, str) or agente not in agentes.AGENTES):
+    if agente is not None and (not isinstance(agente, str) or
+                               (agente not in agentes.AGENTES and not agente.startswith("p:"))):
         return JSONResponse({"error": "Agente desconocido"}, status_code=400)
-    if agente and not agentes.permitido(agente, u["rol"]):
+    if agente and not agentes.permitido(agente, u["rol"], u["id"]):
         return JSONResponse({"error": "Ese agente es solo para administradores."}, status_code=403)
+    if agente and agente.startswith("p:") and getattr(request.state, "limites", None):
+        return JSONResponse({"error": "Los invitados no pueden usar agentes propios."}, status_code=403)
     return _ndjson(chat.conversar(u, cid, texto, agente, lim))
 
 
@@ -732,7 +738,59 @@ async def api_ticket_descartar(token: str, request: Request):
 
 @app.get("/api/agentes")
 async def api_agentes(request: Request):
-    return {"agentes": agentes.disponibles(request.state.usuario["rol"]), "defecto": agentes.AUTO}
+    uid = None if getattr(request.state, "limites", None) else request.state.usuario["id"]
+    return {"agentes": agentes.disponibles(request.state.usuario["rol"], uid), "defecto": agentes.AUTO}
+
+
+@app.get("/api/agentes/propios")
+async def api_agentes_propios(request: Request):
+    if getattr(request.state, "limites", None):
+        return JSONResponse({"error": "Los invitados no pueden usar agentes propios."}, status_code=403)
+    return {"agentes": agentes_propios.listar(request.state.usuario["id"])}
+
+
+@app.get("/api/agentes/herramientas-disponibles")
+async def api_agentes_herramientas(request: Request):
+    if getattr(request.state, "limites", None):
+        return JSONResponse({"error": "Los invitados no pueden usar agentes propios."}, status_code=403)
+    permitidas = tools.permitidas(request.state.usuario["rol"])
+    specs = {s["function"]["name"]: s["function"]["description"] for s in tools.especificaciones(permitidas)}
+    return [{"id": n, "descripcion": specs[n]} for n in sorted(permitidas) if n in specs]
+
+
+async def _agente_propio_cuerpo(request: Request, aid: int | None = None):
+    u = request.state.usuario
+    if getattr(request.state, "limites", None):
+        return JSONResponse({"error": "Los invitados no pueden usar agentes propios."}, status_code=403)
+    try:
+        datos = await _json(request)
+        resultado = (agentes_propios.crear(u["id"], u["rol"], datos) if aid is None else
+                     agentes_propios.actualizar(u["id"], u["rol"], aid, datos))
+    except agentes_propios.AgentePropioError as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    if resultado is None:
+        return JSONResponse({"error": "Agente no encontrado."}, status_code=404)
+    return resultado
+
+
+@app.post("/api/agentes/propios")
+async def api_agente_propio_crear(request: Request):
+    return await _agente_propio_cuerpo(request)
+
+
+@app.put("/api/agentes/propios/{aid:int}")
+async def api_agente_propio_actualizar(aid: int, request: Request):
+    return await _agente_propio_cuerpo(request, aid)
+
+
+@app.delete("/api/agentes/propios/{aid:int}")
+async def api_agente_propio_borrar(aid: int, request: Request):
+    u = request.state.usuario
+    if getattr(request.state, "limites", None):
+        return JSONResponse({"error": "Los invitados no pueden usar agentes propios."}, status_code=403)
+    if not agentes_propios.borrar(u["id"], aid):
+        return JSONResponse({"error": "Agente no encontrado."}, status_code=404)
+    return {"ok": True}
 
 
 @app.get("/api/buscar")
@@ -761,10 +819,12 @@ async def api_renombrar(cid: str, request: Request):
     u = request.state.usuario
     if "agente" in d:  # selector de agente de la conversación
         a = d.get("agente")
-        if not isinstance(a, str) or a not in agentes.AGENTES:
+        if not isinstance(a, str) or (a not in agentes.AGENTES and not a.startswith("p:")):
             return JSONResponse({"error": "Agente desconocido"}, status_code=400)
-        if not agentes.permitido(a, u["rol"]):
+        if not agentes.permitido(a, u["rol"], u["id"]):
             return JSONResponse({"error": "Ese agente es solo para administradores."}, status_code=403)
+        if a.startswith("p:") and getattr(request.state, "limites", None):
+            return JSONResponse({"error": "Los invitados no pueden usar agentes propios."}, status_code=403)
         if not await asyncio.to_thread(db.fijar_agente, cid, u["id"], a):
             return JSONResponse({"error": "Conversación no encontrada"}, status_code=404)
         return {"ok": True}

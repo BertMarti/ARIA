@@ -530,6 +530,22 @@
           <div id="pull-estado" class="muted"></div>
         </div>
       </article>
+      <article class="tarjeta ancha" id="ajustes-agentes-propios">
+        <h2>Tus agentes</h2>
+        <p class="muted">Crea asistentes con tus instrucciones. No pueden ampliar los permisos ni las reglas de seguridad de ARIA.</p>
+        <ul id="agentes-propios-lista" class="filas"></ul>
+        <form id="form-agente-propio" class="formulario" autocomplete="off">
+          <input id="agente-propio-id" type="hidden">
+          <label>Nombre <input id="agente-propio-nombre" maxlength="40" required></label>
+          <label>Atajo en el chat (@…) <input id="agente-propio-slug" maxlength="20" pattern="[a-z0-9]{2,20}" placeholder="cocina" required></label>
+          <label>Icono <select id="agente-propio-icono"><option value="aria">ARIA</option><option value="finanzas">Finanzas</option><option value="redes">Redes</option><option value="seguridad">Seguridad</option></select></label>
+          <label>Instrucciones <textarea id="agente-propio-instrucciones" maxlength="1500" rows="5"></textarea></label>
+          <p id="agente-propio-contador" class="muted pequeno-txt">0/1500</p>
+          <details class="agente-hs-det"><summary id="agente-propio-hs-resumen">Herramientas que puede usar (ninguna)</summary><input id="agente-propio-hs-buscar" type="search" placeholder="Buscar: lista, agenda, luz…" aria-label="Buscar herramienta"><div id="agente-propio-herramientas" class="agente-hs"></div></details>
+          <div class="botones"><button type="submit" class="primario">Guardar</button><button type="button" id="agente-propio-cancelar" class="fantasma">Cancelar</button></div>
+          <p id="agente-propio-msg" class="muted" role="status"></p>
+        </form>
+      </article>
       <article class="tarjeta ancha" id="ajustes-avisos">
         <h2>Avisos</h2>
         <p class="muted">ARIA te avisa de lo importante (servicios caídos, dispositivos nuevos, copias atrasadas…) y de tus recordatorios. Los avisos siempre quedan en la campana; aquí eliges por dónde más te llegan.</p>

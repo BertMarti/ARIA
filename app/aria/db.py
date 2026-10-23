@@ -104,6 +104,13 @@ def iniciar() -> None:
             CREATE TABLE IF NOT EXISTS inicio_tarjetas (
                 user_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
                 orden TEXT NOT NULL, ocultas TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS agentes_propios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                slug TEXT NOT NULL, nombre TEXT NOT NULL, icono TEXT NOT NULL,
+                instrucciones TEXT NOT NULL, herramientas TEXT NOT NULL, creado REAL NOT NULL,
+                UNIQUE(user_id, slug));
+            CREATE INDEX IF NOT EXISTS idx_agentes_propios_user ON agentes_propios(user_id, creado);
         """)
         # Migración: etiqueta del cerebro que respondió (p. ej. "Ollama Cloud · gpt-oss:120b").
         if "cerebro" not in {r["name"] for r in con.execute("PRAGMA table_info(mensajes)")}:

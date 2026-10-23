@@ -453,5 +453,5 @@ const Chat = (() => {
     if (!(await prepararImagen(blob))) return "";
     return enviar(texto, { sinLeer: true, leerEnVivo: leer });
   }
-  return { iniciar, preguntar, refrescarCerebro, enviarDesdeVoz, enviarImagen, abrir, lectura: () => lectura };
+  return { iniciar, preguntar, refrescarCerebro, enviarDesdeVoz, enviarImagen, abrir, cargarAgentes, lectura: () => lectura };
 })();

@@ -71,7 +71,9 @@ def test_sin_sesion_no_hay_acceso(metodo, ruta, cuerpo):
 
 # Rutas nuevas de los agentes que un `usuario` puede usar (finanzas propias, salud de la red, lista de agentes).
 RUTAS_USUARIO_AGENTES = {
-    ("GET", "/api/agentes"), ("GET", "/api/red/salud"),
+    ("GET", "/api/agentes"), ("GET", "/api/agentes/propios"), ("POST", "/api/agentes/propios"),
+    ("PUT", "/api/agentes/propios/{aid}"), ("DELETE", "/api/agentes/propios/{aid}"),
+    ("GET", "/api/agentes/herramientas-disponibles"), ("GET", "/api/red/salud"),
     ("GET", "/api/finanzas/resumen"), ("GET", "/api/finanzas/movimientos"), ("GET", "/api/finanzas/reglas"),
     ("POST", "/api/finanzas/movimientos"), ("POST", "/api/finanzas/presupuestos"), ("POST", "/api/finanzas/reglas"),
     ("POST", "/api/finanzas/importar"), ("POST", "/api/finanzas/importar/previa"), ("POST", "/api/finanzas/sugerir"),

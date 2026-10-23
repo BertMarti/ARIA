@@ -58,7 +58,45 @@ const CamaraDirecto = (() => {
     return d;
   }
 
-  // Controles como en la app Tapo: mover (si tiene motor), privacidad, detecciones, LED, foto, sonido y pantalla completa.
+  // Posiciones guardadas en la cámara (solo con motor): tocar una la mueve allí; «Guardar esta posición» apunta la vista
+  // actual con un nombre; la × borra (las fijas de fábrica no se pueden borrar). Se cargan al abrir el visor.
+  function posiciones(camara, enviar) {
+    const lista = el("div", { class: "camara-posiciones-lista" });
+    const aviso = el("p", { class: "muted camara-posiciones-aviso", role: "status" }, "Cargando posiciones…");
+    const ruta = "/api/hogar/camaras/posiciones";
+    const pintar = (items) => {
+      lista.replaceChildren(...items.map((p) => {
+        const ir = el("button", { type: "button", class: "fantasma pequeno camara-posicion-ir", title: "Ir a " + p.nombre }, p.nombre);
+        ir.addEventListener("click", async () => { ir.disabled = true; try { await enviar(ruta + "/ir", { ip: camara.ip, id: p.id }); } finally { ir.disabled = false; } });
+        const quitar = p.fija ? null : el("button", { type: "button", class: "camara-posicion-quitar", title: "Borrar", ariaLabel: "Borrar la posición " + p.nombre }, "×");
+        quitar?.addEventListener("click", async () => {
+          if (!await confirmar("Borrar posición", "¿Borrar la posición «" + p.nombre + "» de la cámara?", "Borrar")) return;
+          quitar.disabled = true;
+          const r = await api(ruta + "?ip=" + encodeURIComponent(camara.ip) + "&id=" + encodeURIComponent(p.id), { method: "DELETE" });
+          if (r.ok) pintar(r.data.posiciones || []); else { quitar.disabled = false; toast(r.data.error || "No se ha podido borrar la posición.", "mal"); }
+        });
+        return el("span", { class: "camara-posicion" }, ir, quitar);
+      }));
+      aviso.hidden = items.length > 0;
+      aviso.textContent = items.length ? "" : "Sin posiciones guardadas: mueve la cámara y guarda la vista.";
+    };
+    const nombre = el("input", { type: "text", maxLength: 30, required: true, placeholder: "Nombre (p. ej. puerta)", ariaLabel: "Nombre de la posición" });
+    const formulario = el("form", { class: "camara-posiciones-nueva", hidden: true }, nombre, el("button", { type: "submit", class: "primario pequeno" }, "Guardar"));
+    const nueva = el("button", { type: "button", class: "fantasma pequeno", ariaExpanded: "false" }, "＋ Guardar esta posición");
+    nueva.addEventListener("click", () => { formulario.hidden = !formulario.hidden; nueva.ariaExpanded = String(!formulario.hidden); if (!formulario.hidden) nombre.focus(); });
+    formulario.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const r = await enviar(ruta, { ip: camara.ip, nombre: nombre.value.trim() });
+      if (r.ok) { pintar(r.data.posiciones || []); formulario.hidden = true; nueva.ariaExpanded = "false"; nombre.value = ""; toast("Posición guardada."); }
+    });
+    api(ruta + "?ip=" + encodeURIComponent(camara.ip)).then((r) => {
+      if (r.ok) pintar(r.data.posiciones || []); else aviso.textContent = r.data.error || "No se han podido cargar las posiciones.";
+    });
+    return el("div", { class: "camara-posiciones", role: "group", ariaLabel: "Posiciones guardadas" },
+      el("div", { class: "camara-posiciones-cab" }, el("span", { class: "camara-posiciones-titulo" }, "Posiciones"), nueva), lista, aviso, formulario);
+  }
+
+  // Controles como en la app Tapo: mover (si tiene motor), posiciones, privacidad, detecciones, LED, foto, sonido y pantalla completa.
   function controles(camara, video, alCambiar) {
     const enviar = async (ruta, json) => {
       const r = await api(ruta, { method: "POST", json });
@@ -78,6 +116,7 @@ const CamaraDirecto = (() => {
         el("span"), boton("▲", "Arriba", mover("arriba")), el("span"),
         boton("◀", "Izquierda", mover("izquierda")), el("span", { class: "camara-ptz-centro" }), boton("▶", "Derecha", mover("derecha")),
         el("span"), boton("▼", "Abajo", mover("abajo")), el("span")));
+      partes.push(posiciones(camara, enviar));
     }
     const ajustes = [["privacidad", "Privacidad (lente tapada)"], ["movimiento", "Detección de movimiento"], ["personas", "Detección de personas"], ["led", "Luz indicadora (LED)"]]
       .filter(([campo]) => camara[campo] !== undefined && (admin || campo === "led"))

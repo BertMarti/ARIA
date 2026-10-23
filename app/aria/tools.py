@@ -122,6 +122,7 @@ _INTENCIONES = [
     ((r"\b(c[aá]mara|c[aá]maras|privacidad|tapar)\b",), {"camara_privacidad"}),
     ((r"\b(qui[eé]n (hay|est[aá]|queda)|hay alguien|alguien en casa|ha (llegado|vuelto|salido)|se ha ido|"
       r"est[aá] en casa|vigilancia)\b",), {"quien_en_casa"}),
+    ((r"\b(escenas?|modo (cine|noche|fiesta|lectura)|buenas noches|ambiente)\b",), {"escena"}),
     ((r"\b(router|wifi|wi-fi|invitados?)\b",), {"router_invitados"}),
     ((r"\b(agenda|calendario|evento|eventos|cita|cumplea[nñ]os|qué tengo|que tengo)\b",), set(AGENDA)),
     ((r"\b(mapa|mapas|ubicaci[oó]n|sitios? cerca|farmacia|gasolinera|supermercado|restaurante|cajero)\b",),
@@ -460,6 +461,31 @@ async def quien_en_casa() -> str:
             f"{h['nombre']} {'llegó' if h['evento'] == 'llega' else 'se fue'} a las {_t.strftime('%H:%M', _t.localtime(h['ts']))}"
             for h in ultimos) + ".")
     return "\n".join(lineas)
+
+
+@tool("escena", "Activa una escena de Hogar (varias luces y cámaras a la vez, p. ej. «Cine» o «Buenas noches»). Con nombre "
+      "vacío, lista las que hay. Solo administrador.",
+      {"nombre": ("string", "Nombre o parte del nombre de la escena; vacío para listarlas")})
+async def escena(nombre: str = "") -> str:
+    from . import hogar_escenas
+    def normaliza(s):
+        import unicodedata
+        return "".join(c for c in unicodedata.normalize("NFD", str(s).lower()) if unicodedata.category(c) != "Mn")
+    todas = await asyncio.to_thread(hogar_escenas.listar)
+    if not todas:
+        return "Aún no hay escenas: créalas en Hogar → Escenas."
+    buscado = normaliza(nombre).strip()
+    if not buscado:
+        return "Escenas: " + ", ".join(e["nombre"] for e in todas) + "."
+    elegidas = [e for e in todas if normaliza(e["nombre"]) == buscado] or [e for e in todas if buscado in normaliza(e["nombre"])]
+    if len(elegidas) != 1:
+        return ("Hay varias escenas parecidas: " + ", ".join(e["nombre"] for e in elegidas) + ". ¿Cuál?") if elegidas \
+            else "No hay ninguna escena con ese nombre. Tengo: " + ", ".join(e["nombre"] for e in todas) + "."
+    r = await hogar_escenas.ejecutar(elegidas[0])
+    texto = f"Escena «{elegidas[0]['nombre']}» activada."
+    if r["fallidas"]:
+        texto += " No ha respondido: " + ", ".join(r["fallidas"]) + "."
+    return texto
 
 
 @tool("router_invitados", "Activa o desactiva la red wifi de invitados del router (solo administrador).",

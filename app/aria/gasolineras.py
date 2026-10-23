@@ -71,7 +71,8 @@ async def actualizar() -> list[dict]:
         return datos
     except (httpx.HTTPError, ValueError, OSError):
         datos = _leer()
-        _cache, _cache_at = datos, time.monotonic()
+        # Sin copia previa no se guarda una lista vacía 12 h: se vuelve a intentar a los 10 minutos.
+        _cache, _cache_at = datos, (time.monotonic() if datos else time.monotonic() - 12 * 3600 + 600)
         return datos
 
 

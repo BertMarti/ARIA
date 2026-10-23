@@ -113,7 +113,7 @@ def _hora_de(t: str) -> tuple | None:
     suf = m.group(4) or ""
     if suf in ("de la tarde", "de la noche", "pm") and h < 12:
         h += 12
-    if suf == "de la noche" and h == 24:
+    if suf in ("de la noche", "de la madrugada") and h in (12, 24):   # «a las 12 de la noche» es medianoche
         h = 0
     if h > 23 or mi > 59:
         return None

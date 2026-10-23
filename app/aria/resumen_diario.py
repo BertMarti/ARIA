@@ -69,7 +69,9 @@ def _recordatorios_hoy(uid: int, hoy: date) -> list:
 
 
 def _compra(uid: int) -> dict:
-    compra = next((x for x in listas.listar(uid) if x["nombre"].casefold() == "la compra"), None)
+    todas = listas.listar(uid)
+    compra = (next((x for x in todas if x["nombre"].casefold() == "la compra"), None)
+              or next((x for x in todas if any(p in x["nombre"].casefold() for p in ("compra", "súper", "super", "mercadona"))), None))
     pendientes = [x for x in (compra or {}).get("items", []) if not x["hecho"]]
     return {"pendientes": len(pendientes)}
 
@@ -299,7 +301,8 @@ def secciones(d: dict, e=str) -> list[tuple[str, str, list[str]]]:
         linea = f"Gastado: {_euros(f['gastos'] / 100)}"
         if f.get("mes_anterior_mismo_dia"):
             dif = round((f["gastos"] - f["mes_anterior_mismo_dia"]) * 100 / f["mes_anterior_mismo_dia"])
-            linea += f" ({'▲' if dif > 0 else '▼'} {abs(dif)} % vs. el mes pasado a estas alturas)"
+            linea += (" (igual que el mes pasado a estas alturas)" if dif == 0
+                      else f" ({'▲' if dif > 0 else '▼'} {abs(dif)} % vs. el mes pasado a estas alturas)")
         lineas = [linea]
         if f.get("ingresos"):
             lineas.append(f"Ingresos: {_euros(f['ingresos'] / 100)}")

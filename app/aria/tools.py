@@ -17,7 +17,7 @@ from datetime import datetime
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
-from . import agenda, busqueda, config, control, disponibilidad, documentos, enlaces, escaneo, estadisticas, finanzas, hogar_govee, hogar_router, hogar_tapo, informacion, listas, mapas, memoria, notas, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
+from . import agenda, aire, busqueda, config, control, disponibilidad, documentos, enlaces, escaneo, estadisticas, finanzas, hogar_govee, hogar_router, hogar_tapo, informacion, listas, mapas, memoria, notas, proyectos, recordatorios, red, registro, rutinas, seguridad, services, shield, sistema, spotify, usuarios, vpn, vpn_ubicaciones
 
 _REGISTRO: dict = {}
 
@@ -52,7 +52,7 @@ def tool(nombre: str, descripcion: str, params: dict | None = None, requeridos: 
 # Herramientas que puede usar un usuario sin rol de administrador (solo consultan).
 SOLO_LECTURA = frozenset({"fecha_hora", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "resumen_diario",
                           "estado_sistema", "buscar_en_netflix", "buscar_en_internet", "noticias", "tiempo", "precio_luz",
-                          "resumir_enlace", "resumen_noticias", "precio", "mis_mercados", "mis_inversiones",
+                           "resumir_enlace", "resumen_noticias", "precio", "aire_y_polen", "mis_mercados", "mis_inversiones",
                           "mapa_ir", "ruta", "sitios_cerca", "gasolineras", "buscar_en_documentos"})
 # Luces de casa: solo administradores (Alberto, 19/10/2026: un `usuario` no las controla).
 HOGAR = frozenset({"luces"})
@@ -129,7 +129,8 @@ _INTENCIONES = [
     ((r"\b(gasolinera|gasolina|di[eé]sel|diesel|repostar|echar gasolina|combustible)\b",), {"gasolineras"}),
     ((r"\b(luz|electricidad|pvpc|kwh|tarifa el[eé]ctrica|poner la lavadora|hora m[aá]s barata)\b",), {"precio_luz"}),
     ((r"\b(ruta|c[oó]mo llego|cu[aá]nto se tarda|indicaciones|ir desde|llevarme)\b",), {"ruta"}),
-    ((r"\b(tiempo|llover[aá]?|llueve|lluvia|calor|fr[ií]o|previsi[oó]n|nublado|soleado|tormenta|grados)\b",
+     ((r"\b(polen|alergia|alergias|calidad del aire|contaminaci[oó]n)\b",), {"aire_y_polen"}),
+     ((r"\b(tiempo|llover[aá]?|llueve|lluvia|calor|fr[ií]o|previsi[oó]n|nublado|soleado|tormenta|grados)\b",
       r"!\b(raspberry|cpu|procesador|cu[aá]nto tiempo|encendid[ao])\b"), {"tiempo"}),
     # (patrones que deben cumplirse TODOS, herramientas que se ofrecen)
     ((r"\b(hora|horas|fecha|d[ií]a|hoy|ma[nñ]ana|semana|mes)\b",
@@ -270,6 +271,20 @@ async def ejecutar(nombre: str, args: dict | None, rol: str = "admin", uid: int 
 async def fecha_hora() -> str:
     n = datetime.now(ZoneInfo(config.TZ))
     return f"{DIAS[n.weekday()]}, {n.day} de {MESES[n.month - 1]} de {n.year}, {n:%H:%M} ({config.TZ})"
+
+
+@tool("aire_y_polen", "Consulta la calidad del aire y el polen de hoy en tu ubicación.")
+async def aire_y_polen(**_ignorado) -> str:
+    from . import ubicacion
+    d = await aire.resumen(ubicacion.actual(_ignorado.get("uid")) if _ignorado.get("uid") else None)
+    if not d:
+        return "No puedo consultar ahora la calidad del aire y el polen."
+    texto = f"Calidad del aire: {d['nivel_aqi']} (AQI europeo {d['aqi_ahora']})."
+    if d["polen"]:
+        texto += " Polen: " + "; ".join(f"{x['tipo']} ({x['nivel']})" for x in d["polen"]) + "."
+    else:
+        texto += " No se esperan niveles apreciables de polen."
+    return texto
 
 
 @tool("buscar_en_internet",

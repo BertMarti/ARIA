@@ -54,6 +54,7 @@ TIPOS = {
     "agenda": ("Eventos y cumpleaños de tu agenda", False, True),
     "meteo": ("Avisos meteorológicos naranja o rojo de tu zona", False, True),
     "luz": ("Horas baratas de la luz: mañana (cada tarde) y al empezar la de hoy", False, True),
+    "polen": ("Polen alto de lo que te da alergia", False, False),
 }
 # Tipos que no se pueden silenciar con los interruptores (los pide el propio usuario).
 SIEMPRE = {"recordatorio", "prueba", "resumen", "rutina", "agenda"}
@@ -64,6 +65,7 @@ class Problema:
     clave: str
     texto: str
     severidad: str | None = None   # None = la del chequeo
+    destinatarios: list[int] | None = None
 
 
 @dataclass
@@ -135,7 +137,7 @@ def ajustes_defecto() -> dict:
             "canales": {"telegram": True, "push": True},
             "briefing": {"activo": True, "hora": "08:00", "canal": "telegram", "voz": True},
             "informe": {"activo": True, "dia": 6, "hora": "20:00", "canal": "telegram"},
-            "voz_telegram": False}
+            "voz_telegram": False, "alergias": []}
 
 
 def _hhmm(v, defecto: str) -> str:
@@ -180,6 +182,10 @@ def normalizar_ajustes(d) -> dict:
         base["informe"]["canal"] = i["canal"]
     if isinstance(d.get("voz_telegram"), bool):
         base["voz_telegram"] = d["voz_telegram"]
+    alergias = d.get("alergias")
+    if isinstance(alergias, list):
+        permitidas = {"olivo", "gramíneas", "abedul", "aliso", "artemisa", "ambrosía"}
+        base["alergias"] = sorted({x for x in alergias if x in permitidas})
     return base
 
 
@@ -345,6 +351,8 @@ def _hay_base(c: Chequeo) -> bool:
 def _destinatarios_con_tipo(tipo: str) -> list:
     out = []
     for u in _usuarios_activos():
+        if tipo == "polen" and not ajustes(u["id"]).get("alergias"):
+            continue
         if TIPOS.get(tipo, ("", True, True))[1] and u["rol"] != "admin":
             continue
         if ajustes(u["id"])["tipos"].get(tipo, True):
@@ -403,7 +411,8 @@ async def procesar(c: Chequeo, problemas: list | None, ahora: float | None = Non
         await asyncio.to_thread(_sql, guardar)
         if enviar:
             emitidos.append(p.texto)
-            await emitir(c.tipo, p.severidad or c.severidad, p.texto, c.enlace, destinatarios,
+            await emitir(c.tipo, p.severidad or c.severidad, p.texto, c.enlace,
+                         p.destinatarios if p.destinatarios is not None else destinatarios,
                          extra={"dispositivo": p.clave if c.tipo in ("dispositivo_nuevo", "vpn_conexion") else None,
                                 "dispositivo_desconocido": c.tipo == "dispositivo_nuevo"})
 

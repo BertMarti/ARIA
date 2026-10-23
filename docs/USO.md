@@ -494,6 +494,7 @@ Fuera de España, apágalo con `ARIA_LUZ=0` en `.env`.
 
 - **Gasolineras**: pregunta «¿dónde echo gasolina más barata?» o «diésel barato cerca». ARIA usa los precios oficiales del Ministerio (se actualizan dos veces al día, sin claves) y te da las más baratas en un radio de 10 km (puedes pedir otro, hasta 50).
 - **Avisos meteorológicos**: ARIA lee los avisos oficiales de Meteoalarm (AEMET) de tu provincia. Los amarillos salen en el resumen diario y el HUD; los **naranja y rojo** también llegan como aviso (campana, Telegram o notificación) y, si son de lluvia o viento para hoy, ARIA te propone un recordatorio para recoger la ropa o cerrar ventanas.
+- **Calidad del aire y polen**: el resumen y el chat muestran el AQI y el polen de hoy; en **Ajustes → Avisos** puedes elegir tus alergias para recibir un aviso diario cuando el nivel sea alto.
 
 ## Ubicación para el tiempo
 

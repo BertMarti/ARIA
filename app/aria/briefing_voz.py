@@ -63,6 +63,9 @@ def guion(d: dict, hoy: date | None = None) -> str:
             x += f" Hay un {t['lluvia']} % de probabilidad de lluvia: mejor llevar paraguas."
         if t.get("aviso_manana"):
             x += " " + t["aviso_manana"].replace("–", " a ").replace("°C", "grados")
+        if t.get("aire"):
+            polen = ", ".join(f"{p['tipo']} {p['nivel']}" for p in t["aire"].get("polen", []))
+            x += f" La calidad del aire es {t['aire']['nivel_aqi']}" + (f", con polen de {polen}." if polen else ".")
         p.append(x)
     lz = d.get("luz")
     if lz and lz.get("barata") and lz.get("cara"):

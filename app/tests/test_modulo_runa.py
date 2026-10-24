@@ -321,3 +321,26 @@ def test_secretos_errores_de_runa(cargar, runa, monkeypatch):
     assert cli.post("/api/modulos/runa/secretos", json=cuerpo).status_code == 502
     assert cli.post("/api/modulos/runa/secretos", content=b"no es json",
                     headers={"content-type": "application/json"}).status_code == 400
+
+
+def test_secretos_limite_por_persona(cargar, runa):
+    import importlib
+    cargar()
+    modulo = importlib.import_module(next(n for n in __import__("sys").modules if n.endswith("runa.modulo")))
+    modulo._recientes.clear()
+    cuerpo = {"ciphertext": "A" * 1403, "verifier": "a" * 64, "linkVerifier": "b" * 64, "ttl": 300, "views": 1}
+
+    @cargar.app.middleware("http")
+    async def sesion_falsa(request, call_next):        # como hace main.py: el usuario de la sesión
+        request.state.usuario = {"id": int(request.headers.get("x-uid", "1"))}
+        return await call_next(request)
+
+    cli = TestClient(cargar.app)
+    codigos = [cli.post("/api/modulos/runa/secretos", json=cuerpo, headers={"x-uid": "1"}).status_code
+               for _ in range(modulo.LIMITE_POR_MINUTO + 1)]
+    assert codigos == [201] * modulo.LIMITE_POR_MINUTO + [429]
+    # Otra persona no se ve afectada
+    assert cli.post("/api/modulos/runa/secretos", json=cuerpo, headers={"x-uid": "2"}).status_code == 201
+    # La ventana se libera a los 60 s y el registro no crece sin límite
+    assert modulo.permitido("1", ahora=__import__("time").time() + 61)
+    assert modulo.permitido("x", ahora=__import__("time").time() + 1000) and set(modulo._recientes) == {"x"}

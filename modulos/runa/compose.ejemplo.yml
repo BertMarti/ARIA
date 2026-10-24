@@ -16,7 +16,8 @@ services:
       TRUST_PROXY: "172.16.0.0/12"
       # Crear secretos solo desde casa y desde ARIA (red de Docker). Por el túnel solo se leen: lo que llega por
       # Cloudflare cuenta como externo aunque falsifique X-Forwarded-For.
-      CREATE_FROM: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+      # (Con /16 la 192.168.1.0/16 cubre TODA la 192.168.x.x: RUNA aplica la máscara, como net.BlockList de Node.)
+      CREATE_FROM: "10.0.0.0/8,172.16.0.0/12,192.168.1.0/16"
       # Los enlaces que crees desde la web llevan el dominio público (la misma variable que usa el módulo).
       PUBLIC_URL: ${RUNA_URL_PUBLICA:-}
     volumes:

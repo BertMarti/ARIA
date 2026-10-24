@@ -22,6 +22,7 @@ import time
 from urllib.parse import urlsplit
 
 import httpx
+from fastapi import Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from . import protocolo
@@ -109,6 +110,13 @@ def registrar(aria):
     lan = aria.config("ARIA_LAN_IP")
     base_aria = _base(aria.config("ARIA_URL_PUBLICA") or (f"https://{lan}" if lan else "https://localhost"),
                       "ARIA_URL_PUBLICA")
+    # Nombres con los que se entra en ARIA desde casa: ahí el mosaico abre el RUNA de la LAN (se puede crear).
+    hosts_casa = {h.strip().lower() for h in (aria.config("ARIA_HOSTS") or "").split(",") if h.strip()}
+    if lan:
+        hosts_casa.add(lan.lower())
+    hosts_casa.discard(urlsplit(publica).hostname or "")
+    if aria.config("ARIA_URL_PUBLICA"):
+        hosts_casa.discard(urlsplit(base_aria).hostname or "")
     if urlsplit(publica).scheme != "https" and urlsplit(publica).hostname not in ("localhost", "127.0.0.1"):
         aria.log.warning("RUNA_URL_PUBLICA no usa HTTPS: los navegadores no podrán descifrar los enlaces")
 
@@ -197,7 +205,15 @@ def registrar(aria):
                 f"Para ver tú la contraseña: {recoger}/{ver}\n"
                 f"Para obtener el enlace que envías ({resumen(nombre, vistas)}): {recoger}/{compartir}")
 
-    r = aria.router(usuario=[("GET", "/recoger/{ticket}")])
+    r = aria.router(usuario=[("GET", "/recoger/{ticket}"), ("GET", "/abrir")])
+
+    @r.get("/abrir")
+    async def abrir(request: Request):
+        """Mosaico de Inicio: en casa, el RUNA de la LAN (puerto 8485, se puede crear); desde fuera, el público.
+        Solo se redirige a nombres conocidos (ARIA_HOSTS / ARIA_LAN_IP): una cabecera Host falsa no lleva a otro sitio."""
+        host = (request.url.hostname or "").lower()
+        destino = f"https://{host}:8485/" if host in hosts_casa else f"{publica}/"
+        return RedirectResponse(destino, status_code=303, headers=_SIN_CACHE)
 
     @r.get("/recoger/{ticket}")
     async def recoger(ticket: str):

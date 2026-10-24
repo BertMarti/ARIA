@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Publica ARIA, SHIELD-DNS y HEIMDALL en tu dominio con Cloudflare Tunnel + Access.
+# Publica ARIA, SHIELD-DNS y HEIMDALL en tu dominio con Cloudflare Tunnel + Access
+# (y RUNA, si su contenedor aria-runa existe: ver modulos/runa/README.md).
 # Idempotente: crea solo lo que falte. Uso: ./cloudflare/configurar.sh
 # Necesita ~/homelab/cloudflare.env con CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, DOMINIO y EMAIL_ACCESO
 # (el token necesita: Zone·DNS·Edit, Account·Cloudflare Tunnel·Edit, Account·Access: Apps and Policies·Edit).
@@ -26,17 +27,22 @@ guardar CLOUDFLARE_TUNNEL_ID "$TID"
 guardar CLOUDFLARE_TUNNEL_TOKEN "$(cf "$A/cfd_tunnel/$TID/token" | jq_py "print(d['result'])")"
 echo "✔ Túnel homelab"
 
+# RUNA (módulo modulos/runa): solo si su contenedor existe.
+RUNA=0; docker ps -a --format '{{.Names}}' | grep -qx aria-runa && RUNA=1
+
 # 2. Qué publica cada nombre
-python3 - "$DOMINIO" "$LAN_IP" > /tmp/cf-ingress.json <<'PY'
-import json,sys; d,ip=sys.argv[1:3]
-print(json.dumps({"config":{"ingress":[
+python3 - "$DOMINIO" "$LAN_IP" "$RUNA" > /tmp/cf-ingress.json <<'PY'
+import json,sys; d,ip,runa=sys.argv[1:4]
+reglas=[
  {"hostname":f"aria.{d}","service":"http://app:8000"},
  {"hostname":f"shield.{d}","service":f"http://{ip}:8080"},
- {"hostname":f"heimdall.{d}","service":f"https://{ip}:51843","originRequest":{"noTLSVerify":True,"httpHostHeader":ip}},
- {"service":"http_status:404"}]}}))
+ {"hostname":f"heimdall.{d}","service":f"https://{ip}:51843","originRequest":{"noTLSVerify":True,"httpHostHeader":ip}}]
+if runa=="1":
+    reglas.append({"hostname":f"runa.{d}","service":"http://runa:8080"})
+print(json.dumps({"config":{"ingress":reglas+[{"service":"http_status:404"}]}}))
 PY
 cf -X PUT "$A/cfd_tunnel/$TID/configurations" -H "$J" --data @/tmp/cf-ingress.json >/dev/null; rm -f /tmp/cf-ingress.json
-echo "✔ Rutas: aria., shield. y heimdall.$DOMINIO"
+echo "✔ Rutas: aria., shield. y heimdall.$DOMINIO$([ $RUNA = 1 ] && echo " (y runa.)")"
 
 # 3. Protección (Access) ANTES de publicar nada
 INC=$(python3 -c "import os,json;print(json.dumps([{'email':{'email':e.strip()}} for e in os.environ['EMAIL_ACCESO'].split(',') if e.strip()]))")
@@ -48,8 +54,13 @@ for par in "ARIA:aria" "SHIELD-DNS · Pi-hole:shield" "HEIMDALL · VPN:heimdall"
   cf -X POST "$A/access/apps" -H "$J" -d "$BODY" >/dev/null && echo "✔ $DOM protegido (solo $EMAIL_ACCESO)"
 done
 
+# RUNA va SIN Access a propósito: quien recibe un enlace no tiene cuenta. Desde fuera solo se pueden abrir
+# secretos; crearlos exige estar en casa o pasar por ARIA (CREATE_FROM en RUNA, ver modulos/runa/README.md).
+[ "$RUNA" = 1 ] && echo "✔ runa.$DOMINIO sin Access a propósito (desde fuera solo se leen secretos)"
+
 # 4. Nombres DNS hacia el túnel
-for S in aria shield heimdall; do
+NOMBRES="aria shield heimdall"; [ "$RUNA" = 1 ] && NOMBRES="$NOMBRES runa"
+for S in $NOMBRES; do
   N=$(cf "https://api.cloudflare.com/client/v4/zones/$ZONA/dns_records?name=$S.$DOMINIO" | jq_py "print(len(d['result']))")
   [ "$N" = 0 ] && cf -X POST "https://api.cloudflare.com/client/v4/zones/$ZONA/dns_records" -H "$J" \
     -d "{\"type\":\"CNAME\",\"name\":\"$S\",\"content\":\"$TID.cfargotunnel.com\",\"proxied\":true}" >/dev/null

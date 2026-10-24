@@ -97,9 +97,9 @@ def cargar(monkeypatch):
     antes = dict(modulos._CARGADOS)
     cargados = []
 
-    def hacer(url="http://runa:8080", publica=PUBLICA):
-        monkeypatch.delenv("ARIA_URL_PUBLICA", raising=False)
-        for clave, valor in (("RUNA_URL", url), ("RUNA_URL_PUBLICA", publica), ("ARIA_LAN_IP", "192.168.1.50")):
+    def hacer(url="http://runa:8080", publica=PUBLICA, aria_publica=None, hosts=None):
+        for clave, valor in (("RUNA_URL", url), ("RUNA_URL_PUBLICA", publica), ("ARIA_LAN_IP", "192.168.1.50"),
+                             ("ARIA_URL_PUBLICA", aria_publica), ("ARIA_HOSTS", hosts)):
             if valor is None:
                 monkeypatch.delenv(clave, raising=False)
             else:
@@ -165,7 +165,8 @@ def test_estados_segun_configuracion(cargar):
     assert {h["nombre"] for h in m.herramientas} == {"runa_compartir", "runa_generar"} and m.chequeos == ["caido"]
     assert {"runa_compartir", "runa_generar"} <= tools.permitidas("usuario")
     assert "runa_compartir" not in tools.RUTINAS     # crea cosas: nunca en rutinas
-    assert m.rutas_usuario == [("GET", "/api/modulos/runa/recoger/{ticket}")]   # con sesión: lo impone permisos.py
+    assert set(m.rutas_usuario) == {("GET", "/api/modulos/runa/recoger/{ticket}"),
+                                    ("GET", "/api/modulos/runa/abrir")}   # con sesión: lo impone permisos.py
 
 
 def test_compartir(cargar, runa, protocolo):
@@ -249,3 +250,16 @@ def test_chequeo_caido(cargar, runa):
     runa.sano = False
     [problema] = correr(c.fn())
     assert problema.clave == "runa"
+
+
+@pytest.mark.parametrize("host,destino", [
+    ("192.168.1.50", "https://192.168.1.50:8485/"),        # en casa por IP: el RUNA de la LAN (se puede crear)
+    ("aria.local", "https://aria.local:8485/"),            # en casa por nombre (ARIA_HOSTS)
+    ("aria.example.com", "https://runa.example.com/"),     # desde fuera por el túnel: el RUNA público
+    ("malo.example", "https://runa.example.com/"),         # un Host desconocido nunca decide el destino
+])
+def test_mosaico_abre_el_runa_adecuado(cargar, host, destino):
+    cargar(publica="https://runa.example.com", aria_publica="https://aria.example.com",
+           hosts="aria.local,aria.example.com")
+    r = TestClient(cargar.app, base_url=f"https://{host}").get("/api/modulos/runa/abrir", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == destino

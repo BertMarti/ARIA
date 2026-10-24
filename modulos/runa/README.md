@@ -12,7 +12,7 @@ RUNA ve nunca el contenido.
 
 | | |
 |---|---|
-| 🧩 **Mosaico en Inicio** | Abre RUNA (`https://<tu-ARIA>:8485`), con su punto de salud. |
+| 🧩 **Mosaico en Inicio** | Abre RUNA con su punto de salud: en casa, el RUNA de la LAN (`https://<IP-de-ARIA>:8485`, donde se crean secretos); por el dominio, el público. |
 | 💬 **«Comparte la clave del wifi de invitados por RUNA, que caduque en 1 hora»** | Herramienta `runa_compartir`: devuelve el enlace para que lo envíes. Pensada para secretos **poco sensibles** (ver «Privacidad»). |
 | 🎲 **«Genérame una contraseña nueva para el router y compártela»** | Herramienta `runa_generar`: crea una contraseña robusta **aquí** y te da dos **enlaces de ARIA de un solo uso**: uno para verla tú y otro para obtener el enlace que envías. Ni la contraseña ni los enlaces de RUNA pasan por el modelo ni quedan en el historial. |
 | 🔔 **Aviso si RUNA se cae** | Chequeo cada 5 minutos, solo para administradores. |
@@ -37,26 +37,33 @@ Las dos herramientas valen para administradores y usuarios. No están en las rut
    ```ini
    ARIA_MODULOS=runa            # añádelo a la lista si ya tienes otros
    RUNA_URL=http://runa:8080
-   # Base de los enlaces que compartes. En casa: la de tu ARIA en el puerto 8485.
-   RUNA_URL_PUBLICA=https://192.168.1.50:8485
+   # Base de los enlaces que compartes: el nombre público del túnel (paso 4) o, si solo lo usas en casa,
+   # https://<IP-de-ARIA>:8485. compose.ejemplo.yml la usa también como PUBLIC_URL de RUNA.
+   RUNA_URL_PUBLICA=https://runa.example.com
    ```
 
 3. `docker compose restart app` y comprueba en **Ajustes → Módulos** que RUNA aparece como «Activo».
 
-### Quién puede abrir los enlaces
+4. **Para compartir con gente de fuera** (si usas el túnel de Cloudflare de ARIA), vuelve a ejecutar
+   `./cloudflare/configurar.sh`: al ver el contenedor `aria-runa`, publica `runa.<tu-dominio>` → `http://runa:8080`
+   con su nombre DNS y **sin Cloudflare Access**, porque quien recibe el enlace no tiene cuenta.
 
-Quien recibe el enlace tiene que llegar a RUNA **por HTTPS**, porque el cifrado del navegador solo funciona en
-páginas seguras. Con la configuración de arriba (`https://<IP-de-ARIA>:8485`):
+### Quién puede abrir los enlaces y quién puede crear
 
-- los enlaces **solo se abren dentro de casa o con la VPN** (el puerto se publica solo en `ARIA_LAN_IP`);
-- el navegador muestra **un aviso de certificado** la primera vez (la CA interna de Caddy, como ARIA).
+| | Abrir un enlace | Crear secretos |
+|---|---|---|
+| **Desde fuera, por `runa.<dominio>`** (túnel) | ✅ cualquiera con el enlace | ❌ la web lo explica (403) |
+| **En casa, por `https://<IP-de-ARIA>:8485`** | ✅ | ✅ |
+| **Con ARIA** (`runa_compartir`, `runa_generar`) | — | ✅ estés donde estés |
 
-Compartir con alguien de fuera es el caso de uso habitual. Para eso:
-
-- **Túnel de Cloudflare** (el de ARIA): añade un nombre público, p. ej. `secretos.tudominio`, que apunte a
-  `http://runa:8080`, y pon `RUNA_URL_PUBLICA=https://secretos.tudominio`. **No** lo pongas detrás de Cloudflare
-  Access: quien recibe el enlace no tiene cuenta.
-- **VPN HEIMDALL**: solo para personas con acceso a tu VPN.
+- **Crear solo desde casa o desde ARIA.** RUNA corre con `CREATE_FROM` (redes privadas). Así nadie de Internet
+  puede usar tu dominio para alojar secretos o archivos.
+  - Lo que llega por Cloudflare cuenta siempre como externo, aunque alguien falsifique `X-Forwarded-For`.
+  - Los límites de lectura y de «destruir» van por la IP real de cada cliente.
+- **Sin túnel**, los enlaces solo se abren en casa o con la VPN (el 8485 se publica solo en `ARIA_LAN_IP`), y el
+  navegador avisa del certificado la primera vez (la CA interna de Caddy, como ARIA).
+- **Bloqueos de Cloudflare.** Si tu operador bloquea IPs de Cloudflare (pasa en España algunos días de partido),
+  los enlaces públicos no abrirán mientras dure el bloqueo. En casa siguen funcionando por el 8485.
 
 ## Privacidad: qué pasa por dónde
 

@@ -269,7 +269,9 @@ async def emitir(tipo: str, severidad: str, texto: str, enlace: str = "", destin
     if not (extra or {}).get("automatizacion"):
         try:
             from . import automatizaciones
-            await automatizaciones.evento(tipo, {"tipo": tipo, "texto": texto, **(extra or {})})
+            # Avisos personales (dinero, salud): las reglas se disparan igual, pero sin copiar el texto al registro.
+            evento_texto = "" if tipo in ("fijos", "polen") else texto
+            await automatizaciones.evento(tipo, {"tipo": tipo, "texto": evento_texto, **(extra or {})})
         except Exception:  # noqa: BLE001 - una regla rota no debe afectar a los avisos
             log.exception("Falló el hook de automatizaciones")
     texto = " ".join(str(texto).split())[:MAX_TEXTO] if "\n" not in str(texto) else str(texto).strip()[:MAX_TEXTO * 3]
@@ -572,11 +574,13 @@ def _ya_enviado(clave: str) -> bool:
         return _estado(con, clave) is not None
 
 
-def _anotar_enviado(clave: str) -> None:
+def _anotar_enviado(clave: str, chequeo: str = "briefing", dias: int = 7) -> None:
+    """Apunta un aviso ya enviado. Cada familia de claves se purga con su propia retención
+    (los recibos fijos se deduplican por mes: necesitan más de 7 días)."""
     with closing(db._con()) as con, con:
         con.execute("INSERT OR IGNORE INTO avisos_estado (clave, chequeo, activo, desde) VALUES (?,?,0,?)",
-                    (clave, "briefing", time.time()))
-        con.execute("DELETE FROM avisos_estado WHERE chequeo='briefing' AND desde<?", (time.time() - 7 * 86400,))
+                    (clave, chequeo, time.time()))
+        con.execute("DELETE FROM avisos_estado WHERE chequeo=? AND desde<?", (chequeo, time.time() - dias * 86400))
 
 
 def briefing_toca(a: dict, ref: datetime) -> bool:

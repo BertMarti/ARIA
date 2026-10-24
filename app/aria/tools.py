@@ -275,10 +275,10 @@ async def fecha_hora() -> str:
     return f"{DIAS[n.weekday()]}, {n.day} de {MESES[n.month - 1]} de {n.year}, {n:%H:%M} ({config.TZ})"
 
 
-@tool("aire_y_polen", "Consulta la calidad del aire y el polen de hoy en tu ubicación.")
-async def aire_y_polen(**_ignorado) -> str:
+@tool("aire_y_polen", "Consulta la calidad del aire y el polen de hoy en tu ubicación.", usa_uid=True)
+async def aire_y_polen(uid=None) -> str:
     from . import ubicacion
-    d = await aire.resumen(ubicacion.actual(_ignorado.get("uid")) if _ignorado.get("uid") else None)
+    d = await aire.resumen(await asyncio.to_thread(ubicacion.actual, uid) if uid else None)
     if not d:
         return "No puedo consultar ahora la calidad del aire y el polen."
     texto = f"Calidad del aire: {d['nivel_aqi']} (AQI europeo {d['aqi_ahora']})."

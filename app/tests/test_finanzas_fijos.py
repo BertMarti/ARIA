@@ -58,3 +58,26 @@ def test_aislamiento_por_usuario(ana):
 def test_ruta_fijos_protegida(ana):
     assert cliente_de(ana).get("/api/finanzas/fijos").status_code == 200
     assert TestClient(main.app, base_url=LAN, follow_redirects=False).get("/api/finanzas/fijos").status_code in (401, 303)
+
+
+def test_marca_de_recibo_avisado_dura_mas_de_una_semana(monkeypatch):
+    import time as _t
+    from aria import avisos
+    avisos._anotar_enviado("fijo:1:netflix:2026-10", "fijos", 45)
+    # Otra clave de briefing purga las de su familia, no las de recibos fijos.
+    real = _t.time
+    monkeypatch.setattr(avisos.time, "time", lambda: real() + 10 * 86400)
+    avisos._anotar_enviado("briefing:x", "briefing", 7)
+    assert avisos._ya_enviado("fijo:1:netflix:2026-10")
+
+
+def test_avisos_personales_no_copian_el_texto_a_las_automatizaciones(monkeypatch):
+    import asyncio
+    from aria import automatizaciones, avisos
+    vistos = []
+
+    async def evento(tipo, datos):
+        vistos.append(datos)
+    monkeypatch.setattr(automatizaciones, "evento", evento)
+    asyncio.run(avisos.emitir("fijos", "aviso", "Netflix ha subido de 12,99 € a 15,99 €.", "finanzas", []))
+    assert vistos and vistos[0]["texto"] == ""

@@ -98,6 +98,9 @@ def crear(uid: int, rol: str, datos: dict) -> dict:
                 raise AgentePropioError("Ya tienes un agente con ese atajo.") from e
             raise
         nuevo = r.lastrowid
+        # Dos altas a la vez no pueden dejar más de MAXIMO: si se ha pasado, se deshace esta.
+        if con.execute("SELECT COUNT(*) FROM agentes_propios WHERE user_id=?", (uid,)).fetchone()[0] > MAXIMO:
+            raise AgentePropioError("Solo puedes crear 10 agentes.")
     return obtener(uid, nuevo)   # ya confirmado: otra conexión lo ve
 
 

@@ -377,7 +377,7 @@ async def avisar_gastos_fijos(uid: int) -> None:
         clave = f"fijo:{uid}:{_clave_similar(fijo['concepto']) or normalizar(fijo['concepto'])}:{mes}"
         if await asyncio.to_thread(avisos._ya_enviado, clave):
             continue
-        await asyncio.to_thread(avisos._anotar_enviado, clave)
+        await asyncio.to_thread(avisos._anotar_enviado, clave, "fijos", 45)
         if cambio > 10:
             texto = (f"{fijo['concepto']} ha subido de {euros(fijo['importe_habitual'])} a "
                      f"{euros(fijo['ultimo_importe'])} ({cambio:+g} %).")

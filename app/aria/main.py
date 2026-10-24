@@ -708,6 +708,8 @@ async def api_chat(request: Request):
                                (agente not in agentes.AGENTES and not agente.startswith("p:"))):
         return JSONResponse({"error": "Agente desconocido"}, status_code=400)
     if agente and not agentes.permitido(agente, u["rol"], u["id"]):
+        if agente.startswith("p:"):
+            return JSONResponse({"error": "Agente no encontrado."}, status_code=404)
         return JSONResponse({"error": "Ese agente es solo para administradores."}, status_code=403)
     if agente and agente.startswith("p:") and getattr(request.state, "limites", None):
         return JSONResponse({"error": "Los invitados no pueden usar agentes propios."}, status_code=403)
@@ -824,6 +826,8 @@ async def api_renombrar(cid: str, request: Request):
         if not isinstance(a, str) or (a not in agentes.AGENTES and not a.startswith("p:")):
             return JSONResponse({"error": "Agente desconocido"}, status_code=400)
         if not agentes.permitido(a, u["rol"], u["id"]):
+            if a.startswith("p:"):
+                return JSONResponse({"error": "Agente no encontrado."}, status_code=404)
             return JSONResponse({"error": "Ese agente es solo para administradores."}, status_code=403)
         if a.startswith("p:") and getattr(request.state, "limites", None):
             return JSONResponse({"error": "Los invitados no pueden usar agentes propios."}, status_code=403)

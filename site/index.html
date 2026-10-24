@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#02050b">
+  <meta name="description" content="ARIA: una asistente de IA doméstica, gratuita y con el código a la vista. Hecha en casa, se queda en casa.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="estilo.css">
+  <title>ARIA · Tu casa, con voz propia</title>
+</head>
+<body>
+  <a class="salto" href="#contenido">Ir al contenido</a>
+  <header class="barra">
+    <a class="marca-mini" href="#inicio" aria-label="ARIA, inicio"><span class="anillo" aria-hidden="true"></span><span>ARIA</span></a>
+    <nav aria-label="Secciones principales">
+      <a href="#que-es">Qué es</a><a href="#hace">Qué hace</a><a href="#instalar">Instalar</a><a href="#ecosistema">Ecosistema</a><a href="#faq">Dudas</a>
+    </nav>
+    <button class="tema" id="tema" type="button" aria-label="Modo claro" aria-pressed="false">◐</button>
+  </header>
+
+  <main id="contenido">
+    <section id="inicio" class="portada" aria-labelledby="titulo">
+      <div class="portada-fondo" aria-hidden="true"></div>
+      <canvas id="ping-portada" aria-hidden="true"></canvas>
+      <p class="eyebrow">ASISTENTE DOMÉSTICA · CÓDIGO A LA VISTA</p>
+      <h1 id="titulo" class="marca">AR<span>I</span>A</h1>
+      <p class="lema">Tu casa, con voz propia</p>
+      <p class="sublema">Hecha en casa · Se queda en casa</p>
+      <div class="acciones"><a class="boton principal" href="#instalar">Instálala</a><a class="boton secundario" href="https://github.com/BertMarti/ARIA" target="_blank" rel="noopener noreferrer">Ver en GitHub <span aria-hidden="true">↗</span></a></div>
+      <p class="nota-portada">Habla, escucha, organiza y vigila. Sin hacer nada sin tu permiso.</p>
+    </section>
+
+    <section id="que-es" class="seccion que-es" aria-labelledby="que-es-titulo">
+      <p class="indice"><span>01</span> · Qué es</p>
+      <div class="dos-columnas"><div><h2 id="que-es-titulo">Una asistente<br><em>en tu territorio.</em></h2></div><div class="texto-grande"><p>ARIA vive en tu Raspberry Pi o en tu PC con Linux. Es una asistente de inteligencia artificial pensada para la vida real: le hablas, le escribes y ella te ayuda a llevar la casa.</p><p>Es gratis, con el código a la vista, y se instala con un solo comando. Tus datos se guardan en tu máquina y tú decides si usar cerebros en la nube para responder más rápido.</p></div></div>
+      <div class="banner"><img class="oscuro" src="img/banner-oscuro.svg" alt="ARIA: tu asistente de IA autoalojada para gestionar las aplicaciones de casa" width="1280" height="360" loading="lazy" decoding="async"><img class="claro" src="img/banner-claro.svg" alt="ARIA: tu asistente de IA autoalojada para gestionar las aplicaciones de casa" width="1280" height="360" loading="lazy" decoding="async"></div>
+      <div class="ideas"><article><strong>01</strong><h3>Gratis y con el código a la vista</h3><p>La puedes usar y revisar sin pagar nada.</p></article><article><strong>02</strong><h3>Tus datos, en casa</h3><p>Tu agenda, tus conversaciones y tu red se guardan en tu ordenador. Con el cerebro local, no sale nada.</p></article><article><strong>03</strong><h3>Tú tienes la última palabra</h3><p>ARIA propone. No ejecuta acciones importantes sin tu permiso.</p></article></div>
+    </section>
+
+    <section id="hace" class="seccion" aria-labelledby="hace-titulo">
+      <p class="indice"><span>02</span> · Qué hace</p><div class="cabecera-seccion"><h2 id="hace-titulo">Una casa que<br><em>te entiende.</em></h2><p>Una mirada rápida a lo que puedes hacer con ARIA. Pulsa una captura para verla grande.</p></div>
+      <div class="tarjetas">
+        <article class="tarjeta"><div class="t-cab"><span class="t-num">01</span><span>Inicio</span></div><button class="captura" type="button" data-image="img/captura-inicio.png" data-alt="Página de Inicio de ARIA con tarjetas numeradas para HUD, resumen del día, agenda, tu casa, información, mapa, chat y finanzas" data-caption="Inicio: una vista de todo lo importante, con un dato vivo en cada tarjeta."><img src="img/captura-inicio.png" alt="Página de Inicio de ARIA con tarjetas numeradas para HUD, resumen del día, agenda, tu casa, información, mapa, chat y finanzas" width="1280" height="1400" decoding="async"></button><h3>El centro de tu día</h3><p>Tiempo, agenda, precio de la luz, casa y avisos en una sola mirada.</p></article>
+        <article class="tarjeta"><div class="t-cab"><span class="t-num">02</span><span>Chat</span></div><button class="captura" type="button" data-image="img/captura-chat.png" data-alt="Chat de ARIA preguntando por el estado de la casa y usando el agente Redes" data-caption="Chat: pregunta con naturalidad y deja que el agente adecuado se encargue."><img src="img/captura-chat.png" alt="Chat de ARIA preguntando por el estado de la casa y usando el agente Redes" width="1280" height="800" loading="lazy" decoding="async"></button><h3>Habla con tu casa</h3><p>Chat con agentes para responder, buscar, resumir y ayudarte a decidir.</p></article>
+        <article class="tarjeta amplia"><div class="t-cab"><span class="t-num">03</span><span>HUD</span></div><button class="captura" type="button" data-image="img/captura-hud.png" data-alt="Modo HUD de ARIA con un orbe y tarjetas de clima, agenda, luz, red y mercados" data-caption="HUD: un panel futurista para ver tu casa de un vistazo y controlarla con gestos."><img src="img/captura-hud.png" alt="Modo HUD de ARIA con un orbe y tarjetas de clima, agenda, luz, red y mercados" width="1440" height="900" loading="lazy" decoding="async"></button><h3>Tu casa, a pantalla completa</h3><p>Un modo HUD futurista con gestos, tarjetas interactivas y una presencia que te acompaña.</p></article>
+        <article class="tarjeta"><div class="t-cab"><span class="t-num">04</span><span>Agenda</span></div><button class="captura" type="button" data-image="img/captura-agenda.png" data-alt="Agenda de ARIA con calendario mensual, eventos y próximos cumpleaños" data-caption="Agenda: citas, eventos repetidos y cumpleaños, con avisos cuando los necesitas."><img src="img/captura-agenda.png" alt="Agenda de ARIA con calendario mensual, eventos y próximos cumpleaños" width="1280" height="900" loading="lazy" decoding="async"></button><h3>Que no se te pase nada</h3><p>Agenda, cumpleaños, recordatorios y rutinas que encajan con tu día.</p></article>
+        <article class="tarjeta"><div class="t-cab"><span class="t-num">05</span><span>Tu casa</span></div><button class="captura" type="button" data-image="img/captura-red.png" data-alt="Inventario de dispositivos de la red de casa con latencia y un dispositivo desconocido" data-caption="Red: conoce tus dispositivos, su latencia y cualquier novedad."><img src="img/captura-red.png" alt="Inventario de dispositivos de la red de casa con latencia y un dispositivo desconocido" width="1280" height="1000" loading="lazy" decoding="async"></button><h3>Vigila tu red</h3><p>Dispositivos nuevos, latencia y estado de la red, sin perderte en tecnicismos.</p></article>
+        <article class="tarjeta"><div class="t-cab"><span class="t-num">06</span><span>Información</span></div><button class="captura" type="button" data-image="img/captura-informacion.png" data-alt="Información de ARIA con noticias por temas y gráficas de inversiones en euros" data-caption="Información: noticias resumidas, inversiones y precio de la luz en contexto."><img src="img/captura-informacion.png" alt="Información de ARIA con noticias por temas y gráficas de inversiones en euros" width="1280" height="900" loading="lazy" decoding="async"></button><h3>El mundo, resumido</h3><p>Noticias, inversiones y precio de la luz, sin abrir diez aplicaciones.</p></article>
+        <article class="tarjeta"><div class="t-cab"><span class="t-num">07</span><span>Familia</span></div><button class="captura" type="button" data-image="img/captura-control-parental.png" data-alt="Control parental de ARIA para pausar internet, bloquear servicios y crear horarios por dispositivo" data-caption="Control parental: pausa internet, bloquea servicios y crea horarios por dispositivo."><img src="img/captura-control-parental.png" alt="Control parental de ARIA para pausar internet, bloquear servicios y crear horarios por dispositivo" width="1280" height="900" loading="lazy" decoding="async"></button><h3>Cuida a tu manera</h3><p>Control parental por dispositivo, bot de Telegram y notificaciones.</p></article>
+      </div>
+      <div class="moviles"><img src="img/captura-movil-inicio.png" alt="Inicio de ARIA en un teléfono móvil" width="780" height="1688" loading="lazy" decoding="async"><img src="img/captura-movil-hud.png" alt="Modo HUD de ARIA en un teléfono móvil" width="780" height="1688" loading="lazy" decoding="async"><p>También contigo en Android, desde las Releases de GitHub.</p></div>
+      <div class="ping-strip"><img src="img/ping/ping-hola.svg" alt="Ping: «¡Eh, mira! Esta es ARIA. Yo soy Ping.»" width="484" height="136" loading="lazy" decoding="async"><p>Ping es el hada de luz que vigila la red de casa. Tiene humor, orgullo y muy buen ojo para detectar novedades.</p></div>
+    </section>
+
+    <section id="instalar" class="seccion instalar" aria-labelledby="instalar-titulo">
+      <p class="indice"><span>03</span> · Instalar</p><div class="cabecera-seccion"><h2 id="instalar-titulo">De cero a casa<br><em>en pocos pasos.</em></h2><p>Un solo comando instala primero SHIELD-DNS, después HEIMDALL y, por último, ARIA. Todo queda listo para usar.</p></div>
+      <div class="requisitos"><strong>Necesitas</strong><span>Raspberry Pi 4/5 o PC con Linux</span><span>4 GB de RAM (mejor 8 GB)</span><span>16 GB de disco</span><span>Docker, que el instalador ofrece instalar</span></div>
+      <div class="pasos"><div><b>1</b><h3>Abre una terminal</h3><p>En la máquina que va a cuidar tu casa.</p></div><div><b>2</b><h3>Pega el comando</h3><div class="comando"><pre><code id="comando">curl -fsSL https://raw.githubusercontent.com/BertMarti/ARIA/main/instalar-todo.sh | bash</code></pre><button id="copiar" type="button">Copiar</button></div><p id="estado-copia" class="estado" aria-live="polite"></p></div><div><b>3</b><h3>Entra desde el navegador</h3><p>Abre <code>https://aria.local</code> o la IP de tu máquina, por ejemplo <code>https://192.168.1.50</code>. Acepta el aviso del certificado la primera vez.</p></div><div><b>4</b><h3>Inicia sesión</h3><p>Usa <strong>admin</strong> y la contraseña que muestra el instalador.</p></div></div>
+      <a class="enlace-guia" href="https://github.com/BertMarti/ARIA/blob/main/docs/INSTALACION.md" target="_blank" rel="noopener noreferrer">Leer la guía completa de instalación ↗</a>
+    </section>
+
+    <section id="ecosistema" class="seccion ecosistema" aria-labelledby="ecosistema-titulo"><p class="indice"><span>04</span> · El ecosistema</p><h2 id="ecosistema-titulo">Una casa,<br><em>tres guardianes.</em></h2><div class="eco-grid"><a class="eco aria" href="https://github.com/BertMarti/ARIA" target="_blank" rel="noopener noreferrer"><span>01</span><h3>ARIA</h3><p>Tu asistente doméstica con voz, memoria y criterio.</p><b>Ver el código ↗</b></a><a class="eco shield" href="https://bertmarti.github.io/SHIELD-DNS/" target="_blank" rel="noopener noreferrer"><span>02</span><h3>SHIELD-DNS</h3><p>Bloqueador de anuncios para toda la casa.</p><b>Conocer SHIELD-DNS ↗</b></a><a class="eco heimdall" href="https://bertmarti.github.io/HEIMDALL/" target="_blank" rel="noopener noreferrer"><span>03</span><h3>HEIMDALL</h3><p>VPN para entrar en casa desde fuera.</p><b>Conocer HEIMDALL ↗</b></a></div></section>
+
+    <section id="faq" class="seccion faq" aria-labelledby="faq-titulo"><p class="indice"><span>05</span> · Preguntas frecuentes</p><h2 id="faq-titulo">Antes de abrir<br><em>la puerta.</em></h2><div class="preguntas"><details><summary>¿Cuánto cuesta?</summary><p>ARIA es gratis. ARIA Premium está en pruebas y no hay ninguna compra abierta.</p></details><details><summary>¿Me escucha todo el rato?</summary><p>No. En modo manos libres solo espera a oír «Aria», y eso se detecta en tu propia máquina. Lo que dices después se transcribe (en tu máquina o, si lo configuras, en la nube) y se descarta: el audio no se guarda nunca. También puedes pulsar el micrófono para hablar.</p></details><details><summary>¿Mis datos salen de casa?</summary><p>La aplicación y tus datos viven en tu ordenador. Algunas funciones de IA pueden usar proveedores opcionales en la nube; tú decides qué configurar.</p></details><details><summary>¿Qué ordenador necesito?</summary><p>Una Raspberry Pi 4 o 5, o un PC con Linux, 4 GB de RAM y 16 GB de disco. Con 8 GB irá más cómoda.</p></details><details><summary>¿Funciona en Windows?</summary><p>No está probado. La experiencia recomendada es Linux o una Raspberry Pi.</p></details><details><summary>¿Necesito claves de pago?</summary><p>No. Puedes usar ARIA sin claves de pago. Las claves gratuitas de Groq o Gemini son opcionales.</p></details><details><summary>¿Hay app de móvil?</summary><p>Sí, hay app para Android en las Releases de GitHub.</p></details><details><summary>¿Quién es Ping?</summary><p>Ping es el hada de luz de ARIA. Vigila la red, atrapa anuncios y aparece con mucho humor cuando hay algo que mirar.</p></details></div></section>
+  </main>
+  <footer class="pie"><div><span class="marca-pie">AR<span>I</span>A</span><span>Hecha en casa · Se queda en casa</span></div><div><a href="https://github.com/BertMarti/ARIA" target="_blank" rel="noopener noreferrer">GitHub</a><a href="https://github.com/BertMarti/ARIA/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Licencia Elastic 2.0</a><span>Las capturas son de una demo con datos inventados.</span></div></footer>
+
+  <dialog id="galeria" aria-labelledby="galeria-titulo"><div class="dialog-cab"><h2 id="galeria-titulo">Captura de ARIA</h2><button id="cerrar-galeria" type="button" aria-label="Cerrar captura">Cerrar</button></div><figure><img id="imagen-ampliada" alt=""><figcaption id="pie-imagen"></figcaption></figure></dialog>
+  <script src="ping.js"></script><script src="web.js"></script>
+</body>
+</html>

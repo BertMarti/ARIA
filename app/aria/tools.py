@@ -120,8 +120,10 @@ _INTENCIONES = [
     ((r"\b(luces?|l[aá]mparas?|bombillas?|tira led|brillo|azul|rojo|verde|enciende|apaga)\b",
       r"\b(luz|luces?|l[aá]mpara|bombilla|tira|sal[oó]n|habitaci[oó]n|casa)\b"), {"luces"}),
     ((r"\b(c[aá]mara|c[aá]maras|privacidad|tapar)\b",), {"camara_privacidad"}),
+    ((r"\b(posici[oó]n|apunta|mira a|gira la c[aá]mara)\b",), {"camara_posicion"}),
     ((r"\b(qui[eé]n (hay|est[aá]|queda)|hay alguien|alguien en casa|ha (llegado|vuelto|salido)|se ha ido|"
       r"est[aá] en casa|vigilancia)\b",), {"quien_en_casa"}),
+    ((r"\b(escenas?|modo (cine|noche|fiesta|lectura)|buenas noches|ambiente)\b",), {"escena"}),
     ((r"\b(router|wifi|wi-fi|invitados?)\b",), {"router_invitados"}),
     ((r"\b(agenda|calendario|evento|eventos|cita|cumplea[nñ]os|qué tengo|que tengo)\b",), set(AGENDA)),
     ((r"\b(mapa|mapas|ubicaci[oó]n|sitios? cerca|farmacia|gasolinera|supermercado|restaurante|cajero)\b",),
@@ -446,6 +448,30 @@ async def camara_privacidad(activa: bool, nombre: str = "") -> str:
     return ("He tapado " if activa else "He destapado ") + nombres + "."
 
 
+@tool("camara_posicion", "Mueve la cámara con giro a una posición guardada (p. ej. «puerta»). Solo administrador.",
+      {"posicion": ("string", "Nombre de la posición guardada, sin distinguir mayúsculas ni acentos"),
+       "nombre": ("string", "Nombre de la cámara; vacío si solo hay una con motor")}, ("posicion",))
+async def camara_posicion(posicion: str, nombre: str = "") -> str:
+    def normaliza(s):
+        import unicodedata
+        return "".join(c for c in unicodedata.normalize("NFD", str(s).lower()) if unicodedata.category(c) != "Mn").strip()
+    camaras = [c for c in await hogar_tapo.camaras() if c.get("en_linea") and c.get("ptz")]
+    buscado = normaliza(nombre)
+    elegidas = [c for c in camaras if not buscado or buscado in normaliza(c.get("nombre", ""))]
+    if not elegidas:
+        return "No he encontrado ninguna cámara con motor" + (" con ese nombre." if buscado else ".")
+    camara = elegidas[0]
+    guardadas = await hogar_tapo.posiciones(camara["ip"])
+    pedida = normaliza(posicion)
+    exactas = [p for p in guardadas if normaliza(p["nombre"]) == pedida]
+    parecidas = exactas or [p for p in guardadas if pedida and pedida in normaliza(p["nombre"])]
+    if not parecidas:
+        lista = ", ".join(p["nombre"] for p in guardadas)
+        return f"La cámara {camara['nombre']} no tiene ninguna posición llamada «{posicion}»." + (f" Las guardadas son: {lista}." if lista else " No tiene posiciones guardadas.")
+    await hogar_tapo.ir_a_posicion(camara["ip"], parecidas[0]["id"])
+    return f"He movido la cámara {camara['nombre']} a la posición «{parecidas[0]['nombre']}»."
+
+
 @tool("quien_en_casa", "Dice qué móviles de la familia están en casa (wifi del router), desde cuándo falta cada uno y "
       "las últimas llegadas y salidas. Solo administrador.", {})
 async def quien_en_casa() -> str:
@@ -475,6 +501,31 @@ async def quien_en_casa() -> str:
             f"{h['nombre']} {'llegó' if h['evento'] == 'llega' else 'se fue'} a las {_t.strftime('%H:%M', _t.localtime(h['ts']))}"
             for h in ultimos) + ".")
     return "\n".join(lineas)
+
+
+@tool("escena", "Activa una escena de Hogar (varias luces y cámaras a la vez, p. ej. «Cine» o «Buenas noches»). Con nombre "
+      "vacío, lista las que hay. Solo administrador.",
+      {"nombre": ("string", "Nombre o parte del nombre de la escena; vacío para listarlas")})
+async def escena(nombre: str = "") -> str:
+    from . import hogar_escenas
+    def normaliza(s):
+        import unicodedata
+        return "".join(c for c in unicodedata.normalize("NFD", str(s).lower()) if unicodedata.category(c) != "Mn")
+    todas = await asyncio.to_thread(hogar_escenas.listar)
+    if not todas:
+        return "Aún no hay escenas: créalas en Hogar → Escenas."
+    buscado = normaliza(nombre).strip()
+    if not buscado:
+        return "Escenas: " + ", ".join(e["nombre"] for e in todas) + "."
+    elegidas = [e for e in todas if normaliza(e["nombre"]) == buscado] or [e for e in todas if buscado in normaliza(e["nombre"])]
+    if len(elegidas) != 1:
+        return ("Hay varias escenas parecidas: " + ", ".join(e["nombre"] for e in elegidas) + ". ¿Cuál?") if elegidas \
+            else "No hay ninguna escena con ese nombre. Tengo: " + ", ".join(e["nombre"] for e in todas) + "."
+    r = await hogar_escenas.ejecutar(elegidas[0])
+    texto = f"Escena «{elegidas[0]['nombre']}» activada."
+    if r["fallidas"]:
+        texto += " No ha respondido: " + ", ".join(r["fallidas"]) + "."
+    return texto
 
 
 @tool("router_invitados", "Activa o desactiva la red wifi de invitados del router (solo administrador).",

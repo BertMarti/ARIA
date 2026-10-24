@@ -1,0 +1,66 @@
+/* RUNA dentro de ARIA: misma estética que la web de RUNA (runas bajo la aurora), sin fuentes externas. */
+:root {
+  color-scheme: dark;
+  --fondo: #070a10;
+  --tarjeta: rgba(255, 255, 255, 0.035);
+  --linea: rgba(255, 255, 255, 0.11);
+  --tinta: #e8ecf4;
+  --tenue: #9aa5bd;
+  --verde: #3ee6c1;
+  --violeta: #8b7bff;
+  --ascua: #ff8a5b;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--fondo); color: var(--tinta); }
+body { font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; min-height: 100vh; }
+.aurora {
+  position: fixed; inset: -20% -10% auto; height: 70vh; pointer-events: none; filter: blur(60px); opacity: 0.8;
+  background: radial-gradient(40% 50% at 30% 40%, rgba(62, 230, 193, 0.22), transparent 70%),
+              radial-gradient(40% 50% at 75% 30%, rgba(139, 123, 255, 0.25), transparent 70%);
+}
+.pagina { position: relative; max-width: 680px; margin: 0 auto; padding: 24px 16px 48px; }
+.cabecera { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+.marca { margin: 0; font: 600 20px/1 Georgia, "Times New Roman", serif; letter-spacing: 0.32em; }
+.runa-r { width: 12px; height: 20px; vertical-align: -3px; fill: none; stroke: var(--verde); stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px rgba(62, 230, 193, 0.8)); }
+.volver { color: var(--tenue); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.volver:hover { color: var(--tinta); }
+h1 { font: 600 clamp(26px, 6vw, 36px)/1.15 Georgia, "Times New Roman", serif; margin: 0 0 10px; letter-spacing: 0.01em; }
+h2 { font: 600 24px/1.2 Georgia, "Times New Roman", serif; margin: 0 0 8px; }
+.entradilla { color: var(--tenue); margin: 0 0 22px; }
+.tarjeta { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 20px; padding: 22px; }
+label { display: block; font-weight: 600; margin: 16px 0 6px; }
+.fila-etiqueta { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.fila-etiqueta label { margin-top: 0; }
+.tenue { color: var(--tenue); font-weight: 400; }
+textarea, input, select {
+  width: 100%; font: inherit; color: var(--tinta); background: rgba(0, 0, 0, 0.35); border: 1px solid var(--linea);
+  border-radius: 12px; padding: 12px 14px; min-height: 44px;
+}
+textarea { font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; resize: vertical; }
+.enlace { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px; }
+textarea:focus, input:focus, select:focus, button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--verde); outline-offset: 2px;
+}
+.opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.opciones label { font-weight: 600; }
+.opciones select { margin-top: 6px; }
+.pista { color: var(--tenue); font-size: 14px; margin: 6px 0 0; }
+button { font: inherit; cursor: pointer; min-height: 44px; border-radius: 12px; }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+.boton-principal {
+  width: 100%; margin-top: 22px; border: 0; color: #06110f; font-weight: 700;
+  background: linear-gradient(100deg, var(--verde), var(--violeta));
+  box-shadow: 0 8px 30px rgba(62, 230, 193, 0.18);
+}
+.boton { width: 100%; margin-top: 12px; color: var(--tinta); background: transparent; border: 1px solid var(--linea); }
+.boton:hover { border-color: var(--tenue); }
+.enlace-boton { background: none; border: 0; color: var(--verde); text-decoration: underline; padding: 0; min-height: 32px; }
+.acciones { display: grid; grid-template-columns: 1fr; gap: 0; }
+.error { color: var(--ascua); margin: 12px 0 0; }
+.aviso { border-left: 2px solid var(--violeta); padding: 8px 12px; background: rgba(139, 123, 255, 0.08); border-radius: 0 10px 10px 0; }
+.estado { min-height: 1.5em; color: var(--tenue); text-align: center; }
+.pie { margin-top: 32px; text-align: center; color: var(--tenue); font-size: 13px; }
+.pie a { color: var(--tenue); }
+@media (max-width: 420px) { .opciones { grid-template-columns: 1fr; } .tarjeta { padding: 18px; } }
+@media (prefers-reduced-motion: reduce) { .aurora { filter: none; } }

@@ -6,7 +6,7 @@ import time
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
-from . import (config, hogar_cache as cache, hogar_camaras as camaras_video, hogar_eventos as eventos,
+from . import (config, hogar_cache as cache, hogar_camaras as camaras_video, hogar_escenas as escenas, hogar_eventos as eventos,
                hogar_govee as govee, hogar_grabaciones as grabaciones, hogar_router as router_hogar,
                hogar_salud as salud, hogar_tapo as tapo, hogar_vigilancia as vigilancia)
 
@@ -141,6 +141,51 @@ async def ver_vigilancia(candidatos: int = 0):
     return {"disponible": True, **await asyncio.to_thread(vigilancia.resumen, lista)}
 
 
+# --- Escenas (solo administradores) ---------------------------------------------------------------------------------
+async def _cuerpo(request: Request):
+    try: d = await request.json()
+    except ValueError: return None
+    return d if isinstance(d, dict) else None
+
+
+@router.get("/api/hogar/escenas")
+async def ver_escenas():
+    return {"escenas": await asyncio.to_thread(escenas.listar), "iconos": list(escenas.ICONOS)}
+
+
+@router.post("/api/hogar/escenas")
+async def crear_escena(request: Request):
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
+    d = await _cuerpo(request)
+    if d is None: return _error("Datos no válidos.")
+    try: return {"escena": await asyncio.to_thread(escenas.crear, d, await escenas.conocidas())}
+    except escenas.EscenaError as e: return _error(str(e))
+
+
+@router.put("/api/hogar/escenas/{eid:int}")
+async def cambiar_escena(eid: int, request: Request):
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
+    d = await _cuerpo(request)
+    if d is None: return _error("Datos no válidos.")
+    try: e = await asyncio.to_thread(escenas.actualizar, eid, d, await escenas.conocidas())
+    except escenas.EscenaError as err: return _error(str(err))
+    return {"escena": e} if e else _error("Escena no encontrada.", 404)
+
+
+@router.delete("/api/hogar/escenas/{eid:int}")
+async def borrar_escena(eid: int, request: Request):
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
+    return {"ok": True} if await asyncio.to_thread(escenas.borrar, eid) else _error("Escena no encontrada.", 404)
+
+
+@router.post("/api/hogar/escenas/{eid:int}/activar")
+async def activar_escena(eid: int, request: Request):
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
+    e = await asyncio.to_thread(escenas.obtener, eid)
+    if e is None: return _error("Escena no encontrada.", 404)
+    return await escenas.ejecutar(e)
+
+
 @router.get("/api/hogar/vigilancia/historial")
 async def historial_vigilancia(limite: int = 30):
     """Quién ha llegado y quién se ha ido (solo administradores, como el resto de la vigilancia)."""
@@ -204,6 +249,55 @@ async def mover_camara(request: Request):
         await tapo.mover(d["ip"], d["direccion"])
         return {"ok": True}
     except tapo.TapoError as e: return _error(str(e), 400 if "no encontrada" in str(e) or "no se puede" in str(e) else 502)
+
+
+# Posiciones guardadas de las cámaras con motor: solo administradores (ir a una es moverla; no están en la lista
+# blanca de `usuario` ni en la de «ver cámaras»).
+_ID_POSICION = re.compile(r"\d{1,10}")
+
+
+def _estado_posicion(e: tapo.TapoError) -> int:
+    s = str(e)
+    return 400 if any(x in s for x in ("no encontrada", "no se puede", "Ya hay", "Ya existe", "nombre", "fija")) else 502
+
+
+@router.get("/api/hogar/camaras/posiciones")
+async def posiciones_camara(ip: str = ""):
+    try: return {"posiciones": await tapo.posiciones(ip)}
+    except tapo.TapoError as e: return _error(str(e), _estado_posicion(e))
+
+
+@router.post("/api/hogar/camaras/posiciones")
+async def guardar_posicion_camara(request: Request):
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
+    try: d = await request.json()
+    except ValueError: return _error("Datos no válidos.")
+    if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or not isinstance(d.get("nombre"), str):
+        return _error("Datos no válidos.")
+    try: return {"posiciones": await tapo.guardar_posicion(d["ip"], d["nombre"])}
+    except tapo.TapoError as e: return _error(str(e), _estado_posicion(e))
+
+
+@router.post("/api/hogar/camaras/posiciones/ir")
+async def ir_posicion_camara(request: Request):
+    if not _limite(request, "mover", 60): return _error("Demasiados movimientos; espera un minuto.", 429)
+    try: d = await request.json()
+    except ValueError: return _error("Datos no válidos.")
+    if not isinstance(d, dict) or not isinstance(d.get("ip"), str) or not isinstance(d.get("id"), str) \
+            or not _ID_POSICION.fullmatch(d["id"]):
+        return _error("Datos no válidos.")
+    try:
+        await tapo.ir_a_posicion(d["ip"], d["id"])
+        return {"ok": True}
+    except tapo.TapoError as e: return _error(str(e), _estado_posicion(e))
+
+
+@router.delete("/api/hogar/camaras/posiciones")
+async def borrar_posicion_camara(request: Request, ip: str = "", id: str = ""):
+    if not _limite(request): return _error("Demasiadas acciones; espera un minuto.", 429)
+    if not _ID_POSICION.fullmatch(id): return _error("Datos no válidos.")
+    try: return {"posiciones": await tapo.borrar_posicion(ip, id)}
+    except tapo.TapoError as e: return _error(str(e), _estado_posicion(e))
 
 
 def _camara_grabacion(ip):

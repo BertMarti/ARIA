@@ -197,6 +197,126 @@ const Hogar = (() => {
     if (estado.eventos.some((e) => !e.visto)) api("/api/hogar/eventos/vistos", { method: "POST" });
   }
 
+
+  // --- Escenas: varias luces y cámaras de un toque -----------------------------------------------------------------
+  const ICONOS_ESCENA = {   // trazos de 24×24 (sin emojis: en la Pi no hay fuente para ellos)
+    luz: "M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z",
+    cine: "M3 6h18v12H3zM3 10h18M7 6v4M12 6v4M17 6v4",
+    noche: "M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z",
+    salir: "M14 4h5v16h-5M10 12h10M6 8l-4 4 4 4M2 12h8",
+    casa: "m3 11 9-8 9 8v9H3zM9 20v-6h6v6",
+    fiesta: "M5 21 9 9l6 6-10 6zM14 4l1 2M19 5l-2 1M20 10h-2M12 2v2",
+    lectura: "M4 5h7a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-5a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h5z",
+    despertar: "M12 3v2M4.9 6.9l1.4 1.4M3 14h2M19 14h2M17.7 8.3l1.4-1.4M7 18a5 5 0 0 1 10 0M3 21h18",
+  };
+  function iconoEscena(clave) {
+    const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg"), p = document.createElementNS(NS, "path");
+    svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("class", "svg-ico"); svg.setAttribute("aria-hidden", "true");
+    p.setAttribute("d", ICONOS_ESCENA[clave] || ICONOS_ESCENA.luz);
+    svg.append(p);
+    return svg;
+  }
+  function escenas(d) {
+    const lista = d.escenas || [];
+    const nueva = el("button", { type: "button", class: "fantasma pequeno" }, "＋ Nueva");
+    nueva.addEventListener("click", () => editarEscena(null, d.iconos));
+    if (!lista.length) return [nota("Crea una escena para cambiar varias luces y cámaras de un toque (por ejemplo «Cine» o «Buenas noches»). También puedes pedírsela a ARIA en el chat."), el("div", { class: "botones" }, nueva)];
+    const botones = lista.map((e) => {
+      const prog = e.programa ? (e.programa.hora || (e.programa.sol === "anochecer" ? "anochecer" : "amanecer")) : "";
+      const b = el("button", { type: "button", class: "hogar-escena" }, iconoEscena(e.icono), el("span", null, e.nombre),
+        prog ? el("span", { class: "hogar-escena-prog-chip", title: "Se activa sola" }, prog) : null);
+      b.addEventListener("click", async () => {
+        b.disabled = true; b.classList.add("activando");
+        const r = await api("/api/hogar/escenas/" + e.id + "/activar", { method: "POST" });
+        b.disabled = false; b.classList.remove("activando");
+        if (!r.ok) { toast(r.data.error || "No se pudo activar la escena.", "mal"); return; }
+        toast(r.data.fallidas?.length ? "«" + e.nombre + "»: no ha respondido " + r.data.fallidas.join(", ") + "." : "Escena «" + e.nombre + "» activada.", r.data.fallidas?.length ? "mal" : "");
+        cargarLuces(); if (Sesion.verCamaras) cargarCamaras();
+      });
+      const editar = el("button", { type: "button", class: "hogar-escena-editar", ariaLabel: "Editar " + e.nombre }, "⋯");
+      editar.addEventListener("click", () => editarEscena(e, d.iconos));
+      return el("div", { class: "hogar-escena-caja" }, b, editar);
+    });
+    return [el("div", { class: "hogar-escenas" }, ...botones), el("div", { class: "botones" }, nueva)];
+  }
+  function editarEscena(escena, iconos) {
+    const previa = new Map((escena?.acciones || []).map((a) => [a.tipo + ":" + (a.id || a.ip), a]));
+    const nombre = el("input", { type: "text", maxLength: 30, value: escena?.nombre || "", placeholder: "Cine, Buenas noches…", ariaLabel: "Nombre de la escena" });
+    let icono = escena?.icono || "luz";
+    const iconosFila = el("div", { class: "hogar-escena-iconos", role: "radiogroup", ariaLabel: "Icono" }, ...(iconos || Object.keys(ICONOS_ESCENA)).map((k) => {
+      const b = el("button", { type: "button", class: "hogar-escena-icono" + (k === icono ? " activo" : ""), role: "radio", ariaChecked: String(k === icono), ariaLabel: k }, iconoEscena(k));
+      b.addEventListener("click", () => {
+        icono = k;
+        iconosFila.querySelectorAll("button").forEach((x) => { x.classList.toggle("activo", x === b); x.ariaChecked = String(x === b); });
+      });
+      return b;
+    }));
+    const filas = [];
+    for (const luz of estado.luces?.datos || []) {
+      const a = previa.get("luz:" + luz.id);
+      const que = el("select", { ariaLabel: "Qué hacer con " + luz.nombre },
+        el("option", { value: "", selected: !a }, "No tocar"), el("option", { value: "on", selected: !!a?.encendida }, "Encender"),
+        el("option", { value: "off", selected: a && !a.encendida }, "Apagar"));
+      const brillo = el("input", { type: "range", min: 1, max: 100, value: a?.brillo || 100, ariaLabel: "Brillo de " + luz.nombre });
+      const color = el("input", { type: "color", value: a?.color || luz.color || "#ffffff", ariaLabel: "Color de " + luz.nombre });
+      const conColor = el("input", { type: "checkbox", checked: !!a?.color });
+      const extra = el("div", { class: "hogar-escena-extra" }, brillo, el("label", { class: "hogar-opcion" }, conColor, el("span", null, "Color:")), color);
+      const ver = () => { extra.hidden = que.value !== "on"; };
+      que.addEventListener("change", ver); ver();
+      filas.push({ fila: el("div", { class: "hogar-escena-fila" }, el("strong", null, luz.nombre), que, extra),
+        leer: () => que.value === "" ? null : que.value === "off" ? { tipo: "luz", id: luz.id, encendida: false }
+          : { tipo: "luz", id: luz.id, encendida: true, brillo: Number(brillo.value), ...(conColor.checked ? { color: color.value } : {}) } });
+    }
+    for (const c of (estado.camaras?.datos || []).filter((x) => x.privacidad !== undefined)) {
+      const a = previa.get("camara:" + c.ip);
+      const que = el("select", { ariaLabel: "Qué hacer con " + c.nombre },
+        el("option", { value: "", selected: !a }, "No tocar"), el("option", { value: "tapar", selected: !!a?.privacidad }, "Tapar"),
+        el("option", { value: "destapar", selected: a && !a.privacidad }, "Destapar"));
+      filas.push({ fila: el("div", { class: "hogar-escena-fila" }, el("strong", null, c.nombre), que),
+        leer: () => que.value === "" ? null : { tipo: "camara", ip: c.ip, privacidad: que.value === "tapar" } });
+    }
+    // Programación: a una hora o con el sol, los días elegidos.
+    const p = escena?.programa;
+    const modo = el("select", { ariaLabel: "Cuándo se activa sola" },
+      el("option", { value: "", selected: !p }, "Solo cuando la active"), el("option", { value: "hora", selected: !!p?.hora }, "A una hora"),
+      el("option", { value: "anochecer", selected: p?.sol === "anochecer" }, "Al anochecer"), el("option", { value: "amanecer", selected: p?.sol === "amanecer" }, "Al amanecer"));
+    const hora = el("input", { type: "time", value: p?.hora || "23:30", ariaLabel: "Hora" });
+    const desfase = el("select", { ariaLabel: "Antes o después" }, ...[[-60, "1 h antes"], [-30, "30 min antes"], [0, "en el momento"], [30, "30 min después"], [60, "1 h después"]]
+      .map(([v, t]) => el("option", { value: v, selected: (p?.desfase || 0) === v }, t)));
+    const NOMBRES_DIAS = ["L", "M", "X", "J", "V", "S", "D"];
+    const dias = NOMBRES_DIAS.map((n, i) => el("label", { class: "hogar-dia" }, el("input", { type: "checkbox", value: i, checked: p ? p.dias.includes(i) : true }), el("span", null, n)));
+    const opcionesProg = el("div", { class: "hogar-escena-prog" }, hora, desfase, el("div", { class: "hogar-dias", role: "group", ariaLabel: "Días" }, ...dias));
+    const verProg = () => { opcionesProg.hidden = !modo.value; hora.hidden = modo.value !== "hora"; desfase.hidden = !["anochecer", "amanecer"].includes(modo.value); };
+    modo.addEventListener("change", verProg); verProg();
+    const leerPrograma = () => {
+      if (!modo.value) return null;
+      const d = dias.map((l) => l.querySelector("input")).filter((c) => c.checked).map((c) => Number(c.value));
+      return modo.value === "hora" ? { hora: hora.value, dias: d } : { sol: modo.value, desfase: Number(desfase.value), dias: d };
+    };
+    const guardar = el("button", { type: "button", class: "primario" }, "Guardar");
+    const borrar = escena ? el("button", { type: "button", class: "peligro" }, "Borrar") : null;
+    const d = dialogo(escena ? "Editar escena" : "Nueva escena",
+      el("label", { class: "hogar-campo" }, el("span", null, "Nombre"), nombre), iconosFila,
+      filas.length ? el("div", { class: "hogar-escena-filas" }, ...filas.map((f) => f.fila)) : nota("No hay luces ni cámaras cargadas todavía."),
+      el("h3", null, "Programar"), el("label", { class: "hogar-opcion" }, modo), opcionesProg,
+      el("div", { class: "botones" }, borrar, guardar));
+    guardar.addEventListener("click", async () => {
+      const acciones = filas.map((f) => f.leer()).filter(Boolean);
+      if (!acciones.length) { toast("Elige qué hacer con al menos una luz o cámara.", "mal"); return; }
+      guardar.disabled = true;
+      const r = await api("/api/hogar/escenas" + (escena ? "/" + escena.id : ""), { method: escena ? "PUT" : "POST", json: { nombre: nombre.value, icono, acciones, programa: leerPrograma() } });
+      guardar.disabled = false;
+      if (!r.ok) { toast(r.data.error || "No se pudo guardar.", "mal"); return; }
+      toast("Escena guardada."); d.close(); cargarEscenas();
+    });
+    borrar?.addEventListener("click", async () => {
+      if (!await confirmar("Borrar escena", "Se borrará «" + escena.nombre + "».", "Borrar")) return;
+      const r = await api("/api/hogar/escenas/" + escena.id, { method: "DELETE" });
+      if (!r.ok) { toast(r.data.error || "No se pudo borrar.", "mal"); return; }
+      d.close(); cargarEscenas();
+    });
+  }
+
   // --- Casa: vigilancia automática y wifi ---------------------------------------------------------------------------
   const hace = (ts) => { if (!ts) return "aún no visto"; const m = Math.round((Date.now() / 1000 - ts) / 60); return m < 3 ? "en casa" : "fuera hace " + (m < 120 ? m + " min" : Math.round(m / 60) + " h"); };
   function vigilancia(v) {
@@ -240,10 +360,12 @@ const Hogar = (() => {
     const minutos = el("select", { ariaLabel: "Minutos fuera antes de vigilar" }, ...[5, 10, 15, 20, 30, 60].map((n) => el("option", { value: n, selected: n === datos.minutos }, n + " minutos")));
     const activa = el("input", { type: "checkbox", checked: datos.activa });
     const luces = el("input", { type: "checkbox", checked: !!datos.apagar_luces });
+    const llegada = el("select", { ariaLabel: "Escena al llegar de noche" }, el("option", { value: "" }, "Ninguna"),
+      ...(estado.escenas?.escenas || []).map((e) => el("option", { value: e.id, selected: e.id === datos.escena_llegada }, e.nombre)));
     const guardar = el("button", { type: "button", class: "primario" }, "Guardar");
     guardar.addEventListener("click", async () => {
       const marcados = (filas) => filas.map((l) => l.querySelector("input")).filter((c) => c.checked).map((c) => c.value);
-      const res = await api("/api/hogar/vigilancia", { method: "POST", json: { activa: activa.checked, apagar_luces: luces.checked, minutos: Number(minutos.value), moviles: marcados([...elegidos, ...otros]), camaras: marcados(cams) } });
+      const res = await api("/api/hogar/vigilancia", { method: "POST", json: { activa: activa.checked, apagar_luces: luces.checked, escena_llegada: llegada.value ? Number(llegada.value) : null, minutos: Number(minutos.value), moviles: marcados([...elegidos, ...otros]), camaras: marcados(cams) } });
       if (!res.ok) { toast(res.data.error || "No se pudo guardar.", "mal"); return; }
       toast("Vigilancia guardada."); d.close(); cargarCasa();
     });
@@ -255,6 +377,7 @@ const Hogar = (() => {
       el("h3", null, "Cámaras"), cams.length ? el("div", { class: "hogar-opciones" }, ...cams) : nota("No hay cámaras con modo privacidad."),
       el("label", { class: "hogar-opcion" }, el("span", null, "Tiempo fuera:"), minutos),
       el("label", { class: "hogar-opcion" }, luces, el("span", null, "Al irnos todos, apagar las luces que se hayan quedado encendidas")),
+      el("label", { class: "hogar-opcion" }, el("span", null, "Cuando llegue el primero y sea de noche, activar:"), llegada),
       el("div", { class: "botones" }, guardar));
   }
   function wifi(d) {
@@ -300,6 +423,12 @@ const Hogar = (() => {
     rellenar("luces", luces(estado.luces));
     pintarResumen();
   }
+  async function cargarEscenas() {
+    const r = await cargar("/api/hogar/escenas");
+    if (!r) return;
+    estado.escenas = r.ok ? r.data : null;
+    rellenar("escenas", ...(r.ok ? escenas(r.data) : [nota(r.data.error || "No se pudieron cargar las escenas.")]));
+  }
   async function cargarCasa() {
     const [v, r] = await Promise.all([cargar("/api/hogar/vigilancia"), cargar("/api/hogar/router")]);
     if (!v && !r) return;
@@ -313,13 +442,14 @@ const Hogar = (() => {
     const cuerpo = $("hogar-cuerpo");
     const partes = [el("div", { class: "hogar-resumen", id: "hogar-resumen", role: "status" })];
     if (Sesion.verCamaras) partes.push(seccion("camaras", "Cámaras"));
+    if (Sesion.esAdmin) partes.push(seccion("escenas", "Escenas"));
     if (Sesion.esAdmin) { const ev = seccion("eventos", "Eventos"); ev.hidden = true; partes.push(ev); }
     // Luces y Casa: solo administradores. Un usuario con permiso solo ve las cámaras.
     if (Sesion.esAdmin) partes.push(el("div", { class: "hogar-columnas" }, seccion("luces", "Luces"), seccion("casa", "Casa")));
     else if (!Sesion.verCamaras) partes.push(nota("Aquí no tienes nada que ver todavía: pídele al administrador acceso a las cámaras."));
     cuerpo.replaceChildren(...partes);
     if (Sesion.verCamaras) cargarCamaras();
-    if (Sesion.esAdmin) { cargarCasa(); cargarLuces(); cargarEventos(); }
+    if (Sesion.esAdmin) { cargarCasa(); cargarLuces(); cargarEventos(); cargarEscenas(); }
   }
   return { iniciar() {}, activar(si) { const antes = activo; activo = si; if (si && !antes) pintar(); } };
 })();

@@ -76,6 +76,14 @@ def configurar(datos: dict, candidatos: list) -> dict:
         if not isinstance(datos["apagar_luces"], bool):
             raise ValueError("«apagar_luces» no es válido.")
         actual["apagar_luces"] = datos["apagar_luces"]
+    if "escena_llegada" in datos:
+        e = datos["escena_llegada"]
+        if e is not None and (isinstance(e, bool) or not isinstance(e, int)):
+            raise ValueError("Escena no válida.")
+        from . import hogar_escenas
+        if e is not None and hogar_escenas.obtener(e) is None:
+            raise ValueError("Esa escena no existe.")
+        actual["escena_llegada"] = e
     if "camaras" in datos:
         if not isinstance(datos["camaras"], list) or not all(isinstance(x, str) for x in datos["camaras"]):
             raise ValueError("Cámaras no válidas.")
@@ -111,7 +119,7 @@ def resumen(candidatos: list | None = None) -> dict:
                for m in a["moviles"]]
     elegidos = {m["id"] for m in moviles}
     return {"activa": a["activa"], "minutos": a["minutos"], "camaras": a["camaras"], "moviles": moviles,
-            "apagar_luces": bool(a.get("apagar_luces")), "estado": f["estado"], "desde": f["desde"],
+            "apagar_luces": bool(a.get("apagar_luces")), "escena_llegada": a.get("escena_llegada"), "estado": f["estado"], "desde": f["desde"],
             "candidatos": [{"id": ident(c["mac"]), "nombre": c["nombre"], "ip": c["ip"]}
                            for c in (candidatos or []) if ident(c["mac"]) not in elegidos]}
 
@@ -163,6 +171,23 @@ async def _apagar_luces() -> int:
         from . import hogar_cache
         hogar_cache.invalidar("luces")
     return apagadas
+
+
+async def _escena_al_llegar(a: dict, ahora: float) -> str:
+    """Si se eligió una escena para cuando llega el primero de noche, la lanza. Devuelve el texto para el aviso."""
+    from . import hogar_escenas
+    eid = a.get("escena_llegada")
+    if not eid or not hogar_escenas.es_de_noche(ahora):
+        return ""
+    escena = await asyncio.to_thread(hogar_escenas.obtener, eid)
+    if escena is None:
+        return ""
+    try:
+        r = await hogar_escenas.ejecutar(escena)
+    except Exception:  # noqa: BLE001
+        return f" No he podido activar la escena «{escena['nombre']}»."
+    return f" Es de noche: he activado la escena «{escena['nombre']}»." + (
+        f" Ha fallado: {', '.join(r['fallidas'])}." if r["fallidas"] else "")
 
 
 def _responde(ip: str) -> bool:
@@ -238,6 +263,7 @@ async def ciclo(ahora: float | None = None) -> str | None:
         fallidas = await _poner_privacidad(a["camaras"], True)
         await asyncio.to_thread(_guardar, estado="casa", desde=ahora)
         texto = f"Ya hay alguien en casa ({quien}): he vuelto a tapar la cámara."
+        texto += await _escena_al_llegar(a, ahora)
         if fallidas:
             texto += " Ojo: alguna cámara no ha respondido."
         await avisos.emitir("vigilancia", "aviso", texto, "hogar")

@@ -363,6 +363,20 @@ necesita configuración:
 Para vigilar un servicio **de casa** no uses `uptime` (la protección anti-SSRF lo impide a propósito): crea un
 módulo con `salud` en su `modulo.json`.
 
+## El módulo `runa`
+
+[`modulos/runa/`](../modulos/runa/README.md) conecta [RUNA](https://github.com/BertMarti/runa), una aplicación
+de secretos cifrados de extremo a extremo que se autodestruyen al leerse. Es el ejemplo completo de un módulo con
+**contenedor propio**: `compose.ejemplo.yml` levanta RUNA en la red de ARIA (sin puertos publicados) y un Caddy
+pequeño que la sirve por HTTPS en el 8485. El módulo añade:
+
+- un mosaico con salud;
+- las herramientas `runa_compartir` y `runa_generar`, que cifran **dentro de ARIA** con el protocolo de RUNA
+  (`protocolo.py`, compatible con su web; las pruebas usan vectores generados por ella). `runa_generar` es el
+  ejemplo de cómo **no pasar un secreto por el modelo**: devuelve tickets de un solo uso hacia una ruta del módulo
+  que exige sesión (`aria.router(usuario=...)`), y es esa ruta la que entrega el enlace al navegador;
+- un chequeo que avisa si RUNA se cae.
+
 ## Aplicaciones integradas
 
 SHIELD-DNS (Pi-hole) y HEIMDALL (wg-easy) llevan integrados en ARIA desde el principio: su código está en el

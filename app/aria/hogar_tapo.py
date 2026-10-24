@@ -1,4 +1,4 @@
-"""Cámaras Tapo con python-kasa (local, con la cuenta TP-Link). Hoy: estado y modo privacidad (tapar la lente)."""
+"""Cámaras Tapo con python-kasa (local, con la cuenta TP-Link): estado, ajustes, modo privacidad, movimiento y posiciones guardadas."""
 import asyncio
 
 from . import config
@@ -147,8 +147,126 @@ async def mover(ip: str, direccion: str) -> None:
     try:
         await asyncio.wait_for(motor.move(pan=giro, tilt=inclinacion), TIMEOUT)
     except Exception as e:  # noqa: BLE001
+        if await _tapada(ip):
+            raise TapoError(TAPADA) from e
         _conexiones.pop(ip, None)
         raise TapoError("La cámara no ha respondido.") from e
+
+
+TAPADA = "La cámara está tapada (modo privacidad): destápala para moverla."
+
+
+async def _tapada(ip: str) -> bool:
+    """Con la privacidad puesta el motor no obedece (la C520WS contesta con un error genérico): se pregunta para
+    explicarlo bien en lugar de decir que no ha respondido."""
+    try:
+        dev = await _conectar(ip)
+        await asyncio.wait_for(dev.update(), TIMEOUT)
+        lente = dev.modules.get("LensMask") if hasattr(dev.modules, "get") else None
+        return bool(lente is not None and lente.enabled)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+# Posiciones guardadas (como en la app Tapo): la cámara las guarda en su memoria; ARIA solo las lista y las usa.
+MAX_POSICIONES = 8
+
+
+async def _motor(ip: str):
+    if ip not in config.TAPO_CAMARAS and ip not in _conocidas:
+        raise TapoError("Cámara no encontrada.")
+    dev = await _conectar(ip)
+    motor = dev.modules.get("PanTilt") if hasattr(dev.modules, "get") else None
+    if motor is None:
+        raise TapoError("Esta cámara no se puede mover.")
+    return dev, motor
+
+
+def _comprobar(respuesta) -> None:
+    """Una respuesta cruda con `error_code` distinto de 0 (en cualquier nivel) es un fallo de la cámara."""
+    if not isinstance(respuesta, dict):
+        return
+    codigo = respuesta.get("error_code")
+    if codigo not in (None, 0, "0"):
+        raise TapoError(f"La cámara ha rechazado la orden (código {codigo}).")
+    for v in respuesta.values():
+        _comprobar(v)
+
+
+async def _orden(ip: str, llamada):
+    """Orden al motor con tiempo límite; si la cámara no contesta se olvida la conexión (como en `camaras`)."""
+    try:
+        respuesta = await asyncio.wait_for(llamada, TIMEOUT)
+    except TapoError:
+        raise
+    except Exception as e:  # noqa: BLE001
+        _conexiones.pop(ip, None)
+        raise TapoError("La cámara no ha respondido.") from e
+    _comprobar(respuesta)
+    return respuesta
+
+
+def _parsear_posiciones(datos) -> list:
+    """`get_presets()` devuelve listas paralelas (id, name, read_only…) dentro de getPresetConfig.preset.preset."""
+    p = datos if isinstance(datos, dict) else {}
+    for clave in ("getPresetConfig", "preset", "preset"):
+        if isinstance(p, dict) and clave in p:
+            p = p[clave]
+    if not isinstance(p, dict):
+        return []
+    ids, nombres, fijas = p.get("id") or [], p.get("name") or [], p.get("read_only") or []
+    salida = []
+    for i, ident in enumerate(ids):
+        nombre = str(nombres[i]).strip() if i < len(nombres) and nombres[i] is not None else ""
+        salida.append({"id": str(ident), "nombre": nombre or f"Posición {ident}",
+                       "fija": i < len(fijas) and str(fijas[i]) == "1"})
+    return salida
+
+
+async def posiciones(ip: str) -> list:
+    """Posiciones guardadas en la cámara: [{id, nombre, fija}]. `fija`: la trae de fábrica y no se puede borrar."""
+    _, motor = await _motor(ip)
+    return _parsear_posiciones(await _orden(ip, motor.get_presets()))
+
+
+async def ir_a_posicion(ip: str, ident: str) -> None:
+    _, motor = await _motor(ip)
+    if not any(p["id"] == str(ident) for p in _parsear_posiciones(await _orden(ip, motor.get_presets()))):
+        raise TapoError("Posición no encontrada.")
+    try:
+        await _orden(ip, motor.goto_preset(str(ident)))
+    except TapoError:
+        if await _tapada(ip):
+            raise TapoError(TAPADA) from None
+        raise
+
+
+async def guardar_posicion(ip: str, nombre: str) -> list:
+    """Guarda la posición actual de la cámara con ese nombre y devuelve la lista nueva."""
+    nombre = (nombre or "").strip()
+    if not 1 <= len(nombre) <= 30:
+        raise TapoError("El nombre debe tener entre 1 y 30 caracteres.")
+    _, motor = await _motor(ip)
+    actuales = _parsear_posiciones(await _orden(ip, motor.get_presets()))
+    if len(actuales) >= MAX_POSICIONES:
+        raise TapoError(f"Ya hay {MAX_POSICIONES} posiciones guardadas; borra alguna antes.")
+    if any(p["nombre"].casefold() == nombre.casefold() for p in actuales):
+        raise TapoError("Ya existe una posición con ese nombre.")
+    await _orden(ip, motor.save_preset(nombre))
+    return _parsear_posiciones(await _orden(ip, motor.get_presets()))
+
+
+async def borrar_posicion(ip: str, ident: str) -> list:
+    """Borra una posición (no las fijas de fábrica) y devuelve la lista nueva. python-kasa no lo trae: orden cruda."""
+    dev, motor = await _motor(ip)
+    actuales = _parsear_posiciones(await _orden(ip, motor.get_presets()))
+    posicion = next((p for p in actuales if p["id"] == str(ident)), None)
+    if posicion is None:
+        raise TapoError("Posición no encontrada.")
+    if posicion["fija"]:
+        raise TapoError("Esa posición es fija y no se puede borrar.")
+    await _orden(ip, dev._raw_query({"deletePreset": {"preset": {"remove_preset": {"id": [str(ident)]}}}}))
+    return _parsear_posiciones(await _orden(ip, motor.get_presets()))
 
 
 async def cerrar() -> None:

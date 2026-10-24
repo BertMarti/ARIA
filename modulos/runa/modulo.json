@@ -1,0 +1,13 @@
+{
+  "_ayuda": "Ver modulos/runa/README.md. RUNA corre en su propio contenedor (compose.ejemplo.yml) y se sirve por HTTPS en el puerto 8485.",
+  "id": "runa",
+  "nombre": "RUNA",
+  "descripcion": "Secretos cifrados de extremo a extremo que se autodestruyen al leerse: comparte contraseñas y claves con un enlace de un solo uso.",
+  "version": "1.0.0",
+  "icono": "candado",
+  "url": "https://{host}:8485/",
+  "salud": {"tipo": "http", "host": "runa", "puerto": 8080, "ruta": "/api/health"},
+  "env": ["RUNA_URL"],
+  "env_opcional": ["RUNA_URL_PUBLICA"],
+  "roles": ["admin", "usuario"]
+}

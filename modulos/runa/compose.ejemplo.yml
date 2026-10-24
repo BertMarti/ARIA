@@ -1,0 +1,49 @@
+# RUNA para ARIA. ARIA nunca lanza contenedores: copia este bloque a un docker-compose.override.yml junto al
+# docker-compose.yml de ARIA (o añádelo al que ya tengas) y ejecuta:
+#
+#   docker compose up -d runa runa-tls
+#
+# - runa: la aplicación, sin puertos publicados; ARIA le habla por la red de Compose (RUNA_URL=http://runa:8080).
+# - runa-tls: un Caddy pequeño que la sirve por HTTPS en https://<tu-ARIA>:8485 (el mosaico de Inicio).
+services:
+  runa:
+    image: ghcr.io/bertmarti/runa:0.1.0
+    container_name: aria-runa
+    restart: unless-stopped
+    environment:
+      MAX_STORAGE_MB: "256"
+      # Las peticiones llegan por runa-tls: así el límite por IP ve la IP real del cliente.
+      TRUST_PROXY: "172.16.0.0/12"
+    volumes:
+      - runa-datos:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 128m
+
+  runa-tls:
+    image: caddy:2-alpine
+    container_name: aria-runa-tls
+    restart: unless-stopped
+    depends_on: [runa]
+    ports:
+      - "8485:8485"
+    environment:
+      ARIA_LAN_IP: ${ARIA_LAN_IP:-127.0.0.1}
+    volumes:
+      - ./modulos/runa/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - runa-caddy:/data
+    cap_drop: [ALL]
+    # El binario de Caddy lleva esta capacidad grabada: sin ella el kernel se niega a ejecutarlo.
+    cap_add: [NET_BIND_SERVICE]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 64m
+
+volumes:
+  runa-datos:
+  runa-caddy:

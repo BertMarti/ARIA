@@ -1,0 +1,20 @@
+# HTTPS para RUNA en el puerto 8485, con la CA interna de Caddy, igual que ARIA (certificado autofirmado: es
+# lo esperado). El navegador exige HTTPS para el cifrado (Web Crypto), así que RUNA no se sirve por HTTP.
+# Los certificados se emiten bajo demanda solo para los nombres que ARIA autoriza (ARIA_HOSTS).
+{
+	default_sni {$ARIA_LAN_IP}
+	skip_install_trust
+	admin off
+	on_demand_tls {
+		ask http://app:8000/internal/tls-ask
+	}
+}
+
+https://:8485 {
+	tls internal {
+		on_demand
+	}
+	encode zstd gzip
+	# RUNA pone sus propias cabeceras de seguridad (CSP estricta, COOP/COEP, no-referrer...).
+	reverse_proxy runa:8080
+}

@@ -12,7 +12,7 @@ RUNA ve nunca el contenido.
 
 | | |
 |---|---|
-| 🧩 **Mosaico en Inicio** | Abre RUNA con su punto de salud: en casa, el RUNA de la LAN (`https://<IP-de-ARIA>:8485`, donde se crean secretos); por el dominio, el público. |
+| 🧩 **Mosaico en Inicio → «Crear secreto» dentro de ARIA** | Una página de RUNA servida por ARIA, con tu sesión, desde cualquier sitio (casa, fuera, el dominio). Cifra **en tu navegador** y ARIA reenvía a RUNA **solo el cifrado** por la red interna: ni ARIA ni RUNA ven el texto ni la llave. Quien recibe el enlace lo abre en el RUNA público. |
 | 💬 **«Comparte la clave del wifi de invitados por RUNA, que caduque en 1 hora»** | Herramienta `runa_compartir`: devuelve el enlace para que lo envíes. Pensada para secretos **poco sensibles** (ver «Privacidad»). |
 | 🎲 **«Genérame una contraseña nueva para el router y compártela»** | Herramienta `runa_generar`: crea una contraseña robusta **aquí** y te da dos **enlaces de ARIA de un solo uso**: uno para verla tú y otro para obtener el enlace que envías. Ni la contraseña ni los enlaces de RUNA pasan por el modelo ni quedan en el historial. |
 | 🔔 **Aviso si RUNA se cae** | Chequeo cada 5 minutos, solo para administradores. |
@@ -54,7 +54,7 @@ Las dos herramientas valen para administradores y usuarios. No están en las rut
 |---|---|---|
 | **Desde fuera, por `runa.<dominio>`** (túnel) | ✅ cualquiera con el enlace | ❌ la web lo explica (403) |
 | **En casa, por `https://<IP-de-ARIA>:8485`** | ✅ | ✅ |
-| **Con ARIA** (`runa_compartir`, `runa_generar`) | — | ✅ estés donde estés |
+| **Con ARIA** (mosaico «Crear secreto», `runa_compartir`, `runa_generar`) | — | ✅ estés donde estés |
 
 - **Crear solo desde casa o desde ARIA.** RUNA corre con `CREATE_FROM` (redes privadas). Así nadie de Internet
   puede usar tu dominio para alojar secretos o archivos.
@@ -104,6 +104,26 @@ en un navegador donde tengas la sesión de ARIA iniciada.
 - **Longitud** (`runa_generar`): de 12 a 64 caracteres (20 por defecto), sin caracteres que se confunden
   (0/O, 1/l/I).
 
+## Cómo funciona «Crear secreto» dentro de ARIA
+
+```text
+navegador (sesión de ARIA)                     ARIA (aria-app)                       RUNA (aria-runa)
+  web/runa-cripto.mjs: K aleatoria,
+  AES-256-GCM, HKDF, PBKDF2  ──── cifrado + 2 SHA-256 ───▶  POST /api/modulos/runa/secretos
+                                                    valida forma y tamaño  ──── red interna ───▶  POST /api/secrets
+  enlace = base + /s/<id> + #<K>  ◀────── {id, base} ──────  (nunca ve K)                          (CREATE_FROM: Docker)
+```
+
+- La página (`/api/modulos/runa/crear`) y sus archivos se sirven con sesión y una CSP propia más estricta que la de
+  ARIA (`default-src 'none'`, solo scripts y estilos propios, sin marcos). Solo existen tres archivos (`crear.js`,
+  `runa-cripto.mjs`, `crear.css`): ninguna ruta de la petición llega al disco.
+- `POST /api/modulos/runa/secretos` acepta exactamente el cuerpo de RUNA (cifrado base64url de como mucho 1 MiB,
+  dos SHA-256 en hex, caducidad y lecturas válidas) y lo reenvía tal cual. Pasa la comprobación CSRF de ARIA.
+- `web/runa-cripto.mjs` produce **exactamente los mismos bytes** que `protocolo.py` con la misma llave e IV
+  (`app/tests/runa_cripto.test.js`), y `protocolo.py` es compatible con la web de RUNA.
+- Si entras en ARIA por la IP de casa, `/api/modulos/runa/abrir` sigue llevando al RUNA completo del 8485
+  (con adjuntos).
+
 ## Pruebas
 
 `app/tests/test_modulo_runa.py` (sin red; RUNA falso con `httpx.MockTransport`) comprueba:
@@ -112,4 +132,9 @@ en un navegador donde tengas la sesión de ARIA iniciada.
 - el relleno a bloques y la detección de alteraciones;
 - las dos herramientas, extremo a extremo contra el RUNA falso, que valida lo que recibe como el real;
 - que la contraseña generada no aparece en la respuesta;
-- las intenciones del modelo local y el chequeo.
+- las intenciones del modelo local y el chequeo;
+- la página «Crear secreto» (CSP, lista cerrada de archivos) y el reenvío del cifrado (cuerpos no válidos → 400,
+  errores de RUNA).
+
+`node app/tests/runa_cripto.test.js` comprueba el cifrado del navegador contra vectores de `protocolo.py` (bytes
+idénticos) y que la interfaz no usa `innerHTML` ni `eval`.

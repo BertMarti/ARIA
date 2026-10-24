@@ -11,6 +11,10 @@ RUNA nunca ve el texto ni la llave, que viaja en el fragmento «#» del enlace.
   solo uso: `GET /api/modulos/runa/recoger/<ticket>` exige sesión en ARIA y entrega el enlace al navegador. Un
   proveedor de IA en la nube que vea el ticket no puede usarlo, y en el historial solo queda un ticket gastado.
 - Chequeo «caido»: avisa al administrador si RUNA deja de responder.
+- Página «Crear secreto» dentro de ARIA (`/api/modulos/runa/crear`, el mosaico de Inicio): cifra en el navegador
+  (`web/runa-cripto.mjs`) y sube solo el cifrado a `POST /api/modulos/runa/secretos`, que ARIA reenvía a RUNA por la red
+  interna. Así se crean secretos desde cualquier sitio con la sesión de ARIA, aunque RUNA solo permita crear desde casa;
+  la llave nunca llega a ARIA ni a RUNA.
 
 Configuración (.env): `RUNA_URL` (dirección interna, p. ej. http://runa:8080) y `RUNA_URL_PUBLICA` (base de los
 enlaces que se comparten, con HTTPS; por defecto `RUNA_URL`). Los tickets usan `ARIA_URL_PUBLICA` o, si no hay,
@@ -19,11 +23,12 @@ enlaces que se comparten, con HTTPS; por defecto `RUNA_URL`). Los tickets usan `
 import re
 import secrets
 import time
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
 from fastapi import Request
-from fastapi.responses import PlainTextResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 
 from . import protocolo
 
@@ -33,6 +38,17 @@ _TICKET = re.compile(r"^[A-Za-z0-9_-]{43}$")
 TICKET_VIDA_S = 30 * 60
 MAX_TICKETS = 200
 _SIN_CACHE = {"Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff"}
+WEB = Path(__file__).resolve().parent / "web"
+# Lista cerrada de archivos de la página: ninguna ruta de usuario llega al disco.
+_ARCHIVOS = {"crear.js": "text/javascript; charset=utf-8", "runa-cripto.mjs": "text/javascript; charset=utf-8",
+             "crear.css": "text/css; charset=utf-8"}
+# Más estricta que la de ARIA: solo lo propio, sin marcos, sin <base> y sin enviar formularios fuera.
+_CSP_PAGINA = ("default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; "
+               "base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
+# Texto ≤ 100 000 caracteres → como mucho el bloque de 1 MiB + IV + etiqueta.
+MAX_CIFRADO_B64 = -(-((1024 * 1024 + 28) * 4) // 3)
+_B64URL = re.compile(r"^[A-Za-z0-9_-]+$")
+_HEX64 = re.compile(r"^[0-9a-f]{64}$")
 # ticket → {"enlace", "modo": "ver"|"compartir", "detalle", "caduca"}. Solo en memoria: al reiniciar ARIA se pierden.
 _tickets: dict[str, dict] = {}
 # Caducidades que acepta RUNA, en segundos, con su nombre.
@@ -120,6 +136,11 @@ def registrar(aria):
     if urlsplit(publica).scheme != "https" and urlsplit(publica).hostname not in ("localhost", "127.0.0.1"):
         aria.log.warning("RUNA_URL_PUBLICA no usa HTTPS: los navegadores no podrán descifrar los enlaces")
 
+    async def subir(cuerpo: dict) -> httpx.Response:
+        """Envía a RUNA un secreto ya cifrado. Lanza httpx.HTTPError si RUNA no responde."""
+        async with httpx.AsyncClient(timeout=TIEMPO_MAX_S, follow_redirects=False) as cli:
+            return await cli.post(f"{interna}/api/secrets", json=cuerpo)
+
     async def crear(texto: str, ttl: int, vistas: int) -> str:
         """Cifra aquí, sube solo el cifrado y devuelve el enlace completo."""
         try:
@@ -129,8 +150,7 @@ def registrar(aria):
         cuerpo = {"ciphertext": sellado["ciphertext"], "verifier": sellado["verifier"],
                   "linkVerifier": sellado["linkVerifier"], "ttl": ttl, "views": vistas}
         try:
-            async with httpx.AsyncClient(timeout=TIEMPO_MAX_S, follow_redirects=False) as cli:
-                r = await cli.post(f"{interna}/api/secrets", json=cuerpo)
+            r = await subir(cuerpo)
         except httpx.HTTPError:
             raise aria.Error("RUNA no responde. ¿Está en marcha su contenedor?") from None
         if r.status_code == 429:
@@ -205,7 +225,52 @@ def registrar(aria):
                 f"Para ver tú la contraseña: {recoger}/{ver}\n"
                 f"Para obtener el enlace que envías ({resumen(nombre, vistas)}): {recoger}/{compartir}")
 
-    r = aria.router(usuario=[("GET", "/recoger/{ticket}"), ("GET", "/abrir")])
+    r = aria.router(usuario=[("GET", "/recoger/{ticket}"), ("GET", "/abrir"), ("GET", "/crear"),
+                             ("GET", "/web/{archivo}"), ("POST", "/secretos")])
+    pagina = (WEB / "crear.html").read_bytes()
+    archivos = {nombre: (WEB / nombre).read_bytes() for nombre in _ARCHIVOS}
+
+    @r.get("/crear")
+    async def pagina_crear():
+        """RUNA dentro de ARIA: la página que cifra en el navegador (mosaico de Inicio)."""
+        return HTMLResponse(pagina, headers={**_SIN_CACHE, "Content-Security-Policy": _CSP_PAGINA,
+                                             "X-Robots-Tag": "noindex, nofollow"})
+
+    @r.get("/web/{archivo}")
+    async def archivo_web(archivo: str):
+        if archivo not in archivos:
+            return PlainTextResponse("No existe.\n", status_code=404, headers=_SIN_CACHE)
+        return Response(archivos[archivo], media_type=_ARCHIVOS[archivo],
+                        headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"})
+
+    @r.post("/secretos")
+    async def secretos(request: Request):
+        """Recibe un secreto YA CIFRADO en el navegador y lo reenvía a RUNA. La llave nunca llega aquí."""
+        try:
+            b = await request.json()
+        except ValueError:
+            b = None
+        valido = (isinstance(b, dict) and set(b) == {"ciphertext", "verifier", "linkVerifier", "ttl", "views"}
+                  and isinstance(b["ciphertext"], str) and 16 <= len(b["ciphertext"]) <= MAX_CIFRADO_B64
+                  and _B64URL.match(b["ciphertext"]) is not None
+                  and all(isinstance(b[k], str) and _HEX64.match(b[k]) for k in ("verifier", "linkVerifier"))
+                  and type(b["ttl"]) is int and b["ttl"] in [c[0] for c in CADUCIDADES]
+                  and type(b["views"]) is int and 1 <= b["views"] <= 10)
+        if not valido:
+            return JSONResponse({"error": "invalid_request"}, status_code=400, headers=_SIN_CACHE)
+        try:
+            res = await subir(b)
+        except httpx.HTTPError:
+            return JSONResponse({"error": "runa_unavailable"}, status_code=502, headers=_SIN_CACHE)
+        if res.status_code != 201:
+            codigo = res.status_code if res.status_code in (400, 429, 507) else 502
+            return JSONResponse({"error": "runa_rejected"}, status_code=codigo, headers=_SIN_CACHE)
+        datos = res.json() if res.headers.get("content-type", "").startswith("application/json") else {}
+        sid = datos.get("id", "") if isinstance(datos, dict) else ""
+        if not isinstance(sid, str) or not _ID.match(sid):
+            return JSONResponse({"error": "runa_rejected"}, status_code=502, headers=_SIN_CACHE)
+        return JSONResponse({"id": sid, "expiresAt": datos.get("expiresAt"), "base": publica}, status_code=201,
+                            headers=_SIN_CACHE)
 
     @r.get("/abrir")
     async def abrir(request: Request):

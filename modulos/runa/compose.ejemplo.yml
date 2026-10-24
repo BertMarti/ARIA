@@ -7,7 +7,7 @@
 # - runa-tls: un Caddy pequeño que la sirve por HTTPS en https://<tu-ARIA>:8485 (el mosaico de Inicio).
 services:
   runa:
-    image: ghcr.io/bertmarti/runa:0.2.0
+    image: ghcr.io/bertmarti/runa:0.2.1
     container_name: aria-runa
     restart: unless-stopped
     environment:

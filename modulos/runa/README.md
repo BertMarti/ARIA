@@ -117,7 +117,8 @@ navegador (sesión de ARIA)                     ARIA (aria-app)                 
 - La página (`/api/modulos/runa/crear`) y sus archivos se sirven con sesión y una CSP propia más estricta que la de
   ARIA (`default-src 'none'`, solo scripts y estilos propios, sin marcos). Solo existen tres archivos (`crear.js`,
   `runa-cripto.mjs`, `crear.css`): ninguna ruta de la petición llega al disco.
-- `POST /api/modulos/runa/secretos` acepta exactamente el cuerpo de RUNA (cifrado base64url de como mucho 1 MiB,
+- `POST /api/modulos/runa/secretos` tiene un límite de **10 secretos por minuto y por persona** (todo llega a RUNA
+  desde la IP de ARIA, así que su límite por IP es común a todos) y acepta exactamente el cuerpo de RUNA (cifrado base64url de como mucho 1 MiB,
   dos SHA-256 en hex, caducidad y lecturas válidas) y lo reenvía tal cual. Pasa la comprobación CSRF de ARIA.
 - `web/runa-cripto.mjs` produce **exactamente los mismos bytes** que `protocolo.py` con la misma llave e IV
   (`app/tests/runa_cripto.test.js`), y `protocolo.py` es compatible con la web de RUNA.

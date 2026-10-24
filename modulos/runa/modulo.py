@@ -49,6 +49,23 @@ _CSP_PAGINA = ("default-src 'none'; script-src 'self'; style-src 'self'; connect
 MAX_CIFRADO_B64 = -(-((1024 * 1024 + 28) * 4) // 3)
 _B64URL = re.compile(r"^[A-Za-z0-9_-]+$")
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
+# Todo llega a RUNA desde la IP de aria-app, así que su límite por IP es común a todos: este, por persona,
+# evita que una sola cuenta lo agote para el resto.
+LIMITE_POR_MINUTO = 10
+_recientes: dict[str, list[float]] = {}
+
+
+def permitido(clave: str, ahora: float | None = None) -> bool:
+    """Ventana deslizante de 60 s por usuario. Solo en memoria."""
+    ahora = time.time() if ahora is None else ahora
+    for k in [k for k, v in _recientes.items() if not v or v[-1] <= ahora - 60]:
+        del _recientes[k]                                  # sin crecer sin límite
+    marcas = [t for t in _recientes.get(clave, []) if t > ahora - 60]
+    if len(marcas) >= LIMITE_POR_MINUTO:
+        _recientes[clave] = marcas
+        return False
+    _recientes[clave] = marcas + [ahora]
+    return True
 # ticket → {"enlace", "modo": "ver"|"compartir", "detalle", "caduca"}. Solo en memoria: al reiniciar ARIA se pierden.
 _tickets: dict[str, dict] = {}
 # Caducidades que acepta RUNA, en segundos, con su nombre.
@@ -246,6 +263,10 @@ def registrar(aria):
     @r.post("/secretos")
     async def secretos(request: Request):
         """Recibe un secreto YA CIFRADO en el navegador y lo reenvía a RUNA. La llave nunca llega aquí."""
+        usuario = getattr(request.state, "usuario", None) or {}
+        if not permitido(str(usuario.get("id", "sesion"))):
+            return JSONResponse({"error": "rate_limited"}, status_code=429,
+                                headers={**_SIN_CACHE, "Retry-After": "60"})
         try:
             b = await request.json()
         except ValueError:

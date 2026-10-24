@@ -269,7 +269,7 @@ def test_migracion_conserva_el_hash_y_la_version(tmp_path, monkeypatch):
 
 # --- Herramientas del chat ---
 LECTURA = {"fecha_hora", "resumen_diario", "precio_luz", "estado_servicios", "estado_bloqueador", "dispositivos_vpn", "estado_sistema", "buscar_en_netflix",
-           "buscar_en_internet", "noticias", "tiempo",
+           "buscar_en_internet", "noticias", "tiempo", "aire_y_polen",
            "recordar", "olvidar",  # las de memoria las tiene todo rol, sobre sus propios datos
            # encender y apagar las luces de casa
            "recordatorio", "mis_recordatorios", "borrar_recordatorio",  # y los recordatorios (los suyos)

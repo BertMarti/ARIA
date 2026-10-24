@@ -165,8 +165,10 @@ def test_estados_segun_configuracion(cargar):
     assert {h["nombre"] for h in m.herramientas} == {"runa_compartir", "runa_generar"} and m.chequeos == ["caido"]
     assert {"runa_compartir", "runa_generar"} <= tools.permitidas("usuario")
     assert "runa_compartir" not in tools.RUTINAS     # crea cosas: nunca en rutinas
-    assert set(m.rutas_usuario) == {("GET", "/api/modulos/runa/recoger/{ticket}"),
-                                    ("GET", "/api/modulos/runa/abrir")}   # con sesión: lo impone permisos.py
+    # Todas con sesión (lo impone permisos.py); ninguna es pública.
+    assert set(m.rutas_usuario) == {("GET", "/api/modulos/runa/recoger/{ticket}"), ("GET", "/api/modulos/runa/abrir"),
+                                    ("GET", "/api/modulos/runa/crear"), ("GET", "/api/modulos/runa/web/{archivo}"),
+                                    ("POST", "/api/modulos/runa/secretos")}
 
 
 def test_compartir(cargar, runa, protocolo):
@@ -263,3 +265,59 @@ def test_mosaico_abre_el_runa_adecuado(cargar, host, destino):
            hosts="aria.local,aria.example.com")
     r = TestClient(cargar.app, base_url=f"https://{host}").get("/api/modulos/runa/abrir", follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"] == destino
+
+
+# --- Página «Crear secreto» dentro de ARIA ------------------------------------------------------------------------
+
+def test_pagina_crear_y_sus_archivos(cargar):
+    cargar()
+    cli = TestClient(cargar.app)
+    r = cli.get("/api/modulos/runa/crear")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/html")
+    csp = r.headers["content-security-policy"]
+    assert "default-src 'none'" in csp and "script-src 'self'" in csp and "unsafe" not in csp
+    assert r.headers["cache-control"] == "no-store" and r.headers["referrer-policy"] == "no-referrer"
+    assert '/api/modulos/runa/web/crear.js' in r.text
+    for nombre, tipo in (("crear.js", "text/javascript"), ("runa-cripto.mjs", "text/javascript"), ("crear.css", "text/css")):
+        a = cli.get(f"/api/modulos/runa/web/{nombre}")
+        assert a.status_code == 200 and a.headers["content-type"].startswith(tipo), nombre
+    for malo in ("modulo.py", "..%2Fmodulo.py", "crear.html", "otro.js"):     # lista cerrada: nada más llega al disco
+        assert cli.get(f"/api/modulos/runa/web/{malo}").status_code == 404, malo
+
+
+def test_secretos_reenvia_solo_el_cifrado(cargar, runa, protocolo):
+    m = cargar()
+    assert {("GET", "/api/modulos/runa/crear"), ("POST", "/api/modulos/runa/secretos")} <= set(m.rutas_usuario)
+    s = protocolo.sellar("cifrado en el navegador")
+    cuerpo = {"ciphertext": s["ciphertext"], "verifier": s["verifier"], "linkVerifier": s["linkVerifier"],
+              "ttl": 3600, "views": 2}
+    r = TestClient(cargar.app).post("/api/modulos/runa/secretos", json=cuerpo)
+    assert r.status_code == 201 and r.headers["cache-control"] == "no-store"
+    datos = r.json()
+    assert datos["base"] == PUBLICA and re.fullmatch(r"[A-Za-z0-9_-]{22}", datos["id"])
+    assert runa.secretos[datos["id"]] == cuerpo                    # tal cual: ARIA no añade ni ve la llave
+    # El navegador une id + fragmento y quien lo recibe lo abre
+    assert protocolo.abrir(runa.secretos[datos["id"]]["ciphertext"], s["fragmento"])["text"] == "cifrado en el navegador"
+
+
+@pytest.mark.parametrize("cambio", [
+    {"ttl": "3600"}, {"ttl": 1234}, {"views": 0}, {"views": 11}, {"views": True}, {"verifier": "A" * 64},
+    {"linkVerifier": "x"}, {"ciphertext": "con espacios no"}, {"ciphertext": "a" * 2_000_000}, {"extra": 1},
+])
+def test_secretos_rechaza_cuerpos_no_validos(cargar, runa, cambio):
+    cargar()
+    base = {"ciphertext": "A" * 1404, "verifier": "a" * 64, "linkVerifier": "b" * 64, "ttl": 3600, "views": 1}
+    r = TestClient(cargar.app).post("/api/modulos/runa/secretos", json={**base, **cambio})
+    assert r.status_code == 400 and not runa.secretos
+
+
+def test_secretos_errores_de_runa(cargar, runa, monkeypatch):
+    cargar()
+    cuerpo = {"ciphertext": "A" * 1404, "verifier": "a" * 64, "linkVerifier": "b" * 64, "ttl": 300, "views": 1}
+    cli = TestClient(cargar.app)
+    runa.codigo = 429
+    assert cli.post("/api/modulos/runa/secretos", json=cuerpo).status_code == 429
+    runa.codigo = 403                                              # p. ej. CREATE_FROM mal configurado
+    assert cli.post("/api/modulos/runa/secretos", json=cuerpo).status_code == 502
+    assert cli.post("/api/modulos/runa/secretos", content=b"no es json",
+                    headers={"content-type": "application/json"}).status_code == 400

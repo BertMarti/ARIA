@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>RUNA · Crear secreto</title>
+<link rel="icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/api/modulos/runa/web/crear.css">
+<script type="module" src="/api/modulos/runa/web/crear.js"></script>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"></div>
+<main class="pagina">
+  <header class="cabecera">
+    <a class="volver" href="/">← ARIA</a>
+    <p class="marca"><svg class="runa-r" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 1v14M2 1l6 4-6 4 6 6"/></svg> RUNA</p>
+  </header>
+
+  <section id="formulario" aria-labelledby="titulo">
+    <h1 id="titulo">Comparte un secreto que se borra al leerse</h1>
+    <p class="entradilla">Se cifra aquí, en tu navegador, antes de salir. ARIA y RUNA solo reciben ruido cifrado: la llave va dentro del enlace.</p>
+
+    <form id="crear" class="tarjeta" autocomplete="off" novalidate>
+      <div class="fila-etiqueta">
+        <label for="texto">Secreto</label>
+        <button type="button" id="generar" class="enlace-boton">Generar contraseña segura</button>
+      </div>
+      <textarea id="texto" rows="6" maxlength="100000" spellcheck="false" autocapitalize="off" autocomplete="off"
+                placeholder="Una contraseña, la clave del wifi, un código…" required></textarea>
+
+      <div class="opciones">
+        <label>Caduca en
+          <select id="ttl">
+            <option value="300">5 minutos</option>
+            <option value="3600">1 hora</option>
+            <option value="86400" selected>1 día</option>
+            <option value="604800">7 días</option>
+          </select>
+        </label>
+        <label>Lecturas
+          <select id="vistas">
+            <option>1</option><option>2</option><option>3</option><option>5</option><option>10</option>
+          </select>
+        </label>
+      </div>
+
+      <label for="pass">Contraseña adicional <span class="tenue">(opcional)</span></label>
+      <input id="pass" type="password" autocomplete="new-password" spellcheck="false">
+      <p class="pista">Quien abra el enlace también tendrá que escribirla. Envíala por otro canal.</p>
+
+      <button type="submit" id="enviar" class="boton-principal" disabled>Cifrar y crear enlace</button>
+      <p id="error" class="error" role="alert" hidden></p>
+    </form>
+  </section>
+
+  <section id="resultado" class="tarjeta" aria-labelledby="titulo-ok" hidden>
+    <h2 id="titulo-ok" tabindex="-1">Enlace listo</h2>
+    <p id="resumen" class="entradilla"></p>
+    <label for="enlace">Enlace al secreto</label>
+    <input id="enlace" class="enlace" readonly>
+    <div class="acciones">
+      <button type="button" id="copiar" class="boton-principal">Copiar enlace</button>
+      <button type="button" id="compartir" class="boton" hidden>Compartir…</button>
+    </div>
+    <p id="aviso-pass" class="aviso" hidden>Este secreto tiene contraseña: envíala por un canal distinto al del enlace.</p>
+    <p class="pista">Quien lo abra verá el secreto una vez y se borrará. Si te equivocas de persona, no lo envíes: caducará solo.</p>
+    <button type="button" id="otro" class="boton">Crear otro secreto</button>
+  </section>
+
+  <p class="estado" id="estado" role="status" aria-live="polite"></p>
+  <footer class="pie">RUNA · cifrado de extremo a extremo · <a href="https://github.com/BertMarti/runa" rel="noopener noreferrer" target="_blank">código abierto</a></footer>
+</main>
+</body>
+</html>

@@ -372,7 +372,9 @@ pequeño que la sirve por HTTPS en el 8485. El módulo añade:
 
 - un mosaico con salud;
 - las herramientas `runa_compartir` y `runa_generar`, que cifran **dentro de ARIA** con el protocolo de RUNA
-  (`protocolo.py`, compatible con su web; las pruebas usan vectores generados por ella);
+  (`protocolo.py`, compatible con su web; las pruebas usan vectores generados por ella). `runa_generar` es el
+  ejemplo de cómo **no pasar un secreto por el modelo**: devuelve tickets de un solo uso hacia una ruta del módulo
+  que exige sesión (`aria.router(usuario=...)`), y es esa ruta la que entrega el enlace al navegador;
 - un chequeo que avisa si RUNA se cae.
 
 ## Aplicaciones integradas

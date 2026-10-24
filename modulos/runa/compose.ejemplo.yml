@@ -31,7 +31,8 @@ services:
     restart: unless-stopped
     depends_on: [runa]
     ports:
-      - "8485:8485"
+      # Solo en la IP de la LAN, como el resto de servicios de ARIA (nunca en todas las interfaces).
+      - "${ARIA_LAN_IP:-127.0.0.1}:8485:8485"
     environment:
       ARIA_LAN_IP: ${ARIA_LAN_IP:-127.0.0.1}
     volumes:

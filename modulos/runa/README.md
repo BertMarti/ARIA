@@ -13,8 +13,8 @@ RUNA ve nunca el contenido.
 | | |
 |---|---|
 | 🧩 **Mosaico en Inicio** | Abre RUNA (`https://<tu-ARIA>:8485`), con su punto de salud. |
-| 💬 **«Comparte la clave del wifi por RUNA, que caduque en 1 hora»** | Herramienta `runa_compartir`: devuelve el enlace para que lo envíes. |
-| 🎲 **«Genérame una contraseña nueva para el router y compártela»** | Herramienta `runa_generar`: crea una contraseña robusta **aquí** y te da dos enlaces, uno para ti y otro para compartir. La contraseña nunca pasa por el modelo ni queda en la conversación. |
+| 💬 **«Comparte la clave del wifi de invitados por RUNA, que caduque en 1 hora»** | Herramienta `runa_compartir`: devuelve el enlace para que lo envíes. Pensada para secretos **poco sensibles** (ver «Privacidad»). |
+| 🎲 **«Genérame una contraseña nueva para el router y compártela»** | Herramienta `runa_generar`: crea una contraseña robusta **aquí** y te da dos **enlaces de ARIA de un solo uso**: uno para verla tú y otro para obtener el enlace que envías. Ni la contraseña ni los enlaces de RUNA pasan por el modelo ni quedan en el historial. |
 | 🔔 **Aviso si RUNA se cae** | Chequeo cada 5 minutos, solo para administradores. |
 
 Las dos herramientas valen para administradores y usuarios. No están en las rutinas porque crean cosas.
@@ -43,11 +43,15 @@ Las dos herramientas valen para administradores y usuarios. No están en las rut
 
 3. `docker compose restart app` y comprueba en **Ajustes → Módulos** que RUNA aparece como «Activo».
 
-### Enlaces que funcionen fuera de casa
+### Quién puede abrir los enlaces
 
 Quien recibe el enlace tiene que llegar a RUNA **por HTTPS**, porque el cifrado del navegador solo funciona en
-páginas seguras. Dentro de casa sirve `https://<IP-de-ARIA>:8485`, aceptando una vez el certificado propio.
-Para compartir con alguien de fuera:
+páginas seguras. Con la configuración de arriba (`https://<IP-de-ARIA>:8485`):
+
+- los enlaces **solo se abren dentro de casa o con la VPN** (el puerto se publica solo en `ARIA_LAN_IP`);
+- el navegador muestra **un aviso de certificado** la primera vez (la CA interna de Caddy, como ARIA).
+
+Compartir con alguien de fuera es el caso de uso habitual. Para eso:
 
 - **Túnel de Cloudflare** (el de ARIA): añade un nombre público, p. ej. `secretos.tudominio`, que apunte a
   `http://runa:8080`, y pon `RUNA_URL_PUBLICA=https://secretos.tudominio`. **No** lo pongas detrás de Cloudflare
@@ -56,18 +60,34 @@ Para compartir con alguien de fuera:
 
 ## Privacidad: qué pasa por dónde
 
-| Dato | Servidor de RUNA | ARIA | Modelo del chat |
+| | Servidor de RUNA | Modelo del chat (y su proveedor si es de la nube) | Historial de ARIA (`aria.db`) |
 |---|---|---|---|
-| Texto de `runa_compartir` | ❌ solo cifrado | ✅ (lo escribiste en el chat) | ✅ |
-| Contraseña de `runa_generar` | ❌ solo cifrado | ✅ un instante, en memoria | ❌ nunca |
-| Enlace (con la llave tras `#`) | ❌ | ✅ | ✅ |
+| **`runa_compartir`**: el texto | ❌ solo cifrado | ⚠️ sí: lo escribiste en el chat | ⚠️ sí, en claro, y puede acabar en el diario de la madrugada |
+| **`runa_compartir`**: el enlace (llave tras `#`) | ❌ | ⚠️ sí | ⚠️ sí, hasta que se lee o caduca |
+| **`runa_generar`**: la contraseña | ❌ solo cifrado | ✅ nunca | ✅ nunca |
+| **`runa_generar`**: los enlaces de RUNA | ❌ | ✅ nunca: solo ve tickets de ARIA | ✅ solo tickets, de un solo uso y 30 min |
 
-- Con el **cerebro local (Ollama)** nada sale de casa.
-- Con un **cerebro en la nube**, el texto de `runa_compartir` y los enlaces pasan por ese proveedor.
-  - Para secretos críticos, usa `runa_generar` o la web de RUNA directamente.
-  - Si alguien abriera un enlace antes que tu destinatario, este vería «Este secreto ya no existe» y lo sabrías.
-- Los mensajes del chat se guardan en el historial de ARIA, como cualquier conversación. Los enlaces dejan de
-  servir en cuanto se leen o caducan.
+**`runa_compartir` es para secretos poco sensibles**, como la clave del wifi de invitados. Lo que escribes en el
+chat pasa por el modelo y queda en el historial como cualquier mensaje. Con un cerebro en la nube, también pasa
+por ese proveedor. Para un secreto de verdad:
+
+- **contraseñas nuevas**: `runa_generar`;
+- **un texto que ya tienes**: la web de RUNA directamente (mosaico de Inicio);
+- y si lo has escrito en el chat, borra después la conversación.
+
+**Cómo protege `runa_generar`.** La herramienta genera la contraseña, la cifra y la sube a RUNA sin devolvérsela
+al modelo. Al chat solo llegan dos direcciones `https://<ARIA>/api/modulos/runa/recoger/<ticket>`:
+
+- exigen **sesión iniciada en ARIA** (un proveedor de IA que las vea no puede usarlas);
+- sirven **una sola vez** durante **30 minutos**;
+- una redirige a tu navegador al enlace de RUNA para que veas la contraseña;
+- la otra te muestra, en texto, el enlace que envías.
+
+La llave viaja de ARIA a tu navegador por HTTPS, nunca al modelo. Los tickets viven en memoria: si ARIA se
+reinicia, se pierden y basta con pedir otra contraseña.
+
+Los tickets usan `ARIA_URL_PUBLICA` (el túnel) si existe y, si no, `https://ARIA_LAN_IP`. Desde Telegram, ábrelos
+en un navegador donde tengas la sesión de ARIA iniciada.
 
 ## Opciones
 

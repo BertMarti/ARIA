@@ -4,26 +4,36 @@ RUNA (https://github.com/BertMarti/runa) corre en su propio contenedor (ver READ
 ARIA cifra aquí mismo con el protocolo de RUNA (`protocolo.py`) y solo sube ruido cifrado: el servidor de
 RUNA nunca ve el texto ni la llave, que viaja en el fragmento «#» del enlace.
 
-- `runa_compartir(texto, caducidad, lecturas)`: «comparte la clave del wifi por RUNA». El texto pasa por el
-  chat (y por el modelo); con un cerebro en la nube, mejor `runa_generar` o la web de RUNA.
-- `runa_generar(longitud, caducidad, lecturas)`: genera una contraseña aquí y crea dos enlaces (uno para ti y
-  otro para compartir). La contraseña nunca llega al modelo ni a la conversación.
+- `runa_compartir(texto, caducidad, lecturas)`: «comparte la clave del wifi por RUNA». El texto lo escribe la
+  persona en el chat, así que pasa por el modelo y queda en el historial: es para secretos poco sensibles.
+- `runa_generar(longitud, caducidad, lecturas)`: genera una contraseña aquí y crea dos secretos en RUNA. Al modelo
+  no le llega ni la contraseña ni los enlaces de RUNA (que llevan la llave), sino dos **tickets de ARIA** de un
+  solo uso: `GET /api/modulos/runa/recoger/<ticket>` exige sesión en ARIA y entrega el enlace al navegador. Un
+  proveedor de IA en la nube que vea el ticket no puede usarlo, y en el historial solo queda un ticket gastado.
 - Chequeo «caido»: avisa al administrador si RUNA deja de responder.
 
 Configuración (.env): `RUNA_URL` (dirección interna, p. ej. http://runa:8080) y `RUNA_URL_PUBLICA` (base de los
-enlaces que se comparten, con HTTPS; por defecto `RUNA_URL`).
+enlaces que se comparten, con HTTPS; por defecto `RUNA_URL`). Los tickets usan `ARIA_URL_PUBLICA` o, si no hay,
+`https://ARIA_LAN_IP`.
 """
 import re
 import secrets
-import string
+import time
 from urllib.parse import urlsplit
 
 import httpx
+from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from . import protocolo
 
 TIEMPO_MAX_S = 8
 _ID = re.compile(r"^[A-Za-z0-9_-]{22}$")
+_TICKET = re.compile(r"^[A-Za-z0-9_-]{43}$")
+TICKET_VIDA_S = 30 * 60
+MAX_TICKETS = 200
+_SIN_CACHE = {"Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff"}
+# ticket → {"enlace", "modo": "ver"|"compartir", "detalle", "caduca"}. Solo en memoria: al reiniciar ARIA se pierden.
+_tickets: dict[str, dict] = {}
 # Caducidades que acepta RUNA, en segundos, con su nombre.
 CADUCIDADES = [(300, "5 minutos"), (3600, "1 hora"), (86_400, "1 día"), (604_800, "7 días")]
 _UNIDADES = [(r"seg", 1), (r"min", 60), (r"h(ora)?s?\b", 3600), (r"d[ií]a", 86_400), (r"semana", 604_800),
@@ -78,9 +88,27 @@ def _base(url: str | None, nombre: str) -> str:
     return url
 
 
+def _limpiar_tickets(ahora: float) -> None:
+    for t in [t for t, v in _tickets.items() if v["caduca"] <= ahora]:
+        del _tickets[t]
+    while len(_tickets) >= MAX_TICKETS:                       # los más antiguos primero
+        del _tickets[next(iter(_tickets))]
+
+
+def emitir_ticket(enlace: str, modo: str, detalle: str) -> str:
+    ahora = time.time()
+    _limpiar_tickets(ahora)
+    ticket = secrets.token_urlsafe(32)
+    _tickets[ticket] = {"enlace": enlace, "modo": modo, "detalle": detalle, "caduca": ahora + TICKET_VIDA_S}
+    return ticket
+
+
 def registrar(aria):
     interna = _base(aria.config("RUNA_URL"), "RUNA_URL")
     publica = _base(aria.config("RUNA_URL_PUBLICA") or interna, "RUNA_URL_PUBLICA")
+    lan = aria.config("ARIA_LAN_IP")
+    base_aria = _base(aria.config("ARIA_URL_PUBLICA") or (f"https://{lan}" if lan else "https://localhost"),
+                      "ARIA_URL_PUBLICA")
     if urlsplit(publica).scheme != "https" and urlsplit(publica).hostname not in ("localhost", "127.0.0.1"):
         aria.log.warning("RUNA_URL_PUBLICA no usa HTTPS: los navegadores no podrán descifrar los enlaces")
 
@@ -113,9 +141,10 @@ def registrar(aria):
 
     @aria.herramienta(
         "runa_compartir",
-        "Crea con RUNA un enlace de un solo uso, cifrado de extremo a extremo, para compartir un texto secreto "
-        "(contraseña, clave del wifi, código, nota privada). El enlace se autodestruye al leerse o al caducar. "
-        "Devuelve el enlace para que el usuario lo envíe. No repitas el texto secreto en tu respuesta.",
+        "Crea con RUNA un enlace de un solo uso, cifrado de extremo a extremo, para compartir un texto poco "
+        "sensible que el usuario ya ha escrito (p. ej. la clave del wifi de invitados). El enlace se autodestruye "
+        "al leerse o al caducar. No repitas el texto secreto en tu respuesta. Si el usuario quiere una contraseña "
+        "nueva, usa runa_generar.",
         {"texto": ("string", "El secreto exacto que hay que compartir"),
          "caducidad": ("string", "Cuánto dura: 5 min, 1 hora, 1 día (por defecto) o 7 días"),
          "lecturas": ("integer", "Cuántas veces se puede abrir, de 1 (por defecto) a 10")},
@@ -134,13 +163,16 @@ def registrar(aria):
         enlace = await crear(texto, ttl, vistas)
         return (f"Enlace de RUNA listo ({resumen(nombre, vistas)}):\n{enlace}\n"
                 "Quien lo abra verá el secreto y después se borrará. El servidor de RUNA no puede leerlo: "
-                "la llave es la parte del enlace que va tras «#», así que hay que copiarlo entero.")
+                "la llave es la parte del enlace que va tras «#», así que hay que copiarlo entero.\n"
+                "Aviso: el texto que escribiste sigue en esta conversación. Para secretos importantes, borra la "
+                "conversación o usa la web de RUNA directamente.")
 
     @aria.herramienta(
         "runa_generar",
-        "Genera una contraseña segura nueva y la comparte con RUNA sin que aparezca en la conversación: crea un "
-        "enlace para el usuario y otro para la persona que la necesite. Úsala cuando pidan crear o generar una "
-        "contraseña o clave para compartirla.",
+        "Genera una contraseña segura nueva y la comparte con RUNA sin que la contraseña ni sus enlaces pasen por "
+        "la conversación: devuelve dos enlaces de ARIA de un solo uso (uno para verla y otro para obtener el "
+        "enlace que se comparte) que solo funcionan con la sesión del usuario. Úsala cuando pidan crear o generar "
+        "una contraseña o clave, para sí o para compartirla. Copia los enlaces de ARIA tal cual.",
         {"longitud": ("integer", "Número de caracteres, de 12 a 64 (por defecto 20)"),
          "caducidad": ("string", "Cuánto duran los enlaces: 5 min, 1 hora, 1 día (por defecto) o 7 días"),
          "lecturas": ("integer", "Cuántas veces se puede abrir el enlace para compartir, de 1 (por defecto) a 10")},
@@ -156,12 +188,31 @@ def registrar(aria):
         clave = generar_contrasena(n)
         ttl, nombre = leer_caducidad(caducidad)
         vistas = leer_lecturas(lecturas)
-        para_ti = await crear(clave, ttl, 1)
-        compartir = await crear(clave, ttl, vistas)
-        return (f"Contraseña nueva de {max(12, min(64, n))} caracteres creada; no aparece en esta conversación.\n"
-                f"Enlace para ti (1 lectura, caduca en {nombre}):\n{para_ti}\n"
-                f"Enlace para compartir ({resumen(nombre, vistas)}):\n{compartir}\n"
-                "Ambos llevan la misma contraseña y se autodestruyen al leerse.")
+        ver = emitir_ticket(await crear(clave, ttl, 1), "ver", f"1 lectura, caduca en {nombre}")
+        compartir = emitir_ticket(await crear(clave, ttl, vistas), "compartir", resumen(nombre, vistas))
+        recoger = f"{base_aria}{aria.prefijo}/recoger"
+        return (f"Contraseña nueva de {max(12, min(64, n))} caracteres creada. Ni la contraseña ni los enlaces de "
+                "RUNA aparecen aquí: estos dos enlaces de ARIA solo funcionan con tu sesión iniciada, una sola vez y "
+                "durante 30 minutos.\n"
+                f"Para ver tú la contraseña: {recoger}/{ver}\n"
+                f"Para obtener el enlace que envías ({resumen(nombre, vistas)}): {recoger}/{compartir}")
+
+    r = aria.router(usuario=[("GET", "/recoger/{ticket}")])
+
+    @r.get("/recoger/{ticket}")
+    async def recoger(ticket: str):
+        """Entrega al navegador (con sesión en ARIA) el enlace de RUNA de un ticket. Un solo uso."""
+        datos = _tickets.pop(ticket, None) if _TICKET.match(ticket) else None
+        if not datos or datos["caduca"] <= time.time():
+            return PlainTextResponse("Este enlace de ARIA ya se usó o caducó. Pide otra contraseña a ARIA.\n",
+                                     status_code=404, headers=_SIN_CACHE)
+        if datos["modo"] == "ver":
+            # El fragmento «#» con la llave va en Location: lo recibe solo este navegador.
+            return RedirectResponse(datos["enlace"], status_code=303, headers=_SIN_CACHE)
+        return PlainTextResponse(
+            "Enlace de RUNA para compartir. Cópialo entero (incluida la parte tras #) y envíalo:\n\n"
+            f"{datos['enlace']}\n\n{datos['detalle'].capitalize()}. Se autodestruye al leerse.\n"
+            "Esta página de ARIA ya no se puede volver a abrir.\n", headers=_SIN_CACHE)
 
     @aria.chequeo("caido", intervalo_min=5, severidad="aviso", confirmaciones=2,
                   texto_ok="RUNA vuelve a responder.")

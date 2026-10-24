@@ -11,6 +11,7 @@ from pathlib import Path
 import httpx
 import pytest
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from aria import avisos, modulos, tools
 
@@ -18,6 +19,7 @@ REPO_MODULOS = Path(__file__).resolve().parents[2] / "modulos"
 pytestmark = pytest.mark.skipif(not (REPO_MODULOS / "runa").is_dir(), reason="sin la carpeta modulos/ del repositorio")
 PUBLICA = "https://192.168.1.50:8485"
 ENLACE = re.compile(r"https://192\.168\.1\.50:8485/s/([A-Za-z0-9_-]{22})#(v1\.[A-Za-z0-9_-]{43}(?:\.p)?)")
+TICKET = re.compile(r"https://192\.168\.1\.50/api/modulos/runa/recoger/([A-Za-z0-9_-]{43})")
 
 # Secretos cifrados por la web de RUNA (valores inventados).
 VECTORES_WEB = json.loads(r"""[
@@ -96,12 +98,14 @@ def cargar(monkeypatch):
     cargados = []
 
     def hacer(url="http://runa:8080", publica=PUBLICA):
-        for clave, valor in (("RUNA_URL", url), ("RUNA_URL_PUBLICA", publica)):
+        monkeypatch.delenv("ARIA_URL_PUBLICA", raising=False)
+        for clave, valor in (("RUNA_URL", url), ("RUNA_URL_PUBLICA", publica), ("ARIA_LAN_IP", "192.168.1.50")):
             if valor is None:
                 monkeypatch.delenv(clave, raising=False)
             else:
                 monkeypatch.setenv(clave, valor)
-        res = modulos.cargar(FastAPI(), REPO_MODULOS, {"runa"})
+        hacer.app = FastAPI()
+        res = modulos.cargar(hacer.app, REPO_MODULOS, {"runa"})
         cargados.append(res)
         return res["runa"]
     yield hacer
@@ -161,6 +165,7 @@ def test_estados_segun_configuracion(cargar):
     assert {h["nombre"] for h in m.herramientas} == {"runa_compartir", "runa_generar"} and m.chequeos == ["caido"]
     assert {"runa_compartir", "runa_generar"} <= tools.permitidas("usuario")
     assert "runa_compartir" not in tools.RUTINAS     # crea cosas: nunca en rutinas
+    assert m.rutas_usuario == [("GET", "/api/modulos/runa/recoger/{ticket}")]   # con sesión: lo impone permisos.py
 
 
 def test_compartir(cargar, runa, protocolo):
@@ -169,6 +174,7 @@ def test_compartir(cargar, runa, protocolo):
                                    {"texto": "Wifi invitados: Aurora-2026", "caducidad": "1 hora", "lecturas": "3"},
                                    "usuario"))
     assert "Aurora-2026" not in salida and "caduca en 1 hora, 3 lecturas" in salida
+    assert "sigue en esta conversación" in salida                 # aviso honesto: el texto pasó por el chat
     [(guardado, texto)] = abrir_enlace(protocolo, runa, salida)
     assert texto == "Wifi invitados: Aurora-2026" and guardado["ttl"] == 3600 and guardado["views"] == 3
     assert "Aurora" not in json.dumps(guardado)                   # a RUNA solo llega ruido
@@ -184,13 +190,37 @@ def test_caducidad(cargar, runa, pedido, ttl):
     assert guardado["ttl"] == ttl and guardado["views"] == 10
 
 
-def test_generar_no_muestra_la_contrasena(cargar, runa, protocolo):
+def test_generar_no_pasa_contrasena_ni_llaves_por_el_modelo(cargar, runa, protocolo):
     cargar()
     salida = correr(tools.ejecutar("runa_generar", {"longitud": 24, "lecturas": 2}, "usuario"))
-    (para_ti, clave), (compartir, clave2) = abrir_enlace(protocolo, runa, salida)
+    # Al modelo (y al historial) solo llegan tickets de ARIA: ni la contraseña ni enlaces de RUNA con su llave.
+    assert "#v1." not in salida and ":8485" not in salida and not ENLACE.search(salida)
+    ver, compartir = TICKET.findall(salida)
+    cli = TestClient(cargar.app, base_url="https://192.168.1.50")
+
+    r = cli.get(f"/api/modulos/runa/recoger/{ver}", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["cache-control"] == "no-store"
+    [(guardado_ver, clave)] = abrir_enlace(protocolo, runa, r.headers["location"])
+    r = cli.get(f"/api/modulos/runa/recoger/{compartir}")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/plain")
+    [(guardado_compartir, clave2)] = abrir_enlace(protocolo, runa, r.text)
+
     assert clave == clave2 and len(clave) == 24 and clave not in salida
-    assert para_ti["views"] == 1 and compartir["views"] == 2
+    assert guardado_ver["views"] == 1 and guardado_compartir["views"] == 2
     assert not re.search(r"[0OlI1]", clave)                       # sin caracteres que se confunden
+    # Un solo uso, y un ticket inventado no sirve
+    for t in (ver, compartir, "x" * 43, "corto"):
+        assert cli.get(f"/api/modulos/runa/recoger/{t}", follow_redirects=False).status_code == 404
+
+
+def test_tickets_caducan(cargar, runa, monkeypatch):
+    cargar()
+    salida = correr(tools.ejecutar("runa_generar", {}, "admin"))
+    ver, _ = TICKET.findall(salida)
+    import time as reloj
+    ahora = reloj.time()
+    monkeypatch.setattr(reloj, "time", lambda: ahora + 31 * 60)
+    assert TestClient(cargar.app).get(f"/api/modulos/runa/recoger/{ver}", follow_redirects=False).status_code == 404
 
 
 def test_errores_de_runa(cargar, runa):

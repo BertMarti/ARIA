@@ -10,8 +10,17 @@ set -euo pipefail
 
 HOMELAB_DIR="${HOMELAB_DIR:-$HOME/homelab}"
 CLAVE="${COPIAS_CLAVE:-$HOMELAB_DIR/.clave-copias}"
-REPO="${COPIAS_REPO:-$(gh api user -q .login)/homelab-copias}"
 LOCAL="$HOMELAB_DIR/.copias-repo"
+# Llave propia (de despliegue) solo para el repositorio de copias: así la copia nocturna no depende de la sesión de
+# GitHub del llavero, que de madrugada puede estar bloqueado (gh: «Requires authentication»).
+LLAVE="${COPIAS_LLAVE:-$HOMELAB_DIR/.claves-copias/id_ed25519}"
+if [ -s "$LLAVE" ]; then
+  export GIT_SSH_COMMAND="ssh -i $LLAVE -o IdentitiesOnly=yes -o UserKnownHostsFile=$(dirname "$LLAVE")/known_hosts -o StrictHostKeyChecking=yes"
+fi
+# El repositorio sale de COPIAS_REPO, del clon que ya existe o, la primera vez, de la cuenta de gh.
+if [ -n "${COPIAS_REPO:-}" ]; then REPO="$COPIAS_REPO"
+elif [ -d "$LOCAL/.git" ]; then REPO="$(git -C "$LOCAL" remote get-url origin | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##')"
+else REPO="$(gh api user -q .login)/homelab-copias"; fi
 CONSERVAR="${COPIAS_CONSERVAR:-14}"
 FECHA="$(date +%Y%m%d-%H%M)"
 
@@ -35,9 +44,10 @@ tar -czf - -C "$TMP" homelab | gpg --batch --yes --quiet --pinentry-mode loopbac
   --passphrase-file "$CLAVE" --symmetric --cipher-algo AES256 -o "$TMP/$ARCH"
 
 if [ ! -d "$LOCAL/.git" ]; then
-  gh repo clone "$REPO" "$LOCAL" -- -q
+  if [ -s "$LLAVE" ]; then git clone -q "git@github.com:$REPO.git" "$LOCAL"; else gh repo clone "$REPO" "$LOCAL" -- -q; fi
 fi
 cd "$LOCAL"
+[ -s "$LLAVE" ] && git remote set-url origin "git@github.com:$REPO.git"
 git pull -q --ff-only 2>/dev/null || true
 cp "$TMP/$ARCH" .
 ls -1t homelab-*.tar.gz.gpg | tail -n +"$((CONSERVAR + 1))" | xargs -r git rm -q --

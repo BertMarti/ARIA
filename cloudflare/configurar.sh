@@ -29,20 +29,24 @@ echo "✔ Túnel homelab"
 
 # RUNA (módulo modulos/runa): solo si su contenedor existe.
 RUNA=0; docker ps -a --format '{{.Names}}' | grep -qx aria-runa && RUNA=1
+# Lazo (modulos/lazo, repositorio BertMarti/lazo): solo si su contenedor lazo-caddy existe.
+LAZO=0; docker ps -a --format '{{.Names}}' | grep -qx lazo-caddy && LAZO=1
 
 # 2. Qué publica cada nombre
-python3 - "$DOMINIO" "$LAN_IP" "$RUNA" > /tmp/cf-ingress.json <<'PY'
-import json,sys; d,ip,runa=sys.argv[1:4]
+python3 - "$DOMINIO" "$LAN_IP" "$RUNA" "$LAZO" > /tmp/cf-ingress.json <<'PY'
+import json,sys; d,ip,runa,lazo=sys.argv[1:5]
 reglas=[
  {"hostname":f"aria.{d}","service":"http://app:8000"},
  {"hostname":f"shield.{d}","service":f"http://{ip}:8080"},
  {"hostname":f"heimdall.{d}","service":f"https://{ip}:51843","originRequest":{"noTLSVerify":True,"httpHostHeader":ip}}]
 if runa=="1":
     reglas.append({"hostname":f"runa.{d}","service":"http://runa:8080"})
+if lazo=="1":
+    reglas.append({"hostname":f"lazo.{d}","service":"http://lazo-caddy:80"})
 print(json.dumps({"config":{"ingress":reglas+[{"service":"http_status:404"}]}}))
 PY
 cf -X PUT "$A/cfd_tunnel/$TID/configurations" -H "$J" --data @/tmp/cf-ingress.json >/dev/null; rm -f /tmp/cf-ingress.json
-echo "✔ Rutas: aria., shield. y heimdall.$DOMINIO$([ $RUNA = 1 ] && echo " (y runa.)")"
+echo "✔ Rutas: aria., shield. y heimdall.$DOMINIO$([ $RUNA = 1 ] && echo " (y runa.)")$([ $LAZO = 1 ] && echo " (y lazo.)")"
 
 # 3. Protección (Access) ANTES de publicar nada
 INC=$(python3 -c "import os,json;print(json.dumps([{'email':{'email':e.strip()}} for e in os.environ['EMAIL_ACCESO'].split(',') if e.strip()]))")
@@ -57,9 +61,11 @@ done
 # RUNA va SIN Access a propósito: quien recibe un enlace no tiene cuenta. Desde fuera solo se pueden abrir
 # secretos; crearlos exige estar en casa o pasar por ARIA (CREATE_FROM en RUNA, ver modulos/runa/README.md).
 [ "$RUNA" = 1 ] && echo "✔ runa.$DOMINIO sin Access a propósito (desde fuera solo se leen secretos)"
+# Lazo también va SIN Access: la familia entra con su enlace de invitación; el panel de PocketBase lo bloquea Caddy.
+[ "$LAZO" = 1 ] && echo "✔ lazo.$DOMINIO sin Access a propósito (la familia entra con su invitación)"
 
 # 4. Nombres DNS hacia el túnel
-NOMBRES="aria shield heimdall"; [ "$RUNA" = 1 ] && NOMBRES="$NOMBRES runa"
+NOMBRES="aria shield heimdall"; [ "$RUNA" = 1 ] && NOMBRES="$NOMBRES runa"; [ "$LAZO" = 1 ] && NOMBRES="$NOMBRES lazo"
 for S in $NOMBRES; do
   N=$(cf "https://api.cloudflare.com/client/v4/zones/$ZONA/dns_records?name=$S.$DOMINIO" | jq_py "print(len(d['result']))")
   [ "$N" = 0 ] && cf -X POST "https://api.cloudflare.com/client/v4/zones/$ZONA/dns_records" -H "$J" \

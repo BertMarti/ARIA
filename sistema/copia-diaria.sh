@@ -38,6 +38,12 @@ for p in SHIELD-DNS HEIMDALL ARIA; do
   [ -n "$ultimo" ] && cp "$ultimo" "$TMP/homelab/" && log "Incluida $(basename "$ultimo")"
 done
 [ -f "$HOMELAB_DIR/cloudflare.env" ] && cp "$HOMELAB_DIR/cloudflare.env" "$TMP/homelab/"
+# Lazo hace su propia copia diaria (contenedor lazo-backup, cifrada con su BACKUP_PASSPHRASE): se suma la última.
+LAZO_COPIAS="${LAZO_COPIAS:-$HOMELAB_DIR/lazo/server/data/backups}"
+if [ -d "$LAZO_COPIAS" ]; then
+  ultimo="$(ls -1t "$LAZO_COPIAS"/* 2>/dev/null | head -1 || true)"
+  [ -n "$ultimo" ] && cp "$ultimo" "$TMP/homelab/" && log "Incluida $(basename "$ultimo") (Lazo)"
+fi
 
 ARCH="homelab-$FECHA.tar.gz.gpg"
 tar -czf - -C "$TMP" homelab | gpg --batch --yes --quiet --pinentry-mode loopback \

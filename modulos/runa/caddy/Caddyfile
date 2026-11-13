@@ -16,5 +16,9 @@ https://:8485 {
 	}
 	encode zstd gzip
 	# RUNA pone sus propias cabeceras de seguridad (CSP estricta, COOP/COEP, no-referrer...).
-	reverse_proxy runa:8080
+	reverse_proxy runa:8080 {
+		# Esta cabecera solo la pone Cloudflare. Si un cliente de la LAN la inventa, RUNA la tomaría por su IP
+		# real (TRUST_CF_FROM incluye esta red) y podría saltarse los límites de peticiones.
+		header_up -Cf-Connecting-IP
+	}
 }

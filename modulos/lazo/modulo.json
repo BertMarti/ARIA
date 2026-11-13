@@ -1,0 +1,12 @@
+{
+  "_ayuda": "Ver modulos/lazo/README.md. Lazo corre en su propia carpeta (repositorio BertMarti/lazo) y sale por el túnel del homelab.",
+  "id": "lazo",
+  "nombre": "Lazo",
+  "descripcion": "Organiza regalos, amigos invisibles y gastos en grupo con tu familia: tu propio servidor de Lazo.",
+  "version": "1.0.0",
+  "icono": "casa",
+  "url": "https://{host}/api/modulos/lazo/abrir",
+  "env": ["LAZO_URL"],
+  "env_opcional": ["LAZO_INTERNA"],
+  "roles": ["admin", "usuario"]
+}
